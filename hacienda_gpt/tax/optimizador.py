@@ -257,6 +257,14 @@ class PosicionLatente(_Modelo):
     titular: Titular = "contribuyente"
 
 
+ModalidadDeclaracion = Literal["conjunta", "individual"]
+# The plan's assumption when the user excluded a filing mode that could have been compared.
+MODALIDAD_DESCARTADA: dict[str, str] = {
+    "conjunta": "No se considera la declaración conjunta: la has descartado.",
+    "individual": "No se consideran las declaraciones individuales: las has descartado.",
+}
+
+
 class Restricciones(_Modelo):
     """What the user can and will do. Absent = not stated (the plan says what it assumed)."""
 
@@ -275,6 +283,9 @@ class Restricciones(_Modelo):
     donativo_recurrente_importe_anterior: Decimal | None = Field(default=None, gt=0)
     perdidas_latentes: list[PosicionLatente] = Field(default_factory=list, max_length=20)
     ganancias_latentes: list[PosicionLatente] = Field(default_factory=list, max_length=20)
+    # Filing modes the user will not use ("conjunta" covers both joint returns). The optimiser never proposes
+    # them; when an excluded mode is the only one that can be computed it is kept and the plan says so.
+    modalidades_excluidas: list[ModalidadDeclaracion] = Field(default_factory=list, max_length=2)
 
     @model_validator(mode="after")
     def _presupuesto_coherente(self) -> Restricciones:
@@ -820,11 +831,39 @@ class _Optimizador:
         return 0 if titular == "contribuyente" else 1
 
     def _modos_disponibles(self, inp: IRPFInput) -> list[bool]:
-        """Filing modes to compare (False: separate, True: joint), the current one first."""
+        """Filing modes to compare (False: separate, True: joint), the current one first, without the modes the
+        user excluded (``Restricciones.modalidades_excluidas``).
+
+        When the current mode is excluded and the other one can be computed, the other one becomes the starting
+        point. When the only mode that can be computed is excluded, it is kept (there is nothing else to compute)
+        and the plan says so."""
+        excluidas = {modo == "conjunta" for modo in self.r.modalidades_excluidas}
+        posibles = self._modos_posibles(inp, excluidas=excluidas)
+        modos = [m for m in posibles if m not in excluidas]
+        for modo in sorted(excluidas & set(posibles), reverse=True):
+            nombre = "la declaración conjunta" if modo else "las declaraciones individuales"
+            if modos:
+                self.supuestos.append(MODALIDAD_DESCARTADA["conjunta" if modo else "individual"])
+            else:
+                self.avisos.append(
+                    f"Has descartado {nombre}, pero con los datos disponibles es la única forma de declarar que se "
+                    "puede calcular: las cifras la usan."
+                )
+        if not modos:
+            return posibles
+        if self.base_conjunta not in modos:
+            self.base_conjunta = modos[0]
+        return modos
+
+    def _modos_posibles(self, inp: IRPFInput, *, excluidas: set[bool]) -> list[bool]:
+        """Filing modes that can be computed with the data (False: separate, True: joint), the current one
+        first. The «not available» entries that invite the user to compare a mode they excluded are left out."""
         tc = self.p.tributacion_conjunta
         if self.con_conyuge:
             return [self.base_conjunta, not self.base_conjunta]
         if self.conjunta_sin_desglose:
+            if False in excluidas:
+                return [True]
             self.no_disponibles.append(
                 PalancaNoDisponible(
                     id="tributacion",
@@ -842,7 +881,9 @@ class _Optimizador:
         ) and not (self.estado_civil or "").startswith("casad")
         if monoparental_posible:
             return [self.base_conjunta, not self.base_conjunta]
-        if self.estado_civil is not None and self.estado_civil.startswith("casad"):
+        if True in excluidas:
+            pass
+        elif self.estado_civil is not None and self.estado_civil.startswith("casad"):
             self.no_disponibles.append(
                 PalancaNoDisponible(
                     id="tributacion",

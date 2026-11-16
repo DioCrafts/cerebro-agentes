@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import base64
 from collections.abc import Sequence
+import hashlib
 import json
 import re
 from typing import Any
@@ -100,14 +101,52 @@ class OpenAIProvider:
         self._base_url = base_url
         self._api_key = api_key
         self._timeout = timeout
+        self._padre: OpenAIProvider | None = None
+        self._variantes: dict[str, OpenAIProvider] = {}
         # Called with the token usage of every API call (see ops/consumo.py).
         self.on_usage: UsageCallback | None = None
+
+    def con_modelo(self, model: str, *, effort: str | None = None) -> OpenAIProvider:
+        """The same backend on another model, sharing the HTTP client (routing by purpose).
+
+        ``effort`` is a Claude setting and is ignored here.
+        """
+        del effort
+        raiz = self._padre or self
+        if model == raiz.model:
+            return raiz
+        variante = raiz._variantes.get(model)
+        if variante is None:
+            variante = OpenAIProvider(
+                model=model,
+                client=raiz._client,
+                base_url=raiz._base_url,
+                api_key=raiz._api_key,
+                name=raiz.name,
+                timeout=raiz._timeout,
+            )
+            variante._padre = raiz
+            raiz._variantes[model] = variante
+        return variante
+
+    def _cache_key(self, messages: list[dict[str, Any]], tools: Any = None) -> dict[str, Any]:
+        """``prompt_cache_key`` for OpenAI itself: requests with the same stable prefix
+        (system prompt + tool schemas) are routed together, which raises the share of
+        the prompt OpenAI serves from its automatic cache (priced as cached input).
+        Local OpenAI-compatible servers may reject unknown parameters: not sent there."""
+        if self.name != "openai":
+            return {}
+        system = messages[0].get("content") if messages and messages[0].get("role") == "system" else ""
+        prefijo = json.dumps([system, tools or []], ensure_ascii=False, sort_keys=True, default=str)
+        return {"prompt_cache_key": "hgpt-" + hashlib.sha256(prefijo.encode("utf-8")).hexdigest()[:32]}
 
     def _report(self, response: Any) -> None:
         """Report the usage carried by a response or by a stream chunk."""
         report_usage(self, lambda: usage_from_response(response, provider=self.name, model=self.model))
 
     def _ensure_client(self) -> Any:
+        if self._client is None and self._padre is not None:
+            self._client = self._padre._ensure_client()
         if self._client is None:
             from openai import OpenAI
 
@@ -123,7 +162,8 @@ class OpenAIProvider:
         import openai
 
         try:
-            response = self._ensure_client().chat.completions.create(model=self.model, **kwargs)
+            extra = self._cache_key(kwargs.get("messages") or [], kwargs.get("tools"))
+            response = self._ensure_client().chat.completions.create(model=self.model, **extra, **kwargs)
         except openai.APIError as exc:
             raise _wrap_errors(exc, self.name) from exc
         if not kwargs.get("stream"):
@@ -175,7 +215,7 @@ class OpenAIProvider:
                 }
                 for media_type, data in images
             ]
-        messages = [{"role": "system", "content": system}, {"role": "user", "content": content}]
+        messages: list[dict[str, Any]] = [{"role": "system", "content": system}, {"role": "user", "content": content}]
         client = self._ensure_client()
         try:
             response = client.chat.completions.create(
@@ -185,6 +225,7 @@ class OpenAIProvider:
                     "type": "json_schema",
                     "json_schema": {"name": schema_name, "schema": schema, "strict": True},
                 },
+                **self._cache_key(messages),
             )
             self._report(response)
         except openai.BadRequestError:
@@ -220,7 +261,7 @@ def _parse_json_object(content: str, label: str) -> dict[str, Any]:
             continue
         if isinstance(data, dict):
             return data
-    raise ProviderError(f"{label} devolvió JSON no válido: {content[:200]}")
+    raise ProviderError(f"{label} devolvió JSON no válido: {content[:200]}", salida_invalida=True)
 
 
 class OpenAIConversation:

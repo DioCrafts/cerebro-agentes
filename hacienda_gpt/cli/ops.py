@@ -31,6 +31,7 @@ import click
 
 from hacienda_gpt import settings
 from hacienda_gpt.cli.formatos import cli as formatos_cli
+from hacienda_gpt.eventos import salud as eventos_salud
 from hacienda_gpt.ops import formatos
 from hacienda_gpt.ops.vigia import EstadoIlegibleError, informar, leer_estado, revisar, vigilado
 from hacienda_gpt.proactive.entrega import (
@@ -166,6 +167,8 @@ def doctor(max_horas: dict[str, float], state_path: str | None, notify: bool) ->
         problemas = [f"No se puede leer el estado de las tareas ({exc})."]
     # A job can run and succeed while reading nothing, because a source changed its format.
     problemas += formatos.problemas()
+    # The event bus: dead letters, and work waiting longer than EVENTOS_ATRASO_MAX_MINUTOS.
+    problemas += eventos_salud.problemas()
 
     avisados: list[str] = []
     errores_de_envio = 0
@@ -187,7 +190,12 @@ def doctor(max_horas: dict[str, float], state_path: str | None, notify: bool) ->
                 avisados.append(canal.nombre)
     click.echo(
         json.dumps(
-            {"problemas": problemas, "avisado_por": avisados, "errores_de_envio": errores_de_envio},
+            {
+                "problemas": problemas,
+                "avisado_por": avisados,
+                "errores_de_envio": errores_de_envio,
+                **eventos_salud.para_el_doctor(),
+            },
             ensure_ascii=False,
             indent=2,
         )

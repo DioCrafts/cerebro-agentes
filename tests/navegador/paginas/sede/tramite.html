@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Sede electrónica de ejemplo · Solicitud genérica (simulación local)</title>
+<script src="{{TRACKER}}/t.js"></script></head>
+<body>
+<header>
+  <h1>Sede electrónica de ejemplo</h1>
+  <p id="sesion-usuario">Sesión iniciada con Cl@ve</p>
+</header>
+<main>
+  <h2>Solicitud genérica</h2>
+  <form id="solicitud" method="POST" action="/tramite/enviar">
+    <fieldset id="paso-1">
+      <legend>1. Datos de la persona solicitante</legend>
+      <label for="nombre">Nombre y apellidos</label>
+      <input id="nombre" name="nombre">
+      <label for="nif">NIF</label>
+      <input id="nif" name="nif">
+      <label for="correo">Correo electrónico</label>
+      <input id="correo" name="correo" type="email">
+      <button type="button" id="siguiente-1">Siguiente</button>
+    </fieldset>
+    <fieldset id="paso-2" hidden>
+      <legend>2. Datos de la solicitud</legend>
+      <label for="motivo">Motivo</label>
+      <select id="motivo" name="motivo">
+        <option value="">Elige un motivo</option>
+        <option value="informacion">Solicitud de información</option>
+        <option value="queja">Queja o sugerencia</option>
+      </select>
+      <label for="expone">Expone</label>
+      <textarea id="expone" name="expone"></textarea>
+      <button type="button" id="siguiente-2">Siguiente</button>
+    </fieldset>
+    <fieldset id="paso-3" hidden>
+      <legend>3. Revisión</legend>
+      <dl id="resumen"></dl>
+      <button type="submit" id="firmar">Firmar y enviar</button>
+    </fieldset>
+  </form>
+</main>
+<script>
+  const mostrar = (n) => { for (const i of [1, 2, 3]) document.getElementById("paso-" + i).hidden = i !== n; };
+  const fila = (etiqueta, valor) => {
+    const div = document.createElement("div"); div.className = "fila";
+    const dt = document.createElement("dt"); dt.textContent = etiqueta;
+    const dd = document.createElement("dd"); dd.textContent = valor;
+    div.append(dt, dd); return div;
+  };
+  document.getElementById("siguiente-1").addEventListener("click", () => mostrar(2));
+  document.getElementById("siguiente-2").addEventListener("click", () => {
+    const resumen = document.getElementById("resumen");
+    resumen.replaceChildren();
+    for (const id of ["nombre", "nif", "correo", "motivo", "expone"]) {
+      const campo = document.getElementById(id);
+      const etiqueta = document.querySelector('label[for="' + id + '"]').textContent;
+      const valor = campo.tagName === "SELECT" ? campo.options[campo.selectedIndex].text : campo.value;
+      resumen.append(fila(etiqueta, valor));
+    }
+    mostrar(3);
+  });
+</script>
+</body>
+</html>

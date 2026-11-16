@@ -8,7 +8,7 @@ normative claim, and the final verdict shown to the user.
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from datetime import UTC, datetime
 from enum import Enum
 import logging
@@ -18,12 +18,14 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from hacienda_gpt import settings
+from hacienda_gpt.agent import enrutado
+from hacienda_gpt.agent.especialistas import Coordinador
 from hacienda_gpt.agent.evidence import EvidenceLedger, Fragment, extract_cited_ids
 from hacienda_gpt.agent.prompts import (
-    AGENT_SYSTEM_PROMPT,
     CASE_TOOLS_ADDENDUM,
     CRITIC_REVISION_MESSAGE,
     FORCE_ANSWER_MESSAGE,
+    PLANIFICADOR_ADDENDUM,
 )
 from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError, ToolResult
 from hacienda_gpt.agent.search import CorpusSearcher
@@ -45,6 +47,11 @@ from hacienda_gpt.agent.tools import Toolbox
 from hacienda_gpt.agent.verifier import ClaimCheck, ResponseType, Verdict, VerificationReport, Verifier
 from hacienda_gpt.decision.schemas import CaseState
 from hacienda_gpt.doctrine.grafo import DoctrineGraph
+from hacienda_gpt.evaluacion.variantes import argumentos_proveedor, prompt_activo
+from hacienda_gpt.memoria.agente import MemoriaAgente
+from hacienda_gpt.modulos.acciones import AccionPendiente
+from hacienda_gpt.modulos.contrato import Modulo
+from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
 
 logger = logging.getLogger(__name__)
 
@@ -119,6 +126,8 @@ class AgentResult(BaseModel):
     usage: dict[str, int] = Field(default_factory=dict)
     # Present only when a case was attached AND a tool changed it; the caller persists it.
     updated_case: CaseState | None = Field(default=None, exclude=True)
+    # Calls to module tools that act outside the app: never executed, the caller stores them as pending.
+    acciones_propuestas: list[AccionPendiente] = Field(default_factory=list, exclude=True)
 
 
 def _context_block(case: CaseState | None) -> str:
@@ -212,8 +221,13 @@ class TaxAgent:
         ledger: EvidenceLedger | None = None,
         briefing: str | None = None,
         critic: Callable[[str, list[Fragment], Toolbox], str | None] | None = None,
+        modulos: Sequence[Modulo] | None = None,
     ) -> AgentResult:
         """Answer ``query``. Raises :class:`ProviderError` if the agent model fails.
+
+        ``modulos`` are the household modules switched on for this user: every one but the tax module adds
+        a ``consultar_<clave>`` specialist tool (see :mod:`hacienda_gpt.agent.especialistas`). Without them
+        (or with only the tax module) the advisor runs exactly as it always has.
 
         Team mode passes three extras: a ``ledger`` already holding the
         researchers' fragments, a ``briefing`` with their memos, and a
@@ -235,15 +249,39 @@ class TaxAgent:
                 logger.exception("agent progress callback failed")
 
         ledger = ledger if ledger is not None else EvidenceLedger()
+        especialistas = Coordinador.para(self._provider, ledger, modulos, emit)
+        # The user's remembered decisions (hacienda_gpt/memoria): two tools and a context block, only with a case.
+        memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
         toolbox = Toolbox(
-            searcher=self._searcher, ledger=ledger, case=case, default_k=self._default_k, graph=self._graph
+            searcher=self._searcher,
+            ledger=ledger,
+            case=case,
+            default_k=self._default_k,
+            graph=self._graph,
+            extra=[
+                *(especialistas.herramientas() if especialistas is not None else ()),
+                *(memoria.herramientas() if memoria is not None else ()),
+            ],
         )
-        system = AGENT_SYSTEM_PROMPT + (CASE_TOOLS_ADDENDUM if case is not None else "")
+        if memoria is not None:
+            memoria.vincular(toolbox)
+        # The active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.AGENT_SYSTEM_PROMPT.
+        system = prompt_activo("agente") + (CASE_TOOLS_ADDENDUM if case is not None else "")
+        if especialistas is not None:
+            especialistas.vincular(toolbox)
+            system += especialistas.addendum()
+        # The household planner's paragraph, only when its tool is offered (a case and household modules).
+        if any(spec.name == PLANIFICAR_TOOL.name for spec in toolbox.specs()):
+            system += PLANIFICADOR_ADDENDUM
         conversation = self._provider.start(
             system=system,
             tools=toolbox.specs(),
             history=chat_history or [],  # type: ignore[arg-type]  # normalized by the provider
-            user_message="\n\n".join(part for part in (_context_block(case), briefing, query) if part),
+            user_message="\n\n".join(
+                part
+                for part in (_context_block(case), memoria.contexto() if memoria is not None else "", briefing, query)
+                if part
+            ),
         )
 
         trace: list[ToolTraceEntry] = []
@@ -254,14 +292,23 @@ class TaxAgent:
         critic_pending = critic is not None
 
         def finish(**fields: Any) -> AgentResult:
+            total = dict(usage)
+            full_trace = list(trace)
+            if especialistas is not None:
+                # The specialists' own calls, for the audit trail; their model use counts towards the answer.
+                full_trace += [ToolTraceEntry(**entry) for run in especialistas.runs for entry in run.trace]
+                for run in especialistas.runs:
+                    for key, value in run.usage.items():
+                        total[key] = total.get(key, 0) + value
             return AgentResult(
-                tool_trace=trace,
+                tool_trace=full_trace,
                 steps=steps,
                 revisions=revisions,
                 provider=self._provider.name,
                 model=self._provider.model,
-                usage=usage,
+                usage=total,
                 updated_case=toolbox.case if toolbox.case_changed else None,
+                acciones_propuestas=list(especialistas.acciones) if especialistas is not None else [],
                 **fields,
             )
 
@@ -465,10 +512,13 @@ class TeamAgent(TaxAgent):
         chat_history: list[dict[str, Any]] | None = None,
         case: CaseState | None = None,
         on_event: Callable[[dict[str, Any]], None] | None = None,
+        modulos: Sequence[Modulo] | None = None,
         **kwargs: Any,
     ) -> AgentResult:
         if self._mode == "never" or kwargs:
-            return super().run(query, chat_history=chat_history, case=case, on_event=on_event, **kwargs)
+            return super().run(
+                query, chat_history=chat_history, case=case, on_event=on_event, modulos=modulos, **kwargs
+            )
 
         def emit(event_type: str, **data: Any) -> None:
             if on_event is None:
@@ -482,17 +532,24 @@ class TeamAgent(TaxAgent):
         plan: Plan | None = None
         if self._mode == "always" or len(tributos) >= 2:
             emit("team", stage="planning", agent="planificador", status="start")
-            plan = planificar(self._provider, query, case)
+            plan = planificar(enrutado.para(self._provider, "equipo:planificador"), query, case)
             emit("team", stage="planning", agent="planificador", status="done", complex=bool(plan and plan.compleja))
 
         if self._mode == "always" or (plan is not None and plan.compleja):
             plan = plan or Plan(compleja=True, motivo="Modo equipo forzado por configuración.", tributos=tributos)
             trigger = "planificador" if plan.compleja and self._mode != "always" else "forzado"
             return self._run_team(
-                query, plan, trigger, chat_history=chat_history, case=case, on_event=on_event, emit=emit
+                query,
+                plan,
+                trigger,
+                chat_history=chat_history,
+                case=case,
+                on_event=on_event,
+                emit=emit,
+                modulos=modulos,
             )
 
-        result = super().run(query, chat_history=chat_history, case=case, on_event=on_event)
+        result = super().run(query, chat_history=chat_history, case=case, on_event=on_event, modulos=modulos)
         # Escalate when the single agent ran into doctrine it could not settle.
         if result.conflicts and result.mode is not AgentMode.VERIFIED:
             emit("team", stage="escalation", agent="planificador", status="start")
@@ -516,11 +573,14 @@ class TeamAgent(TaxAgent):
                 case=result.updated_case or case,
                 on_event=on_event,
                 emit=emit,
+                modulos=modulos,
             )
             for key, value in result.usage.items():
                 team_result.usage[key] = team_result.usage.get(key, 0) + value
             if team_result.updated_case is None:
                 team_result.updated_case = result.updated_case
+            # Actions the first pass left pending are still the user's to decide.
+            team_result.acciones_propuestas = [*result.acciones_propuestas, *team_result.acciones_propuestas]
             return team_result
         return result
 
@@ -534,6 +594,7 @@ class TeamAgent(TaxAgent):
         case: CaseState | None,
         on_event: Callable[[dict[str, Any]], None] | None,
         emit: Callable[..., None],
+        modulos: Sequence[Modulo] | None = None,
     ) -> AgentResult:
         ledger = EvidenceLedger()
         make_toolbox = new_toolbox_factory(
@@ -544,7 +605,7 @@ class TeamAgent(TaxAgent):
             graph=self._graph,
         )
         runs = investigar(
-            self._provider,
+            enrutado.para(self._provider, "equipo:investigador"),
             plan=plan,
             query=query,
             case=case,
@@ -557,7 +618,7 @@ class TeamAgent(TaxAgent):
 
         def critic(draft: str, fragments: list[Fragment], _toolbox: Toolbox) -> str | None:
             run = criticar(
-                self._provider,
+                enrutado.para(self._provider, "equipo:critico"),
                 query=query,
                 case=case,
                 draft=draft,
@@ -577,6 +638,7 @@ class TeamAgent(TaxAgent):
             ledger=ledger,
             briefing=render_briefing(runs),
             critic=critic,
+            modulos=modulos,
         )
         all_runs = [*runs, *critic_runs]
         result.tool_trace = [
@@ -603,7 +665,8 @@ def build_agent() -> TaxAgent:
     from hacienda_gpt.ops.consumo import medir
 
     # Every call is recorded and checked against the configured budgets.
-    provider = medir(create_provider(), "agente")
+    # The active variant may name another provider/model ({} by default: settings decide, as always).
+    provider = medir(create_provider(**argumentos_proveedor()), "agente")
     verifier_provider = provider.con_proposito("verificador")
     if settings.VERIFIER_PROVIDER or settings.VERIFIER_MODEL:
         verifier_provider = medir(

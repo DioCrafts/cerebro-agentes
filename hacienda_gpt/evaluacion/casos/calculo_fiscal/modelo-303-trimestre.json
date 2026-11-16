@@ -1,0 +1,58 @@
+{
+  "id": "modelo-303-trimestre",
+  "version": 1,
+  "categoria": "calculo_fiscal",
+  "descripcion": "Autoliquidación del IVA con los datos de la pregunta.",
+  "pregunta": "En el primer trimestre de 2026 he facturado 10.000 € de base al 21 % y he soportado 500 € de IVA deducible. ¿Cuánto me sale el modelo 303?",
+  "modulos": [],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_303"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_303",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 1,
+          "base_tipo_general": 10000,
+          "cuotas_soportadas_deducibles": 500
+        },
+        "patron": "Resultado \\(positivo: a ingresar; negativo: a compensar\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "1.600,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1,
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_modelo_303",
+            "argumentos": {
+              "ejercicio": 2026,
+              "trimestre": 1,
+              "base_tipo_general": 10000,
+              "cuotas_soportadas_deducibles": 500
+            }
+          }
+        ]
+      },
+      {
+        "texto": "El 303 del primer trimestre te sale a ingresar {cifra:resultado} {fragmento:calcular_modelo_303}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

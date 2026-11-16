@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
 import logging
-from typing import Any, Literal, Protocol
+from typing import Any, Literal, Protocol, runtime_checkable
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +30,12 @@ class ProviderError(RuntimeError):
     limit, 5xx, network) or not (bad request, auth, unknown model).
     """
 
-    def __init__(self, message: str, *, retryable: bool = False) -> None:
+    def __init__(self, message: str, *, retryable: bool = False, salida_invalida: bool = False) -> None:
         super().__init__(message)
         self.retryable = retryable
+        # The model answered, but its output is unusable (not JSON, not an
+        # object, truncated): a stronger model may do better (see enrutado.py).
+        self.salida_invalida = salida_invalida
 
 
 @dataclass(frozen=True)
@@ -102,6 +105,14 @@ class Usage:
     # What the call was for ("agente", "verificador", "documentos"…); set by the metering wrapper.
     purpose: str = ""
     reported: bool = True
+    # Part of ``cache_write_tokens`` written with the 1-hour TTL (priced higher than the 5-minute one).
+    cache_write_1h_tokens: int = 0
+    # Served by a batch API (asynchronous, discounted); set by the batch collector.
+    batch: bool = False
+    # Routing tier of the purpose ("pequeno" | "mediano" | "grande"; "" = not routed) and whether
+    # this call is the one-off retry of an invalid output on the next tier. Set by the metering wrapper.
+    tier: str = ""
+    escalated: bool = False
 
 
 # Optional hook a provider exposes as ``provider.on_usage``: called once per API
@@ -133,6 +144,57 @@ def token_count(source: Any, name: str) -> int:
     if isinstance(value, bool) or not isinstance(value, int) or value < 0:
         return 0
     return value
+
+
+@dataclass(frozen=True)
+class EstadoLote:
+    """Where a submitted batch stands. ``terminado``: every request has a final result."""
+
+    id: str
+    terminado: bool
+    en_proceso: int = 0
+    correctas: int = 0
+    con_error: int = 0
+    canceladas: int = 0
+    caducadas: int = 0
+
+
+@dataclass(frozen=True)
+class ResultadoLote:
+    """The result of one request of a batch, keyed by the ``custom_id`` it was sent with.
+
+    Exactly one of ``datos`` (the parsed JSON object) and ``error`` is set. ``salida_invalida``:
+    the model answered but its output was unusable. ``reintentable``: sending it again may work
+    (server error, expired, cancelled), as opposed to a request the API rejected.
+    """
+
+    custom_id: str
+    datos: dict[str, Any] | None = None
+    error: str | None = None
+    salida_invalida: bool = False
+    reintentable: bool = False
+    usage: Usage | None = None
+
+
+@runtime_checkable
+class ProveedorDeLotes(Protocol):
+    """A provider that can run ``complete_json`` requests through an asynchronous batch API.
+
+    ``peticion_json`` builds the provider-native request of one ``complete_json`` call (the
+    same request the synchronous call sends, minus what batches reject); the other three
+    submit, poll and collect. Implemented by Claude; OpenAI-compatible backends do not.
+    """
+
+    name: str
+    model: str
+
+    def peticion_json(self, *, system: str, user: str, schema: dict[str, Any], schema_name: str) -> dict[str, Any]: ...
+
+    def crear_lote(self, peticiones: Sequence[tuple[str, dict[str, Any]]]) -> str: ...
+
+    def estado_lote(self, lote_id: str) -> EstadoLote: ...
+
+    def resultados_lote(self, lote_id: str) -> list[ResultadoLote]: ...
 
 
 class Conversation(Protocol):

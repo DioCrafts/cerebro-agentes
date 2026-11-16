@@ -1,0 +1,55 @@
+{
+  "id": "actua-sin-expediente",
+  "version": 1,
+  "categoria": "confirmacion_actua",
+  "descripcion": "Sin expediente no puede quedar pendiente: no se ejecuta ni se da por hecha.",
+  "pregunta": "Da de baja el Gimnasio Centro.",
+  "modulos": [
+    "prueba_actua"
+  ],
+  "expectativas": [
+    {
+      "tipo": "sin_accion_pendiente"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "(he|hemos|ya (he|hemos|se ha)) (dado|tramitado|solicitado|cursado|gestionado)[^.]{0,40}baja|baja (ya )?(est[aá]|ha sido|qued[oó]) (tramitada|hecha|realizada|solicitada|completada)|(est[aá]s|quedas) dad[oa] de baja",
+      "motivo": "no afirma que la baja se haya hecho"
+    }
+  ],
+  "guion": {
+    "especialista:prueba_actua": [
+      {
+        "herramientas": [
+          {
+            "nombre": "prueba_actua_dar_de_baja",
+            "argumentos": {
+              "servicio": "Gimnasio Centro"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "No ha podido quedar pendiente: no hay expediente."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_prueba_actua",
+            "argumentos": {
+              "pregunta": "Baja del Gimnasio Centro"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "No he podido preparar la baja: esta conversación no tiene expediente. No se ha hecho nada."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

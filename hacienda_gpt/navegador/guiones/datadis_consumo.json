@@ -1,0 +1,32 @@
+{
+  "fuente": "nav_datadis_consumo",
+  "version": 1,
+  "descripcion": "Descarga del CSV horario de consumo en Datadis. Guion inicial, escrito a partir del flujo documentado (acceso, consulta de consumos por suministro y fechas, descarga CSV).",
+  "origen": "incorporada",
+  "reglas": {
+    "titulo": "Descargar tu consumo horario de Datadis",
+    "descripcion": "Abre Datadis, esperas a que inicies sesión tú mismo y, después, elige el suministro y las fechas, descarga el CSV horario y lo pasa al módulo de luz para que lo importe. No cambia nada en Datadis.",
+    "verificado_contra_sitio_real": false,
+    "nota_verificacion": "Rutas y selectores escritos a partir del flujo que Datadis documenta, sin poder abrir datadis.es desde la máquina de desarrollo; probado solo contra una simulación local. Si la página real es distinta, el primer intento fallará sin hacer nada y lo avisará la vigilancia de formatos.",
+    "origenes": {"datadis": "https://datadis.es"},
+    "login": {"origen": "datadis", "ruta": "/login", "hecho_cuando": "#usuario-conectado", "espera_max_s": 600},
+    "parametros": [
+      {"nombre": "cups", "tipo": "cups", "etiqueta": "CUPS del suministro", "obligatorio": false, "personal": true},
+      {"nombre": "desde", "tipo": "fecha", "etiqueta": "Desde"},
+      {"nombre": "hasta", "tipo": "fecha", "etiqueta": "Hasta"}
+    ],
+    "rango_fechas": {"desde": "desde", "hasta": "hasta", "max_dias": 400},
+    "pasos": [
+      {"id": "abrir_consumos", "accion": "ir", "descripcion": "Abrir la consulta de consumos", "origen": "datadis", "ruta": "/privado/consumos"},
+      {"id": "formulario", "accion": "esperar", "descripcion": "Esperar al formulario de consulta", "selector": "#filtro"},
+      {"id": "suministro", "accion": "seleccionar", "descripcion": "Elegir el suministro", "selector": "#cups", "campo": "cups", "etiqueta": "Suministro (CUPS)", "valor": "{cups}"},
+      {"id": "fecha_inicial", "accion": "rellenar", "descripcion": "Indicar la fecha inicial", "selector": "#fecha-inicial", "campo": "fechaInicial", "etiqueta": "Fecha inicial", "valor": "{desde}"},
+      {"id": "fecha_final", "accion": "rellenar", "descripcion": "Indicar la fecha final", "selector": "#fecha-final", "campo": "fechaFinal", "etiqueta": "Fecha final", "valor": "{hasta}"},
+      {"id": "consultar", "accion": "pulsar", "descripcion": "Consultar el consumo del periodo", "selector": "#consultar", "texto": "Consultar"},
+      {"id": "enlace_csv", "accion": "esperar", "descripcion": "Esperar al enlace de descarga", "selector": "#resultado #descargar-csv", "texto": "Descargar CSV"},
+      {"id": "descargar_csv", "accion": "descargar", "descripcion": "Descargar el CSV horario", "selector": "#descargar-csv", "texto": "Descargar CSV"}
+    ],
+    "descarga": {"extensiones": [".csv"], "max_bytes": 5000000, "destino": "luz_importar_consumo"},
+    "enmascarar": ["#usuario-conectado"]
+  }
+}

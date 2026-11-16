@@ -11,6 +11,10 @@ import pytest
 os.environ["FORMAT_WATCH"] = "false"
 os.environ["FORMAT_STATE_PATH"] = os.path.join(tempfile.gettempdir(), "hacienda-tests-formatos", "_estado.json")
 os.environ["FORMAT_DIR"] = os.path.join(tempfile.gettempdir(), "hacienda-tests-formatos", "formatos")
+# Same for the baseline of the household modules' BOE sources (params-check).
+os.environ["MODULOS_FUENTES_STATE_PATH"] = os.path.join(
+    tempfile.gettempdir(), "hacienda-tests-formatos", "_modulos_fuentes.json"
+)
 
 
 def _ensure_module(name: str) -> types.ModuleType:
@@ -229,3 +233,17 @@ def _formatos_sin_rastro(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "FORMAT_WATCH", False, raising=False)
     monkeypatch.setattr(settings, "FORMAT_STATE_PATH", str(tmp_path / "_formatos_state.json"), raising=False)
     monkeypatch.setattr(settings, "FORMAT_DIR", str(tmp_path / "formatos"), raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _registro_de_modulos_sin_rastro():
+    """No test leaves its module registry behind: a fake one (``reiniciar(nuevo)``), or a real one built while
+    the test had patched settings (``MODULOS_DESACTIVADOS``…), is forgotten after the test, so the next test
+    discovers the real modules again. Tests that leave the registry untouched pay nothing."""
+    from hacienda_gpt.modulos import registro
+
+    antes = list(registro._cache)
+    yield
+    despues = list(registro._cache)
+    if len(antes) != len(despues) or any(a is not d for a, d in zip(antes, despues, strict=False)):
+        registro.reiniciar()

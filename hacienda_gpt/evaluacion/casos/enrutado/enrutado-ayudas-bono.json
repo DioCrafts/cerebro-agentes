@@ -1,0 +1,66 @@
+{
+  "id": "enrutado-ayudas-bono",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "El bono social es una ayuda: lo comprueba el especialista de ayudas.",
+  "pregunta": "¿Puedo pedir el bono social eléctrico con mis ingresos?",
+  "modulos": [
+    "ayudas",
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "ayudas"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    }
+  ],
+  "guion": {
+    "especialista:ayudas": [
+      {
+        "herramientas": [
+          {
+            "nombre": "ayudas_comprobar",
+            "argumentos": {
+              "prestacion": "bono_social_electrico"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Probablemente le corresponde {fragmento:ayudas_comprobar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_ayudas",
+            "argumentos": {
+              "pregunta": "Bono social eléctrico"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Probablemente sí te corresponde {fragmento:ayudas_comprobar}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  }
+}

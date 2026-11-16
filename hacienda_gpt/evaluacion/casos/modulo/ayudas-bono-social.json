@@ -1,0 +1,83 @@
+{
+  "id": "ayudas-bono-social",
+  "version": 1,
+  "categoria": "modulo",
+  "descripcion": "Bono social eléctrico: el umbral de renta lo calcula el módulo.",
+  "pregunta": "¿Me corresponde el bono social eléctrico?",
+  "modulos": [
+    "ayudas"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "ayudas"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "ayudas_comprobar",
+      "agente": "especialista_ayudas"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "umbral",
+      "calculo": {
+        "herramienta": "ayudas_comprobar",
+        "argumentos": {
+          "prestacion": "bono_social_electrico"
+        },
+        "patron": "Multiplicador [^\\n]*: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "19.320,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1
+    }
+  ],
+  "guion": {
+    "especialista:ayudas": [
+      {
+        "herramientas": [
+          {
+            "nombre": "ayudas_comprobar",
+            "argumentos": {
+              "prestacion": "bono_social_electrico"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Umbral de renta del hogar: {cifra:umbral} {fragmento:ayudas_comprobar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_ayudas",
+            "argumentos": {
+              "pregunta": "¿Le corresponde el bono social eléctrico?"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Probablemente te corresponde: el umbral de renta para tu hogar es {cifra:umbral} {fragmento:ayudas_comprobar}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  }
+}

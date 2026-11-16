@@ -1,0 +1,81 @@
+name: evaluacion
+
+# Continuous evaluation of the central assistant and its modules (hacienda_gpt/evaluacion, README
+# «Evaluación continua»).
+#
+# * deterministico — every PR, no model, no key: the suite's schema, every expected figure recomputed by the
+#   deterministic calculators, the prompt registry (a prompt edited without registering a new version fails),
+#   and every case's reference script replayed through the real agent, tools and specialists.
+# * con-modelo — the full suite against the configured model, ONLY when the ANTHROPIC_API_KEY secret exists
+#   (never on PRs from forks, which get no secrets). No FAISS index in CI: cases that need the corpus (DGT)
+#   cannot pass here and are reported as such. Spending is capped by EVALUACION_PRESUPUESTO_USD (repository
+#   variable, default 5).
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  deterministico:
+    runs-on: ubuntu-latest
+    env:
+      FORMAT_WATCH: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync
+      - name: Suite y registro de prompts (sin modelo)
+        run: uv run python -m hacienda_gpt.cli.evaluacion validar
+      - name: Guiones de referencia (sin modelo)
+        run: |
+          uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion \
+            --out reports/evaluacion/reproduccion.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: evaluacion-reproduccion
+          path: reports/evaluacion/reproduccion.json
+          if-no-files-found: ignore
+
+  con-modelo:
+    runs-on: ubuntu-latest
+    needs: deterministico
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LLM_PROVIDER: anthropic
+      FORMAT_WATCH: "false"
+      DECISION_STATE_DB_PATH: ./data/ci_state.sqlite3
+    steps:
+      - name: ¿Hay clave?
+        id: clave
+        run: |
+          if [ -n "$ANTHROPIC_API_KEY" ]; then echo "hay=true" >> "$GITHUB_OUTPUT"; else
+            echo "hay=false" >> "$GITHUB_OUTPUT"
+            echo "Sin el secreto ANTHROPIC_API_KEY: solo se ejecuta la parte determinista." >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.clave.outputs.hay == 'true'
+      - uses: astral-sh/setup-uv@v5
+        if: steps.clave.outputs.hay == 'true'
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync
+        if: steps.clave.outputs.hay == 'true'
+      - name: Suite completa con el modelo (variante activa)
+        if: steps.clave.outputs.hay == 'true'
+        run: |
+          uv run python -m hacienda_gpt.cli.evaluacion run --yes --sin-corpus --exigir-criticas \
+            --presupuesto-usd "${{ vars.EVALUACION_PRESUPUESTO_USD || '5' }}" \
+            --out reports/evaluacion/modelo.json
+      - uses: actions/upload-artifact@v4
+        if: always() && steps.clave.outputs.hay == 'true'
+        with:
+          name: evaluacion-modelo
+          path: reports/evaluacion/modelo.json
+          if-no-files-found: ignore

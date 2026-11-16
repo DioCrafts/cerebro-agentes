@@ -1,0 +1,74 @@
+{
+  "id": "enrutado-hipoteca-no-luz",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "Pregunta de hipoteca con tres ámbitos activos.",
+  "pregunta": "¿Cuánto me queda por pagar de intereses de la hipoteca?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "suscripciones"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {}
+          }
+        ]
+      },
+      {
+        "texto": "Intereses pendientes {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Intereses que quedan por pagar"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Según el cuadro de tu préstamo {fragmento:hipoteca_cuadro}, te quedan los intereses indicados."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

@@ -810,13 +810,18 @@ def _coerce_value(
 def _provider_extractor() -> FactExtractor:
     from hacienda_gpt import settings
     from hacienda_gpt.agent.providers import create_provider
+    from hacienda_gpt.ops.consumo import medir
 
+    # Metered (and routed) as purpose "hechos"; DECISION_EXTRACTOR_MODEL, when set, is kept by the routing.
     return ProviderFactExtractor(
-        create_provider(
-            model=os.environ.get("DECISION_EXTRACTOR_MODEL") or None,
-            # Extraction is a constrained, low-ambiguity task: it does not need
-            # the reasoning depth the advisor runs at.
-            effort=settings.DECISION_EXTRACTOR_EFFORT,
+        medir(
+            create_provider(
+                model=os.environ.get("DECISION_EXTRACTOR_MODEL") or None,
+                # Extraction is a constrained, low-ambiguity task: it does not need
+                # the reasoning depth the advisor runs at.
+                effort=settings.DECISION_EXTRACTOR_EFFORT,
+            ),
+            "hechos",
         )
     )
 

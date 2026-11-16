@@ -25,6 +25,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from hacienda_gpt.agent.providers.base import ProviderError
 from hacienda_gpt.decision.schemas import CaseState
+from hacienda_gpt.eventos.productores import emitir_cambio_normativo
 from hacienda_gpt.ops import formatos
 from hacienda_gpt.ops.formatos_boe import ReglasConsolidado
 from hacienda_gpt.proactive.store import Notification, NotificationStore
@@ -583,4 +584,5 @@ def procesar_eventos(
             continue
         summary["analizados"] += 1
         summary["notificaciones"] += notificar_cambio(cambio, all_cases, store)
+        emitir_cambio_normativo(getattr(store, "db_path", None), cambio)  # event bus: wakes the subscribed modules
     return summary

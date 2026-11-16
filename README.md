@@ -345,6 +345,191 @@ curl -X POST "http://127.0.0.1:8000/cases/$CASE/turn" \
 
 ---
 
+## 🏠 Asistente central y módulos
+
+El asesor fiscal es ahora el **asistente central** de la administración del hogar. La parte de impuestos
+es el primer módulo (`fiscal`) y no ha cambiado: mismas herramientas, mismas respuestas, mismos avisos y
+la misma API. Los demás ámbitos (luz, caducidades y garantías, ayudas públicas, suscripciones,
+hipoteca…) se enchufan como **módulos** que cumplen un único contrato,
+[`hacienda_gpt/modulos/contrato.py`](hacienda_gpt/modulos/contrato.py).
+
+### Arquitectura
+
+```
+                       ┌──────────── asistente central (agent/agent.py) ─────────────┐
+ pregunta ──► /agent ──►│ herramientas fiscales (calcular_irpf, buscar_fuentes…)      │──► respuesta
+                       │ consultar_luz / consultar_hipoteca / …  (una por módulo)     │    citada [F#]
+                       └──────┬───────────────────────────────────────────────────────┘    y verificada
+                              │ especialista (sub-agente acotado, agent/especialistas.py)
+                              ▼
+                 solo las herramientas del módulo + leer_expediente
+                 instrucciones del módulo; cada resultado = fragmento citable [F#]
+```
+
+- **Registro** (`modulos/registro.py`): descubre con `pkgutil` cada paquete `hacienda_gpt.modulos.<clave>`
+  que expone `MODULO`, lo valida contra el contrato (claves únicas, hechos con prefijo `<clave>_` salvo los
+  compartidos del núcleo, herramientas únicas con prefijo `<clave>_` salvo las fiscales de siempre, efectos
+  válidos…) y deja fuera, con un error en el log, el módulo que falle al importar o incumpla una regla: un
+  módulo roto nunca tumba la aplicación. `MODULOS_DESACTIVADOS` apaga módulos para todos (`fiscal` no se
+  puede apagar). `python -m hacienda_gpt.cli.proactive modulos` lista lo cargado y lo rechazado.
+- **Perfil del hogar** (`modulos/perfil.py`): los hechos del expediente son el perfil que comparten todos
+  los módulos. Los hechos de un módulo (`HechoModulo`) entran en el vocabulario en tiempo de ejecución:
+  `PUT /cases/{id}/facts/{nombre}` los valida con su `validar` y guarda los `json` como texto JSON canónico
+  (como `descendientes`). No se ofrecen al extractor de hechos del chat.
+- **Especialistas** (`agent/especialistas.py`): por cada módulo activado (salvo `fiscal`) el asistente
+  recibe `consultar_<clave>`, que lanza un sub-agente con las herramientas de ese módulo y `leer_expediente`
+  (datos compartidos y los suyos, nunca los de otro módulo). Reutiliza el bucle de los investigadores del
+  equipo (`team.run_subagent`), mide el consumo con el propósito `especialista:<clave>` contra el mismo
+  presupuesto de la pregunta, y registra cada resultado en el libro de evidencias como fragmento citable,
+  que el verificador comprueba como cualquier otro. Sin módulos activados el asistente es exactamente el de
+  antes (mismo *prompt*, mismas herramientas).
+- **Bandeja única** (`proactive/bandeja.py`): `run-daily` ejecuta los avisos fiscales como siempre y
+  después `avisos` de cada módulo activado para el dueño de cada caso (tipo `modulo:<clave>`, clave
+  `modulo:<clave>:<aviso>`, idempotente, `sustituye_prefijo` respetado; un módulo que falla no para a los
+  demás). `run-weekly` escribe un **resumen semanal** por caso con lo que vence, los importes de los avisos y
+  las acciones por decidir, ordenado por urgencia, sin sumar nunca cifras de módulos distintos.
+- **Mantenimiento**: las fuentes BOE de los módulos (`FuenteModulo`) entran en la vigilancia de
+  `boe-novedades` y en `params-check` (apartado `modulos`), como las leyes de la calculadora.
+
+### Garantías
+
+- Ninguna cifra la calcula el modelo: sale de una herramienta determinista y llega citada.
+- El asistente no suma ni compara como una sola cuenta cifras de módulos distintos si ningún módulo ha
+  calculado esa combinación (regla del *prompt* y del resumen semanal).
+- Una herramienta `efecto="actua"` nunca se ejecuta al llamarla: queda como **acción pendiente**
+  (`GET /acciones?case_id=…`) y solo corre tras `POST /acciones/{id}/confirmar` del dueño del caso, una sola
+  vez y solo si el módulo sigue activado. Las `prepara` devuelven borradores marcados como tales.
+- Consentimiento por módulo: `fiscal` siempre activo; el resto **desactivado hasta que el usuario lo
+  activa** (privacidad por defecto, art. 25.2 RGPD). `GET /modulos`, `PUT /me/modulos/{clave}`
+  (`{"activo": false, "borrar_datos": true}` borra además sus datos). Sin cuentas manda
+  `MODULOS_ACTIVOS_POR_DEFECTO`.
+- Los datos de los módulos se exportan y se borran con la cuenta como cualquier hecho; al borrar un hecho
+  se anonimiza en la auditoría y se quitan los avisos del módulo.
+
+### Cómo escribir un módulo
+
+1. Crea el paquete `hacienda_gpt/modulos/<clave>/` con un `__init__.py` que exponga `MODULO` (puedes
+   heredar de `ModuloBase`). La clave debe coincidir con el nombre del paquete.
+2. Declara sus hechos (`HechoModulo`, prefijo `<clave>_`, `validar` que lance `ValueError` en español,
+   `sensible=True` para datos personales delicados), sus herramientas (`HerramientaModulo`, nombre
+   `<clave>_…`, `efecto` correcto) y sus fuentes (`FuenteModulo`, con el id del BOE cuando lo haya).
+3. Herramientas deterministas que devuelven `ResultadoHerramienta` con cifras, fuentes y advertencias; los
+   errores como `es_error=True`, nunca como excepción. `avisos` idempotente (claves estables).
+4. Pruebas en `tests/modulos/<clave>/`. No hace falta tocar el núcleo: el registro lo encuentra solo.
+
+Ganchos opcionales que el núcleo ya entiende (propuestos para la próxima versión del contrato):
+`leer_documento(provider, *, filename, data)` (propone datos de un documento subido:
+`POST /modulos/{clave}/documento`) y `herramienta_de_documento` (a qué herramienta van esos datos).
+`POST /modulos/{clave}/herramientas/{nombre}` ejecuta una herramienta desde la interfaz.
+
+En la web, el panel **Módulos** lista los módulos, permite activarlos, editar sus datos con un formulario
+construido a partir de sus `HechoModulo` (los `json` en un área de texto con los errores de validación a la
+vista) y confirmar o rechazar las acciones pendientes; los avisos se agrupan por módulo.
+
+### Memoria de decisiones
+
+El asistente recuerda lo que el usuario **decide**, no solo los hechos, para no volver a proponer lo que
+rechazó y no preguntar dos veces (`hacienda_gpt/memoria/`). Una `Decision` dice *sobre qué* (ámbito =
+módulo + palanca, p. ej. `fiscal:plan_pensiones`, `luz:cambio_tarifa`, `luz:cambio_tarifa:<oferta>`), *qué*
+(`rechazo`, `aceptacion`, `preferencia`, `restriccion`), *con qué palabras* (las del usuario), *de dónde*
+(`chat`, `boton`, `ajustes`, `accion`), *cuándo* y *hasta cuándo*: no dura para siempre (por defecto 12 meses
+los rechazos y restricciones, 6 las aceptaciones —«ya lo hice»—, sin fin las preferencias) y puede llevar
+**condiciones de reapertura**: una fecha (fin de una permanencia), un dato del expediente que cambia (solo se
+guarda una huella de su valor, nunca el valor) o una propuesta mucho mejor (por defecto, más del doble de la
+rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `…:conyuge`), nunca otros.
+
+**Cómo se captura**
+- Herramienta del agente `registrar_decision`, solo con lo que el usuario dice en la conversación: exige sus
+  palabras literales (`cita_del_usuario`, y `razon` si la hay) y **comprueba** que aparecen en sus mensajes
+  (sin tildes, mayúsculas ni signos); una decisión deducida por el modelo se rechaza y no se guarda. El
+  *prompt* también le prohíbe deducirlas.
+- Botones «No me interesa», «Ya lo hice» y «Recuérdamelo más tarde» en cada aviso (no en el resumen semanal)
+  y «No me interesa» / «Ya lo hice» en cada medida del plan del optimizador. Una oferta de luz rechazada
+  cubre el cambio de tarifa entero (`luz:cambio_tarifa`), con reapertura si aparece una más del doble de
+  buena; el resto de avisos, su propio asunto (esa suscripción, ese plazo).
+- Confirmar o rechazar una acción pendiente de un módulo (`<modulo>:accion:<herramienta>`).
+- «Lo que sé de tus preferencias» (icono en la cabecera de «Avisos»): verlas, añadir, cambiar y olvidar.
+
+**Cómo se usa**
+- **Bandeja (un solo sitio):** `NotificationStore.add` pasa cada aviso por `memoria.bandeja.filtrar_al_escribir`.
+  Un aviso cubierto por un rechazo, restricción o «ya lo hice» en vigor no se escribe (y la decisión cuenta las
+  veces, para explicarlo); si se cumplió una condición de reapertura o caducó, se escribe **una vez**,
+  empezando por «Te lo vuelvo a proponer. El dd/mm/aaaa me dijiste…: «…». … porque <qué cambió>». El resumen
+  semanal se construye con lo guardado, así que nunca lista lo rechazado; al registrar una decisión se quitan
+  en el acto los avisos que cubre (y el resumen de la semana si los listaba, que se rehace).
+- **Optimizador fiscal:** `memoria.optimizador.optimizar_con_memoria` (lo usan `/optimize`,
+  `optimizar_impuestos` y el plan de fin de ejercicio) convierte los rechazos, restricciones y «ya lo hice» en
+  vigor en `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el
+  primero en `supuestos`, con las palabras y la fecha (con «ya lo hice», pide el importe para el cálculo);
+  quita las entradas de «no disponibles» que invitarían a hacerlo.
+  Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Un rechazo o una
+  restricción sobre una **modalidad de declaración** (`fiscal:tributacion:conjunta` / `…:individual`) va a
+  `Restricciones.modalidades_excluidas`: el optimizador no la compara ni la propone y el plan dice por qué (si es la
+  única que se puede calcular con los datos, la usa y lo avisa). Una preferencia de modalidad se menciona, no se
+  impone; «ya lo hice» sobre una modalidad no excluye nada.
+- **Planificador del hogar:** `memoria.planificador.planificar_con_memoria` (lo usan `POST /planificar` y
+  `planificar_hogar`) añade a las `restricciones` del plan las palancas rechazadas (planes de pensiones de cada
+  cónyuge, donativo, `hipoteca` / `hipoteca:amortizar` → amortizar), la forma de amortizar descartada
+  (`hipoteca:amortizar:plazo|cuota`) y la modalidad de declaración rechazada, con el motivo y la fecha primero en
+  `supuestos`. **Regla:** lo que pide la llamada solo puede añadir restricciones; una decisión en vigor manda incluso
+  frente a una cifra de la petición (como en el optimizador). El usuario la levanta diciéndolo ahora: el asistente
+  registra su decisión nueva con `registrar_decision` (con sus palabras) o la cambia en «Lo que sé de tus
+  preferencias»; una cifra que pone el modelo o un formulario nunca cuenta como cambio de opinión.
+- **Asistente central:** con expediente recibe `<preferencias_del_usuario>` (las decisiones que siguen
+  contando, con su estado) y las herramientas `registrar_decision` y `leer_preferencias`; el *prompt* le
+  prohíbe volver a proponer lo rechazado salvo que la decisión «se pueda reabrir», y entonces una vez diciendo
+  qué cambió. **Especialistas:** cada uno recibe solo las decisiones de su módulo.
+
+**API** (mismas reglas de acceso que `/cases/{id}/…`): `GET/POST /cases/{id}/decisiones`,
+`PUT/DELETE /cases/{id}/decisiones/{decision_id}`, `POST /cases/{id}/decisiones/aviso/{notification_id}`
+(`{"boton": "no_me_interesa" | "ya_lo_hice" | "recuerdamelo", "razon"?, "hasta"?}`). Se exportan en
+`GET /me/export` (`decisiones` de cada expediente, con su historial) y se borran con el expediente (un
+*trigger* sobre `case_states`) y con la cuenta; olvidar una decisión borra sus palabras del historial
+(`secure_delete`). Pruebas: `tests/memoria/`.
+
+### Agente con navegador
+
+`hacienda_gpt/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
+su control**. Dos usos: (1) descargar el CSV horario de **Datadis** y pasarlo al importador del módulo de luz
+(`luz_importar_consumo`, por la misma vía que una herramienta de módulo); (2) **preparar** un trámite en una
+sede electrónica y detenerse **antes** de «Firmar y enviar». Es la función con más riesgo de la aplicación, así
+que está construida para no poder hacer daño:
+
+| Garantía | Cómo se cumple | Prueba |
+|---|---|---|
+| **Credenciales** | El agente nunca inicia sesión. Modo `ventana`: Chromium se abre **con ventana** en el equipo que ejecuta el servicio (instalación personal) y el usuario entra él mismo (contraseña, Cl@ve, certificado); el agente no hace capturas ni lee la página mientras espera la marca de «sesión iniciada». Modo `sesion`: el usuario entrega para esa tarea una sesión que abrió él (`storage_state` de Playwright); se filtra a los sitios de la tarea, va directa al contexto del navegador y se descarta con él. Nada de esto se guarda, se registra ni se envía a un modelo. El guion no puede apuntar a campos de contraseña/PIN/tarjeta y el ejecutor se niega a escribir en ellos. | `tests/navegador/test_ejecutor.py` (`…own_login`, `…handed_over…`, `…password_field…`, `…reads_nothing_of_the_login_page`) |
+| **Lista de sitios** | Cada tarea declara sus orígenes; el contexto intercepta **todas** las peticiones (`route`) y aborta las de cualquier otro origen (rastreadores, CDN, enlaces externos, redirecciones). Descargas solo del tipo y tamaño declarados (CSV ≤ 5 MB). | `…navigation_outside…`, `…unexpected_downloads…` |
+| **Nada que cambie estado** | No existe ningún paso que envíe, firme, pague o acepte: `pulsar` rechaza textos como «Enviar/Firmar/Pagar/Aceptar» y botones *submit*; y, mientras trabaja el agente, la red es **solo lectura** (cualquier POST se aborta en el navegador aunque algo fallara antes). El último paso de un trámite (`detener`) localiza «Firmar y enviar», hace una captura y un resumen de lo que se enviaría, **no lo pulsa** y deja una acción pendiente (`navegador_presentar_tramite`, `efecto="actua"`) cuya confirmación **no presenta nada**: en esta fase presentar, firmar y pagar no están implementados. En modo `ventana`, al terminar, la ventana queda para el usuario (que puede presentarlo él); el agente ya no ejecuta nada. | `…no_form_can_be_submitted…`, `…stops_before_signing`, `test_tareas_api.py::…pending_action_that_submits_nothing` |
+| **Determinismo** | Cada tarea es un guion declarativo y versionado (`navegador/guiones/*.json`, mismo sobre que las specs de formatos). Un modelo solo puede **proponer** un selector nuevo si la página cambió (opcional, `NAVEGADOR_REPARAR_SELECTORES`); se usa solo si una puerta determinista lo acepta en la página real (un único elemento, mismo `name`, etiqueta literal, nunca un control que cambie algo) y queda como propuesta en la vigilancia de formatos para que la revise una persona (`vigilancia.aplicar_reparacion`). | `test_seguridad.py`, `…repaired_selector…` |
+| **Vigilancia de formatos** | Cada guion es una fuente `nav_<tarea>`: un paso que no encuentra su elemento es un fallo grave (`ops formatos status`, `ops doctor`). No se guardan muestras de páginas privadas. | `…broken_page_is_reported…` |
+| **Minimización** | Capturas solo en memoria y solo para la tarea (se descartan al cerrarla o a los 30 min). En el expediente queda que la tarea empezó y terminó, sus pasos y los sitios bloqueados, **sin valores**. Si un paso falla se guarda un esqueleto **anonimizado** de la página (etiquetas genéricas, nada escrito, datos personales enmascarados) 30 días, y se borra con el expediente o la cuenta. | `…without values`, `…erased_with_the_account` |
+| **Interruptores** | `NAVEGADOR_ACTIVO` (por defecto **false**: nada arranca y la API responde 503); consentimiento por usuario = activar el módulo «Agente con navegador» él mismo (con cuentas, un valor por defecto no cuenta) + aceptar el texto vigente en cada tarea; límites: una tarea a la vez por usuario, `NAVEGADOR_MAX_TAREAS_DIA` (6) en 24 h, `NAVEGADOR_MAX_SIMULTANEAS` (2) en el servicio; «Detener» corta entre pasos. | `…kill_switch…`, `…consent…`, `…rate_limits…` |
+
+**Uso.** En la interfaz, botón «Navegador» (solo aparece si el operador lo activó): eliges la tarea, rellenas
+fechas/CUPS o los datos del trámite, lees y aceptas lo que hará, y pulsas «Empezar»; ves los pasos en vivo con la
+última captura, y puedes detenerla. En el chat, `navegador_descargar_consumo_datadis` solo **prepara** la tarea
+(no abre nada hasta que el usuario pulsa «Empezar»). API: `GET /navegador/estado`, `POST /navegador/tareas`,
+`POST /navegador/tareas/{id}/iniciar|detener|cerrar`, `GET /navegador/tareas[/{id}[/captura]]`.
+
+**Modo ventana (con pantalla).** Pensado para una instalación personal: el servicio y el navegador corren en el
+ordenador del usuario. Se abre una ventana de Chromium con la página de acceso; el usuario inicia sesión como
+siempre (Cl@ve, certificado o usuario y contraseña de Datadis) y, en cuanto aparece la marca de «sesión iniciada»
+del guion, el agente sigue solo (puede verse en la propia ventana). Sin pantalla (un servidor) usa el modo
+`sesion` o `xvfb-run` para probar. `NAVEGADOR_CHROMIUM` indica el ejecutable si no es el que instala Playwright.
+
+**Qué no se ha probado contra la realidad.** Desde la máquina de desarrollo no se llega a datadis.es ni a ninguna
+sede: los guiones y las simulaciones locales (`tests/navegador/simulacion.py`, páginas en `tests/navegador/paginas/`)
+reproducen los **flujos** documentados, no las páginas reales. El guion de Datadis está marcado «sin probar en el
+sitio real» y la sede es una demostración (`*.ejemplo.invalid`, solo se ofrece si `NAVEGADOR_ORIGENES_SUSTITUTOS`
+la apunta a sitios locales). La primera ejecución real que no encuentre un elemento fallará sin hacer nada y lo
+avisará la vigilancia de formatos. Para probarlo a mano: `python -m tests.navegador.simulacion` (imprime el valor
+de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las pruebas con navegador necesitan Chromium
+(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose. En CI se
+instala antes de las pruebas y `NAVEGADOR_EXIGIR_CHROMIUM=1` convierte la falta de Chromium en un fallo (nunca se
+omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
+
+---
+
 ## 🤖 Agente con herramientas (`/agent`)
 
 `/agent` es el asesor agéntico: en lugar de la cadena fija de `/qa`
@@ -661,7 +846,9 @@ expediente:
 
 `restricciones` admite además `aportacion_maxima_pensiones_conyuge`,
 `presupuesto_donativos` (máximo a donar; sin él nunca se propone donar más de lo
-previsto), `donativo_recurrente_importe_anterior` y `ganancias_latentes`; cada
+previsto), `donativo_recurrente_importe_anterior`, `modalidades_excluidas` (`conjunta`
+y/o `individual`: formas de declarar que no se comparan ni se proponen) y
+`ganancias_latentes`; cada
 posición latente lleva `importe` (positivo), `tipo` (`valores_cotizados`,
 `valores_no_cotizados`, `otro_elemento`), `titular` (`contribuyente` o `conyuge`) y
 `descripcion`.
@@ -700,6 +887,98 @@ Respuesta (`PlanOptimo`, recortada):
 Los importes son cadenas decimales (euros con céntimos); `ahorro_marginal` de las
 palancas no suma `ahorro_total` en general, y `ahorro_aislado` puede ser negativo
 (una palanca que por sí sola empeora y dentro del plan ahorra).
+
+### Planificador del hogar
+
+«Tengo 20.000 €: ¿amortizo la hipoteca, aporto al plan de pensiones o los guardo?». El planificador
+(`hacienda_gpt/planificador/`) reparte de forma **determinista** una cantidad (o un excedente mensual hasta
+diciembre) entre las palancas del hogar y calcula sus interacciones con cada módulo; el agente solo formula el
+problema (importe, horizonte, colchón, rentabilidad alternativa, palancas descartadas).
+
+| Palanca | Quién la calcula | Naturaleza |
+|---|---|---|
+| Amortizar la hipoteca, reduciendo plazo o cuota | módulo de hipoteca: cuadro (`calculo.py`) y comisión máxima legal (`comisiones.py`) | ahorro definitivo (intereses), irreversible |
+| Aportar al plan de pensiones de cada cónyuge | optimizador fiscal (`tax/optimizador.py`) | diferimiento: tributa al rescatar (art. 17.2.a).3.ª LIRPF) |
+| Donativo dentro del presupuesto | optimizador fiscal (destino y donante que más deducen) | requiere gastar |
+| Mantener líquido (con colchón de emergencia) | el resto | — |
+
+**Objetivo**, explícito: la **posición neta al final del horizonte** (1 a 30 años) frente a dejar todo el dinero
+líquido a la **rentabilidad alternativa que diga el usuario** (aritmética, nunca consejo de inversión):
+IRPF ahorrado este año (el de la combinación, con la forma de declarar más barata) + cambio de la deducción por
+vivienda de los años siguientes + intereses ahorrados en el horizonte − comisión − rendimiento que daría ese
+dinero + rendimiento de la cuota que se deja de pagar − lo donado − penalización por quedar bajo el colchón (o el
+colchón como límite, por defecto). El IRPF se nota al declarar (30 de junio del año siguiente) y todo se lleva a la
+fecha del horizonte con la rentabilidad alternativa (también en euros de hoy). Las aportaciones a pensiones se
+muestran en **dos vistas**: diferimiento (el ahorro de hoy) y ahorro definitivo (descontando el impuesto al
+rescatar, al tipo que diga el usuario o, si no lo dice, al mismo tipo al que ahorra hoy); la búsqueda maximiza la
+elegida (`valorar_pensiones`; «definitivo» por defecto si se da `tipo_rescate_pct`). Ninguna cifra de dos módulos se
+suma sin haber calculado la combinación: cada parte sale del calculador de su módulo sobre el escenario del reparto.
+
+**Interacciones calculadas** (solo donde la norma las establece):
+- **Deducción por vivienda anterior a 2013**: si consta `pagos_vivienda_habitual_pre2013` o el préstamo dice
+  `adquisicion_antes_2013` (entonces se usa la cifra que el puente `modulos/puentes.py` propone: lo pagado en el año
+  según el cuadro), lo amortizado se suma a la base del año y una cuota menor rebaja la de los siguientes; con
+  `parte_hipoteca_conyuge`, cada cónyuge deduce por su parte en las individuales. La aportación a pensiones baja la
+  cuota y puede dejar la deducción sin cuota contra la que aplicarse: el plan lo calcula y lo explica.
+- **Ayudas** (si el módulo de ayudas está activado), re-evaluadas con los evaluadores del módulo:
+  - bono social eléctrico (y térmico): usa la **base imponible** general y del ahorro (art. 4.1 Orden
+    ETU/943/2017); la aportación a planes reduce la base **liquidable** (arts. 50.1 y 51 LIRPF), así que no mueve
+    su límite — el plan lo dice y lo demuestra con las bases de la calculadora;
+  - ingreso mínimo vital y complemento de ayuda para la infancia: sus ingresos restan el **IRPF devengado** (art.
+    20.3 Ley 19/2021), así que cada euro de IRPF ahorrado los **sube** un euro; su patrimonio cuenta cuentas y planes
+    de pensiones por igual y excluye las deudas de la vivienda habitual (art. 20.4.b), así que amortizar o donar lo
+    baja. Con `proteger_ayudas` (por defecto) el plan no propone nada que haga perder o rebaje una ayuda que hoy
+    corresponde (busca el margen exacto por bisección sobre el evaluador del módulo);
+  - prestación por nacimiento («ingresos de cualquier naturaleza») y asignación por hijo con discapacidad (sin
+    límite de ingresos): ninguna palanca las cambia.
+- Luz, suscripciones y caducidades: estas palancas no cambian nada que esos módulos calculen (no se inventan
+  interacciones).
+
+**Búsqueda**: exhaustiva sobre una rejilla con paso informado (`busqueda.resolucion`, el más fino que cabe en
+40.000 combinaciones y 3.000 cálculos del IRPF): cero, máximos, los umbrales del optimizador (tramos, límites de
+deducciones, 30 % de rendimientos…), el tope de la deducción por vivienda, cancelar el préstamo y **cada importe en
+que «reducir plazo» elimina una cuota** (el módulo redondea al alza el número de cuotas, así que el valor va a
+saltos); para cada combinación, la amortización que agota el dinero y, para cada amortización, la aportación que lo
+agota. Las amortizaciones fuera de la rejilla se ordenan interpolando y las 40 mejores combinaciones se recalculan
+exactamente; después, un afinado local a una décima del paso. `Decimal` en todo, desempates fijos (más valor, menos
+dinero comprometido, menos palancas, importes redondos): la misma entrada da el mismo plan, byte a byte, con
+cualquier `PYTHONHASHSEED`. Una pareja con hipoteca anterior a 2013 se resuelve en unos 2 s; un hogar sin hipoteca,
+en décimas.
+
+**Resultado** (`PlanHogar`): tabla de reparto, posición neta línea a línea con su naturaleza y módulo, las dos
+vistas, el valor de cada palanca **dentro del plan y sola** y por qué la combinación difiere (dinero compartido,
+acoplamiento fiscal calculado, colchón, forma de declarar, margen de las ayudas), escenarios de comparación (no hacer
+nada, todo a la hipoteca, pensiones al máximo), resumen de la hipoteca, efecto en cada ayuda con la cita de su
+norma, el plan fiscal del optimizador para el reparto elegido (`plan_fiscal`, con su traza y sus citas), supuestos,
+avisos (p. ej. que el 15 % y los 9.040 € de la deducción por vivienda no están verificados), lo no modelado y la
+búsqueda.
+
+**Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas` —formas de amortizar: `plazo`,
+`cuota`—, `tributacion_excluida` —formas de declarar: `conjunta`, `individual`, que el optimizador fiscal no usa—,
+`maximos`, `motivos`, `origen`) es el punto de enganche de la memoria de decisiones: con expediente, las dos vías
+(`POST /planificar` y `planificar_hogar`) pasan por `memoria.planificador.planificar_con_memoria`, que traduce las
+decisiones en vigor (`fiscal:plan_pensiones[:contribuyente|:conyuge]` → `plan_pensiones_*`, `fiscal:donativo` →
+`donativo`, `hipoteca` / `hipoteca:amortizar` → `amortizar_hipoteca`, `hipoteca:amortizar:plazo|cuota` →
+`modalidades_excluidas`, `fiscal:tributacion:conjunta|individual` → `tributacion_excluida`) y pone el motivo, con las
+palabras y la fecha del usuario, el primero en `supuestos`; el planificador no importa ese paquete. Una decisión en
+vigor manda sobre las cifras de la petición (ver «Memoria de decisiones»).
+
+**Dónde se usa**: `POST /planificar` (sin modelo de lenguaje; mismas reglas de acceso que `/optimize`: sesión,
+propiedad del expediente, 404 si no es tuyo, 422 con una frase en español; los datos de hipoteca y ayudas solo si el
+usuario tiene esos módulos activados; no guarda nada), la herramienta del agente `planificar_hogar` (con
+expediente y módulos del hogar activados; el plan es un fragmento citable `[F#]`) y el panel **Planificar** de la
+web.
+
+```json
+{"case_id": "case_…", "importe_disponible": 20000, "horizonte_anos": 5, "rentabilidad_alternativa_pct": 2,
+ "gastos_mensuales": 2000, "meses_colchon": 6, "liquidez_actual": 6000, "tipo_rescate_pct": 30,
+ "restricciones": {"excluidas": ["donativo"], "origen": "memoria"}}
+```
+
+**No modelado**: rentabilidad propia del plan de pensiones (se supone la de la alternativa) y sus comisiones; el
+IRPF de años futuros se calcula con las cifras y reglas del ejercicio; gastos de notaría o registro y el interés del
+periodo roto al amortizar; tributación de la rentabilidad alternativa (dala neta); amortizaciones mes a mes del
+excedente; límites de renta de convocatorias autonómicas y municipales.
 
 ### Simulador, calendario y documentos
 
@@ -866,6 +1145,68 @@ Repetir una ejecución no duplica avisos. Los importes son estimaciones de la
 calculadora con los datos del expediente, y los plazos no tienen en cuenta
 festivos. Los avisos solo se guardan en la base de datos: todavía no se envían
 por correo ni al móvil.
+
+### Arquitectura orientada a eventos
+
+Los avisos ya no esperan a la pasada diaria: cuando algo pasa, se despierta
+solo el módulo al que le importa, y el aviso aparece en segundos. La pasada
+diaria (`run-daily`) se queda como red de seguridad: produce exactamente los
+mismos avisos, con las mismas claves, así que lo que ya escribió un evento no
+se repite.
+
+| Evento | Quién lo emite | A quién despierta (por defecto) |
+|--------|----------------|----------------------------------|
+| `perfil.cambiado` | Cualquier guardado del expediente que cambie hechos: `PUT/DELETE /cases/{id}/facts`, `registrar_hechos` del asesor, herramientas de los módulos, datos de un documento aceptado | El módulo dueño del hecho; los hechos compartidos (comunidad, hijos, rentas…), al módulo fiscal y a los que los leen (`ayudas`, `luz`, `caducidades`) |
+| `cargos.importados` | Importar un extracto en `suscripciones` | `suscripciones` |
+| `modulo.activado` / `modulo.desactivado` | `PUT /me/modulos/{clave}` | Ese módulo / ninguno (se cancelan su temporizador y su trabajo pendiente) |
+| `fecha.umbral` | El propio bus, el día que el módulo pidió | Solo ese módulo para ese expediente |
+| `boe.norma_nueva` | `boe-novedades` (las de relevancia alta) | Fiscal, en cada expediente abierto (mismo aviso y mismos criterios de perfil que ya usaba) |
+| `boe.cambio_normativo` | `boe-impact` (`procesar_eventos`, uno por cambio analizado, después del aviso directo de siempre) | Fiscal (`impacto.notificar_cambio`) |
+| `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
+
+**Cómo funciona** (`hacienda_gpt/eventos/`, todo en el mismo SQLite que los
+expedientes, sin broker externo):
+
+- *Bandeja de salida en la misma transacción.* El cambio de un hecho escribe
+  su evento con la misma conexión y en la misma transacción que guarda el
+  expediente: si el guardado falla, no hay evento; si hay evento, el cambio
+  está guardado. El evento lleva solo identificadores y **nombres** de hechos,
+  nunca sus valores; un fallo del bus nunca impide guardar (queda en el
+  registro y lo recoge la pasada diaria).
+- *Consumidores con cursor e idempotentes.* Cada evento se reparte en entregas
+  (módulo, expediente) únicas, solo para módulos suscritos **y activados** para
+  el dueño del expediente (se vuelve a comprobar justo antes de ejecutarlo).
+- *Al menos una vez, sin duplicados.* Un trabajador reclama entregas con un
+  arriendo; si falla, se reintenta con espera exponencial (30 s, 60 s…, máx. 1 h)
+  y tras `EVENTOS_MAX_INTENTOS` va a la cola de errores. Si un trabajador muere,
+  otro retoma la entrega: los avisos tienen clave, así que repetir no duplica.
+- *Fechas calculadas, no sondeadas.* Un módulo puede devolver
+  `proxima_revision` en sus avisos (o `proxima_revision(contexto)`); el bus
+  guarda un temporizador por expediente y módulo y emite `fecha.umbral` ese
+  día. El módulo fiscal calcula el suyo con el calendario: el día en que el
+  siguiente plazo entra en la ventana de aviso de 30 días, o el 1 de octubre
+  (plan de fin de ejercicio).
+
+**Para los módulos** (contrato, cambios opcionales y compatibles):
+`eventos` (tipos a los que se suscribe; vacío = el valor por defecto del
+núcleo, en `eventos/rutas.py`), `al_evento(evento, contexto)` (por defecto,
+`avisos`), `proxima_revision(contexto)`, `hechos_leidos` y el campo
+`AvisoModulo.proxima_revision`. Ningún módulo existente ha tenido que cambiar.
+
+**Operación.** La API despacha en su propio proceso justo después de cada
+cambio (`EVENTOS_DESPACHO_EN_PROCESO`); además conviene un trabajador, que
+recoge lo que emiten otros procesos y dispara los temporizadores:
+
+```bash
+uv run python -m hacienda_gpt.cli.eventos worker          # en marcha continua (systemd, supervisor…)
+uv run python -m hacienda_gpt.cli.eventos estado          # atraso, cola de errores, métricas por tipo y módulo
+uv run python -m hacienda_gpt.cli.eventos reintentar      # vuelve a encolar la cola de errores
+```
+
+`ops doctor` incluye la salud del bus (y avisa de la cola de errores o de
+trabajo esperando más de `EVENTOS_ATRASO_MAX_MINUTOS`), y `GET /eventos/salud`
+la da en JSON, solo con agregados. Detalles y alternativa con cron en
+[docs/operacion.md](docs/operacion.md#bus-de-eventos).
 
 ### Mantenimiento: que los parámetros no caduquen en silencio
 
@@ -1218,6 +1559,72 @@ compara cada respuesta con la conclusión de la DGT (`correcta` / `parcial` /
 contradicen a la DGT. Ambos comandos avisan de cuántas llamadas van a hacer y
 piden confirmación (`--yes` para omitirla); `--limit N` permite una prueba
 corta antes de la ejecución completa.
+
+### Evaluación continua
+
+Cada vez que el asistente se equivoca o el usuario lo corrige, el caso puede
+convertirse en una prueba de regresión; y antes de cambiar un *prompt* o un
+modelo se ejecuta la suite y el cambio solo se aplica si mejora
+(`hacienda_gpt/evaluacion/`, `python -m hacienda_gpt.cli.evaluacion`).
+
+- **Valoración en cada respuesta** (web): 👍 / 👎 y «Corregir» (cifra
+  equivocada, ámbito equivocado, dato pasado por alto, afirmación inventada,
+  otro; y, si quiere, la respuesta o la cifra correctas). Un voto **no guarda
+  la conversación**. Guardarla como caso de evaluación exige marcar, en ESA
+  respuesta, una casilla con su texto de consentimiento (versión incluida). Se
+  guarda dentro del expediente del usuario —pregunta, respuesta, corrección,
+  traza de herramientas y una instantánea **solo de los datos que usó la
+  respuesta**, con correos, DNI/NIE, IBAN, CUPS, tarjetas y teléfonos
+  ocultados—, así que se exporta con `/me/export`, se anonimiza si borra uno de
+  esos datos, se puede retirar (`DELETE /evaluacion/feedback/{id}`) y se borra
+  con la cuenta. API: `GET /evaluacion/consentimiento`,
+  `POST|GET /evaluacion/feedback`, `DELETE /evaluacion/feedback/{id}`.
+- **Nada entra solo en la suite.** Una persona revisa cada caso guardado
+  (`casos pendientes`, `casos ver`), prepara un borrador (`casos borrador`:
+  propone qué especialista debía o no consultarse y, si el usuario dio la
+  cifra correcta y una calculadora de la traza la produce, una expectativa que
+  la lee de ESA calculadora), lo edita y lo incorpora con `casos promover
+  … --confirmo-anonimizado --revisor …`, que rechaza lo que aún parezca un dato
+  personal. El fichero de la suite es anónimo (una referencia no reversible,
+  ni expediente ni usuario) y esa copia anónima no se borra con la cuenta, como
+  dice el texto del consentimiento.
+- **Señales automáticas**, leídas de la auditoría que ya existe (nada nuevo se
+  guarda): afirmaciones que el verificador rechazó, errores de herramientas,
+  especialistas consultados que no usaron ninguna herramienta (posible
+  «no es mi ámbito») y repreguntas. `senales` da recuentos sin contenido;
+  etiquetan las valoraciones.
+- **La suite** (`hacienda_gpt/evaluacion/casos/<categoría>/<id>.json`,
+  versionada) tiene 30 casos sembrados: cálculo fiscal, cifras de cada módulo,
+  enrutado, preguntas que cruzan ámbitos, «no sumar cifras de módulos
+  distintos», confirmación de lo que `actua` y borradores, y fuera de ámbito.
+  Las expectativas son deterministas siempre que se puede: qué herramienta o
+  especialista debe (o no) llamarse, qué cifra debe aparecer —**calculada
+  volviendo a ejecutar la calculadora sobre la instantánea, nunca escrita a
+  mano ni tomada de un modelo**—, qué afirmaciones no deben aparecer, cuántas
+  citas, qué modos valen y si una acción debe quedar pendiente. Opcionalmente,
+  una rúbrica para un juez LLM con una puerta determinista: un criterio solo
+  cuenta como cumplido si el juez **cita literalmente** la respuesta y el
+  programa encuentra la cita. `importar-dgt` convierte el conjunto de la DGT
+  (`eval_agent build`) en casos de la categoría `dgt`.
+- **Ejecutar**: `validar` y `run --reproduccion` no usan modelo (cada caso
+  lleva un guion de referencia que se reproduce por el agente, las
+  herramientas y los especialistas reales); `run [--config variante.json]`
+  ejecuta el asistente central con un proveedor real y da tasa de aprobados por
+  categoría, regresiones frente a un informe base (`--baseline`), coste y
+  latencia.
+- **La puerta**: los *prompts* son artefactos versionados por su huella
+  (`hacienda_gpt/evaluacion/prompts/registro.json`) y una variante (versión de
+  cada *prompt* + proveedor/modelo/esfuerzo) es lo que el agente ejecuta; la
+  ACTIVA está en `variante_activa.json` (sin ese fichero, la de siempre).
+  `promote --config candidata.json` ejecuta base y candidata y escribe la
+  candidata como activa **solo si** no empeora ninguna categoría crítica y es
+  estrictamente mejor en conjunto; si no, la rechaza con el informe.
+- **CI** (`.github/workflows/evaluacion.yml`): la parte sin modelo en cada PR;
+  la suite completa con el modelo solo si existe el secreto `ANTHROPIC_API_KEY`.
+
+**Nada de la parte con modelo se ha ejecutado contra un modelo real**: las
+pruebas usan proveedores guionizados. Detalle y procedimiento en
+[`docs/operacion.md`](docs/operacion.md#evaluación-continua).
 
 ---
 

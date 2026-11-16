@@ -1,0 +1,54 @@
+{
+  "id": "sociedades-cuota",
+  "version": 1,
+  "categoria": "calculo_fiscal",
+  "descripcion": "Impuesto sobre Sociedades de una SL sin ajustes.",
+  "pregunta": "Mi SL tuvo en 2025 un resultado contable de 100.000 € sin ajustes ni deducciones. ¿Cuánto Impuesto sobre Sociedades le sale?",
+  "modulos": [],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_impuesto_sociedades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "calcular_impuesto_sociedades",
+        "argumentos": {
+          "ejercicio": 2025,
+          "resultado_contable": 100000
+        },
+        "patron": "Cuota diferencial[^:]*: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "25.000,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1,
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_impuesto_sociedades",
+            "argumentos": {
+              "ejercicio": 2025,
+              "resultado_contable": 100000
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La cuota a ingresar sería de {cifra:cuota} {fragmento:calcular_impuesto_sociedades}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

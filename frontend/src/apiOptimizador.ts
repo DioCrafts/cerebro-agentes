@@ -36,6 +36,8 @@ export interface Restricciones {
   donativo_recurrente_importe_anterior?: number | null;
   perdidas_latentes?: PosicionLatente[];
   ganancias_latentes?: PosicionLatente[];
+  // Filing modes the user will not use (never compared nor proposed).
+  modalidades_excluidas?: ("conjunta" | "individual")[];
 }
 
 export interface OptimizeRequest {

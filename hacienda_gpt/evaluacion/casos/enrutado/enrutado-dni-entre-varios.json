@@ -1,0 +1,67 @@
+{
+  "id": "enrutado-dni-entre-varios",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "Con varios ámbitos activos, una pregunta de caducidades va solo a ese especialista.",
+  "pregunta": "Nací el 10 de mayo de 1990 y renové el DNI el 1 de marzo de 2021. ¿Cuándo tengo que renovarlo?",
+  "modulos": [
+    "caducidades",
+    "hipoteca",
+    "luz"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "caducidades"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "calcular_irpf"
+    }
+  ],
+  "guion": {
+    "especialista:caducidades": [
+      {
+        "herramientas": [
+          {
+            "nombre": "caducidades_calcular",
+            "argumentos": {
+              "regla": "dni",
+              "fecha_nacimiento": "1990-05-10",
+              "fecha_expedicion": "2021-03-01"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Caduca el 01/03/2031 {fragmento:caducidades_calcular}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_caducidades",
+            "argumentos": {
+              "pregunta": "DNI renovado el 01/03/2021, nacido el 10/05/1990"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Tendrás que renovarlo antes de que caduque {fragmento:caducidades_calcular}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

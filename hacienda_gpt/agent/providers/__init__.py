@@ -6,9 +6,12 @@ from hacienda_gpt import settings
 from hacienda_gpt.agent.providers.base import (
     Attachment,
     Conversation,
+    EstadoLote,
     LLMProvider,
     ModelTurn,
+    ProveedorDeLotes,
     ProviderError,
+    ResultadoLote,
     ToolCall,
     ToolResult,
     ToolSpec,
@@ -17,9 +20,12 @@ from hacienda_gpt.agent.providers.base import (
 __all__ = [
     "Attachment",
     "Conversation",
+    "EstadoLote",
     "LLMProvider",
     "ModelTurn",
+    "ProveedorDeLotes",
     "ProviderError",
+    "ResultadoLote",
     "ToolCall",
     "ToolResult",
     "ToolSpec",
@@ -35,6 +41,9 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
     * ``local``     — any OpenAI-compatible server at ``LOCAL_LLM_BASE_URL``.
 
     ``effort`` overrides the thinking depth for Claude; other backends ignore it.
+    Which model serves each PURPOSE is decided later, by the metering wrapper and
+    the routing table (``hacienda_gpt/agent/enrutado.py``); with no routing setting
+    it is this model everywhere.
     """
     choice = (name or settings.LLM_PROVIDER).strip().lower()
     if choice in ("anthropic", "claude"):
@@ -44,6 +53,7 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
             model=model or settings.ANTHROPIC_MODEL,
             effort=effort or settings.ANTHROPIC_EFFORT,
             refusal_fallback=settings.ANTHROPIC_REFUSAL_FALLBACK,
+            cache_ttl=getattr(settings, "LLM_CACHE_TTL", "5m") or "5m",
         )
     if choice == "openai":
         from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider

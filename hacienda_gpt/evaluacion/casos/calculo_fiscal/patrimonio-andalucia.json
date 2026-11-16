@@ -1,0 +1,63 @@
+{
+  "id": "patrimonio-andalucia",
+  "version": 1,
+  "categoria": "calculo_fiscal",
+  "descripcion": "Patrimonio en Andalucía: la cuota íntegra de la calculadora y la bonificación autonómica.",
+  "pregunta": "Vivo en Andalucía y en 2026 tengo 800.000 € en depósitos y 1.500.000 € en acciones cotizadas. ¿Tengo que pagar el Impuesto sobre el Patrimonio?",
+  "modulos": [],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_patrimonio"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota_integra",
+      "calculo": {
+        "herramienta": "calcular_patrimonio",
+        "argumentos": {
+          "ejercicio": 2026,
+          "comunidad": "Andalucía",
+          "depositos": 800000,
+          "valores_cotizados": 1500000
+        },
+        "patron": "Cuota íntegra \\(escala estatal\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "11.942,37 €"
+      }
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "bonifica",
+      "motivo": "menciona la bonificación autonómica"
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1,
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_patrimonio",
+            "argumentos": {
+              "ejercicio": 2026,
+              "comunidad": "Andalucía",
+              "depositos": 800000,
+              "valores_cotizados": 1500000
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La cuota íntegra sería de {cifra:cuota_integra}, pero la bonificación de Andalucía la deja a cero {fragmento:calcular_patrimonio}. Aun así tienes que presentar la declaración."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

@@ -1,0 +1,88 @@
+{
+  "id": "hipoteca-proxima-cuota",
+  "version": 1,
+  "categoria": "modulo",
+  "descripcion": "Cuota de un préstamo a tipo fijo, del especialista de hipoteca.",
+  "pregunta": "¿De cuánto es la cuota mensual de mi hipoteca?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "hipoteca_cuadro",
+      "agente": "especialista_hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Próxima cuota: n\\.º \\d+, [\\d/]+: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "474,21 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La cuota es de {cifra:cuota} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "¿Cuál es la cuota mensual de su hipoteca?"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Tu cuota mensual es de {cifra:cuota} {fragmento:hipoteca_cuadro}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

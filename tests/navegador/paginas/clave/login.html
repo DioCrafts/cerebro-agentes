@@ -1,0 +1,15 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Cl@ve · Identificación (simulación local)</title></head>
+<body>
+<h1>Cl@ve — pasarela de identificación (SIMULACIÓN LOCAL PARA PRUEBAS)</h1>
+<form method="POST" action="/login">
+  <input type="hidden" name="vuelta" value="{{VUELTA}}">
+  <label for="dni">DNI o NIE</label>
+  <input id="dni" name="dni">
+  <label for="clave-pin">Clave PIN</label>
+  <input id="clave-pin" name="pin" type="password" autocomplete="one-time-code">
+  <button type="submit" id="acceder">Acceder</button>
+</form>
+</body>
+</html>

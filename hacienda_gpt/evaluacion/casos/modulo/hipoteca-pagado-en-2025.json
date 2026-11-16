@@ -1,0 +1,85 @@
+{
+  "id": "hipoteca-pagado-en-2025",
+  "version": 1,
+  "categoria": "modulo",
+  "descripcion": "Lo pagado en cuotas durante un año.",
+  "pregunta": "¿Cuánto pagué en total de cuotas de la hipoteca durante 2025?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "anual",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "ejercicio": 2025,
+          "fecha": "2026-03-20"
+        },
+        "patron": "^Año \\d{4}: cuotas por (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "5.690,52 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "ejercicio": 2025,
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "En 2025: {cifra:anual} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Cuotas pagadas en 2025"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "En 2025 pagaste {cifra:anual} en cuotas {fragmento:hipoteca_cuadro}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

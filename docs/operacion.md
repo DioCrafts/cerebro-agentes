@@ -44,8 +44,22 @@ SHELL=/bin/bash
 # y el piloto lo lee él mismo. Ver el apartado 5.
 55 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run params-autopilot -- uv run python -m hacienda_gpt.cli.proactive params-autopilot --no-detect >> logs/proactive.log 2>&1
 
-# Recordatorios de plazos y plan de fin de ejercicio.
+# Recordatorios de plazos, plan de fin de ejercicio y avisos de los módulos del hogar activados.
 0 7 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run run-daily -- uv run python -m hacienda_gpt.cli.proactive run-daily >> logs/proactive.log 2>&1
+
+# Índices de referencia de los préstamos hipotecarios (módulo hipoteca): resoluciones del Banco de España
+# publicadas en el BOE, los días 4 y 19 de cada mes. Escribe en hacienda_gpt/modulos/hipoteca/data/
+# (revísalo y súbelo al repositorio). Para que doctor lo vigile: «--max-horas hipoteca-indices=400».
+# En GitHub lo hace el workflow .github/workflows/modulos-indices.yml (deja la serie como artefacto).
+20 6 4,19 * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run hipoteca-indices -- uv run python -m hacienda_gpt.modulos.hipoteca.indices actualizar >> logs/proactive.log 2>&1
+
+# Resumen semanal de cada caso (lo que vence, importes, acciones por decidir), los lunes.
+# Para que doctor lo vigile: «ops doctor --max-horas run-weekly=192».
+30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run run-weekly -- uv run python -m hacienda_gpt.cli.proactive run-weekly >> logs/proactive.log 2>&1
+
+# Bus de eventos, solo si NO tienes el trabajador en marcha continua (ver «Bus de eventos»):
+# una pasada cada 5 minutos (temporizadores, reparto y entregas pendientes).
+*/5 * * * * cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.eventos worker --una-vez >> logs/eventos.log 2>&1
 
 # Entrega de los avisos generados arriba. Se registra sola con el nombre «deliver»;
 # envuélvela con «ops run deliver --» solo si quieres además su ping al healthcheck
@@ -797,11 +811,17 @@ con la fecha en que se consultaron (`consultado_el`) y la fuente.
   del proveedor. Para actualizarla sin tocar el código, copia el fichero, corrígelo y apunta
   `LLM_PRICES_PATH` a la copia.
 - **Nunca se estima.** Un modelo que no está en la tabla, o con el precio a `null`, se apunta sin
-  coste. Hoy solo tiene precio `claude-opus-5-5`; `gpt-4o-mini` está a `null` (no se pudo
-  consultar) y los modelos locales no figuran. Si cambias `ANTHROPIC_MODEL`, `VERIFIER_MODEL` u
-  `OPENAI_AGENT_MODEL`, añade el modelo a la tabla.
-- El coste es una estimación para operar, no una factura: no incluye descuentos, modo rápido ni
-  las tarifas de Bedrock o Vertex.
+  coste. Hoy tienen precio `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y
+  `claude-fable-5-2`; `gpt-4o-mini` está a `null` (no se pudo consultar) y los modelos locales no
+  figuran. Si cambias `ANTHROPIC_MODEL`, `VERIFIER_MODEL`, `OPENAI_AGENT_MODEL` o un modelo de
+  nivel (`LLM_MODEL_*`), añade el modelo a la tabla.
+- Cada tipo de token tiene su precio: entrada, salida, lectura de caché, escritura de caché a 5
+  minutos y a 1 hora. `contexto_largo` es el tramo de precio de las peticiones largas (Haiku 5.5 por
+  encima de 100.000 tokens de prompt) y `factor_lote` el descuento de las llamadas por lotes (0,50).
+  La nota de cada modelo dice qué cifras son literales de la fuente y cuáles **derivadas** de una
+  regla general (las escrituras de caché, la lectura de caché de Haiku): compruébalas.
+- El coste es una estimación para operar, no una factura: no incluye el modo rápido ni las tarifas
+  de Bedrock o Vertex.
 
 En los informes, `llamadas_sin_coste` dice cuántas llamadas no suman coste: si no es cero, el
 total en USD es un mínimo.
@@ -848,3 +868,340 @@ uv run python -m hacienda_gpt.cli.consumo resumen --dias 7
 totales de hoy y de los últimos 30 días, en conjunto y por propósito, junto con los límites
 configurados y la fecha de la tabla de precios. Son cifras de todo el servicio, pensadas para
 quien lo opera.
+
+El resumen de la línea de órdenes trae además el desglose por modelo (`por_modelo`), y cada grupo
+dice qué parte del prompt salió de la caché (`proporcion_cache`), cuántas llamadas fueron por lotes
+(`llamadas_lote`) y cuántas fueron el reintento de una salida no válida en el nivel superior
+(`llamadas_escaladas`). La tabla `llm_usage` gana las columnas `tier`, `escalated`, `batch` y
+`cache_write_1h_tokens` al abrirse por primera vez (las filas anteriores quedan con `0` / vacío).
+
+### Varios modelos según la tarea, caché y lotes
+
+Toda llamada al modelo tiene un **propósito** (el de `ops consumo`) y cada propósito un **nivel**,
+en una tabla declarativa (`hacienda_gpt/agent/enrutado.py`, `TABLA`):
+
+| Nivel | Propósitos |
+|---|---|
+| `pequeno` (clasificar, enrutar, extraer) | `equipo:planificador`, `hechos`, `ayudas*` |
+| `mediano` (especialistas, lectores) | `especialista:*`, `equipo:investigador`, `documentos`, `recodificacion`, `formatos` |
+| `grande` (razonar, criticar, revisar) | `agente`, `verificador`, `equipo:critico`, `recodificacion-revisor`, `formatos-revisor`, `evaluacion-juez`, y cualquier propósito que no esté en la tabla |
+
+`documentos` (leer cifras de un documento subido, escaneos incluidos) está un nivel por encima de la
+extracción a propósito: nada comprueba la cifra leída contra la imagen.
+
+**Por defecto no cambia nada**: sin ninguna de las variables de abajo, cada propósito usa el modelo
+de su proveedor, como hasta ahora, y las peticiones son idénticas byte a byte (hay una prueba que lo
+comprueba). El orden de preferencia para un propósito es: `LLM_ROUTE_<PROPÓSITO>` o `LLM_ROUTES` →
+el ajuste propio que ya existía (`RECODE_MODEL`, `RECODE_REVIEWER_MODEL`, `VERIFIER_MODEL`,
+`FORMAT_MODEL`, `FORMAT_REVIEWER_MODEL`, `DECISION_EXTRACTOR_MODEL` para `hechos`; el `--judge-model` de
+`eval_agent run` para `evaluacion-juez`) → el modelo del nivel (`LLM_MODEL_*`, si no el del perfil)
+→ el modelo del proveedor. El extractor de hechos del chat (`hechos`), el juez de `eval_agent`
+(`evaluacion-juez`) y el clasificador opcional de convocatorias (`ayudas:clasificador`) se miden y
+enrutan como el resto.
+
+| Variable | Qué hace |
+|---|---|
+| `LLM_ROUTING_PROFILE` | Vacío (por defecto): todo como hasta ahora. `recomendado`: el perfil de abajo. |
+| `LLM_MODEL_SMALL`, `LLM_MODEL_MEDIUM`, `LLM_MODEL_LARGE` | Modelo de cada nivel; gana al perfil. Vale para cualquier proveedor (con OpenAI, p. ej. un modelo pequeño para `pequeno`). |
+| `LLM_EFFORT_SMALL`, `LLM_EFFORT_MEDIUM`, `LLM_EFFORT_LARGE` | Esfuerzo de razonamiento de Claude por nivel (`low` … `max`). |
+| `LLM_ROUTES` | JSON propósito (admite `*`) → nivel o modelo, p. ej. `{"especialista:*": "pequeno"}`. |
+| `LLM_ROUTE_<PROPÓSITO>` | Lo mismo para un propósito: mayúsculas y lo que no sea letra o cifra cambiado por `_` (`LLM_ROUTE_ESPECIALISTA_LUZ=claude-haiku-5-5`). |
+| `LLM_ESCALATION` | `true` (por defecto): una salida no válida se repite **una vez** en el nivel superior, si es otro modelo. |
+| `LLM_CACHE_TTL` | `5m` (por defecto) o `1h`: vida de la caché de prompts de Claude. |
+| `RECODE_BATCH` | `true`: `params-recode`, el piloto y `params-eval` van por lotes. Por defecto `false`. |
+| `LLM_BATCH_STATE_PATH` | Carpeta del estado de los lotes en curso (por defecto `./data/_lotes`). |
+| `LLM_BATCH_POLL_SECONDS`, `LLM_BATCH_MAX_WAIT_HOURS` | Cada cuánto se pregunta por un lote (60 s) y cuánto se espera antes de dejarlo para la siguiente ejecución (24 h). |
+
+Un valor no válido (perfil desconocido, `LLM_ROUTES` que no es JSON) impide arrancar el agente.
+
+**Perfil recomendado** (`LLM_ROUTING_PROFILE=recomendado`, solo con Claude; con otro proveedor no
+cambia nada): `pequeno` → `claude-haiku-5-5` con esfuerzo `low`; `mediano` → `claude-sonnet-5-5`
+con el esfuerzo de siempre; `grande` → `ANTHROPIC_MODEL` (Opus 5.5 por defecto). El asesor, el
+verificador, el crítico y los revisores siguen en el modelo grande. Antes de activarlo en
+producción, mide la calidad con tus propias consultas (`params-eval` para la recodificación): un
+modelo más barato puede leer peor, y el perfil no se ha probado contra la API real (desde aquí no
+hay clave).
+
+**Escalado.** Cuando la salida de un nivel es inservible (JSON roto o truncado), no cumple el
+esquema pedido o no pasa la comprobación determinista de quien llama, se pide otra vez **una sola
+vez** al nivel superior, si allí hay otro modelo; si tampoco vale, se falla como antes. En la
+recodificación, un grupo que acaba «sin converger» después de que el control determinista
+rechazara al lector se relee una vez con el lector del nivel superior. Las dos llamadas se apuntan,
+la segunda con `escalated=1`. Sin perfil ni modelos de nivel no hay nivel superior distinto y no se
+reintenta nada. `params-eval` nunca escala: mide el lector configurado.
+
+**Caché de prompts.** Claude recibe un punto de caché explícito al final del prompt de sistema cuando
+mide al menos 2.048 caracteres (por debajo del mínimo cacheable no sirve): cubre herramientas +
+sistema, el prefijo estable de cada petición (instrucciones del asesor y de cada especialista con sus
+herramientas, reglas y esquema de la recodificación —hasta ~36.700 caracteres—, instrucciones del
+verificador y de formatos). Los bucles con herramientas conservan además la caché automática de la
+conversación. Las llamadas de una sola respuesta (`complete_json`) ya no la usan: ahí escribía en
+caché, a 1,25 veces el precio, un texto final distinto en cada llamada que nunca se volvía a leer.
+Con OpenAI se envía `prompt_cache_key` (huella del sistema y las herramientas) para que las
+peticiones con el mismo prefijo aprovechen su caché automática; a los servidores locales no.
+
+**Lotes** (`RECODE_BATCH=true`). Las llamadas van por la API de lotes de Claude (Message Batches):
+la mitad de precio y respuesta en horas, no en segundos. El bucle de recodificación no cambia: se
+ejecuta por rondas; en cada una, cada grupo avanza con las respuestas ya recibidas hasta su
+siguiente llamada, que se envía en un lote; cuando ningún grupo pide nada más, se ejecuta el bucle
+normal con esas respuestas (mismo control determinista, mismo revisor, mismas propuestas, mismo
+`RECODE_AUTO_APPLY`). Un grupo que converge en una pasada son dos rondas (lector y revisor). El
+estado (respuestas, lotes en curso) se guarda en `LLM_BATCH_STATE_PATH/<tipo>.json` después de cada
+paso: si el proceso se corta o un lote tarda más de `LLM_BATCH_MAX_WAIT_HOURS`, la siguiente
+ejecución recoge el mismo lote sin volver a pagarlo (el informe lo dice y deja los grupos en
+`sin_procesar`). Se borra al terminar; respuestas de más de 6 días no se reutilizan. El coste se
+apunta con `batch=1` al precio de lote, y antes de enviar cada lote se comprueba el presupuesto
+diario. Con un proveedor sin lotes (OpenAI, local) se trabaja en modo síncrono, con un aviso en el
+log. Solo se usa para textos públicos (la ley), nunca para datos de un usuario: el estado guarda
+las peticiones. No ejecutes dos procesos sobre el mismo fichero de estado.
+
+**Ahorro esperado (estimaciones).** Calculadas con `calcular_coste` y la tabla de precios, con
+supuestos que pueden no cumplirse: 3,5 caracteres por token; una ejecución semanal de 10
+deducciones autonómicas que convergen en una pasada (sistema del lector ~10.500 tokens y del revisor
+~11.000, texto legal ~1.700, salida con razonamiento de 3.000 y 2.500 tokens); llamadas seguidas a
+menos de 5 minutos, para que la caché se lea.
+
+| Recodificación semanal (10 grupos) | Coste estimado | Ahorro |
+|---|---:|---:|
+| Antes de este cambio (Opus 5.5, caché automática) | 2,35 USD | — |
+| Caché explícita del sistema | 1,38 USD | 41 % |
+| + perfil recomendado (lector Sonnet 5.5, revisor Opus 5.5) | 1,01 USD | 57 % |
+| + lotes, sin ningún acierto de caché dentro del lote | 0,86 USD | 63 % |
+| + lotes, con aciertos como arriba (no garantizados en lotes) | 0,51 USD | 78 % |
+
+En modo equipo con un especialista (planificador, dos investigadores de 3 vueltas, crítico de 2,
+especialista de 3; entradas de 1.200 a 6.000 tokens), el perfil recomendado pasa de ~0,31 a ~0,18
+USD por pregunta (−40 %), sin contar el asesor ni el verificador, que no cambian de modelo. Mira
+el ahorro real en `ops consumo` (`por_modelo`, `proporcion_cache`) después de una semana.
+
+
+## 6. Módulos del hogar
+
+Los módulos (`hacienda_gpt/modulos/<clave>/`) se descubren al arrancar; no hay que registrarlos.
+
+- `uv run python -m hacienda_gpt.cli.proactive modulos` lista los módulos cargados, sus hechos,
+  herramientas (con su efecto) y fuentes, y **los que se han dejado fuera y por qué** (un módulo que no se
+  importa o incumple el contrato se registra en el log con nivel ERROR y la aplicación sigue sin él).
+- `MODULOS_DESACTIVADOS=luz,ayudas` apaga módulos para todos los usuarios sin tocar su código (el fiscal
+  no se puede apagar).
+- `MODULOS_ACTIVOS_POR_DEFECTO` (por defecto `fiscal`): los módulos activos para quien no ha elegido y, con
+  `AUTH_MODE=off`, para todos los casos. `todos` los activa todos. Con cuentas, cada usuario decide en
+  «Módulos» y su elección se guarda en `user_module_choices`.
+- `ESPECIALISTA_MAX_STEPS` (4): pasos de modelo de cada especialista. Su consumo se registra con el
+  propósito `especialista:<clave>` y cuenta en `LLM_MAX_CALLS_PER_QUESTION`.
+- `run-daily` añade al resumen `modulos` (avisos creados por módulo) y `errores_modulos` solo cuando algún
+  caso tiene activado un módulo además del fiscal. Un módulo que falla cuenta en `errores_modulos` y no
+  para a los demás ni a los avisos fiscales.
+- `run-weekly` escribe un resumen por caso y semana ISO (`resumen_semanal:AAAA-Wnn`); repetirlo no
+  duplica. Lo entrega `ops deliver` como cualquier aviso, con el mismo consentimiento.
+- `params-check` comprueba también las normas del BOE de las que leen los módulos (apartado `modulos` del
+  informe). El contrato aún no dice cuándo leyó cada módulo su norma, así que la primera fecha vista queda
+  como referencia en `MODULOS_FUENTES_STATE_PATH`; cuando se haya releído la norma y actualizado el módulo,
+  `params-check --marcar-modulos-revisados` mueve la referencia. `--fail-on-stale` falla también por ellas.
+  `boe-novedades` vigila esas normas como las de la calculadora. Las fuentes que no son del BOE se listan en
+  `fuera_del_boe`: su formato lo vigila el adaptador de cada módulo.
+- Acciones pendientes (`acciones_pendientes`, mismo fichero SQLite): las crea un especialista cuando llama a
+  una herramienta `actua`; solo se ejecutan con `POST /acciones/{id}/confirmar` del dueño del caso.
+- **Tarea diaria de cada módulo.** `run-daily` ejecuta, una vez y **antes** de los avisos por caso, la tarea
+  diaria de cada módulo activado para algún caso (hoy: `ayudas` → `actualizar_convocatorias(hoy)`, que lee
+  del BOE las convocatorias nuevas de los días aún no leídos y nunca lanza excepciones; un día que falla se
+  reintenta al siguiente). El resultado aparece en `tareas_modulos` del resumen. Si nadie tiene el módulo
+  activado, no se ejecuta (ni se hace ninguna petición).
+- **Datos que el usuario sube a un módulo** (un extracto bancario para `suscripciones`) van por
+  `POST /modulos/{clave}/herramientas/{nombre}` directamente a la herramienta: no pasan por el modelo de
+  lenguaje, ni por los registros, ni por la auditoría (solo se audita el nombre de los argumentos); lo que
+  se guarda es lo que la herramienta deduce (sus hechos).
+- **Resumen semanal y avisos repetidos.** Dos avisos de módulos distintos con fecha de vencimiento a 3 días
+  o menos y una palabra significativa común en el título (p. ej. la renovación de un seguro que avisan
+  `caducidades` y `suscripciones`) se muestran juntos en el resumen («probablemente lo mismo»). No se borra
+  ninguno: cada módulo conserva su aviso en la bandeja.
+- **Propuestas para la declaración** (`GET /propuestas?case_id=`): cifras que un módulo conoce y que un
+  dato fiscal necesita. Hoy: `hipoteca` → `pagos_vivienda_habitual_pre2013` (capital + intereses +
+  amortizaciones anticipadas del ejercicio según el cuadro), solo si el préstamo es de la vivienda habitual
+  comprada antes de 2013 y el dato falta. Nunca se escribe sola: el usuario la acepta en «Módulos».
+
+### Variables de entorno de los módulos
+
+Todas opcionales; los detalles, en `docs/modulos/<clave>.md`.
+
+| Variable | Por defecto | Módulo | Para qué |
+|---|---|---|---|
+| `AYUDAS_DATA_DIR` | `./data/modulos/ayudas` | ayudas | Almacén de convocatorias leídas del BOE (fuera de git). |
+| `AYUDAS_BOE_AUTOMATICO` | desactivada | ayudas | `1`: el propio `avisos` lanza la revisión diaria del BOE (innecesario con `run-daily`, que ya la lanza antes). |
+| `AYUDAS_BDNS` | desactivada | ayudas | `1`: consulta la BDNS para el plazo exacto (adaptador probado solo con datos de ejemplo). |
+| `AYUDAS_CLASIFICADOR_LLM` | desactivada | ayudas | `1`: clasificador LLM en los casos dudosos, si el núcleo registra uno (hoy no lo registra). |
+| `LUZ_ESIOS_TOKEN` | — | luz | Token de la API de REE (ESIOS) para los precios; sin él, el módulo trabaja con lo que el usuario aporta. |
+| `LUZ_UMBRAL_AHORRO_EUR` | (ver doc del módulo) | luz | Ahorro anual mínimo para avisar de un cambio de tarifa. |
+| `SUSCRIPCIONES_DIAS_AVISO_RENOVACION` | `30` | suscripciones | Días de antelación del aviso de renovación (1 a 120). |
+| `SUSCRIPCIONES_ETIQUETADOR_LLM` | apagado | suscripciones | `1`: etiquetador LLM de comercios, si el núcleo registra la función (hoy no la registra). |
+| `HIPOTECA_DIAS_AVISO_REVISION` | `45` | hipoteca | Días de antelación del aviso de revisión del tipo. |
+| `HIPOTECA_UMBRAL_AVISO_EUR` | `20` | hipoteca | Cambio de cuota mínimo para avisar de un índice nuevo. |
+
+## Bus de eventos
+
+Los avisos se generan cuando algo pasa (un dato del expediente cambia, se activa un módulo, sale una
+norma en el BOE, se publica un índice hipotecario, se importa un extracto, llega una fecha) y solo para
+los módulos afectados. Qué eventos hay y a quién despiertan: README, «Arquitectura orientada a eventos».
+Todo vive en el mismo SQLite que los expedientes (`DECISION_STATE_DB_PATH`): una copia de seguridad y un
+borrado de cuenta cubren también el bus.
+
+### Quién procesa los eventos
+
+1. **La API, en su propio proceso.** Al arrancar instala el gancho que escribe el evento en la misma
+   transacción que guarda el expediente y lanza un hilo que procesa el bus nada más ocurrir un cambio (y
+   cada `EVENTOS_INTERVALO_SEGUNDOS` aunque no lo haya). Basta para lo que pasa dentro de la API.
+2. **El trabajador**, para lo que emiten otros procesos (`boe-novedades`, `hipoteca.indices actualizar`)
+   cuando la API no está en marcha, para los temporizadores y para recalcularlos una vez al día:
+
+   ```bash
+   uv run python -m hacienda_gpt.cli.eventos worker            # continuo; SIGTERM lo para limpiamente
+   uv run python -m hacienda_gpt.cli.eventos worker --una-vez  # una pasada (cron cada 5 min, ver apartado 1)
+   ```
+
+   Ejemplo con systemd (`/etc/systemd/system/hacienda-eventos.service`):
+
+   ```ini
+   [Service]
+   WorkingDirectory=/srv/hacienda-asesor
+   EnvironmentFile=/srv/hacienda-asesor/.env
+   ExecStart=/usr/local/bin/uv run python -m hacienda_gpt.cli.eventos worker
+   Restart=always
+   ```
+
+   Puede haber varios trabajadores (y la API) a la vez sobre la misma base de datos: cada entrega se
+   reclama con un arriendo (`EVENTOS_ARRIENDO_SEGUNDOS`) y no la ejecutan dos a la vez. Si uno muere a
+   mitad, otro la retoma al vencer el arriendo; repetirla no duplica avisos (tienen clave).
+3. **`run-daily` sigue siendo la red de seguridad** (apartado 1): sin API ni trabajador, los avisos
+   llegan igual, una vez al día. Si algo no se enruta bien, la pasada diaria lo recoge.
+
+### Vigilarlo
+
+- `ops doctor` incluye la clave `eventos` (cuando el bus se ha usado) y avisa si hay entregas en la cola
+  de errores o trabajo esperando más de `EVENTOS_ATRASO_MAX_MINUTOS` (por defecto 30): suele significar
+  que no hay ni API ni trabajador en marcha.
+- `uv run python -m hacienda_gpt.cli.eventos estado`: atraso, entregas por estado, temporizadores,
+  latido de cada trabajador, métricas por tipo de evento y módulo (número, reintentos, fallos, latencia
+  desde el evento hasta el aviso y duración del módulo, p50/p95) y las 50 primeras entregas de la cola de
+  errores con su error. Lo mismo, sin errores detallados, en `GET /eventos/salud`.
+- Ningún informe del bus contiene datos personales: solo recuentos (y en `estado`, el nombre del módulo,
+  el tipo de evento y el error del módulo).
+
+### Cola de errores
+
+Una entrega que falla se reintenta a los 30 s, 60 s, 120 s… (máximo 1 h; `EVENTOS_BACKOFF_SEGUNDOS`) y,
+tras `EVENTOS_MAX_INTENTOS` (5) intentos, queda como `muerto`. Corrige la causa (el error está en
+`estado`) y:
+
+```bash
+uv run python -m hacienda_gpt.cli.eventos reintentar          # todas
+uv run python -m hacienda_gpt.cli.eventos reintentar 12 15    # solo esas
+```
+
+Un consumidor que no puede repartir un evento lo reintenta igual y, al agotar los intentos, lo deja en la
+cola como `consumidor:<nombre>` y sigue con los siguientes; esa entrada es un registro, no se reencola.
+
+### Mantenimiento
+
+El trabajador borra a diario (y en cada `--una-vez`) las entregas terminadas y los eventos ya consumidos de
+hace más de 30 días; la cola de errores se conserva hasta que la reencoles o la purgues a mano.
+
+```bash
+uv run python -m hacienda_gpt.cli.eventos purgar --dias 30    # entregas terminadas y eventos ya consumidos
+uv run python -m hacienda_gpt.cli.eventos reconciliar         # recalcula los temporizadores ahora
+```
+
+### Variables de entorno
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `EVENTOS_ACTIVOS` | `true` | `false`: no se escribe ningún evento (todo queda a la pasada diaria). |
+| `EVENTOS_DESPACHO_EN_PROCESO` | `true` | `false`: la API solo escribe eventos; los procesa el trabajador. |
+| `EVENTOS_INTERVALO_SEGUNDOS` | `5` | Pausa entre pasadas sin trabajo (trabajador e hilo de la API). |
+| `EVENTOS_MAX_INTENTOS` | `5` | Intentos antes de la cola de errores. |
+| `EVENTOS_BACKOFF_SEGUNDOS` | `30` | Primera espera tras un fallo (se dobla en cada intento, máx. 1 h). |
+| `EVENTOS_ARRIENDO_SEGUNDOS` | `300` | Tiempo tras el que una entrega reclamada por un trabajador caído se retoma. |
+| `EVENTOS_ATRASO_MAX_MINUTOS` | `30` | Atraso a partir del cual `ops doctor` avisa (`0`: nunca). |
+
+## Evaluación continua
+
+Código en `hacienda_gpt/evaluacion/`, órdenes en `python -m hacienda_gpt.cli.evaluacion` (resumen en el README,
+«Evaluación continua»).
+
+### Sin modelo (cada PR)
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion validar          # esquema, cifras esperadas, registro de prompts
+uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion   # guiones de referencia por el agente real
+```
+
+`validar` vuelve a ejecutar cada calculadora que nombra un caso. Si una cifra ya no coincide con la que tenía al
+escribirse el caso («Deriva»), no es un fallo: la expectativa siempre es la cifra de hoy de la calculadora (puede
+haber cambiado un parámetro leído del BOE), pero conviene mirar por qué (`--estricto` la convierte en error).
+
+### Con modelo
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion run --out reports/evaluacion/base.json            # variante activa
+uv run python -m hacienda_gpt.cli.evaluacion run --config candidata.json --baseline reports/evaluacion/base.json
+uv run python -m hacienda_gpt.cli.evaluacion promote --config candidata.json --presupuesto-usd 10
+```
+
+- Una **variante** es un JSON: `{"id": "breve", "prompts": {"agente": "agente@breve"}, "modelo": "…"}`; el texto
+  de `agente@breve` va en `prompts/agente@breve.txt` junto al fichero o en `textos`. Los *prompts* `modulos` y
+  `especialista` son plantillas y deben conservar sus campos (`{especialistas}`, `{nombre}`, `{instrucciones}`).
+- El agente evaluado se mide con los MISMOS propósitos que en producción (`agente`, `verificador`,
+  `especialista:<clave>`), así que la tabla de enrutado elige el mismo modelo que el asistente desplegado; el juez
+  usa el propósito `evaluacion-juez` y el modelo configurado (el mismo para base y candidata). El gasto queda en
+  `/usage` con el caso `eval:<ejecución>:<caso>:<repetición>`; rigen los límites diarios y `--presupuesto-usd`.
+  Un informe que se quedó sin presupuesto está marcado como incompleto y no sirve para promover.
+- Sin índice FAISS (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
+  pueden aprobar; los de calculadoras y módulos sí.
+- `promote` escribe `hacienda_gpt/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si
+  la candidata no empeora ninguna categoría crítica (`critica` en `casos/suite.json`) y mejora en conjunto. La
+  variante activa guarda la huella de cada texto evaluado: si `prompts.py` cambia después, `variante` y `validar`
+  avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese fichero.
+
+### Cambiar un prompt de `hacienda_gpt/agent/prompts.py`
+
+El registro `hacienda_gpt/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado; la
+prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el código no coinciden. Al cambiar un
+*prompt*:
+
+1. Evalúa el texto nuevo como candidata (`promote` con una variante que lo lleve en un fichero de *prompts*).
+2. Copia el texto a `prompts.py` y regístralo con el informe de la candidata:
+   `prompts registrar --rol agente --informe reports/evaluacion/promote-…-candidata-….json` (comprueba que el
+   informe evaluó exactamente ese texto, que mejora y que no empeora lo crítico). Borra después la variante activa
+   si ya no hace falta.
+3. Si no se puede evaluar (sin clave de modelo), `prompts sincronizar --motivo "…"` registra todos los que han
+   cambiado y deja el motivo escrito en el registro, a la vista en la revisión del PR.
+
+### Valoraciones de los usuarios
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion senales                  # recuentos, sin contenido
+uv run python -m hacienda_gpt.cli.evaluacion casos estadisticas
+uv run python -m hacienda_gpt.cli.evaluacion casos pendientes
+uv run python -m hacienda_gpt.cli.evaluacion casos ver fb_…
+uv run python -m hacienda_gpt.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
+# Edita el borrador: sustituye los datos sensibles por valores ficticios que reproduzcan el caso, ajusta
+# categoría y expectativas (una cifra esperada SIEMPRE es una receta de calculadora), añade un guion si quieres
+# que se reproduzca en CI.
+uv run python -m hacienda_gpt.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \
+    --confirmo-anonimizado --revisor "Nombre"
+uv run python -m hacienda_gpt.cli.evaluacion casos descartar fb_…
+```
+
+- El contenido de un caso guardado está en la auditoría del expediente del usuario (evento
+  `evaluacion_valoracion`): quien opera la revisión lee datos personales que el usuario aceptó compartir para
+  esto; hazlo solo con ese fin. Las filas de revisión (`evaluacion_feedback`, sin texto de la conversación) están
+  en la misma base que los expedientes y se borran con el expediente por un *trigger* de SQLite.
+- `promover` rechaza el caso si encuentra algo con forma de correo, DNI/NIE, IBAN, CUPS, tarjeta o teléfono, pero
+  no detecta nombres ni direcciones: esa revisión es tuya. El usuario ve en su exportación que su caso se
+  promovió o descartó (evento `evaluacion_revision`).
+
+### Variables de entorno
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `EVALUACION_VARIANTE_ACTIVA_PATH` | `hacienda_gpt/evaluacion/variante_activa.json` | Variante que ejecuta el agente; sin fichero, la de siempre. |
+| `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

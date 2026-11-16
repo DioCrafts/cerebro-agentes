@@ -8,6 +8,7 @@ stand behind.
 
 from __future__ import annotations
 
+from collections.abc import Callable, Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
 import hashlib
@@ -20,7 +21,7 @@ from hacienda_gpt.decision.schemas import CaseState, CaseStatus, parse_fiscal_ye
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.proactive.store import Notification, NotificationStore
 from hacienda_gpt.tax.calendario import proximos_vencimientos
-from hacienda_gpt.tax.optimizador import PalancaElegida, optimizar_desde_hechos
+from hacienda_gpt.tax.optimizador import PalancaElegida
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_disponibles
 from hacienda_gpt.tax.profile import DatosInvalidosError
 from hacienda_gpt.tax.simulador import simular
@@ -97,6 +98,17 @@ def _tiene_ingresos(facts: dict[str, Any]) -> bool:
         if isinstance(value, int | float) and not isinstance(value, bool) and value != 0:
             return True
     return False
+
+
+def _hechos_de_modulos() -> frozenset[str]:
+    """Names of the facts the household modules own (empty if the registry cannot be loaded)."""
+    try:
+        from hacienda_gpt.modulos.registro import registro
+
+        return frozenset(registro().hechos())
+    except Exception:
+        logger.exception("Could not load the household modules' facts")
+        return frozenset()
 
 
 def _facts_hash(facts: dict[str, Any]) -> str:
@@ -254,7 +266,12 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
     try:
         # The benefit catalogue only feeds the "one datum away" section; the plan is the optimiser's.
         simulacion = simular(ejercicio=ejercicio, facts=facts, con_beneficios=True)
-        plan = optimizar_desde_hechos(ejercicio=ejercicio, fecha=hoy, facts=facts)
+        # The user's rejections and restrictions in force are constraints of the plan (hacienda_gpt/memoria).
+        from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+
+        plan = optimizar_con_memoria(
+            case_id=case.case_id, db_path=store.db_path, hoy=hoy, ejercicio=ejercicio, fecha=hoy, facts=facts
+        )
     except EjercicioNoDisponibleError:
         return 0
     except DatosInvalidosError as exc:
@@ -347,7 +364,8 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
         if reference and reference not in sources:
             sources.append(reference)
 
-    key = prefix + _facts_hash(facts)
+    # Household-module facts do not change the tax plan: they must not make it be rewritten.
+    key = prefix + _facts_hash({name: value for name, value in facts.items() if name not in _hechos_de_modulos()})
     added = store.add(
         Notification(
             case_id=case.case_id,
@@ -385,8 +403,23 @@ def ejecutar_para_caso(case: CaseState, *, hoy: date, store: NotificationStore) 
     }
 
 
-def ejecutar_para_todos(case_store: SQLiteCaseStateStore, store: NotificationStore, *, hoy: date) -> dict[str, Any]:
-    """Run both jobs over every case that is not closed. One failing case never stops the batch."""
+def ejecutar_para_todos(
+    case_store: SQLiteCaseStateStore,
+    store: NotificationStore,
+    *,
+    hoy: date,
+    modulos_de: Callable[[CaseState], Sequence[Any]] | None = None,
+    auth: Any | None = None,
+    preparar_modulos: bool = False,
+) -> dict[str, Any]:
+    """Run both jobs over every case that is not closed. One failing case never stops the batch.
+
+    Then the household modules switched on for each case's owner (``modulos_de``; by default the owner's
+    choices in ``auth``, or the defaults) write their notices (see :mod:`hacienda_gpt.proactive.bandeja`). The
+    summary gains ``modulos`` (notices per module) and ``errores_modulos`` only when some module beyond the
+    tax one is on, so a tax-only deployment reports exactly what it always did. ``preparar_modulos`` (the
+    ``run-daily`` command) first runs each such module's daily task once (e.g. reading the day's calls for aid).
+    """
     summary: dict[str, Any] = {"hoy": hoy.isoformat(), "cases": 0, "plazo": 0, "fin_de_ejercicio": 0, "errors": 0}
     for case in case_store.list_all_cases():
         if case.status == CaseStatus.CLOSED:
@@ -400,4 +433,21 @@ def ejecutar_para_todos(case_store: SQLiteCaseStateStore, store: NotificationSto
             continue
         summary["plazo"] += created["plazo"]
         summary["fin_de_ejercicio"] += created["fin_de_ejercicio"]
+
+    from hacienda_gpt.proactive.bandeja import avisos_de_modulos_para_todos
+
+    def por_defecto(case: CaseState) -> Sequence[Any]:
+        from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+
+        return modulos_activos_para_caso(case.case_id, auth)
+
+    try:
+        modulos = avisos_de_modulos_para_todos(
+            case_store, store, hoy=hoy, modulos_de=modulos_de or por_defecto, preparar=preparar_modulos
+        )
+    except Exception:  # the household modules never take the tax jobs down with them
+        logger.exception("Household module notices failed")
+        modulos = {"modulos": {}, "errores_modulos": 1}
+    if modulos["modulos"] or modulos["errores_modulos"]:
+        summary.update(modulos)
     return summary

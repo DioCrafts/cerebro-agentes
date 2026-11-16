@@ -1,0 +1,58 @@
+{
+  "id": "modelo-130-trimestre",
+  "version": 1,
+  "categoria": "calculo_fiscal",
+  "descripcion": "Pago fraccionado del IRPF de un autónomo con los datos de la pregunta.",
+  "pregunta": "Primer trimestre de 2026: 12.000 € de ingresos y 3.000 € de gastos en mi actividad (estimación directa simplificada). ¿Qué pago fraccionado me sale en el modelo 130?",
+  "modulos": [],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_130"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_130",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 1,
+          "ingresos_acumulados": 12000,
+          "gastos_acumulados": 3000
+        },
+        "patron": "Resultado del pago fraccionado: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "1.710,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1,
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_modelo_130",
+            "argumentos": {
+              "ejercicio": 2026,
+              "trimestre": 1,
+              "ingresos_acumulados": 12000,
+              "gastos_acumulados": 3000
+            }
+          }
+        ]
+      },
+      {
+        "texto": "El pago fraccionado del 130 sería de {cifra:resultado} {fragmento:calcular_modelo_130}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

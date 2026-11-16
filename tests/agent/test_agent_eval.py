@@ -159,3 +159,57 @@ def test_cli_build_requires_consultas(tmp_path: Path) -> None:
 
     result = CliRunner().invoke(cli, ["build", "--dgt-dir", str(tmp_path), "--out", str(tmp_path / "g.jsonl")])
     assert result.exit_code != 0 and "No se encontraron consultas" in result.output
+
+
+def test_cli_run_meters_the_judge_as_evaluacion_juez(tmp_path: Path, monkeypatch) -> None:
+    """The judge is metered and routed as «evaluacion-juez»; its verdicts, prompts and model are unchanged,
+    and a --judge-model is kept even with a routing profile."""
+    from hacienda_gpt import settings
+    from hacienda_gpt.agent import providers
+    from hacienda_gpt.cli import eval_agent
+    from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider
+
+    for nombre in ("LLM_ROUTING_PROFILE", "LLM_ROUTES", "LLM_MODEL_LARGE", "LLM_EFFORT_LARGE"):
+        monkeypatch.setattr(settings, nombre, "")
+    monkeypatch.delenv("LLM_ROUTE_EVALUACION_JUEZ", raising=False)
+    monkeypatch.setattr(settings, "DECISION_STATE_DB_PATH", str(tmp_path / "estado.sqlite3"))
+    dataset = tmp_path / "golden.jsonl"
+    write_jsonl(dataset, [CASE])
+    respuesta = SystemAnswer(answer="Dos años.", mode="verified", confident=True, abstained=False, detail={})
+    monkeypatch.setattr(eval_agent, "_agent_system", lambda exclude_source: _system(respuesta))
+    jueces: list[ScriptedProvider] = []
+    vistos: list[object] = []
+
+    def crear(*args, **kwargs):
+        juez = ScriptedProvider([], [{"veredicto": "correcta", "motivo": "coincide"}])
+        jueces.append(juez)
+        return juez
+
+    original = eval_agent.evaluate_case
+
+    def evaluar(system, judge, case):
+        vistos.append(judge)
+        return original(system, judge, case)
+
+    monkeypatch.setattr(providers, "create_provider", crear)
+    monkeypatch.setattr(eval_agent, "evaluate_case", evaluar)
+    out = tmp_path / "informe.json"
+    result = CliRunner().invoke(eval_agent.cli, ["run", "--dataset", str(dataset), "--out", str(out), "--yes"])
+    assert result.exit_code == 0, result.output
+    (juez,) = vistos
+    assert isinstance(juez, MeteredProvider) and juez.purpose == "evaluacion-juez"
+    assert juez.wrapped is jueces[0] and juez.model == "scripted-1"
+    assert "<referencia_dgt>\nDos años." in jueces[0].json_requests[0]["user"]
+    assert '"correcta"' in out.read_text(encoding="utf-8")
+    usos = ConsumoStore(str(tmp_path / "estado.sqlite3"))._conn.execute("SELECT purpose FROM llm_usage").fetchall()
+    assert [u[0] for u in usos] == ["evaluacion-juez"]
+
+    # An explicit --judge-model is the judge's model, whatever the routing profile says.
+    monkeypatch.setattr(settings, "LLM_ROUTING_PROFILE", "recomendado")
+    vistos.clear()
+    result = CliRunner().invoke(
+        eval_agent.cli,
+        ["run", "--dataset", str(dataset), "--out", str(out), "--yes", "--judge-model", "otro-modelo"],
+    )
+    assert result.exit_code == 0, result.output
+    assert vistos[0].ruta.origen == "--judge-model" and vistos[0].ruta.modelo is None  # type: ignore[attr-defined]

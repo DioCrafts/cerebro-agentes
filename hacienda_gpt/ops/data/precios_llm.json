@@ -2,15 +2,52 @@
   "consultado_el": "2026-11-12",
   "moneda": "USD",
   "unidad": "por millón de tokens",
-  "nota": "Los precios de los modelos cambian: esta tabla es una foto del día indicado en «consultado_el» y hay que revisarla contra la página de precios del proveedor antes de fiarse de los importes. Un precio null significa «no consultado»: las llamadas a ese modelo se registran sin coste (nunca se estima) y no cuentan para los límites diarios en USD.",
-  "fuente": "Tabla «Current Models» de la referencia de la API de Claude incluida en Claude Code (skill claude-api, fechada el 2026-11-03), tarifas de la API propia de Anthropic. No se ha consultado la página de precios en línea.",
+  "nota": "Los precios de los modelos cambian: esta tabla es una foto del día indicado en «consultado_el» y hay que revisarla contra la página de precios del proveedor antes de fiarse de los importes. Un precio null significa «no consultado»: las llamadas a ese modelo se registran sin coste (nunca se estima) y no cuentan para los límites diarios en USD. Las cifras marcadas como «derivadas» en la nota de cada modelo salen de una regla general de la fuente (escritura de caché 1,25 × entrada a 5 minutos y 2 × a 1 hora; lectura de caché 0,1 × entrada salvo donde la fuente da la cifra), no de una cifra publicada para ese modelo: compruébalas antes de fiarte de ellas.",
+  "fuente": "Tabla «Current Models» y apartados de caché de prompts y de lotes (Message Batches) de la referencia de la API de Claude incluida en Claude Code (skill claude-api, tabla fechada el 2026-11-03), tarifas de la API propia de Anthropic. No se ha consultado la página de precios en línea (desde esta máquina solo se alcanza www.boe.es). Sonnet 5.5, Haiku 5.5, Fable 5.2, la escritura de caché a 1 hora y el factor de lote se añadieron el 2026-11-16 desde la misma versión de la fuente (tabla fechada el 2026-11-03).",
   "modelos": {
     "claude-opus-5-5": {
       "input": "4.00",
       "output": "20.00",
       "cache_read": "0.20",
       "cache_write": "5.00",
-      "nota": "Entrada, salida y lectura de caché: cifras literales de la fuente ($4 / $20 por MTok; lecturas de caché $0.20). Escritura de caché: 1,25 × entrada, la regla que da la fuente para la caché de 5 minutos, que es la que usa el proveedor (cache_control ephemeral sin ttl). No incluye el modo rápido ni tarifas de Bedrock o Vertex."
+      "cache_write_1h": "8.00",
+      "factor_lote": "0.50",
+      "nota": "Entrada, salida y lectura de caché: cifras literales de la fuente ($4 / $20 por MTok; lecturas de caché $0.20). Escritura de caché derivada: 1,25 × entrada (TTL de 5 minutos, el que usa el proveedor por defecto) y 2 × entrada (TTL de 1 hora, LLM_CACHE_TTL=1h). factor_lote 0,50: «50% off every token in the request, including cache reads and writes - the discounts stack» (apartado Batch processing de la fuente). No incluye el modo rápido ni tarifas de Bedrock o Vertex."
+    },
+    "claude-sonnet-5-5": {
+      "input": "2.00",
+      "output": "10.00",
+      "cache_read": "0.10",
+      "cache_write": "2.50",
+      "cache_write_1h": "4.00",
+      "factor_lote": "0.50",
+      "nota": "Entrada, salida y lectura de caché: cifras literales de la fuente ($2 / $10 por MTok; «cache reads at $0.10»). Escritura de caché derivada (1,25 × y 2 × entrada). factor_lote 0,50: «50% off every token in the request, including cache reads and writes - the discounts stack» (apartado Batch processing de la fuente)."
+    },
+    "claude-haiku-5-5": {
+      "input": "0.10",
+      "output": "0.50",
+      "cache_read": "0.01",
+      "cache_write": "0.125",
+      "cache_write_1h": "0.20",
+      "factor_lote": "0.50",
+      "contexto_largo": {
+        "desde_tokens": 100000,
+        "input": "0.50",
+        "output": "2.50",
+        "cache_read": "0.05",
+        "cache_write": "0.625",
+        "cache_write_1h": "1.00"
+      },
+      "nota": "Entrada y salida: cifras literales de la fuente («$0.10 / $0.50 per MTok when the prompt is 100K tokens or fewer and $0.50 / $2.50 above that»); se aplica el tramo largo a toda la petición cuyo prompt (entrada + caché leída + caché escrita) pase de 100.000 tokens, interpretación no comprobada. Lectura de caché derivada (0,1 × entrada: la fuente no da la cifra de este modelo) y escritura derivada (1,25 × y 2 × entrada). factor_lote 0,50: «50% off every token in the request, including cache reads and writes - the discounts stack» (apartado Batch processing de la fuente)."
+    },
+    "claude-fable-5-2": {
+      "input": "8.00",
+      "output": "40.00",
+      "cache_read": "0.20",
+      "cache_write": "10.00",
+      "cache_write_1h": "16.00",
+      "factor_lote": "0.50",
+      "nota": "Entrada, salida y lectura de caché: cifras literales de la fuente ($8 / $40 per MTok, cache reads $0.20). Escritura de caché derivada (1,25 × y 2 × entrada). factor_lote 0,50: «50% off every token in the request, including cache reads and writes - the discounts stack» (apartado Batch processing de la fuente). No incluye el modo rápido."
     },
     "gpt-4o-mini": {
       "input": null,

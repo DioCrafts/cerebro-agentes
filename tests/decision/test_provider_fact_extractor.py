@@ -102,3 +102,44 @@ def test_default_extractor_follows_llm_provider(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(settings, "LOCAL_LLM_MODEL", "qwen3:14b")
     assert default_fact_extractor()._provider.name == "local"
     assert fx.FactExtractionError is fx.OpenAIExtractionError
+
+
+def test_the_provider_extractor_is_metered_as_hechos_and_keeps_its_model(monkeypatch, tmp_path) -> None:
+    """Metering adds the purpose «hechos» (routing table: small tier); without routing settings the model,
+    the effort and the requests are the provider's own, as before."""
+    from hacienda_gpt import settings
+    from hacienda_gpt.agent import enrutado
+    from hacienda_gpt.ops.consumo import MeteredProvider
+
+    for nombre in (
+        "LLM_ROUTING_PROFILE",
+        "LLM_ROUTES",
+        "LLM_MODEL_SMALL",
+        "LLM_EFFORT_SMALL",
+        "DECISION_EXTRACTOR_MODEL",
+    ):
+        monkeypatch.setattr(settings, nombre, "")
+    monkeypatch.delenv("LLM_ROUTE_HECHOS", raising=False)
+    monkeypatch.delenv("DECISION_EXTRACTOR_MODEL", raising=False)
+    monkeypatch.setattr(settings, "DECISION_STATE_DB_PATH", str(tmp_path / "estado.sqlite3"))
+    monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
+    monkeypatch.setattr(settings, "ANTHROPIC_MODEL", "claude-opus-5-5")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
+    monkeypatch.setenv("DECISION_EXTRACTOR", "provider")
+
+    extractor = default_fact_extractor()
+    assert isinstance(extractor, ProviderFactExtractor)
+    medido = extractor._provider
+    assert isinstance(medido, MeteredProvider) and medido.purpose == "hechos"
+    assert enrutado.nivel_de_tabla("hechos") == "pequeno"
+    assert (medido.model, medido.effort, medido.ruta.origen) == ("claude-opus-5-5", "low", "por_defecto")
+    assert medido.wrapped.model == "claude-opus-5-5"
+
+    # A model chosen for the extractor is kept even with a routing profile.
+    monkeypatch.setenv("DECISION_EXTRACTOR_MODEL", "claude-sonnet-5-5")
+    monkeypatch.setattr(settings, "LLM_ROUTING_PROFILE", "recomendado")
+    elegido = default_fact_extractor()._provider
+    assert (elegido.model, elegido.ruta.origen) == ("claude-sonnet-5-5", "DECISION_EXTRACTOR_MODEL")
+    # Without it, the profile routes extraction to the small tier.
+    monkeypatch.delenv("DECISION_EXTRACTOR_MODEL")
+    assert default_fact_extractor()._provider.model == "claude-haiku-5-5"

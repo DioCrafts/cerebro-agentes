@@ -210,6 +210,9 @@ AGENT_MAX_REVISIONS = int(os.environ.get("AGENT_MAX_REVISIONS", "1"))
 AGENT_SEARCH_DEFAULT_K = int(os.environ.get("AGENT_SEARCH_DEFAULT_K", "6"))
 # Thinking depth for the fact extractor when it runs on Claude.
 DECISION_EXTRACTOR_EFFORT = os.environ.get("DECISION_EXTRACTOR_EFFORT", "low")
+# Model for the fact extractor (empty: the provider's). The extractor reads the environment at call time;
+# this copy lets the model routing (agent/enrutado.py) see that a model was chosen for purpose "hechos".
+DECISION_EXTRACTOR_MODEL = os.environ.get("DECISION_EXTRACTOR_MODEL", "")
 
 # --- Doctrine graph ----------------------------------------------------------
 # SQLite file built by `python -m hacienda_gpt.cli.doctrine_graph build`. When it
@@ -338,3 +341,87 @@ LLM_DAILY_BUDGET_USD_PER_USER = os.environ.get("LLM_DAILY_BUDGET_USD_PER_USER", 
 LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "")
 # Replacement price table (same format as the bundled one), for when prices change.
 LLM_PRICES_PATH = os.environ.get("LLM_PRICES_PATH", "")
+
+# --- LLM routing by purpose, prompt caching, batches (hacienda_gpt/agent/enrutado.py) ---
+# Every model call has a purpose (agente, verificador, especialista:<clave>, recodificacion…)
+# mapped to a tier (pequeno | mediano | grande). All empty = the historical behaviour: the
+# provider's model for every purpose. "recomendado" = the documented profile (docs/operacion.md).
+LLM_ROUTING_PROFILE = os.environ.get("LLM_ROUTING_PROFILE", "")
+# Model (and Claude effort) of each tier; wins over the profile. Empty = profile / provider's model.
+LLM_MODEL_SMALL = os.environ.get("LLM_MODEL_SMALL", "")
+LLM_MODEL_MEDIUM = os.environ.get("LLM_MODEL_MEDIUM", "")
+LLM_MODEL_LARGE = os.environ.get("LLM_MODEL_LARGE", "")
+LLM_EFFORT_SMALL = os.environ.get("LLM_EFFORT_SMALL", "")
+LLM_EFFORT_MEDIUM = os.environ.get("LLM_EFFORT_MEDIUM", "")
+LLM_EFFORT_LARGE = os.environ.get("LLM_EFFORT_LARGE", "")
+# JSON object purpose (glob allowed) -> tier name or model id, e.g. '{"especialista:*": "pequeno"}'.
+# A single purpose can also be set with LLM_ROUTE_<PURPOSE> (upper case, non-alphanumerics -> "_").
+LLM_ROUTES = os.environ.get("LLM_ROUTES", "")
+# Retry ONCE on the next tier an output that fails its validation, when that tier is another model.
+LLM_ESCALATION = _env_bool("LLM_ESCALATION", default=True)
+# Prompt-cache lifetime for Claude: 5m (default, cheaper writes) or 1h (writes cost more; survives gaps).
+LLM_CACHE_TTL = os.environ.get("LLM_CACHE_TTL", "5m")
+# Run the recodificación (params-recode, the autopilot, params-eval) through the provider's batch
+# API: about half the price, results within hours instead of seconds. Off by default.
+RECODE_BATCH = _env_bool("RECODE_BATCH", default=False)
+# Resumable state of the batches in flight (one JSON file per kind of run).
+LLM_BATCH_STATE_PATH = os.environ.get("LLM_BATCH_STATE_PATH", "./data/_lotes")
+LLM_BATCH_POLL_SECONDS = float(os.environ.get("LLM_BATCH_POLL_SECONDS", "60"))
+# Give up waiting (the state is kept: the next run resumes the same batch).
+LLM_BATCH_MAX_WAIT_HOURS = float(os.environ.get("LLM_BATCH_MAX_WAIT_HOURS", "24"))
+
+# --- Household modules (hacienda_gpt/modulos) ---------------------------------
+# Every package ``hacienda_gpt.modulos.<clave>`` exposing ``MODULO`` is discovered at
+# start-up (see hacienda_gpt/modulos/registro.py). Comma-separated keys listed here
+# are switched off for everyone (their tools, notices and facts are not offered).
+MODULOS_DESACTIVADOS = os.environ.get("MODULOS_DESACTIVADOS", "")
+# Modules active for an account that has not chosen yet, and for every case when
+# AUTH_MODE=off (a personal deployment has no per-user choice). Comma-separated
+# keys, or "todos". The default is privacy by default (art. 25.2 GDPR): only the
+# tax module, the service the user signed up for; each other module is opted into.
+MODULOS_ACTIVOS_POR_DEFECTO = os.environ.get("MODULOS_ACTIVOS_POR_DEFECTO", "fiscal")
+# Model turns a module specialist may take when the central agent consults it.
+ESPECIALISTA_MAX_STEPS = int(os.environ.get("ESPECIALISTA_MAX_STEPS", "4"))
+# Baseline of the BOE update date of every module source, for ``params-check``
+# (a module's law updated after that date is listed for re-reading).
+MODULOS_FUENTES_STATE_PATH = os.environ.get("MODULOS_FUENTES_STATE_PATH", "./data/_modulos_fuentes_state.json")
+
+# --- Event bus (hacienda_gpt/eventos) -------------------------------------------
+# Profile changes, new BOE norms, new mortgage indices, statement imports and module switches write an
+# event to the cases' database; the API (in-process) and ``python -m hacienda_gpt.cli.eventos worker`` wake
+# only the modules concerned. ``proactive run-daily`` stays as the safety net. false: no event is written.
+EVENTOS_ACTIVOS = _env_bool("EVENTOS_ACTIVOS", True)
+# The API drains the bus right after each change (a background thread). false: only the worker does.
+EVENTOS_DESPACHO_EN_PROCESO = _env_bool("EVENTOS_DESPACHO_EN_PROCESO", True)
+# Seconds between polls when idle (worker and in-process dispatcher).
+EVENTOS_INTERVALO_SEGUNDOS = float(os.environ.get("EVENTOS_INTERVALO_SEGUNDOS", "5"))
+# Attempts per delivery before it goes to the dead letters; backoff base (doubles each retry, max 1 h).
+EVENTOS_MAX_INTENTOS = int(os.environ.get("EVENTOS_MAX_INTENTOS", "5"))
+EVENTOS_BACKOFF_SEGUNDOS = float(os.environ.get("EVENTOS_BACKOFF_SEGUNDOS", "30"))
+# Lease of a claimed delivery: a worker that dies holding it loses it after this long.
+EVENTOS_ARRIENDO_SEGUNDOS = float(os.environ.get("EVENTOS_ARRIENDO_SEGUNDOS", "300"))
+# ``ops doctor`` reports the bus when work has been waiting longer than this (0: never).
+EVENTOS_ATRASO_MAX_MINUTOS = float(os.environ.get("EVENTOS_ATRASO_MAX_MINUTOS", "30"))
+
+# --- Browser agent (hacienda_gpt/navegador) -----------------------------------
+# Kill switch: false (default) = no browser is ever started and every task endpoint answers 503.
+NAVEGADOR_ACTIVO = _env_bool("NAVEGADOR_ACTIVO", default=False)
+# How the user logs in: "ventana" (a headed Chromium on the machine running the service, for a
+# personal deployment) and/or "sesion" (a session the user hands over for one run).
+NAVEGADOR_MODOS = os.environ.get("NAVEGADOR_MODOS", "ventana,sesion")
+# Chromium executable; empty = the one Playwright installed.
+NAVEGADOR_CHROMIUM = os.environ.get("NAVEGADOR_CHROMIUM", "")
+# Rate limits: tasks a user may start per 24 h, and tasks running at once in the whole service.
+NAVEGADOR_MAX_TAREAS_DIA = int(os.environ.get("NAVEGADOR_MAX_TAREAS_DIA", "6"))
+NAVEGADOR_MAX_SIMULTANEAS = int(os.environ.get("NAVEGADOR_MAX_SIMULTANEAS", "2"))
+# Redacted diagnoses of failed steps (per case, erased with it, 30 days at most).
+NAVEGADOR_DIR = os.environ.get("NAVEGADOR_DIR", "./data/navegador")
+# Ask the LLM for a replacement selector when a page changed (behind a deterministic gate).
+NAVEGADOR_REPARAR_SELECTORES = _env_bool("NAVEGADOR_REPARAR_SELECTORES", default=False)
+# Tests and demos only: JSON {real origin: LOCAL origin} pointing the scripts at local mock sites.
+NAVEGADOR_ORIGENES_SUSTITUTOS = os.environ.get("NAVEGADOR_ORIGENES_SUSTITUTOS", "")
+
+# --- Continuous evaluation (hacienda_gpt/evaluacion) ---------------------------
+# The ACTIVE prompt/model variant, written only by `python -m hacienda_gpt.cli.evaluacion promote`.
+# Empty = hacienda_gpt/evaluacion/variante_activa.json; without that file the agent runs as always.
+EVALUACION_VARIANTE_ACTIVA_PATH = os.environ.get("EVALUACION_VARIANTE_ACTIVA_PATH", "")
