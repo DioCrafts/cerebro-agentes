@@ -78,6 +78,9 @@ from hacienda_gpt.api.routers import memoria as memoria_router
 from hacienda_gpt.api.routers import modulos as modulos_router
 from hacienda_gpt.api.routers import navegador as navegador_router
 from hacienda_gpt.api.routers import planificador as planificador_router
+from hacienda_gpt.api.routers import plataforma as plataforma_router
+from hacienda_gpt.api.routers import push as push_router
+from hacienda_gpt.api.routers import tareas as tareas_router
 from hacienda_gpt.api.security import (
     BodySizeLimitMiddleware,
     RateLimiter,
@@ -122,7 +125,7 @@ from hacienda_gpt.modulos.perfil import TIPO_DE_HECHO, HechoInvalidoError, hecho
 from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
 from hacienda_gpt.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
 from hacienda_gpt.proactive.bandeja import avisos_de_modulos, kind_de
-from hacienda_gpt.proactive.jobs import ejecutar_para_caso, hoy_en_espana
+from hacienda_gpt.proactive.jobs import ejecutar_bandejas_propias, hoy_en_espana
 from hacienda_gpt.proactive.store import Notification, NotificationStore
 from hacienda_gpt.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
 from hacienda_gpt.tax.calendario import Vencimiento, aviso_festivos, proximos_vencimientos
@@ -1192,7 +1195,8 @@ def post_case_proactive_run(
     if case is None:
         raise HTTPException(status_code=404, detail="case not found")
     hoy = hoy_en_espana()
-    created = ejecutar_para_caso(case, hoy=hoy, store=notifications)
+    # The modules that write their own notifications (the tax jobs), through the module contract.
+    created = ejecutar_bandejas_propias(case, hoy=hoy, store=notifications)
     otros = [m for m in modulos_activos_para_caso(case_id, access.store) if m.clave != "fiscal"]
     if otros:
         # The household modules the owner switched on: their notices land in the same inbox.
@@ -1252,4 +1256,7 @@ app.include_router(navegador_router.build_router(get_case_store=get_case_store, 
 app.include_router(evaluacion_router.build_router(get_case_store=get_case_store))
 app.include_router(planificador_router.build_router(get_case_store=get_case_store))
 app.include_router(correo_router.build_router(get_case_store=get_case_store))
+app.include_router(push_router.build_router(get_case_store=get_case_store))
+app.include_router(plataforma_router.build_router(get_case_store=get_case_store))
+app.include_router(tareas_router.build_router(get_case_store=get_case_store))
 # --- /routers ---

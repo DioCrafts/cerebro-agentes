@@ -21,7 +21,6 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from datetime import date, datetime, timedelta
 from functools import partial
-import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -47,7 +46,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     SinTextoError,
     clave_de,
     ejecutar,
-    ejercicios_en,
+    ficheros_de,
     leer_texto,
     recodificar,
 )
@@ -122,10 +121,7 @@ def recodificar_con_escalado(
 
 
 def _ficheros(data_dir: Path, objetivo: Objetivo) -> dict[int, Any]:
-    return {
-        ejercicio: json.loads((data_dir / objetivo.fichero.format(ejercicio=ejercicio)).read_text(encoding="utf-8"))
-        for ejercicio in ejercicios_en(data_dir, objetivo.fichero)
-    }
+    return ficheros_de(data_dir, objetivo)
 
 
 def a_procesar(

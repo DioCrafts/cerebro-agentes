@@ -1,6 +1,7 @@
 """The central agent's specialists: one per household module (luz, hipoteca, suscripciones…).
 
-The advisor keeps its tax tools. For every other module the user has switched on it gets ONE tool,
+The advisor calls the tools of a module flagged ``herramientas_directas`` (the tax module) directly (see
+:mod:`hacienda_gpt.agent.tools`). For every other module the user has switched on it gets ONE tool,
 ``consultar_<clave>``, which runs that module's specialist: a bounded sub-agent (the same loop as the
 team's researchers, :func:`hacienda_gpt.agent.team.run_subagent`) whose tools are ONLY the module's tools
 plus ``leer_expediente``, and whose system prompt carries the module's ``instrucciones``.
@@ -36,7 +37,6 @@ from hacienda_gpt.evaluacion.variantes import prompt_activo
 from hacienda_gpt.modulos.acciones import AccionPendiente, describir
 from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo, ResultadoHerramienta
 from hacienda_gpt.modulos.perfil import HechoInvalidoError, hechos_para_modulo, perfil_de, registrar_hechos_de_modulo
-from hacienda_gpt.modulos.registro import FISCAL
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 
 logger = logging.getLogger(__name__)
@@ -169,8 +169,8 @@ class Coordinador:
     def para(
         cls, provider: LLMProvider, ledger: EvidenceLedger, modulos: Sequence[Modulo] | None, emit: Emit
     ) -> Coordinador | None:
-        """A coordinator when at least one non-tax module is on; None keeps the advisor exactly as it was."""
-        especialistas = [m for m in modulos or () if m.clave != FISCAL]
+        """A coordinator when at least one module without direct tools is on; None keeps the advisor as it was."""
+        especialistas = [m for m in modulos or () if getattr(m, "herramientas_directas", False) is not True]
         if not especialistas:
             return None
         return cls(provider=provider, ledger=ledger, modulos=especialistas, emit=emit)

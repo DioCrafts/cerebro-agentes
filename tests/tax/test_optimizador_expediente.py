@@ -16,7 +16,7 @@ import pytest
 
 from hacienda_gpt.agent.evidence import EvidenceLedger
 from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import JOINT_TOOL, RECORD_FACTS_TOOL, Toolbox
+from hacienda_gpt.agent.tools import RECORD_FACTS_TOOL, Toolbox
 from hacienda_gpt.api.api import app
 from hacienda_gpt.decision.fact_extractor import (
     _PROVIDER_SCHEMA,
@@ -26,6 +26,7 @@ from hacienda_gpt.decision.fact_extractor import (
     OpenAIFactExtractor,
 )
 from hacienda_gpt.decision.schemas import CaseState, Fact
+from hacienda_gpt.modulos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS, JOINT_TOOL
 from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
 from hacienda_gpt.proactive.store import NotificationStore
 from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
@@ -122,7 +123,7 @@ def test_both_are_structured_case_facts_that_no_extractor_may_emit() -> None:
         assert OpenAIFactExtractor._materialize_facts(raw) == []
         # ...but the agent may record them (validated, see below).
         assert nombre in RECORD_FACTS_TOOL.input_schema["properties"]["hechos"]["items"]["properties"]["nombre"]["enum"]
-        assert nombre in RECORD_FACTS_TOOL.description
+        assert nombre in AYUDA_REGISTRAR_HECHOS
     # Every structured fact has its validator.
     assert set(DETALLE_A_TEXTO) == set(DETALLE_FACT_TYPES)
 
@@ -489,14 +490,15 @@ def test_optimize_endpoint_uses_the_case_and_takes_the_request_over_it() -> None
 
 
 def test_the_optimiser_tool_starts_from_what_the_case_keeps(monkeypatch) -> None:
-    import hacienda_gpt.agent.tools as tools
+    import hacienda_gpt.modulos.fiscal.herramientas as herramientas
+    from hacienda_gpt.modulos.fiscal.presentacion import money
 
-    monkeypatch.setattr(tools, "hoy_en_espana", lambda: NOV)
+    monkeypatch.setattr(herramientas, "hoy_en_espana", lambda: NOV)
     toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(_guardados()))
     resultado = toolbox.execute(_call("optimizar_impuestos"))
     assert not resultado.is_error, resultado.content
     esperado = optimizar_desde_hechos(ejercicio=2026, fecha=NOV, facts=_guardados())
-    assert resultado.summary.startswith(f"ahorro {tools._money(esperado.ahorro_total)}")
+    assert resultado.summary.startswith(f"ahorro {money(esperado.ahorro_total)}")
     assert "Se han usado las cifras de tu cónyuge guardadas en tu expediente" in resultado.content
     assert "puedes aportar hasta 1.000,00 € más a tu plan de pensiones" in resultado.content
     # A constraint the agent passes replaces the stored one (and is not reported as taken from the case).
@@ -505,7 +507,7 @@ def test_the_optimiser_tool_starts_from_what_the_case_keeps(monkeypatch) -> None
     sin_aportar = optimizar_desde_hechos(
         ejercicio=2026, fecha=NOV, facts=_guardados(), restricciones={"aportacion_maxima_pensiones": 0}
     )
-    assert otro.summary.startswith(f"ahorro {tools._money(sin_aportar.ahorro_total)}")
+    assert otro.summary.startswith(f"ahorro {money(sin_aportar.ahorro_total)}")
     assert not any(p.id == "plan_pensiones_contribuyente" for p in sin_aportar.palancas)
     assert "a tu plan de pensiones antes del" not in otro.content
     assert "puedes aportar hasta 1.000,00 €" not in otro.content

@@ -17,9 +17,10 @@ import pytest
 
 from hacienda_gpt.agent.evidence import EvidenceLedger
 from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import OPTIMIZE_TOOL, Toolbox
+from hacienda_gpt.agent.tools import Toolbox
 from hacienda_gpt.api.api import app
 from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from hacienda_gpt.modulos.fiscal.especificaciones import OPTIMIZE_TOOL
 from hacienda_gpt.tax.conjunta import _conjunta
 from hacienda_gpt.tax.irpf import Descendiente, IRPFInput, calcular_irpf
 from hacienda_gpt.tax.optimizador import (
@@ -554,9 +555,9 @@ def _case(**facts) -> CaseState:
 
 
 def test_the_tool_reads_the_case_and_registers_citable_fragments(monkeypatch) -> None:
-    import hacienda_gpt.agent.tools as tools
+    import hacienda_gpt.modulos.fiscal.herramientas as herramientas
 
-    monkeypatch.setattr(tools, "hoy_en_espana", lambda: NOV)
+    monkeypatch.setattr(herramientas, "hoy_en_espana", lambda: NOV)
     ledger = EvidenceLedger()
     toolbox = Toolbox(
         searcher=_NoSearch(),

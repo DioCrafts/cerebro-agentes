@@ -20,6 +20,10 @@ export function useTheme(): [Theme, () => void] {
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
+    // The installed app's status bar follows the theme the user picked, not only the OS one.
+    for (const meta of document.querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')) {
+      meta.content = theme === "dark" ? "#10141a" : "#f6f4ef";
+    }
   }, [theme]);
 
   const toggle = useCallback(() => {

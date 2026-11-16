@@ -163,6 +163,14 @@ def run_daily(db_path: str | None, hoy: date | None) -> None:
         auth=_auth_de(path),
         preparar_modulos=True,
     )
+    # Long-running tasks (hacienda_gpt/tareas): their dates and pending actions are checked here too (no LLM).
+    from hacienda_gpt.tareas.almacen import tabla_existe as hay_tareas
+
+    if hay_tareas(path):
+        from hacienda_gpt.tareas.motor import ciclo as ciclo_tareas
+
+        dia = hoy or hoy_en_espana()
+        summary["tareas"] = ciclo_tareas(path, hoy=lambda: dia, ejecutar_consultas=False, auth=_auth_de(path))
     click.echo(json.dumps(summary, ensure_ascii=False))
 
 
@@ -311,7 +319,7 @@ def params_lecturas(base: str, body_path: Path | None, data_dir: Path | None) ->
     anotadas por params-verify o params-autopilot: lista cada ley cuya lectura se
     anotó y termina con código 1 si algún fichero cambió en algo más que sus
     fuentes y su registro (cifras, citas, reglas), que nunca deben entrar en un PR
-    automático.
+    automático. Cubre también los datos legales de los módulos del hogar.
     """
     import subprocess
 
@@ -319,14 +327,15 @@ def params_lecturas(base: str, body_path: Path | None, data_dir: Path | None) ->
 
     antes: dict[str, Any] = {}
     despues: dict[str, Any] = {}
-    for path in procedencia.ficheros_de_parametros(data_dir or DATA_DIR):
-        despues[path.name] = json.loads(path.read_text(encoding="utf-8"))
+    # The tax parameter files and, for the package's own data, every module's legal data file.
+    for nombre, path in procedencia.ficheros_con_lecturas(data_dir or DATA_DIR):
+        despues[nombre] = json.loads(path.read_text(encoding="utf-8"))
         # "<rev>:./<name>" is resolved against -C, so this works from any working directory.
         hecho = subprocess.run(
             ["git", "-C", str(path.parent), "show", f"{base}:./{path.name}"], capture_output=True, text=True
         )
         if hecho.returncode == 0:
-            antes[path.name] = json.loads(hecho.stdout)
+            antes[nombre] = json.loads(hecho.stdout)
     cambios = procedencia.cambios_de_lectura(antes, despues)
     if body_path is not None and cambios.lecturas:
         body_path.write_text(procedencia.cuerpo_del_pr(cambios), encoding="utf-8")
@@ -560,15 +569,33 @@ def _fila_de_verificacion(resultados: list[Any]) -> dict[str, Any]:
 _FICHEROS_DE_PARAMETROS = ("irpf", "autonomos", "sociedades", "patrimonio", "isd")
 
 
+def _ficheros_de_modulos() -> tuple[str, ...]:
+    """Names ``--fichero`` accepts for the modules' legal data: each declared file's key and its module's."""
+    from hacienda_gpt.conocimiento import ficheros_legales
+
+    return tuple(dict.fromkeys(n for f in ficheros_legales() for n in (f.modulo, f.clave)))
+
+
 def _ficheros_pedidos(valores: tuple[str, ...]) -> tuple[str, ...]:
     """``--fichero a,b --fichero c`` -> ("a", "b", "c"); an unknown name is an error, never a silent empty report."""
     pedidos = tuple(n.strip().lower() for v in valores for n in v.split(",") if n.strip())
-    desconocidos = [n for n in pedidos if n not in _FICHEROS_DE_PARAMETROS]
+    validos = (*_FICHEROS_DE_PARAMETROS, *(_ficheros_de_modulos() if pedidos else ()))
+    desconocidos = [n for n in pedidos if n not in validos]
     if desconocidos:
         raise click.BadParameter(
-            f"{', '.join(desconocidos)}: no es un fichero de parámetros (son: {', '.join(_FICHEROS_DE_PARAMETROS)})."
+            f"{', '.join(desconocidos)}: no es un fichero de parámetros (son: {', '.join(validos)})."
         )
     return pedidos
+
+
+def _verificar_modulos(texto_de: Any, ficheros: tuple[str, ...]) -> dict[str, list[Any]]:
+    """The legal data every module declares (``hacienda_gpt.conocimiento``), by file name; with ``--fichero``, only
+    the modules named (a run limited to tax files checks none)."""
+    from hacienda_gpt.conocimiento import verificar_modulos
+
+    if ficheros and all(n in _FICHEROS_DE_PARAMETROS for n in ficheros):
+        return {}
+    return verificar_modulos(texto_de, claves=[n for n in ficheros if n not in _FICHEROS_DE_PARAMETROS] or None)
 
 
 def _verificar_otros_ficheros(
@@ -665,8 +692,8 @@ def _anotar_lecturas(
     "ficheros",
     multiple=True,
     callback=lambda ctx, param, valores: _ficheros_pedidos(valores),
-    help="Solo estos ficheros de parámetros: irpf, autonomos, sociedades, patrimonio, isd (por defecto, todos). "
-    "Repetible o separados por comas.",
+    help="Solo estos ficheros de parámetros: irpf, autonomos, sociedades, patrimonio, isd, o un módulo del hogar "
+    "(luz, caducidades, ayudas…) (por defecto, todos). Repetible o separados por comas.",
 )
 @click.option("--fail-on-mismatch", is_flag=True, help="Termina con código 1 si alguna comprobación falla.")
 @_ANOTAR_OPTION
@@ -689,7 +716,9 @@ def params_verify(
     Dice qué grupos de parámetros (escalas, mínimos, deducciones; y los de
     autónomos, sociedades, patrimonio y sucesiones) ya no coinciden con lo que
     hoy publica el BOE. Sin LLM: son citas literales y cifras buscadas en el
-    texto. Los ejercicios del IRPF van por año; los demás ficheros, bajo «otros».
+    texto. Los ejercicios del IRPF van por año; los demás ficheros, bajo «otros»;
+    los datos legales de cada módulo del hogar (luz, caducidades, ayudas,
+    hipoteca, suscripciones, correo…), bajo «modulos».
     Después anota la lectura de hoy de cada ley que el BOE ha actualizado y está
     al día (bajo «procedencia»), para que params-check deje de señalarla.
     """
@@ -708,6 +737,12 @@ def params_verify(
     if otros:
         informe["otros"] = otros
         fallos += sum(len(fila["no_coinciden"]) for fila in otros.values())
+    de_modulos = {
+        nombre: _fila_de_verificacion(resultados) for nombre, resultados in _verificar_modulos(texto_de, ficheros).items()
+    }
+    if de_modulos:
+        informe["modulos"] = de_modulos
+        fallos += sum(len(fila["no_coinciden"]) for fila in de_modulos.values())
     if anotar:
         informe["procedencia"] = _anotar_lecturas(
             texto_de, desde_snapshot=snapshot_dir is not None, data_dir=DATA_DIR, proposals_dir=proposals_dir

@@ -5,7 +5,7 @@
       "norma": "Circular 3/2020, de 15 de enero, de la CNMC, metodología de cálculo de los peajes de transporte y distribución de electricidad (texto consolidado)",
       "boe_id": "BOE-A-2020-1066",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2020-1066",
-      "fecha": "2025-02-05",
+      "consolidado_a": "2025-02-05",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "d4d830834dc37d4ec05a5f5c0c126cd1f7ef1ff295f6a735c2b712a83978aaeb"
@@ -14,7 +14,7 @@
       "norma": "Resolución de 4 de diciembre de 2024, de la CNMC, por la que se establecen los valores de los peajes de acceso a las redes de transporte y distribución de electricidad de aplicación a partir del 1 de enero de 2025",
       "boe_id": "BOE-A-2024-26218",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-26218",
-      "fecha": "2024-12-16",
+      "consolidado_a": "2024-12-16",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "f45fbbafd6662d8a8484359ff0696149f7f6a772389e8962986f4dccdf64251d"
@@ -23,7 +23,7 @@
       "norma": "Resolución de 18 de diciembre de 2025, de la CNMC, por la que se establecen los valores de los peajes de acceso a las redes de transporte y distribución de electricidad de aplicación a partir del 1 de enero de 2026",
       "boe_id": "BOE-A-2025-26348",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26348",
-      "fecha": "2025-12-22",
+      "consolidado_a": "2025-12-22",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "d8fe55826ccacba16a7005d69623c7ae3e6ff435458334e84fd7a83cb9d46bf2"
@@ -32,7 +32,7 @@
       "norma": "Real Decreto 148/2021, de 9 de marzo, metodología de cálculo de los cargos del sistema eléctrico (texto consolidado)",
       "boe_id": "BOE-A-2021-4239",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-4239",
-      "fecha": "2022-03-19",
+      "consolidado_a": "2022-03-19",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "e6ae6b9e599dd237337882779122e9a4cbff1a6c28bbb53344a3155c1a3e870e"
@@ -41,7 +41,7 @@
       "norma": "Orden TED/1487/2024, de 26 de diciembre, precios de los cargos del sistema eléctrico y diversos costes regulados para 2025 y reparto de la financiación del bono social",
       "boe_id": "BOE-A-2024-27289",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-27289",
-      "fecha": "2024-12-28",
+      "consolidado_a": "2024-12-28",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "fffc192d52528ba7eca4e402403bbccb7c1b5d795c1c9c951470c9fcb11ff94b"
@@ -50,7 +50,7 @@
       "norma": "Orden TED/1524/2025, de 23 de diciembre, precios de los cargos del sistema eléctrico y diversos costes regulados para 2026 y reparto de la financiación del bono social",
       "boe_id": "BOE-A-2025-26705",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-26705",
-      "fecha": "2025-12-27",
+      "consolidado_a": "2025-12-27",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "7bf923057b0a897b67e65ab7ffd045adb44674ac888a0476bcf3ff34ffc1dea6"
@@ -59,7 +59,7 @@
       "norma": "Orden TED/634/2026, de 17 de junio, reparto de las cantidades a financiar relativas al bono social correspondiente al año 2026",
       "boe_id": "BOE-A-2026-13759",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-13759",
-      "fecha": "2026-06-25",
+      "consolidado_a": "2026-06-25",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "d59d1d9c20fe68246b7d6cd4c750dbb2de1d03347fc56eb622a6101118e3795a"
@@ -68,7 +68,7 @@
       "norma": "Real Decreto 216/2014, de 28 de marzo, metodología de cálculo de los precios voluntarios para el pequeño consumidor (PVPC) (texto consolidado)",
       "boe_id": "BOE-A-2014-3376",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2014-3376",
-      "fecha": "2023-06-14",
+      "consolidado_a": "2023-06-14",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "e650bfe6f9b32c2b0df459db24fa40d558d55bc91804aba2b73d257a7191acd5"
@@ -77,7 +77,7 @@
       "norma": "Orden ETU/1948/2016, de 22 de diciembre, valores de los costes de comercialización de las comercializadoras de referencia (texto consolidado)",
       "boe_id": "BOE-A-2016-12274",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2016-12274",
-      "fecha": "2019-05-29",
+      "consolidado_a": "2019-05-29",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "0b013ad9a3ef5f1c461c30624611ea49482e939484afa6424d9bd328820b1e4e"
@@ -86,7 +86,7 @@
       "norma": "Orden IET/1491/2013, de 1 de agosto, revisión de peajes de acceso y precio de alquiler de los contadores electrónicos (texto consolidado)",
       "boe_id": "BOE-A-2013-8561",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2013-8561",
-      "fecha": "2016-11-03",
+      "consolidado_a": "2016-11-03",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "3d8c63a9ecc7e14c19ed9503ea8ae3f64ae2287e9293927595659d10c838c33b"
@@ -95,7 +95,7 @@
       "norma": "Ley 38/1992, de 28 de diciembre, de Impuestos Especiales (texto consolidado)",
       "boe_id": "BOE-A-1992-28741",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28741",
-      "fecha": "2026-09-30",
+      "consolidado_a": "2026-09-30",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "13a930328cf8c8a2545d27d45c5e700b35d3cb6bbc5653b96e625143d3400f4b"
@@ -104,7 +104,7 @@
       "norma": "Ley 37/1992, de 28 de diciembre, del Impuesto sobre el Valor Añadido (texto consolidado)",
       "boe_id": "BOE-A-1992-28740",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740",
-      "fecha": "2026-10-07",
+      "consolidado_a": "2026-10-07",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "47fdb498fa0abfdd1f01d3eb853e512a5608a352571e607e7749095780e4988d"
@@ -113,7 +113,7 @@
       "norma": "Real Decreto-ley 7/2026, de 20 de marzo, Plan Integral de Respuesta a la Crisis en Oriente Medio (texto consolidado; convalidado por Resolución de 26 de marzo de 2026)",
       "boe_id": "BOE-A-2026-6544",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2026-6544",
-      "fecha": "2026-09-30",
+      "consolidado_a": "2026-09-30",
       "tipo_texto": "consolidado",
       "consultado_el": "2026-11-13",
       "sha256_html": "f3c2161b88a9955ad442d898ee2e55e3d9f2d53adbce9d5a0d500fc11e83abfb"
@@ -122,7 +122,7 @@
       "norma": "Real Decreto-ley 18/2026, de 29 de junio, medidas en el marco del Plan Integral de Respuesta a la Crisis en Oriente Medio",
       "boe_id": "BOE-A-2026-14112",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-14112",
-      "fecha": "2026-06-30",
+      "consolidado_a": "2026-06-30",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "26db2085ff6b830970a1f4faaf5a8fbbe1c366e79e4a157dbf34ea8152972ed7"
@@ -131,7 +131,7 @@
       "norma": "Real Decreto-ley 25/2026, de 29 de septiembre, por el que se adoptan y se prorrogan determinadas medidas en el marco del Plan Integral de Respuesta a la Crisis en Oriente Medio",
       "boe_id": "BOE-A-2026-20265",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-20265",
-      "fecha": "2026-09-30",
+      "consolidado_a": "2026-09-30",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "322ca71455d1e18bb113ed84e142df3958e5a535c3ecc2a0f3edba636bcca6b6"
@@ -140,7 +140,7 @@
       "norma": "Resolución de 15 de octubre de 2024, de la Dirección General de Trabajo, relación de fiestas laborales para el año 2025",
       "boe_id": "BOE-A-2024-21316",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2024-21316",
-      "fecha": "2024-10-18",
+      "consolidado_a": "2024-10-18",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "fc3047c47560edd4d28d015ddf371baad66846881a7205c80307f82b454b7300"
@@ -149,7 +149,7 @@
       "norma": "Resolución de 17 de octubre de 2025, de la Dirección General de Trabajo, relación de fiestas laborales para el año 2026",
       "boe_id": "BOE-A-2025-21667",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2025-21667",
-      "fecha": "2025-10-28",
+      "consolidado_a": "2025-10-28",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "7728567f2742abae91e208870e17c77d16b969696a4ff382c91ec62d9d94f709"
@@ -158,7 +158,7 @@
       "norma": "Resolución de 8 de octubre de 2026, de la Dirección General de Trabajo, relación de fiestas laborales para el año 2027",
       "boe_id": "BOE-A-2026-21254",
       "url": "https://www.boe.es/diario_boe/txt.php?id=BOE-A-2026-21254",
-      "fecha": "2026-10-13",
+      "consolidado_a": "2026-10-13",
       "tipo_texto": "diario",
       "consultado_el": "2026-11-13",
       "sha256_html": "ab77fa2ded99bb409507c6c53650adf984c96b3adbcfde8efcdaa3a9dee5f5ce"

@@ -35,6 +35,7 @@ from urllib.parse import urlsplit
 import urllib.request
 
 from hacienda_gpt import settings
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
 from hacienda_gpt.proactive.store import Notification, NotificationStore
 
 logger = logging.getLogger(__name__)
@@ -190,6 +191,16 @@ def canales_configurados() -> list[Canal]:
                 starttls=settings.NOTIFY_SMTP_STARTTLS,
             )
         )
+    # Web Push to each user's own devices (hacienda_gpt/push): per user, with its own opt-in.
+    from hacienda_gpt.push.envio import canal_push_configurado
+    from hacienda_gpt.push.vapid import ConfiguracionVapidError
+
+    try:
+        push = canal_push_configurado()
+    except ConfiguracionVapidError as exc:
+        raise ConfiguracionCanalError(str(exc)) from exc
+    if push is not None:
+        canales.append(push)
     return canales
 
 
@@ -205,6 +216,7 @@ class EntregaStore:
         self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
+            asegurar_esquema(self._conn, "proactive_entrega")  # migrations (hacienda_gpt/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS notification_deliveries (
                     notification_id TEXT NOT NULL,
@@ -294,7 +306,12 @@ def entregar_pendientes(
     resumen: dict[str, Any] = {"enviadas": 0, "errores": 0, "canales": {}}
     for canal in canales:
         pendientes = store.pendientes(canal.nombre)
-        if permitido is not None:
+        # A per-user channel (Web Push) reads its recipients and their opt-in from this database instead.
+        por_usuario = getattr(canal, "enviar_aviso", None)
+        if por_usuario is not None:
+            filtro = canal.preparar(store.db_path)  # type: ignore[attr-defined]
+            pendientes = [n for n in pendientes if filtro(n)]
+        elif permitido is not None:
             # e.g. the owner of the case has not consented to notices leaving the app:
             # those stay pending, in case the consent is given later.
             pendientes = [n for n in pendientes if permitido(n)]
@@ -302,7 +319,10 @@ def entregar_pendientes(
         seguidos = 0
         for notification in pendientes:
             try:
-                canal.enviar(notification.title, texto_plano(notification))
+                if por_usuario is not None:
+                    por_usuario(notification)  # only a generic sentence leaves: hacienda_gpt/push/envio.py
+                else:
+                    canal.enviar(notification.title, texto_plano(notification))
             except Exception as exc:  # one broken channel must not stop the others
                 cuenta["errores"] += 1
                 seguidos += 1

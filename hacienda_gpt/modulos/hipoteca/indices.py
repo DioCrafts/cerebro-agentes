@@ -493,6 +493,45 @@ def _fetch_urllib(url: str) -> bytes:  # pragma: no cover - network
         return data
 
 
+# --- Declaration for the shared legal-data library (hacienda_gpt.conocimiento) ------------------------
+
+
+def _literales_coherentes(serie: SerieIndices, _textos: object) -> list[str]:
+    """Offline: every stored value is what its literal figure says (the figure as the resolution prints it)."""
+    return [
+        f"{dato.indice}[{dato.mes}]: el dato es {dato.valor} y el BOE ({dato.boe_id}) imprime «{dato.literal}»"
+        for meses in serie.datos.values()
+        for dato in meses.values()
+        if _valor(dato.literal) != dato.valor
+    ]
+
+
+def _declaracion() -> tuple[object, ...]:
+    from hacienda_gpt.conocimiento import FicheroLegal, Ortografia
+
+    return (
+        FicheroLegal(
+            clave="hipoteca_indices",
+            modulo="hipoteca",
+            titulo="Hipoteca: índices oficiales de referencia",
+            ruta=SERIE_PATH,
+            cargar=serie_desde_json,
+            grupos=lambda _serie: [],
+            ortografia=Ortografia(leer_cifra=_valor),
+            propias=_literales_coherentes,
+            limpiar=lambda: cargar_serie.cache_clear(),
+            solo_persona=(
+                "Serie mensual publicada por el Banco de España en resoluciones del BOE (una por mes, no un texto "
+                "consolidado): la mantiene su propio lector (``python -m hacienda_gpt.modulos.hipoteca.indices "
+                "actualizar``), que lee cada resolución en XML y guarda la cifra tal como se imprime."
+            ),
+        ),
+    )
+
+
+FICHEROS_LEGALES = _declaracion()
+
+
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - network / maintenance
     """``actualizar [AAAA-MM-DD]``: download the resolutions published since that date (default: the last
     stored publication) and add them to the series. ``reconstruir <dir>``: rebuild the whole series from

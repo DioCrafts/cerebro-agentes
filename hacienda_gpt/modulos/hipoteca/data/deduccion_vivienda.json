@@ -2,6 +2,7 @@
   "version": "2026-11-16",
   "fuentes": {
     "BOE-A-2006-20764": {
+      "boe_id": "BOE-A-2006-20764",
       "norma": "Ley 35/2006, de 28 de noviembre, del Impuesto sobre la Renta de las Personas Físicas (texto consolidado vigente)",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764",
       "consolidado_a": "2026-11-11",
@@ -9,6 +10,7 @@
       "sha256_html": "62785c5c546758fec46d0da7c50273dfee86f98b961699296b6c2165220df2a5"
     },
     "BOE-A-2006-20764@20121031": {
+      "boe_id": "BOE-A-2006-20764",
       "norma": "Ley 35/2006, redacción en vigor a 31-12-2012 (versión del BOE de 31-10-2012, la última antes de la Ley 16/2012, que suprimió el art. 68.1 «con efectos desde el 1 de enero de 2013»)",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764&tn=1&p=20121031",
       "consolidado_a": "2012-10-31",

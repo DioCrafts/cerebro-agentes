@@ -9,7 +9,7 @@ import pytest
 
 from hacienda_gpt.agent.evidence import EvidenceLedger
 from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import BENEFITS_TOOL, CALCULATE_TOOL, JOINT_TOOL, RECORD_FACTS_TOOL, Toolbox
+from hacienda_gpt.agent.tools import RECORD_FACTS_TOOL, Toolbox
 from hacienda_gpt.api.api import app
 from hacienda_gpt.decision.fact_extractor import (
     _PROVIDER_SCHEMA,
@@ -20,6 +20,12 @@ from hacienda_gpt.decision.fact_extractor import (
     OpenAIFactExtractor,
 )
 from hacienda_gpt.decision.schemas import CaseState, Fact
+from hacienda_gpt.modulos.fiscal.especificaciones import (
+    AYUDA_REGISTRAR_HECHOS,
+    BENEFITS_TOOL,
+    CALCULATE_TOOL,
+    JOINT_TOOL,
+)
 from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
 from hacienda_gpt.tax.irpf import Descendiente, IRPFInput
 from hacienda_gpt.tax.params import GASTOS_DESGLOSADOS
@@ -268,7 +274,8 @@ def test_tool_schemas_describe_the_new_inputs() -> None:
     assert (
         DESCENDIENTES in RECORD_FACTS_TOOL.input_schema["properties"]["hechos"]["items"]["properties"]["nombre"]["enum"]
     )
-    assert "descendientes" in RECORD_FACTS_TOOL.description
+    # The tax module documents its structured facts in the core's registrar_hechos (ayuda_registrar_hechos).
+    assert "descendientes" in AYUDA_REGISTRAR_HECHOS
 
 
 def test_calculate_tool_takes_the_detail_and_turns_contradictions_into_tool_errors() -> None:

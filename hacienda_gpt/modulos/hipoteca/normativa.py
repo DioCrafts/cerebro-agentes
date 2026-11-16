@@ -2,8 +2,10 @@
 
 Every figure (fee caps, periods, dates) is read from the consolidated text on boe.es and stored with the
 literal sentence it comes from and how the figure is spelled there, so :func:`comprobar_evidencias`
-can re-check it mechanically: every figure is inside its quote and means the stored value, and (given
-the law texts) every quote is verbatim in its law. No figure lives in the arithmetic.
+(the shared checker of :mod:`hacienda_gpt.conocimiento`) can re-check it mechanically: every figure is inside its
+quote and means the stored value, and (given the law texts) every quote is verbatim in its law. No figure lives in
+the arithmetic. The file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification and the reading dates
+cover it.
 """
 
 from __future__ import annotations
@@ -18,7 +20,16 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.autonomos_params import texto_de_html
+from hacienda_gpt.conocimiento import (
+    FRONTERA_CIFRA,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    citas_de_evidencia,
+    fuente_de,
+    hojas,
+)
+from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 NORMATIVA_PATH = DATA_DIR / "normativa.json"
@@ -208,59 +219,56 @@ def leer_cifra(literal: str) -> Decimal | date:
     return numero / 100 if re.search(r"por (ciento|100)\b", texto) else numero
 
 
-def _compacto(text: str) -> str:
-    return " ".join(text.split())
+ORTOGRAFIA = Ortografia(leer_cifra=leer_cifra, frontera=FRONTERA_CIFRA)
+
+
+def grupos_legales(normativa: Normativa) -> list[GrupoLegal]:
+    """The file as groups of the shared library: each group's own figures (its fields that hold an amount, a
+    percentage, a period or a date) and its quotes."""
+    return [
+        GrupoLegal(
+            nombre=nombre,
+            ruta=[nombre],
+            descripcion=grupo.cita_corta(),
+            fuente=fuente_de(grupo.fuente),
+            cifras=hojas(grupo, tipos=(Decimal, date), excluir=("fuente", "evidencia"), listas=False, diccionarios=False),
+            citas=citas_de_evidencia(grupo.evidencia),
+        )
+        for nombre, grupo in normativa.grupos().items()
+    ]
+
+
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="hipoteca",
+        modulo="hipoteca",
+        titulo="Hipoteca: comisiones, plazos y normas",
+        ruta=NORMATIVA_PATH,
+        cargar=Normativa.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda normativa: set(normativa.fuentes_principales),
+        limpiar=lambda: cargar_normativa.cache_clear(),
+        solo_persona=(
+            "Los límites de las comisiones dependen de la fecha del contrato y de la opción que eligió la entidad "
+            "(arts. 23 y 24 Ley 5/2019, DT 1.ª): la calculadora de comisiones no recibe la normativa como "
+            "parámetro, así que un caso de prueba no podría contrastar una propuesta. Una persona la relee; la "
+            "verificación semanal comprueba cada cita y cada cifra."
+        ),
+    ),
+)
 
 
 def comprobar_evidencias(normativa: Normativa, textos: dict[str, str] | None = None) -> list[str]:
     """Problems found re-reading the data against its quotes (and, with ``textos``, the quotes against the
-    law texts: BOE id -> plain text). Empty list = consistent."""
-    problemas: list[str] = []
-    for nombre, grupo in normativa.grupos().items():
-        cifras_grupo = {
-            campo: getattr(grupo, campo)
-            for campo in type(grupo).model_fields
-            if campo not in {"fuente", "evidencia"} and isinstance(getattr(grupo, campo), Decimal | date)
-        }
-        sin_evidencia = set(cifras_grupo)
-        if grupo.fuente.boe_id not in normativa.fuentes_principales:
-            problemas.append(f"{nombre}: {grupo.fuente.boe_id} no figura en fuentes_principales")
-        for ev in grupo.evidencia:
-            if ev.boe_id not in normativa.fuentes_principales:
-                problemas.append(f"{nombre}: {ev.boe_id} no figura en fuentes_principales")
-            if textos is not None:
-                texto = textos.get(ev.boe_id)
-                if texto is None:
-                    problemas.append(f"{nombre}: no se ha aportado el texto de {ev.boe_id}")
-                elif _compacto(ev.cita) not in _compacto(texto):
-                    problemas.append(f"{nombre}: la cita de {ev.articulo} no aparece literal en {ev.boe_id}")
-            for campo, literal in ev.cifras.items():
-                if campo not in cifras_grupo:
-                    problemas.append(f"{nombre}: la evidencia cita una cifra inexistente ({campo})")
-                    continue
-                if not re.search(rf"(?<![\d.,]){re.escape(literal)}(?!\d|[.,]\d)", ev.cita):
-                    problemas.append(f"{nombre}.{campo}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                try:
-                    leido = leer_cifra(literal)
-                except (InvalidOperation, KeyError, ValueError):
-                    problemas.append(f"{nombre}.{campo}: «{literal}» no es una cifra")
-                    continue
-                if leido != cifras_grupo[campo]:
-                    problemas.append(f"{nombre}.{campo}: el dato es {cifras_grupo[campo]} y la cita dice «{literal}»")
-                sin_evidencia.discard(campo)
-        problemas.extend(f"{nombre}.{campo}: cifra sin evidencia" for campo in sorted(sin_evidencia))
-    return problemas
+    law texts: BOE id -> plain text). Empty list = consistent. The checker is the shared one of
+    :mod:`hacienda_gpt.conocimiento`."""
+    return FICHEROS_LEGALES[0].comprobar(normativa, textos)
 
 
 def textos_de_directorio(directorio: Path) -> dict[str, str]:
     """BOE id -> plain text, from ``<BOE-ID>.html`` (downloaded pages) or ``<BOE-ID>.txt`` (extracts)."""
-    textos: dict[str, str] = {}
-    for path in sorted(directorio.glob("BOE-A-*.txt")):
-        textos[path.stem] = path.read_text(encoding="utf-8")
-    for path in sorted(directorio.glob("BOE-A-*.html")):
-        textos[path.stem] = texto_de_html(path.read_text(encoding="utf-8"))
-    return textos
+    return textos_de_directorio_comun(directorio, "BOE-A-*")
 
 
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - maintenance

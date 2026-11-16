@@ -17,95 +17,37 @@ Three kinds of check, from strongest to weakest:
 
 A passing check does not prove the parameter is right; a failing one proves
 the text it was read from is no longer there.
+
+What is specific to the tax parameters (which checks each group of the IRPF file gets) lives here; how a page is
+read, the literal-quote rule and :func:`verificar` itself are the shared legal-data library's
+(:mod:`hacienda_gpt.conocimiento`), re-exported under their old names.
 """
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable
 from decimal import Decimal, InvalidOperation
 from functools import lru_cache
 import hashlib
-import html
 import json
-from pathlib import Path
-import re
-from typing import Any, Literal
-import unicodedata
+from typing import Any
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel
 
+# The text handling and the checker are the shared legal-data library's; re-exported under their old names.
+from hacienda_gpt.conocimiento.comprobacion import Comprobacion, Resultado, Tipo, verificar
+from hacienda_gpt.conocimiento.texto import (
+    VENTANA_TABLA,
+    VERSION_DIARIO,
+    TextoDe,
+    leer_snapshot,
+    texto_plano,
+    url_de,
+)
+from hacienda_gpt.conocimiento.texto import aparece as _aparece
+from hacienda_gpt.conocimiento.texto import comprimido as _comprimido
+from hacienda_gpt.conocimiento.texto import formas as _formas
+from hacienda_gpt.conocimiento.texto import juntas as _juntas
 from hacienda_gpt.tax.params import DATA_DIR, Escala, IRPFParams, load_params
-
-Tipo = Literal["cita", "tabla", "cifras"]
-VENTANA_TABLA = 6000
-
-
-class Comprobacion(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    boe_id: str
-    # AAAAMMDD of a superseded wording to check against instead of the current text.
-    version: str | None = None
-    # Where the parameters live in the JSON file, e.g. ["comunidades", "galicia", "escala_general"].
-    ruta: list[str]
-    descripcion: str
-    tipo: Tipo
-    cifras: list[Decimal] = Field(default_factory=list)
-    citas: list[str] = Field(default_factory=list)
-
-
-class Resultado(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    comprobacion: Comprobacion
-    ok: bool
-    # Figures or quotes no longer found; ["sin texto"] when the law could not be read.
-    faltan: list[str] = Field(default_factory=list)
-
-
-def texto_plano(pagina: str) -> str:
-    """Visible text of a BOE page, lower-cased and with whitespace collapsed."""
-    sin_codigo = re.sub(r"<(script|style)[^>]*>.*?</\1>", " ", pagina, flags=re.S | re.I)
-    texto = html.unescape(re.sub(r"<[^>]+>", " ", sin_codigo))
-    texto = unicodedata.normalize("NFKC", texto).replace(" ", " ")
-    return re.sub(r"\s+", " ", texto).strip().lower()
-
-
-def _comprimido(texto: str) -> str:
-    return re.sub(r"[\s«»\"“”]", "", unicodedata.normalize("NFKC", texto).lower())
-
-
-def _formas(x: Decimal) -> set[str]:
-    """Ways a Spanish law may print ``x``: 13362.22 → "13.362,22", "13 362,22", "13362,22"."""
-    out: set[str] = set()
-    q = x.normalize()
-    for decimales in (0, 1, 2, 3):
-        if q != q.quantize(Decimal(1).scaleb(-decimales)):
-            continue
-        entero, _, fraccion = f"{q:.{decimales}f}".partition(".")
-        agrupado = f"{int(entero):,}"
-        for forma in (entero, agrupado.replace(",", "."), agrupado.replace(",", " ")):
-            out.add(forma + ("," + fraccion if fraccion else ""))
-    return out
-
-
-def _aparece(texto: str, x: Decimal) -> bool:
-    if 0 < x < 1 and _aparece(texto, x * 100):
-        # A fraction stored as 0.15 is printed as "15 por ciento".
-        return True
-    return any(re.search(r"(?<![\d.,])" + re.escape(f) + r"(?![\d]|[.,]\d)", texto) for f in _formas(x))
-
-
-def _juntas(texto: str, cifras: list[Decimal], ventana: int = VENTANA_TABLA) -> bool:
-    """Do all the figures appear within one stretch of ``ventana`` characters?"""
-    if not cifras:
-        return True
-    for forma in _formas(cifras[0]):
-        for match in re.finditer(r"(?<![\d.,])" + re.escape(forma) + r"(?![\d]|[.,]\d)", texto):
-            tramo = texto[max(0, match.start() - ventana // 2) : match.start() + ventana]
-            if all(_aparece(tramo, c) for c in cifras):
-                return True
-    return False
 
 
 def _cifras_de(node: Any) -> list[Decimal]:
@@ -370,68 +312,26 @@ def comprobaciones(
     return out
 
 
-TextoDe = Callable[[str, str | None], str | None]
-
-
-def verificar(checks: Iterable[Comprobacion], texto_de: TextoDe) -> list[Resultado]:
-    """Run the checks. ``texto_de(boe_id, version)`` returns the law's page (HTML), or None when unavailable."""
-    textos: dict[tuple[str, str | None], tuple[str, str] | None] = {}
-    out: list[Resultado] = []
-    for check in checks:
-        clave = (check.boe_id, check.version)
-        if clave not in textos:
-            pagina = texto_de(check.boe_id, check.version)
-            plano = texto_plano(pagina) if pagina else ""
-            if pagina and check.version is None:
-                # Format watch (never raises): a page read as empty looks like "every figure is gone".
-                from hacienda_gpt.ops import formatos
-
-                formatos.observar("boe_consolidado_html", pagina, contexto=check.boe_id)
-            textos[clave] = (plano, _comprimido(plano)) if plano else None
-        par = textos[clave]
-        if par is None:
-            out.append(Resultado(comprobacion=check, ok=False, faltan=["sin texto"]))
-            continue
-        plano, comprimido = par
-        faltan: list[str] = []
-        for cita in check.citas:
-            partes = [p for p in re.split(r"\[\.\.\.\]|…", cita) if len(_comprimido(p)) > 15] or [cita]
-            if any(_comprimido(p) not in comprimido for p in partes):
-                faltan.append(cita[:120])
-        if check.tipo == "tabla":
-            ausentes = [str(c) for c in check.cifras if not _aparece(plano, c)]
-            if ausentes:
-                faltan += ausentes
-            elif not _juntas(plano, check.cifras):
-                faltan.append("las cifras ya no aparecen juntas en una tabla")
-        elif check.tipo == "cifras":
-            faltan += [str(c) for c in check.cifras if not _aparece(plano, c)]
-        out.append(Resultado(comprobacion=check, ok=not faltan, faltan=faltan))
-    return out
-
-
 def cargar_y_verificar(ejercicio: int, texto_de: TextoDe) -> list[Resultado]:
     return verificar(comprobaciones(load_params(ejercicio)), texto_de)
 
 
-# Not a version of a consolidated text: the norm as the daily BOE published it.
-VERSION_DIARIO = "diario"
-
-
-def url_de(boe_id: str, version: str | None = None) -> str:
-    if version == VERSION_DIARIO:
-        return f"https://www.boe.es/diario_boe/txt.php?id={boe_id}"
-    base = f"https://www.boe.es/buscar/act.php?id={boe_id}"
-    return f"{base}&tn=1&p={version}" if version else base
-
-
-def leer_snapshot(directorio: Path) -> TextoDe:
-    """A ``texto_de`` that reads ``<boe_id>.html`` (or ``<boe_id>_p<version>.html``) under ``directorio``."""
-
-    def texto_de(boe_id: str, version: str | None = None) -> str | None:
-        nombre = f"{boe_id}_p{version}.html" if version else f"{boe_id}.html"
-        for path in sorted(directorio.rglob(nombre)):
-            return path.read_text(encoding="utf-8", errors="replace")
-        return None
-
-    return texto_de
+__all__ = [
+    "VENTANA_TABLA",
+    "VERSION_DIARIO",
+    "Comprobacion",
+    "Resultado",
+    "TextoDe",
+    "Tipo",
+    "_aparece",
+    "_comprimido",
+    "_formas",
+    "_juntas",
+    "cargar_y_verificar",
+    "comprobaciones",
+    "huella_de_grupo",
+    "leer_snapshot",
+    "texto_plano",
+    "url_de",
+    "verificar",
+]

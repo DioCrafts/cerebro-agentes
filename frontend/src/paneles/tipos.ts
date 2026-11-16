@@ -1,0 +1,109 @@
+// The contract between the shell and its panels (see registro.ts).
+//
+// The shell owns the conversation, the case and the data several panels share (notices, modules, pending
+// actions); a panel module receives all of it as `ctx` and maps it onto its component's props. A new panel
+// therefore needs no change in the shell: one component file plus one entry in registro.ts.
+
+import type { LucideIcon } from "lucide-react";
+import type { ComponentType } from "react";
+
+import type { AdvisorNotification, CaseState, Fact, ObligationCandidate } from "../api";
+import type { AccionPendiente, ModulosResponse } from "../apiModulos";
+import type { SimulatorSeed } from "../components/SimulatorPanel";
+
+export type ValorDato = string | number | boolean | null;
+
+export interface ContextoPanel {
+  /** The conversation on screen: panels keyed by it never leak figures into another one. */
+  conversacionId: string;
+  caso: {
+    id: string | null;
+    facts: Fact[];
+    taxPeriod: string | null;
+    obligations: ObligationCandidate[];
+  };
+  /** The advisor is answering: panels that write to the case wait. */
+  ocupado: boolean;
+  /** Change a fact of the case (null deletes it); resolves to whether it was saved. */
+  cambiarDato: (nombre: string, valor: ValorDato) => Promise<boolean>;
+  guardandoDato: string | null;
+  errorCaso: string | null;
+  /** The facts that belong to household modules (shown in «Módulos», not in «Tu expediente»). */
+  datosDeModulos: Set<string>;
+  /** Put a case the server returned on screen. */
+  aplicarCaso: (caso: CaseState) => void;
+  /** Re-read the case from the server (after a panel changed it there). */
+  recargarCaso: () => void;
+  modulos: {
+    datos: ModulosResponse | null;
+    error: string | null;
+    cambiar: (clave: string, activo: boolean, borrar: boolean) => Promise<boolean>;
+    nombres: Record<string, string>;
+  };
+  acciones: {
+    items: AccionPendiente[];
+    decidir: (id: string, confirmar: boolean) => Promise<void>;
+    recargar: () => void;
+  };
+  avisos: {
+    items: AdvisorNotification[];
+    cargando: boolean;
+    error: string | null;
+    marcarLeido: (id: string) => void;
+    recargar: () => void;
+  };
+  /** Send a question to the advisor (closes the panel first). */
+  preguntar: (texto: string) => void;
+  /** Open another panel (closing this one). */
+  abrir: (id: string) => void;
+  /** Figures the optimiser handed to the simulator for this conversation (null: none). */
+  semillaSimulador: { id: number; seed: SimulatorSeed } | null;
+  usarEnSimulador: (seed: SimulatorSeed) => void;
+}
+
+export interface PropsPanel {
+  ctx: ContextoPanel;
+  open: boolean;
+  onClose: () => void;
+}
+
+/** Counters shown on the navigation (a badge). */
+export interface Insignias {
+  avisosSinLeer: number;
+  accionesPendientes: number;
+  datosEnExpediente: number;
+}
+
+/** What decides whether a panel is offered. */
+export interface Visibilidad {
+  /** Keys of the modules switched on, or null while unknown (an older backend, or still loading). */
+  modulosActivos: Set<string> | null;
+  /** Feature flags: what the server offers (`navegador`, `push`) and what the build hides. */
+  flags: Record<string, boolean>;
+  /** The backend has user accounts and somebody is signed in. */
+  conCuenta: boolean;
+}
+
+export interface DefinicionPanel {
+  /** Stable id: the value of `?panel=` (lowercase, digits and hyphens). */
+  id: string;
+  /** Short label for the navigation. */
+  etiqueta: string;
+  /** Longer description: the button's accessible name and tooltip. */
+  titulo: string;
+  icono: LucideIcon;
+  /** Order in the navigation (lower first). */
+  orden: number;
+  /** Always in the top bar, at every width (the rest go to «Más» when space runs out). */
+  destacado?: boolean;
+  /** Offered only while this module is switched on (offered while that is unknown). */
+  modulo?: string;
+  /** Offered only while this feature flag is on. */
+  flag?: string;
+  /** Offered only with accounts. */
+  requiereCuenta?: boolean;
+  /** A counter on the button, with its accessible wording. */
+  insignia?: (insignias: Insignias) => { valor: number; etiqueta: string } | null;
+  /** The panel module (lazy: its code is downloaded the first time it opens). */
+  cargar: () => Promise<{ default: ComponentType<PropsPanel> }>;
+}

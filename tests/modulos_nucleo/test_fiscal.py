@@ -1,4 +1,4 @@
-"""The tax module through the contract: same tools, same notices, nothing moved."""
+"""The tax module through the contract: same tools, same notices (its code now lives in modulos/fiscal)."""
 
 from __future__ import annotations
 

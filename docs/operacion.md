@@ -250,8 +250,29 @@ de la calculadora (hay que releerla; no implica que las cifras hayan cambiado), 
 pudo consultar el BOE. Solo necesita acceso a `www.boe.es`.
 
 Después ejecuta `params-verify --fail-on-mismatch` (todos los ficheros de parámetros: IRPF,
-autónomos, sociedades, patrimonio e ISD) y, siempre, `params-autopilot` (apartado 5): sin el
-secreto `ANTHROPIC_API_KEY` solo hace su parte determinista y dice qué grupos esperan.
+autónomos, sociedades, patrimonio e ISD; y los datos legales de **todos los módulos del hogar**,
+bajo `modulos`) y, siempre, `params-autopilot` (apartado 5): sin el secreto `ANTHROPIC_API_KEY`
+solo hace su parte determinista y dice qué grupos esperan.
+
+**Los módulos del hogar, en el mismo ciclo.** Cada módulo declara sus datos legales en la
+biblioteca común `hacienda_gpt/conocimiento/` (`FICHEROS_LEGALES` en su fichero de comprobación):
+luz (`modulos/luz/data/regulados.json`), caducidades, ayudas (`prestaciones_<año>.json`),
+hipoteca (normativa, fundamento de la deducción y serie de índices), suscripciones y correo; más
+los pasajes que citan el planificador y el módulo fiscal desde el código. Con eso, sin nada que
+cablear:
+
+- `params-verify` comprueba cada grupo contra el BOE de hoy con el mismo comprobador que las
+  pruebas del módulo (cita literal en su ley y en su versión; cada cifra en su cita), y
+  `--fichero luz` (o la clave de cualquier módulo) limita la ejecución a uno;
+- `params-check` compara la fecha de actualización de cada ley de un módulo con la **fecha de
+  lectura guardada en el propio fichero del módulo** (`fuentes_principales[*].consultado_el`), como
+  hace con los ficheros fiscales. El fichero de estado `MODULOS_FUENTES_STATE_PATH` ya solo sirve
+  para una fuente que ningún fichero de datos registra (un módulo fuera de la biblioteca), y
+  `--marcar-modulos-revisados` solo mueve esas;
+- `params-verify` / `params-autopilot` anotan la nueva lectura en el fichero del módulo con las
+  mismas condiciones que en los fiscales (abajo), cambiando solo `consolidado_a`, `consultado_el`
+  y `sha256_html` en su sitio, sin reformatear el fichero; y el PR automático los incluye
+  (`hacienda_gpt/modulos/*/data/*.json`).
 
 `params-check` compara la fecha en que el BOE actualizó cada ley con `consultado_el`, la fecha en
 que los ficheros la leyeron. Esa fecha ya no hay que editarla a mano: `params-verify` y
@@ -290,6 +311,18 @@ Cuando un grupo de parámetros deja de coincidir con su ley (`params-verify`),
 nuevos. Nada llega a `hacienda_gpt/tax/data/` sin pasar un control determinista
 y, salvo que actives la auto-aplicación, sin que tú lo apliques. Explicación y
 garantías en el README («Recodificación automática»).
+
+**Módulos del hogar.** El bucle cubre también las reglas de `caducidades`
+(`hacienda_gpt/modulos/caducidades/data/reglas.json`): sus grupos aparecen en
+`params-recode`, `params-autopilot`, `params-apply` y `params-confirm` como
+`caducidades:<Modelo>` (por ruta: `params-recode --ruta caducidades:itv`), con
+casos del revisor que pasan por la calculadora del propio módulo. Un fichero sin
+año se archiva bajo el pseudoejercicio `9999` («lo vigente»). **Una propuesta
+sobre datos de un módulo nunca se aplica sola**, ni con `RECODE_AUTO_APPLY=true`:
+siempre la aplica una persona con `params-apply`. Los demás ficheros de los
+módulos los relee una persona, y su declaración dice por qué
+(`hacienda_gpt.conocimiento.recodificacion.solo_persona()`); la verificación
+semanal sí los cubre a todos.
 
 **Nada de esto se ha probado contra un modelo real**: las pruebas usan un
 proveedor guionizado. Antes de activar la auto-aplicación, mide el bucle con tu
@@ -412,10 +445,19 @@ actualización» de la página), sin modelo y solo si:
   ningún grupo marcado como no verificado que no compruebe nada, ni —en el
   piloto— una norma en curso o un grupo de la ejecución sin resolver.
 
+Lo mismo vale para las leyes de las que leen sus datos los módulos del hogar
+(`hacienda_gpt/conocimiento/`), con una condición más: si algún grupo de un
+módulo se lee de un artículo cuya redacción se publicó después de la lectura
+anterior, no se anota aunque su cita siga literal (el cambio puede estar fuera
+de ella); lo relee una persona —o el bucle, para las reglas de `caducidades`—
+y la lectura se anota después.
+
 Entonces escribe en **todos** los ficheros que la citan la nueva fecha de
 consolidación (nunca hacia atrás), `consultado_el` de hoy y la huella de la
 página, y una línea en `revisiones` (los ficheros de autónomos, sociedades,
-patrimonio e ISD la empiezan la primera vez). Valida cada fichero con su modelo antes de escribir ninguno. Nunca
+patrimonio e ISD la empiezan la primera vez; los de los módulos no tienen
+registro y solo cambian esos tres campos, en su sitio). Valida cada fichero con su modelo (y los de los
+módulos, con su autocontrol) antes de escribir ninguno. Nunca
 toca una cifra ni una fuente fijada a una redacción con fecha o al PDF de una
 orden. La salida (`procedencia`) dice qué leyes se anotaron, cuáles están al
 día y, de las demás, todos los motivos. Con `--snapshot-dir` solo se simula

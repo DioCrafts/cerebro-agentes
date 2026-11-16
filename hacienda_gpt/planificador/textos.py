@@ -4,7 +4,8 @@ Copied literally from the consolidated texts on www.boe.es (LIRPF, BOE-A-2006-20
 publicada el 11/11/2026»; Ley 19/2021 del ingreso mínimo vital, BOE-A-2021-21007, «Última actualización publicada
 el 03/10/2026»), read on 16/11/2026. They justify WHICH magnitude a rule uses; no figure in them feeds a
 computation. ``tests/planificador/test_textos.py`` checks each one is verbatim in an excerpt of its law kept in
-``tests/planificador/fixtures``.
+``tests/planificador/fixtures``; declared in ``FICHEROS_LEGALES``, ``params-verify`` re-checks them against
+today's BOE every week.
 
 The quotes of the aid rules themselves (bono social, IMV, CAPI, birth benefit) are not duplicated here: they are
 read from the aid module's data (``modulos/ayudas/data``), where they are already checked against the BOE.
@@ -12,6 +13,7 @@ read from the aid module's data (``modulos/ayudas/data``), where they are alread
 
 from __future__ import annotations
 
+from hacienda_gpt.conocimiento import CitaLegal, FicheroLegal, GrupoLegal, Ortografia
 from hacienda_gpt.tax.optimizador import TEXTOS_LEGALES as TEXTOS_OPTIMIZADOR
 from hacienda_gpt.tax.optimizador import TextoLegal
 
@@ -74,8 +76,38 @@ TEXTOS: dict[str, TextoLegal] = {
     )
 }
 # The optimiser's own quotes the planner repeats (redemption of pension plans, the tax period).
-for _ref in ("art. 17.2.a).3.ª LIRPF", "art. 12 LIRPF"):
+for _ref in ("art. 17.2.a).3.ª LIRPF", "art. 12 LIRPF"):  # the same as _DEL_OPTIMIZADOR
     TEXTOS[_ref] = TEXTOS_OPTIMIZADOR[_ref]
+
+
+def _grupos(textos: dict[str, TextoLegal]) -> list[GrupoLegal]:
+    """Each passage the planner adds (not the optimiser's, declared with the tax module's) as a figure-less group."""
+    return [
+        GrupoLegal(
+            nombre=referencia,
+            ruta=["TEXTOS", referencia],
+            descripcion=referencia,
+            citas=[CitaLegal(boe_id=t.boe_id, articulo=referencia, cita=t.texto)],
+        )
+        for referencia, t in textos.items()
+        if referencia not in _DEL_OPTIMIZADOR
+    ]
+
+
+_DEL_OPTIMIZADOR = ("art. 17.2.a).3.ª LIRPF", "art. 12 LIRPF")
+# Declared for the shared legal-data library: params-verify checks every passage against today's BOE each week.
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="planificador",
+        modulo="planificador",
+        titulo="Planificador: pasajes legales citados",
+        ruta=None,
+        cargar=lambda _raw: TEXTOS,
+        grupos=_grupos,
+        ortografia=Ortografia(leer_cifra=lambda literal: literal),
+        solo_persona="Pasajes sin cifras que justifican qué magnitud usa cada regla; están en el código.",
+    ),
+)
 
 
 def cita(referencia: str) -> str:
@@ -84,4 +116,4 @@ def cita(referencia: str) -> str:
     return f"{t.referencia} ({t.boe_id}): «{t.texto}»"
 
 
-__all__ = ["LEY_IMV", "LIRPF", "TEXTOS", "cita"]
+__all__ = ["FICHEROS_LEGALES", "LEY_IMV", "LIRPF", "TEXTOS", "cita"]

@@ -425,3 +425,21 @@ NAVEGADOR_ORIGENES_SUSTITUTOS = os.environ.get("NAVEGADOR_ORIGENES_SUSTITUTOS", 
 # The ACTIVE prompt/model variant, written only by `python -m hacienda_gpt.cli.evaluacion promote`.
 # Empty = hacienda_gpt/evaluacion/variante_activa.json; without that file the agent runs as always.
 EVALUACION_VARIANTE_ACTIVA_PATH = os.environ.get("EVALUACION_VARIANTE_ACTIVA_PATH", "")
+
+# --- Platform: migrations and processes (hacienda_gpt/plataforma, docs/despliegue.md) ---
+# Stores bring their tables up to date (schema_migrations) when they open a connection, and the API migrates
+# the cases' database at start-up. false: the stores create their tables as they did before the migrations.
+MIGRACIONES_AUTOMATICAS = _env_bool("MIGRACIONES_AUTOMATICAS", default=True)
+# The API process drains the event bus itself (with EVENTOS_DESPACHO_EN_PROCESO). false: only the worker
+# (`python -m hacienda_gpt.cli.plataforma worker`) dispatches; the API just writes the events.
+EVENTOS_DESPACHO_EN_API = _env_bool("EVENTOS_DESPACHO_EN_API", default=True)
+# Scheduled jobs the worker runs: empty = the default set; "ninguno" = none; or comma-separated names.
+PLATAFORMA_TRABAJOS = os.environ.get("PLATAFORMA_TRABAJOS", "")
+# Jobs removed from that set (comma-separated names).
+PLATAFORMA_TRABAJOS_DESACTIVADOS = os.environ.get("PLATAFORMA_TRABAJOS_DESACTIVADOS", "")
+# A slot missed while no worker ran (restart, deploy) still runs if the worker is back within this many hours.
+PLATAFORMA_RECUPERAR_HORAS = float(os.environ.get("PLATAFORMA_RECUPERAR_HORAS", "6"))
+# Seconds between the worker's heartbeats (and scheduler checks).
+PLATAFORMA_LATIDO_SEGUNDOS = float(os.environ.get("PLATAFORMA_LATIDO_SEGUNDOS", "30"))
+# Extra modules (comma-separated) whose ``registrar_en_plataforma(registro)`` adds services or jobs to the worker.
+PLATAFORMA_EXTENSIONES = os.environ.get("PLATAFORMA_EXTENSIONES", "")

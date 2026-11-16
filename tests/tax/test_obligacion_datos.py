@@ -17,10 +17,11 @@ import pytest
 
 from hacienda_gpt.agent.evidence import EvidenceLedger
 from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import CALCULATE_TOOL, OBLIGACION_TOOL, Toolbox
+from hacienda_gpt.agent.tools import Toolbox
 from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
 from hacienda_gpt.decision.schemas import CaseState, Fact
 from hacienda_gpt.modulos.fiscal import MODULO
+from hacienda_gpt.modulos.fiscal.especificaciones import CALCULATE_TOOL, OBLIGACION_TOOL
 from hacienda_gpt.tax.irpf import IRPFInput
 from hacienda_gpt.tax.obligacion import _PREGUNTAS, CITAS, obligado_a_declarar
 from hacienda_gpt.tax.params import DATA_DIR, load_params

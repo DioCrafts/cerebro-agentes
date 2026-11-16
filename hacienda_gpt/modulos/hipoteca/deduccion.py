@@ -11,9 +11,10 @@ the amortisation, the interest, the early repayments and their fees) or not (pur
 loan costs), with the literal words of the law that cover it; plus the conditions it cannot check. The rate and
 the cap are NOT here: they are the IRPF calculator's (``tax/data/irpf_*.json``, ``vivienda_habitual_transitoria``).
 
-:func:`comprobar` is the self-check: every figure is inside its quote, every concept's words are inside its
-quote and, given the law texts, every quote is verbatim in the wording it was read from (the 2012 wording is a
-superseded version: ``act.php?id=BOE-A-2006-20764&tn=1&p=20121031``).
+:func:`comprobar` is the self-check (the shared checker of :mod:`hacienda_gpt.conocimiento`, the file being
+declared in ``FICHEROS_LEGALES``): every figure is inside its quote, every concept's words are inside its quote and,
+given the law texts, every quote is verbatim in the wording it was read from (the 2012 wording is a superseded
+version: ``act.php?id=BOE-A-2006-20764&tn=1&p=20121031``).
 """
 
 from __future__ import annotations
@@ -24,15 +25,21 @@ from decimal import Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
-import re
-import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from hacienda_gpt.conocimiento import (
+    FRONTERA_LIBRE,
+    CitaLegal,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    comprimido,
+    texto_plano,
+)
 from hacienda_gpt.modulos.hipoteca.calculo import Cuadro
 from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada
 from hacienda_gpt.modulos.hipoteca.normativa import leer_cifra
-from hacienda_gpt.tax.verificacion import texto_plano
 
 DEDUCCION_PATH = Path(__file__).resolve().parent / "data" / "deduccion_vivienda.json"
 
@@ -42,6 +49,8 @@ class _Model(BaseModel):
 
 
 class Pagina(_Model):
+    # The law the page belongs to (the key also carries the version of a superseded wording).
+    boe_id: str | None = None
     norma: str
     url: str
     consolidado_a: str
@@ -130,39 +139,36 @@ def base_deducible(
     return sum(importes_deducibles(pagos, fundamento).values(), Decimal(0)).quantize(Decimal("0.01"))
 
 
-def _comprimido(texto: str) -> str:
-    """Like ``tax.verificacion``: NFKC, lower case, no whitespace or quotation marks (links add stray spaces)."""
-    return re.sub(r"[\s«»\"“”]", "", unicodedata.normalize("NFKC", texto).lower())
+ORTOGRAFIA = Ortografia(leer_cifra=leer_cifra, frontera=FRONTERA_LIBRE)
 
 
-def comprobar(fundamento: FundamentoPuente, textos: dict[str, str] | None = None) -> list[str]:
-    """Problems found re-reading the data against its quotes and (with ``textos``: ``"<BOE-ID>"`` or
-    ``"<BOE-ID>@<AAAAMMDD>"`` -> page HTML or plain text) the quotes against the law. Empty list = consistent."""
+def grupos_legales(fundamento: FundamentoPuente) -> list[GrupoLegal]:
+    """The file as ONE group of the shared library: its figure (the acquisition date limit) and every quote, each
+    named by its key (problems are prefixed by it) and read in the wording it comes from."""
+    return [
+        GrupoLegal(
+            nombre="",
+            ruta=["citas"],
+            descripcion="fundamento de la deducción por vivienda habitual (DT 18.ª LIRPF)",
+            cifras={"fecha_limite_adquisicion": fundamento.fecha_limite_adquisicion},
+            citas=[
+                CitaLegal(
+                    boe_id=cita.boe_id,
+                    version=cita.version,
+                    articulo=cita.articulo,
+                    cita=cita.cita,
+                    cifras=dict(cita.cifras),
+                    nombre=nombre,
+                )
+                for nombre, cita in fundamento.citas.items()
+            ],
+        )
+    ]
+
+
+def _conceptos(fundamento: FundamentoPuente, _textos: Mapping[str, str] | None) -> list[str]:
+    """What only this file has: each concept's words are inside the quote that covers it."""
     problemas: list[str] = []
-    cifras_datos: dict[str, Decimal | date] = {"fecha_limite_adquisicion": fundamento.fecha_limite_adquisicion}
-    con_evidencia: set[str] = set()
-    comprimidos = {clave: _comprimido(texto_plano(texto)) for clave, texto in (textos or {}).items()}
-    for nombre, cita in fundamento.citas.items():
-        if cita.clave_texto not in fundamento.fuentes:
-            problemas.append(f"{nombre}: {cita.clave_texto} no figura en fuentes")
-        if textos is not None:
-            texto = comprimidos.get(cita.clave_texto)
-            if texto is None:
-                problemas.append(f"{nombre}: no se ha aportado el texto de {cita.clave_texto}")
-            elif _comprimido(cita.cita) not in texto:
-                problemas.append(f"{nombre}: la cita de {cita.articulo} no aparece literal en {cita.clave_texto}")
-        for campo, literal in cita.cifras.items():
-            if campo not in cifras_datos:
-                problemas.append(f"{nombre}: la cita respalda una cifra inexistente ({campo})")
-                continue
-            if literal not in cita.cita:
-                problemas.append(f"{nombre}.{campo}: «{literal}» no aparece en la cita")
-                continue
-            if leer_cifra(literal) != cifras_datos[campo]:
-                problemas.append(f"{nombre}.{campo}: el dato es {cifras_datos[campo]} y la cita dice «{literal}»")
-                continue
-            con_evidencia.add(campo)
-    problemas += [f"{campo}: cifra sin evidencia" for campo in sorted(set(cifras_datos) - con_evidencia)]
     claves = [c.clave for c in fundamento.conceptos]
     if len(claves) != len(set(claves)):
         problemas.append("conceptos: hay claves repetidas")
@@ -170,9 +176,39 @@ def comprobar(fundamento: FundamentoPuente, textos: dict[str, str] | None = None
         de_concepto = fundamento.citas.get(concepto.cita)
         if de_concepto is None:
             problemas.append(f"concepto {concepto.clave}: la cita «{concepto.cita}» no existe")
-        elif _comprimido(concepto.termino) not in _comprimido(de_concepto.cita):
+        elif comprimido(concepto.termino) not in comprimido(de_concepto.cita):
             problemas.append(f"concepto {concepto.clave}: «{concepto.termino}» no está en la cita {concepto.cita}")
     return problemas
+
+
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="hipoteca_deduccion",
+        modulo="hipoteca",
+        titulo="Hipoteca: fundamento de la deducción transitoria por vivienda",
+        ruta=DEDUCCION_PATH,
+        cargar=FundamentoPuente.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda fundamento: set(fundamento.fuentes),
+        propias=_conceptos,
+        limpiar=lambda: cargar_fundamento.cache_clear(),
+        solo_persona=(
+            "Lo que entra en la base es una lista de conceptos con las palabras de la ley que los cubren, leída "
+            "sobre todo de una redacción derogada (a 31-12-2012) que ya no cambia; no hay cifras que un caso de "
+            "prueba pueda contrastar. Una persona la revisa; la verificación semanal comprueba cada cita en su "
+            "versión."
+        ),
+    ),
+)
+
+
+def comprobar(fundamento: FundamentoPuente, textos: dict[str, str] | None = None) -> list[str]:
+    """Problems found re-reading the data against its quotes and (with ``textos``: ``"<BOE-ID>"`` or
+    ``"<BOE-ID>@<AAAAMMDD>"`` -> page HTML or plain text) the quotes against the law. Empty list = consistent.
+    The checker is the shared one of :mod:`hacienda_gpt.conocimiento`."""
+    planos = None if textos is None else {clave: texto_plano(texto) for clave, texto in textos.items()}
+    return FICHEROS_LEGALES[0].comprobar(fundamento, planos)
 
 
 def textos_de_directorio(directorio: Path) -> dict[str, str]:

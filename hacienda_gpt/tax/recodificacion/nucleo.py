@@ -376,10 +376,29 @@ def _volcar(path: Path, data: Any, *, sangria: int) -> None:
     tmp.replace(path)
 
 
+# A file without a year in its name (a module's rules, "reglas.json") holds what is in force: the loop files it under
+# this pseudo-year, which every date rule reads as "from the effects date on" (31-12-9999 is after any effects date).
+SIN_EJERCICIO = 9999
+
+
 def ejercicios_en(data_dir: Path, fichero: str) -> list[int]:
-    """Tax years for which the parameter file ``fichero`` ("irpf_{ejercicio}.json") exists."""
+    """Tax years for which the parameter file ``fichero`` ("irpf_{ejercicio}.json") exists.
+
+    A file whose name has no year ("reglas.json") is one pseudo-year, :data:`SIN_EJERCICIO`, when it exists.
+    """
+    if "{ejercicio}" not in fichero:
+        return [SIN_EJERCICIO] if (data_dir / fichero).is_file() else []
     patron = re.compile(re.escape(fichero).replace(re.escape("{ejercicio}"), r"(\d{4})"))
     return sorted(int(m.group(1)) for p in data_dir.iterdir() if (m := patron.fullmatch(p.name)))
+
+
+def ficheros_de(data_dir: Path, objetivo: Objetivo) -> dict[int, Any]:
+    """Each year's file of the group's kind, read from the directory its adapter keeps it in."""
+    directorio = adaptador_de(objetivo.tipo).directorio_de(data_dir)
+    return {
+        ejercicio: json.loads((directorio / objetivo.fichero.format(ejercicio=ejercicio)).read_text(encoding="utf-8"))
+        for ejercicio in ejercicios_en(directorio, objetivo.fichero)
+    }
 
 
 # --------------------------------------------------------------------------- #
@@ -398,6 +417,11 @@ class Adaptador(ABC):
     # Whether "the law no longer fits the schema" may be answered by taking the group out of the file.
     permite_retirada: bool = False
     min_casos: int = 2
+
+    def directorio_de(self, data_dir: Path) -> Path:
+        """Directory of this kind's file when the caller works on ``data_dir``. Default: ``data_dir`` itself; an
+        adapter of a module's file answers its module's directory for the package's data directory."""
+        return data_dir
 
     @abstractmethod
     def esquema(self) -> str:
@@ -545,16 +569,18 @@ def ficheros_en_curso() -> dict[int, Any]:
 
 
 def _cargar_adaptadores() -> None:
-    """Import every module that registers adapters. The ones for the other parameter files are optional."""
+    """Import every module that registers adapters. The ones for the other parameter files are optional; so are
+    those of the modules' legal data (``hacienda_gpt.conocimiento.recodificacion``)."""
     import importlib
 
     from hacienda_gpt.tax.recodificacion import adaptadores  # noqa: F401 - registers the IRPF adapters
 
-    try:
-        importlib.import_module("hacienda_gpt.tax.recodificacion.adaptadores_otros")
-    except ModuleNotFoundError as exc:
-        if exc.name != "hacienda_gpt.tax.recodificacion.adaptadores_otros":
-            raise
+    for nombre in ("hacienda_gpt.tax.recodificacion.adaptadores_otros", "hacienda_gpt.conocimiento.recodificacion"):
+        try:
+            importlib.import_module(nombre)
+        except ModuleNotFoundError as exc:
+            if exc.name != nombre:
+                raise
 
 
 def registrar(adaptador: Adaptador) -> Adaptador:
@@ -1252,6 +1278,7 @@ def aplicar_propuesta(
     if propuesta.estado != "propuesta" or propuesta.resultado is None:
         raise RecodificacionError(f"La propuesta {propuesta.id} está «{propuesta.estado}»: no se puede aplicar.")
     adaptador = adaptador_de(propuesta.tipo)
+    data_dir = adaptador.directorio_de(data_dir)
     hoy = hoy or date.today()
     objetivo = _objetivo_de(propuesta)
     _, texto = leer_texto(objetivo, texto_de)
@@ -1409,8 +1436,9 @@ def pendientes_de_confirmar(data_dir: Path = DATA_DIR) -> list[Pendiente]:
     out: list[Pendiente] = []
     for adaptador in adaptadores_registrados():
         fichero = adaptador.fichero
-        for ejercicio in ejercicios_en(data_dir, fichero):
-            raw = json.loads((data_dir / fichero.format(ejercicio=ejercicio)).read_text(encoding="utf-8"))
+        directorio = adaptador.directorio_de(data_dir)
+        for ejercicio in ejercicios_en(directorio, fichero):
+            raw = json.loads((directorio / fichero.format(ejercicio=ejercicio)).read_text(encoding="utf-8"))
             out += [
                 Pendiente(tipo=adaptador.tipo, fichero=fichero, ejercicio=ejercicio, ruta=ruta, etiqueta=etiqueta)
                 for ruta, etiqueta in adaptador.pendientes(raw)
@@ -1427,7 +1455,7 @@ def confirmar(
         por_fichero.setdefault((pendiente.fichero, pendiente.ejercicio), []).append(pendiente)
     hechas: list[Pendiente] = []
     for (fichero, ejercicio), suyos in por_fichero.items():
-        path = data_dir / fichero.format(ejercicio=ejercicio)
+        path = adaptador_de(suyos[0].tipo).directorio_de(data_dir) / fichero.format(ejercicio=ejercicio)
         contenido = path.read_text(encoding="utf-8")
         raw = json.loads(contenido)
         for pendiente in suyos:
@@ -1673,10 +1701,7 @@ def ejecutar(
             informe.sin_procesar.append(objetivo.etiqueta)
             continue
         hechos += 1
-        ficheros = {
-            ejercicio: json.loads((data_dir / objetivo.fichero.format(ejercicio=ejercicio)).read_text(encoding="utf-8"))
-            for ejercicio in ejercicios_en(data_dir, objetivo.fichero)
-        }
+        ficheros = ficheros_de(data_dir, objetivo)
         try:
             propuesta = (recodificador or recodificar)(
                 objetivo, lector=lector, revisor=revisor, texto_de=texto_de, datos=ficheros, max_iter=max_iter

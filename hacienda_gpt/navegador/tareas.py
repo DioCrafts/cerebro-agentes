@@ -12,7 +12,10 @@ to the luz module's importer through the module tool path), ``descargado`` (a fi
 
 What is kept, and where:
 
-* in memory, for the run only: the parameters, the latest screenshot, the summary of what would be sent;
+* in memory of the process that runs it, for the run only: the parameters, the latest screenshot, the summary of
+  what would be sent;
+* in the cases' database (``persistencia.py``, so a restart or another API process sees the task): its state,
+  steps and messages; the parameters only while it is ``preparada`` (dropped when it starts);
 * in the case's audit trail: that a task started and ended, its steps and their outcomes, the parameter NAMES
   and the blocked origins — never a value, a screenshot or a page;
 * in the pending actions: the procedure that would be submitted (labels only, no values);
@@ -30,6 +33,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 import logging
+import sqlite3
 import threading
 import time
 from typing import Any, Literal
@@ -48,6 +52,7 @@ from hacienda_gpt.navegador.guion import (
     guion_activo,
     validar_parametros,
 )
+from hacienda_gpt.navegador.persistencia import LATIDO_S, MENSAJE_HUERFANA, AlmacenTareas, identidad_de_proceso
 from hacienda_gpt.navegador.reparacion import Reparador
 from hacienda_gpt.navegador.seguridad import origen_de, origenes_efectivos, sustitutos_validos, texto_de_fichero
 from hacienda_gpt.navegador.vigilancia import guardar_diagnostico, observar_ejecucion, proponer_reparacion
@@ -323,15 +328,21 @@ class _Observador:
 
 
 class GestorTareas:
-    """In-memory registry of the tasks of this process (one service process; see the README)."""
+    """The tasks of the service.
+
+    With ``db_path`` (the process-wide :func:`gestor` uses the cases' database) every task is a row of
+    ``navegador_tareas`` shared by all processes, and this process keeps in memory only the tasks it runs
+    (``persistencia.py``). Without it, tasks live in this process's memory only.
+    """
 
     def __init__(
         self,
         *,
-        reloj: Callable[[], float] = time.monotonic,
+        reloj: Callable[[], float] = time.time,
         opciones_ejecutor: dict[str, Any] | None = None,
         directorio_formatos: str | None = None,
         state_path: str | None = None,
+        db_path: str | None = None,
     ) -> None:
         self._tareas: dict[str, Tarea] = {}
         self._inicios: dict[str, deque[float]] = {}
@@ -341,19 +352,46 @@ class GestorTareas:
         self.opciones_ejecutor = dict(opciones_ejecutor or {})
         self.directorio_formatos = directorio_formatos
         self.state_path = state_path
+        self._almacen = AlmacenTareas(db_path) if db_path else None
+        self.propietario = identidad_de_proceso()
+        self._ultima_purga_db = 0.0
+
+    def _db(self) -> AlmacenTareas | None:
+        """The shared store, or None (no ``db_path``; or the browser is off and the store was never opened)."""
+        almacen = self._almacen
+        if almacen is None or (not almacen.abierto and not settings.NAVEGADOR_ACTIVO):
+            return None
+        return almacen
 
     # --- lookup ---------------------------------------------------------
 
     def get(self, tarea_id: str) -> Tarea | None:
         self.purgar()
-        return self._tareas.get(tarea_id)
+        propia = self._tareas.get(tarea_id)
+        db = self._db()
+        if propia is not None or db is None:
+            if propia is not None and db is not None:
+                self._atender(propia, db)
+            return propia
+        fila = db.leer(tarea_id)
+        return AlmacenTareas.a_tarea(fila) if fila is not None else None
 
     def de_caso(self, case_id: str) -> list[Tarea]:
         self.purgar()
-        return sorted((t for t in self._tareas.values() if t.case_id == case_id), key=lambda t: t.creada, reverse=True)
+        propias = [t for t in self._tareas.values() if t.case_id == case_id]
+        db = self._db()
+        if db is not None:
+            for tarea in propias:
+                self._atender(tarea, db)
+            ids = {t.id for t in propias}
+            propias += [AlmacenTareas.a_tarea(f) for f in db.de_caso(case_id) if f["id"] not in ids]
+        return sorted(propias, key=lambda t: t.creada, reverse=True)
 
     def usadas(self, clave_usuario: str) -> int:
         ahora = self._reloj()
+        db = self._db()
+        if db is not None:
+            return db.usadas(clave_usuario, ahora=ahora, ventana_s=VENTANA_LIMITE_S)
         with self._lock:
             cola = self._inicios.get(clave_usuario, deque())
             while cola and ahora - cola[0] > VENTANA_LIMITE_S:
@@ -390,6 +428,10 @@ class GestorTareas:
             user_id=user_id,
         )
         tarea.anotar("preparada", "Tarea preparada. Pulsa «Empezar» cuando vayas a iniciar sesión.")
+        db = self._db()
+        if db is not None:
+            db.insertar_preparada(tarea)  # any process may start it; this one keeps only what it runs
+            return tarea
         with self._lock:
             self._tareas[tarea.id] = tarea
         return tarea
@@ -421,6 +463,67 @@ class GestorTareas:
         if spec.version != tarea.version:
             raise TareaError("La tarea se preparó con otra versión del guion: prepárala de nuevo.", 409)
         clave_usuario = self.clave_usuario(user_id, tarea.case_id)
+        db = self._db()
+        if db is not None:
+            self._reclamar(db, tarea, spec, modo=modo, user_id=user_id, clave_usuario=clave_usuario)
+        else:
+            self._reservar_en_memoria(tarea, modo=modo, user_id=user_id, clave_usuario=clave_usuario)
+        tarea.anotar("en_curso", "Abriendo el navegador…")
+        servicios.cases.append_audit_event(
+            tarea.case_id,
+            {
+                "event_type": "navegador_tarea_iniciada",
+                "tarea_id": tarea.id,
+                "guion": tarea.clave,
+                "version": tarea.version,
+                "modo": modo,
+                "parametros_recibidos": sorted(k for k, v in tarea.parametros.items() if v is not None),
+                "texto_consentimiento": TEXTO_CONSENTIMIENTO_VERSION,
+            },
+        )
+        hilo = threading.Thread(
+            target=self._correr, args=(tarea, spec, servicios, sesion), name=f"navegador-{tarea.id}", daemon=True
+        )
+        tarea.hilo = hilo
+        hilo.start()
+        if db is not None:
+            threading.Thread(
+                target=self._sincronizar, args=(tarea, db), name=f"navegador-latido-{tarea.id}", daemon=True
+            ).start()
+        return tarea
+
+    def _reclamar(
+        self, db: AlmacenTareas, tarea: Tarea, spec: SpecGuion, *, modo: Modo, user_id: str | None, clave_usuario: str
+    ) -> None:
+        """Claim the task in the shared store (every service-wide limit checked atomically) and run it here."""
+        reclamacion = db.reclamar(
+            tarea.id,
+            propietario=self.propietario,
+            user_id=user_id,
+            modo=modo,
+            clave_usuario=clave_usuario,
+            clave_de=self.clave_usuario,
+            max_simultaneas=settings.NAVEGADOR_MAX_SIMULTANEAS,
+            max_dia=settings.NAVEGADOR_MAX_TAREAS_DIA,
+            ahora=self._reloj(),
+            ventana_s=VENTANA_LIMITE_S,
+        )
+        if reclamacion.error is not None:
+            raise TareaError(reclamacion.error, reclamacion.codigo)
+        try:
+            parametros = validar_parametros(spec.reglas, reclamacion.parametros or {})
+        except GuionError as exc:
+            db.terminar_sin_propietario(tarea.id, estado="fallida", cerrar=False, mensaje=str(exc))
+            raise TareaError(str(exc), 422) from exc
+        with tarea.lock:
+            tarea.parametros = parametros
+            tarea.estado = "en_curso"
+            tarea.modo = modo
+            tarea.user_id = user_id
+        with self._lock:
+            self._tareas[tarea.id] = tarea
+
+    def _reservar_en_memoria(self, tarea: Tarea, *, modo: Modo, user_id: str | None, clave_usuario: str) -> None:
         with self._lock:
             if tarea.estado != "preparada":
                 raise TareaError("Esta tarea ya se empezó; prepara otra.", 409)
@@ -442,28 +545,12 @@ class GestorTareas:
             tarea.estado = "en_curso"
             tarea.modo = modo
             tarea.user_id = user_id
-        tarea.anotar("en_curso", "Abriendo el navegador…")
-        servicios.cases.append_audit_event(
-            tarea.case_id,
-            {
-                "event_type": "navegador_tarea_iniciada",
-                "tarea_id": tarea.id,
-                "guion": tarea.clave,
-                "version": tarea.version,
-                "modo": modo,
-                "parametros_recibidos": sorted(k for k, v in tarea.parametros.items() if v is not None),
-                "texto_consentimiento": TEXTO_CONSENTIMIENTO_VERSION,
-            },
-        )
-        hilo = threading.Thread(
-            target=self._correr, args=(tarea, spec, servicios, sesion), name=f"navegador-{tarea.id}", daemon=True
-        )
-        tarea.hilo = hilo
-        hilo.start()
-        return tarea
 
     def detener(self, tarea: Tarea) -> Tarea:
         """Stop a running task at the next check (between steps, or while waiting for the login)."""
+        db = self._db()
+        if db is not None and tarea.id not in self._tareas:
+            return self._en_otro_proceso(db, tarea, cerrar=False)
         tarea.cancelar.set()
         tarea.cerrar.set()
         with tarea.lock:
@@ -472,10 +559,14 @@ class GestorTareas:
                 tarea.terminada = datetime.now(UTC)
                 tarea.parametros = {}
         tarea.anotar("detener", "Has pedido detener la tarea.")
+        self._guardar(tarea)
         return tarea
 
     def cerrar(self, tarea: Tarea) -> Tarea:
         """Discard a task: close its window, drop its screenshot, summary and parameters."""
+        db = self._db()
+        if db is not None and tarea.id not in self._tareas:
+            return self._en_otro_proceso(db, tarea, cerrar=True)
         self.detener(tarea)
         with tarea.lock:
             tarea.captura = None
@@ -484,10 +575,109 @@ class GestorTareas:
             tarea.parametros = {}
             if tarea.estado not in ACTIVOS:
                 tarea.estado = "cerrada"
+        self._guardar(tarea)
         return tarea
+
+    # --- shared store (persistencia.py) ----------------------------------
+
+    def _guardar(self, tarea: Tarea) -> None:
+        db = self._db()
+        if db is not None and tarea.id in self._tareas:
+            try:
+                db.guardar(tarea, self.propietario)
+            except sqlite3.Error:
+                logger.exception("could not persist browser task %s", tarea.id)
+
+    def _en_otro_proceso(self, db: AlmacenTareas, tarea: Tarea, *, cerrar: bool) -> Tarea:
+        """Stop / close a task this process does not run: ask its owner, or settle it if nobody runs it."""
+        fila = db.leer(tarea.id)
+        if fila is None:
+            return tarea
+        estado = fila["estado"]
+        if estado in ACTIVOS:
+            db.pedir(tarea.id, detener=True, cerrar=cerrar)
+        elif estado == "preparada":
+            db.terminar_sin_propietario(
+                tarea.id, estado="cerrada" if cerrar else "cancelada", cerrar=cerrar, mensaje=None
+            )
+        elif cerrar and estado != "cerrada":
+            db.terminar_sin_propietario(tarea.id, estado="cerrada", cerrar=True, mensaje=None)
+        actual = db.leer(tarea.id)
+        return AlmacenTareas.a_tarea(actual) if actual is not None else tarea
+
+    def _atender(self, tarea: Tarea, db: AlmacenTareas) -> None:
+        """Obey a stop / close another process asked for one of the tasks this process runs."""
+        try:
+            detener, cerrar = db.solicitudes(tarea.id)
+        except sqlite3.Error:
+            logger.exception("could not read the requests of browser task %s", tarea.id)
+            return
+        if cerrar and (tarea.estado != "cerrada" or tarea.captura is not None):
+            self.cerrar(tarea)
+        elif detener and not tarea.cancelar.is_set():
+            self.detener(tarea)
+
+    def _sincronizar(self, tarea: Tarea, db: AlmacenTareas) -> None:
+        """While this process runs the task: mirror it to the store every second and obey remote requests."""
+        while True:
+            hilo = tarea.hilo
+            if hilo is not None:
+                hilo.join(LATIDO_S)
+            vivo = hilo is not None and hilo.is_alive()
+            try:
+                if vivo:
+                    self._atender(tarea, db)
+                db.guardar(tarea, self.propietario)
+            except Exception:
+                logger.exception("could not persist browser task %s", tarea.id)
+            if not vivo:
+                return
+
+    def _purgar_db(self, db: AlmacenTareas) -> None:
+        """Close the tasks of a process that died (writing their end to the audit trail) and forget old rows."""
+        ahora = self._reloj()
+        if ahora - self._ultima_purga_db < 30:
+            return
+        self._ultima_purga_db = ahora
+        limite = datetime.now(UTC) - timedelta(minutes=MINUTOS_TRAS_TERMINAR)
+        try:
+            for fila in db.huerfanas(self.propietario):
+                db.terminar_sin_propietario(fila["id"], estado="fallida", cerrar=False, mensaje=MENSAJE_HUERFANA)
+                self._auditar_huerfana(db.db_path, fila["case_id"], fila["id"], fila["clave"])
+            db.purgar(
+                terminadas_antes=limite,
+                preparadas_antes=limite - timedelta(hours=1),
+                inicios_antes=ahora - VENTANA_LIMITE_S,
+            )
+        except sqlite3.Error:
+            logger.exception("could not purge the browser tasks")
+
+    @staticmethod
+    def _auditar_huerfana(db_path: str, case_id: str, tarea_id: str, clave: str) -> None:
+        from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+
+        store = SQLiteCaseStateStore(db_path)
+        try:
+            store.append_audit_event(
+                case_id,
+                {
+                    "event_type": "navegador_tarea_terminada",
+                    "tarea_id": tarea_id,
+                    "guion": clave,
+                    "estado": "fallida",
+                    "motivo": "servicio_reiniciado",
+                },
+            )
+        except KeyError:
+            pass  # the case is gone (and the task row with it)
+        finally:
+            store.close()
 
     def purgar(self) -> None:
         """Forget tasks finished more than :data:`MINUTOS_TRAS_TERMINAR` ago (and everything they held)."""
+        db = self._db()
+        if db is not None:
+            self._purgar_db(db)
         limite = datetime.now(UTC) - timedelta(minutes=MINUTOS_TRAS_TERMINAR)
         with self._lock:
             viejas = [t.id for t in self._tareas.values() if t.terminada is not None and t.terminada < limite]
@@ -661,7 +851,7 @@ def gestor() -> GestorTareas:
     """The process-wide task manager."""
     with _gestor_lock:
         if not _gestor:
-            _gestor.append(GestorTareas())
+            _gestor.append(GestorTareas(db_path=settings.DECISION_STATE_DB_PATH))
         return _gestor[0]
 
 

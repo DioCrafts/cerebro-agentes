@@ -1479,6 +1479,34 @@ regla siga teniendo la forma que la calculadora supone. Por eso existe la
 revisión humana y por eso la calculadora avisa mientras no se ha hecho. Detalle y pasos en
 [`docs/operacion.md`](docs/operacion.md#5-recodificación-automática-de-parámetros).
 
+**Todos los módulos, en el mismo ciclo (`hacienda_gpt/conocimiento/`).** Las cifras legales de los
+módulos del hogar (luz, caducidades, ayudas, hipoteca, suscripciones, correo), los pasajes del
+planificador y los que el módulo fiscal muestra en el código entran en el mismo mantenimiento que los
+ficheros de parámetros, con una sola biblioteca:
+
+- **Un modelo común** de grupo de datos legales (cifras, citas literales, cómo se escribe cada cifra en
+  su cita, fuente con su BOE, versión, `consolidado_a`, `consultado_el`, `verificado`, `en_vigor_desde`,
+  `condicionada_a`) y **un solo comprobador**: cada cita literal en el texto de la ley —con la misma
+  normalización que la verificación fiscal y en la versión de la que se leyó—, cada cifra dentro de su
+  cita y leída igual. `tax/verificacion.py` y el control del bucle delegan en él.
+- **Un registro**: cada módulo declara sus ficheros (`FICHEROS_LEGALES` en su fichero de comprobación) con
+  un adaptador a su formato, sin cambiar sus datos. Con eso, sin más cableado, `params-verify` los comprueba
+  cada semana contra el BOE (apartado `modulos` del informe), `params-check` compara la fecha de
+  actualización de cada ley con **la fecha de lectura que guarda el propio fichero del módulo** —igual que
+  los ficheros fiscales; ya no hace falta un estado entre ejecuciones, que GitHub Actions no conserva—,
+  `params-verify`/`params-autopilot` anotan la nueva lectura cuando todo sigue coincidiendo y ningún grupo
+  está en un artículo modificado (sin reformatear el fichero), y el PR automático de lecturas
+  (`params-lecturas`, `vigilancia.yml`) las incluye.
+- **Recodificación**: las reglas de `caducidades` recorren el bucle de punta a punta (un adaptador por
+  modelo, `caducidades:<Modelo>`; los casos del revisor pasan por la calculadora del módulo —DNI,
+  pasaporte, permiso, ITV, seguro, compra— y comparan fechas como AAAAMMDD), y **una propuesta sobre datos
+  de un módulo nunca se aplica sola**. Los demás ficheros declaran por qué los mantiene una persona: la
+  luz (peajes y cargos salen cada año de una resolución u orden nueva del BOE diario, no de la nueva
+  redacción de un artículo), las ayudas (cada grupo cita varias leyes y el evaluador no recibe un fichero
+  alternativo), la hipoteca (la calculadora de comisiones no recibe la normativa como parámetro; la serie
+  de índices la mantiene su propio lector), suscripciones y correo (sin importes que un caso pueda
+  contrastar) y los pasajes sin cifras del planificador y del módulo fiscal.
+
 ### Deriva de formatos: que una fuente cambie de forma sin que nadie se entere
 
 Las leyes cambian y el BOE lo publica; lo que nadie publica es que una clave del JSON del sumario

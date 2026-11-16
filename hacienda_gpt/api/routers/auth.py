@@ -44,6 +44,7 @@ from hacienda_gpt.navegador import tareas as tareas_navegador
 from hacienda_gpt.navegador import vigilancia
 from hacienda_gpt.ops.consumo import anonimizar_consumo
 from hacienda_gpt.proactive.store import NotificationStore
+from hacienda_gpt.tareas.almacen import exportar_tareas
 
 _limiter_lock = threading.Lock()
 _limiters: dict[tuple[int, int], LoginRateLimiter] = {}
@@ -332,6 +333,8 @@ def build_router(
                     "decisiones": exportar_decisiones(cases.db_path, case_id),
                     # The Gmail module: connection (without the token), derived items, proposals, pinned contacts.
                     "correo": correo_almacen.exportar(case_id, cases.db_path),
+                    # Long-running tasks (hacienda_gpt/tareas), each with its history.
+                    "tareas": exportar_tareas(cases.db_path, case_id),
                 }
             )
         return {

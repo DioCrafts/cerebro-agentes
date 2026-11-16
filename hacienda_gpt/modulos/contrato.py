@@ -21,9 +21,13 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
-from typing import Any, Literal, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
 from hacienda_gpt.agent.providers.base import ToolSpec
+
+if TYPE_CHECKING:
+    from hacienda_gpt.agent.evidence import EvidenceLedger
+    from hacienda_gpt.decision.schemas import CaseState
 
 Efecto = Literal["lectura", "prepara", "actua"]
 TipoHecho = Literal["string", "number", "boolean", "json"]
@@ -52,12 +56,19 @@ class ContextoModulo:
     already parsed). A module reads the facts it declared and any shared one (comunidad_autonoma,
     estado_civil, num_descendientes…). ``registrar`` is present only when the run may write facts: it
     stores facts this module declared, validated by their ``validar``.
+
+    ``evidencia`` and ``caso`` are set only when the tool runs as a DIRECT tool of the central agent (a module
+    with ``herramientas_directas``): ``evidencia`` is the run's evidence ledger, where the tool registers its
+    own citable fragments (its ``contenido`` then reaches the model as it is, ``[F#]`` ids included), and
+    ``caso`` the user's case as stored (None in a conversation without one).
     """
 
     perfil: Mapping[str, Any]
     hoy: date
     case_id: str | None = None
     registrar: Callable[[Mapping[str, Any]], None] | None = None
+    evidencia: EvidenceLedger | None = None
+    caso: CaseState | None = None
 
 
 @dataclass(frozen=True)
@@ -135,6 +146,16 @@ class Modulo(Protocol):
     # Optional data hook, also read with getattr: ``borrar_datos_de_caso(case_id, db_path)`` erases what the
     # module keeps OUTSIDE the case's facts (its own tables, a third-party grant) when the user switches it off
     # with «borrar datos» (``PUT /me/modulos/{clave}``); the facts and decisions are erased by the core.
+    # Optional core-integration hooks, also read with getattr (the tax module uses them; see agent/tools.py):
+    # ``herramientas_directas: bool`` — the central agent offers the module's tools DIRECTLY, right after the
+    # corpus search, instead of through a ``consultar_<clave>`` specialist; they run with ``ContextoModulo``'s
+    # ``evidencia`` and ``caso`` and must only read (``efecto="lectura"``; any other is never offered).
+    # ``ayuda_registrar_hechos: str`` — text appended to the description of the core's ``registrar_hechos``
+    # tool, documenting the shared facts whose shape the module knows; ``hechos_estructurados:
+    # Mapping[str, Callable[[Any], str]]`` — for those shared facts, a function that validates a value and
+    # returns the canonical text to store (raises ``ValueError`` with a Spanish message).
+    # ``ejecutar_en_bandeja(case, *, hoy, store) -> dict[str, int]`` — the module writes its own notifications
+    # (kinds ``tipos_en_bandeja: Sequence[str]``, counted in the daily summary) instead of returning ``avisos``.
 
 
 @dataclass
@@ -150,6 +171,8 @@ class ModuloBase:
     fuentes: Sequence[FuenteModulo] = field(default_factory=tuple)
     # Event types this module wants to be woken by (hacienda_gpt/eventos/tipos.py); empty: the core's default.
     eventos: Sequence[str] = field(default_factory=tuple)
+    # True: the central agent offers this module's (read-only) tools directly (see the Modulo hooks above).
+    herramientas_directas: bool = False
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return []

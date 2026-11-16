@@ -33,6 +33,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from hacienda_gpt import settings
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
 
@@ -184,6 +185,7 @@ def conectar(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
             conn.execute("PRAGMA journal_mode=WAL;")
             with _lock:
                 _wal.add(ruta)
+        asegurar_esquema(conn, "correo")  # migrations (hacienda_gpt/plataforma)
         conn.executescript(_ESQUEMA)  # idempotent and cheap: a recreated file always gets its tables
         with conn:
             yield conn

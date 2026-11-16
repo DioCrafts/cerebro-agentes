@@ -170,11 +170,21 @@ def ficheros_de_parametros(data_dir: Path = DATA_DIR) -> list[Path]:
     return sorted(p for p in data_dir.iterdir() if _FICHERO_DE_PARAMETROS.fullmatch(p.name))
 
 
-def fuentes_de_los_parametros(data_dir: Path = DATA_DIR) -> list[FuenteLeida]:
+def ficheros_con_lecturas(data_dir: Path = DATA_DIR, modulos: Sequence[Any] | None = None) -> list[tuple[str, Path]]:
+    """(name, path) of every file whose law readings this module records: the tax parameter files of ``data_dir``
+    and the modules' legal data files (``hacienda_gpt.conocimiento``; only for the package's own data directory,
+    unless ``modulos`` names them)."""
+    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos
+
+    de_modulos = [(f.nombre, f.ruta) for f in ficheros_de_modulos(data_dir, modulos) if f.ruta is not None]
+    return [(p.name, p) for p in ficheros_de_parametros(data_dir)] + de_modulos
+
+
+def fuentes_de_los_parametros(data_dir: Path = DATA_DIR, modulos: Sequence[Any] | None = None) -> list[FuenteLeida]:
     fuentes: list[FuenteLeida] = []
-    for path in ficheros_de_parametros(data_dir):
+    for nombre, path in ficheros_con_lecturas(data_dir, modulos):
         raw = json.loads(path.read_text(encoding="utf-8"))
-        fuentes += fuentes_del_fichero(path.name, raw)
+        fuentes += fuentes_del_fichero(nombre, raw)
     return fuentes
 
 
@@ -301,8 +311,9 @@ def fuera_del_bucle(boe_id: str, bloques: Iterable[str], *, data_dir: Path = DAT
     return fuera
 
 
-def _sin_cuadrar(texto_de: TextoDe, data_dir: Path) -> dict[str, list[str]]:
-    """Per law: failing checks of every parameter file, and IRPF groups flagged as not verified that nothing checks."""
+def _sin_cuadrar(texto_de: TextoDe, data_dir: Path, modulos: Sequence[Any] | None = None) -> dict[str, list[str]]:
+    """Per law: failing checks of every parameter file (and of every module's legal data), and IRPF groups flagged
+    as not verified that nothing checks."""
     from hacienda_gpt.tax.recodificacion.adaptadores import (
         _DEL_IRPF,
         EVIDENCIA_DEDUCCIONES,
@@ -353,11 +364,20 @@ def _sin_cuadrar(texto_de: TextoDe, data_dir: Path) -> dict[str, list[str]]:
         if callable(verificar_ficheros):
             for fichero, resultados in verificar_ficheros(texto_de, data_dir=data_dir).items():
                 anotar(fichero, resultados)
+    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos
+    from hacienda_gpt.conocimiento.registro import verificar_fichero
+
+    for legal in ficheros_de_modulos(data_dir, modulos):
+        anotar(legal.nombre, verificar_fichero(legal, texto_de))
     return motivos
 
 
 def lecturas(
-    texto_de: TextoDe, *, data_dir: Path = DATA_DIR, fecha_boe: FechaBoe | None = None
+    texto_de: TextoDe,
+    *,
+    data_dir: Path = DATA_DIR,
+    fecha_boe: FechaBoe | None = None,
+    modulos: Sequence[Any] | None = None,
 ) -> tuple[dict[str, EstadoDeLey], dict[str, str]]:
     """Every law the parameter files read, whether the BOE has updated it since, and which of its blocks changed.
 
@@ -368,7 +388,7 @@ def lecturas(
     """
     from hacienda_gpt.proactive.impacto import articulos_modificados
 
-    fuentes = fuentes_de_los_parametros(data_dir)
+    fuentes = fuentes_de_los_parametros(data_dir, modulos)
     estados: dict[str, EstadoDeLey] = {}
     paginas: dict[str, str] = {}
     for boe_id in dict.fromkeys(f.boe_id for f in fuentes):
@@ -425,18 +445,24 @@ def diagnosticar(
     almacen: AlmacenPropuestas | None = None,
     fecha_boe: FechaBoe | None = None,
     abiertas: Mapping[str, Sequence[str]] | None = None,
+    modulos: Sequence[Any] | None = None,
 ) -> dict[str, EstadoDeLey]:
     """The state of every law the parameter files read: is it stale, and what keeps its reading from being recorded.
 
     No model is involved. The checks of every file are run only when some law is stale (nothing else needs them).
     ``abiertas``: further reasons per law from the caller (the autopilot's open norms and unfinished groups).
+    ``modulos``: the modules' legal data files to cover (default: every declared one, for the package's own data
+    directory only — see :func:`ficheros_con_lecturas`).
     """
-    estados, paginas = lecturas(texto_de, data_dir=data_dir, fecha_boe=fecha_boe)
+    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos, grupos_en_bloques
+
+    estados, paginas = lecturas(texto_de, data_dir=data_dir, fecha_boe=fecha_boe, modulos=modulos)
     pendientes = [e for e in estados.values() if e.desactualizada]
     if not pendientes:
         return estados
     propuestas = almacen.listar() if almacen is not None else []
-    sin_cuadrar = _sin_cuadrar(texto_de, data_dir)
+    sin_cuadrar = _sin_cuadrar(texto_de, data_dir, modulos)
+    legales = ficheros_de_modulos(data_dir, modulos)
     for estado in pendientes:
         pagina = paginas[estado.boe_id]
         for objetivo, tocados in grupos_de_los_bloques(estado.boe_id, pagina, estado.modificados, data_dir=data_dir):
@@ -447,6 +473,17 @@ def diagnosticar(
                 f"{len(estado.pendientes_de_releer)} grupo(s) de artículos modificados desde la última lectura "
                 f"({', '.join(estado.modificados[:12])}) sin releer contra el texto actual: "
                 + "; ".join(estado.pendientes_de_releer[:5])
+            )
+        # Module groups in those articles. The loop's own target search already reaches the files it re-encodes
+        # when they are the package's (``modulos`` not given); the others only a person re-reads.
+        de_modulos = grupos_en_bloques(
+            estado.boe_id, pagina, estado.modificados, legales, incluir_recodificables=modulos is not None
+        )
+        if de_modulos:
+            estado.motivos.append(
+                "datos legales de los módulos del hogar en artículos modificados desde la última lectura: "
+                f"{'; '.join(de_modulos[:5])}. Su cita sigue en el texto, pero el cambio puede estar fuera de ella: "
+                "reléelos a mano y anota la lectura de la ley a mano."
             )
         fuera = fuera_del_bucle(estado.boe_id, estado.modificados, data_dir=data_dir)
         if fuera:
@@ -486,8 +523,13 @@ def refrescar(
     data_dir: Path = DATA_DIR,
     hoy: date,
     motivo: str,
+    modulos: Sequence[Any] | None = None,
 ) -> dict[str, Any]:
     """Record in EVERY parameter file that cites ``boe_id`` that its consolidated text ``consolidado_a`` was read today.
+
+    The modules' legal data files (``modulos``; see :func:`ficheros_con_lecturas`) are covered the same way: each is
+    validated by its own model and its own self-check, and only the reading fields of its sources change (in place,
+    without reformatting the file).
 
     Each source of that law that names its current consolidated text gets ``consolidado_a``, ``consultado_el``
     (``hoy``) and ``sha256_html`` (of ``pagina``); a file with a ``revisiones`` list gets an entry saying so. A source
@@ -500,10 +542,43 @@ def refrescar(
     cambios: dict[Path, tuple[dict[str, Any], int]] = {}
     sin_registro: list[str] = []
     norma = boe_id
-    for path in ficheros_de_parametros(data_dir):
+    from hacienda_gpt.conocimiento.lecturas import anotar_en_texto, ficheros_de_modulos
+
+    legales = {f.ruta: f for f in ficheros_de_modulos(data_dir, modulos) if f.ruta is not None}
+    textuales: dict[Path, str] = {}
+    for nombre_fichero, path in ficheros_con_lecturas(data_dir, modulos):
         contenido = path.read_text(encoding="utf-8")
         raw = json.loads(contenido)
         if not isinstance(raw, dict):
+            continue
+        legal = legales.get(path)
+        if legal is not None:
+            de_ley = [f for f in fuentes_del_fichero(nombre_fichero, raw) if f.boe_id == boe_id and not f.fijada]
+            a_cambiar = {
+                tuple(f.ruta): nuevos
+                for f in de_ley
+                if (f.consolidado_a, f.consultado_el) != (consolidado_a, hoy.isoformat())
+            }
+            if not a_cambiar:
+                continue
+            norma = de_ley[0].norma
+            for ruta in a_cambiar:
+                leer_ruta(raw, list(ruta)).update(nuevos)
+            try:
+                problemas = legal.comprobar(legal.cargar(raw))
+            except (ValidationError, ValueError) as exc:
+                raise RecodificacionError(
+                    f"{nombre_fichero} dejaría de ser válido al anotar la lectura de {boe_id}: {str(exc)[:200]}"
+                ) from exc
+            if problemas:
+                raise RecodificacionError(
+                    f"{nombre_fichero} no supera su autocontrol: " + "; ".join(problemas[:4]) + "; no se escribe nada."
+                )
+            # The module files keep their own layout: only the reading fields change.
+            textuales[path] = anotar_en_texto(contenido, a_cambiar) or (
+                json.dumps(raw, ensure_ascii=False, indent=_sangria(contenido)) + "\n"
+            )
+            sin_registro.append(nombre_fichero)
             continue
         tocado = False
         for fuente in fuentes_del_fichero(path.name, raw):
@@ -548,6 +623,11 @@ def refrescar(
     # Everything validated: only now is anything written.
     for path, (raw, sangria) in cambios.items():
         _volcar(path, raw, sangria=sangria)
+    for path, texto in textuales.items():
+        tmp = path.with_name(path.name + ".tmp")
+        tmp.write_text(texto, encoding="utf-8")
+        tmp.replace(path)
+        legales[path].limpiar()
     if cambios:
         from hacienda_gpt.tax import fuentes
 
@@ -557,7 +637,7 @@ def refrescar(
         "boe_id": boe_id,
         "consolidado_a": consolidado_a,
         "consultado_el": hoy.isoformat(),
-        "ficheros": [p.name for p in cambios],
+        "ficheros": [p.name for p in cambios] + [legales[p].nombre for p in textuales],
         "sin_registro": sin_registro,
     }
 
@@ -577,13 +657,17 @@ def refrescar_lo_que_se_pueda(
     fecha_boe: FechaBoe | None = None,
     abiertas: Mapping[str, Sequence[str]] | None = None,
     simular: bool = False,
+    modulos: Sequence[Any] | None = None,
 ) -> InformeProcedencia:
     """Record today's reading of every stale law nothing blocks (see the module); say why the others are blocked.
 
-    ``simular``: diagnose only and write nothing (for texts that were not read from the BOE today).
+    ``simular``: diagnose only and write nothing (for texts that were not read from the BOE today). ``modulos``: the
+    modules' legal data files to cover (default: every declared one, for the package's own data directory only).
     """
     informe = InformeProcedencia()
-    estados = diagnosticar(texto_de, data_dir=data_dir, almacen=almacen, fecha_boe=fecha_boe, abiertas=abiertas)
+    estados = diagnosticar(
+        texto_de, data_dir=data_dir, almacen=almacen, fecha_boe=fecha_boe, abiertas=abiertas, modulos=modulos
+    )
     for boe_id, estado in sorted(estados.items()):
         informe.fijadas += estado.fijadas
         if not estado.fuentes:
@@ -608,6 +692,7 @@ def refrescar_lo_que_se_pueda(
                     data_dir=data_dir,
                     hoy=hoy,
                     motivo=MOTIVO_REFRESCO,
+                    modulos=modulos,
                 )
             )
     return informe
@@ -622,6 +707,7 @@ __all__ = [
     "es_texto_vigente",
     "fecha_de_consolidacion",
     "ficheros_de_parametros",
+    "ficheros_con_lecturas",
     "fuentes_de_los_parametros",
     "fuentes_del_fichero",
     "fuera_del_bucle",

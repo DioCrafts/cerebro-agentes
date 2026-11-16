@@ -74,6 +74,8 @@ def habilitar(db_path: str | None = None) -> bool:
     global _habilitado
     if not getattr(settings, "EVENTOS_DESPACHO_EN_PROCESO", True):
         return False
+    if not getattr(settings, "EVENTOS_DESPACHO_EN_API", True):  # process split (hacienda_gpt/plataforma)
+        return False
     with _lock:
         _habilitado = True
     if db_path:

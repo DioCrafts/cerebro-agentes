@@ -81,6 +81,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     Objetivo,
     Propuesta,
     RecodificacionError,
+    adaptador_de,
     ejercicios_en,
     leer_ruta,
     registrar,
@@ -1347,8 +1348,17 @@ for _familia in FAMILIAS:
 
 
 def adaptador_del_grupo(familia: Familia, params: Any, ruta: Sequence[str]) -> GrupoConEvidencia | None:
-    """The adapter that maintains the group at ``ruta`` of a validated file."""
-    return ADAPTADORES.get((familia.clave, type(_en_modelo(params, ruta)).__name__))
+    """The adapter that maintains the group at ``ruta`` of a validated file: one of this module's or one registered
+    by another family of the same kind (the modules' legal data, ``hacienda_gpt.conocimiento.recodificacion``)."""
+    nombre = type(_en_modelo(params, ruta)).__name__
+    propio = ADAPTADORES.get((familia.clave, nombre))
+    if propio is not None:
+        return propio
+    try:
+        otro = adaptador_de(f"{familia.clave}:{nombre.lstrip('_')}")
+    except RecodificacionError:
+        return None
+    return otro if isinstance(otro, GrupoConEvidencia) and otro.familia.clave == familia.clave else None
 
 
 # --------------------------------------------------------------------------- #
@@ -1640,7 +1650,8 @@ def revisar_grupos_vigentes(
         except RecodificacionError as exc:
             out.append(GrupoRevisado(fichero=nombre, ruta=ruta, estado="ilegible", fallos=[str(exc)]))
             continue
-        adaptador = next(a for a in ADAPTADORES.values() if a.tipo == objetivo.tipo)
+        adaptador = adaptador_de(objetivo.tipo)
+        assert isinstance(adaptador, GrupoConEvidencia)
         citas = objetivo.citas_antes
         revisado = GrupoRevisado(fichero=nombre, ruta=ruta, tipo=objetivo.tipo, boe_id=objetivo.boe_id, estado="ok")
         plano = planos.get(objetivo.boe_id)

@@ -6,7 +6,9 @@
 * Ley 39/2015, art. 41.6 and RD 203/2021 art. 43.1: the e-mail notice is merely informative;
 * RD 203/2021 art. 18.2: state e-offices (sedes electrónicas) use the «.gob.es» domain — a phishing signal.
 
-``python -m hacienda_gpt.modulos.correo.normativa <dir with BOE-A-*.html|txt>`` re-checks every quote.
+``python -m hacienda_gpt.modulos.correo.normativa <dir with BOE-A-*.html|txt>`` re-checks every quote with the
+shared checker of :mod:`hacienda_gpt.conocimiento`; the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
+verification and the reading dates cover it.
 """
 
 from __future__ import annotations
@@ -15,10 +17,18 @@ from datetime import date
 from decimal import Decimal
 from functools import lru_cache
 from pathlib import Path
-import re
 import sys
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from hacienda_gpt.conocimiento import (
+    FRONTERA_PALABRA,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    citas_de_evidencia,
+    fuente_de,
+)
 
 DATOS = Path(__file__).resolve().parent / "data" / "notificaciones.json"
 
@@ -110,40 +120,55 @@ def cifra_a_decimal(literal: str) -> Decimal | None:
         return None
 
 
-def _compacto(texto: str) -> str:
-    return " ".join(texto.split())
+def _leer(literal: str) -> Decimal:
+    valor = cifra_a_decimal(literal)
+    if valor is None:
+        raise ValueError(literal)
+    return valor
+
+
+ORTOGRAFIA = Ortografia(leer_cifra=_leer, frontera=FRONTERA_PALABRA)
+
+
+def grupos_legales(datos: Normativa) -> list[GrupoLegal]:
+    """The file as groups of the shared library: each rule, its figures (``valores``) and its quotes."""
+    return [
+        GrupoLegal(
+            nombre=clave,
+            ruta=["reglas", clave],
+            descripcion=f"{regla.titulo} ({regla.fuente.referencia})",
+            fuente=fuente_de(regla.fuente),
+            cifras=dict(regla.valores),
+            citas=citas_de_evidencia(regla.evidencia),
+        )
+        for clave, regla in datos.reglas.items()
+    ]
+
+
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="correo",
+        modulo="correo",
+        titulo="Correo: reglas de las notificaciones administrativas",
+        ruta=DATOS,
+        cargar=Normativa.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda datos: set(datos.fuentes_principales),
+        limpiar=lambda: cargar.cache_clear(),
+        solo_persona=(
+            "Tres reglas de procedimiento (un plazo de diez días, el aviso informativo, el dominio de las sedes) "
+            "que el módulo explica y aplica a avisos y enlaces, no a importes: no hay casos de prueba que "
+            "contrasten una propuesta. Una persona las relee; la verificación semanal comprueba cada cita y cifra."
+        ),
+    ),
+)
 
 
 def comprobar(datos: Normativa, textos: dict[str, str] | None = None) -> list[str]:
-    """Problems re-reading the data against its quotes (and against the laws, given ``textos``)."""
-    problemas: list[str] = []
-    for clave, regla in datos.reglas.items():
-        sin_evidencia = set(regla.valores)
-        for ev in regla.evidencia:
-            if ev.boe_id not in datos.fuentes_principales:
-                problemas.append(f"{clave}: {ev.boe_id} no figura en fuentes_principales")
-            if textos is not None:
-                texto = textos.get(ev.boe_id)
-                if texto is None:
-                    problemas.append(f"{clave}: no se ha aportado el texto de {ev.boe_id}")
-                elif _compacto(ev.cita) not in _compacto(texto):
-                    problemas.append(f"{clave}: la cita de {ev.articulo} no aparece literal en {ev.boe_id}")
-            for campo, literal in ev.cifras.items():
-                if campo not in regla.valores:
-                    problemas.append(f"{clave}: la evidencia cita una cifra inexistente ({campo})")
-                    continue
-                if not re.search(rf"(?<![\w.,]){re.escape(literal)}(?![\w]|[.,]\d)", ev.cita):
-                    problemas.append(f"{clave}.{campo}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                if cifra_a_decimal(literal) != regla.valores[campo]:
-                    problemas.append(f"{clave}.{campo}: el dato es {regla.valores[campo]} y la cita dice «{literal}»")
-                sin_evidencia.discard(campo)
-        problemas.extend(f"{clave}.{campo}: cifra sin evidencia" for campo in sorted(sin_evidencia))
-        try:
-            date.fromisoformat(regla.fuente.en_vigor_desde)
-        except ValueError:
-            problemas.append(f"{clave}: en_vigor_desde no es una fecha")
-    return problemas
+    """Problems re-reading the data against its quotes (and against the laws, given ``textos``), with the shared
+    checker of :mod:`hacienda_gpt.conocimiento`."""
+    return FICHEROS_LEGALES[0].comprobar(datos, textos)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -164,4 +189,4 @@ if __name__ == "__main__":  # pragma: no cover
     raise SystemExit(main())
 
 
-__all__ = ["Normativa", "Regla", "cargar", "cifra_a_decimal", "comprobar"]
+__all__ = ["FICHEROS_LEGALES", "Normativa", "Regla", "cargar", "cifra_a_decimal", "comprobar"]

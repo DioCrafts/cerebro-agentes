@@ -20,6 +20,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+
 EstadoAccion = Literal["pendiente", "ejecutando", "ejecutada", "fallida", "rechazada"]
 
 
@@ -67,6 +69,7 @@ class AccionStore:
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode=WAL;")
             with conn:
+                asegurar_esquema(conn, "acciones")  # migrations (hacienda_gpt/plataforma)
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS acciones_pendientes (
                         seq INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,25 +1,32 @@
 """Consumer-rights data read from the BOE (``data/derechos_consumidor.json``) and its self-check.
 
 Each right carries literal quotes of the consolidated law (``evidencia``) and the figures read from them
-(``valores``, with the literal spelling in ``cifras``). :func:`comprobar` re-reads the data: every figure
-must be spelled in one of its quotes and mean the stored value, and, given the law texts, every quote must
-appear verbatim in its law. ``python -m hacienda_gpt.modulos.suscripciones.derechos <dir>`` runs the check
+(``valores``, with the literal spelling in ``cifras``). :func:`comprobar` re-reads the data with the shared
+checker of :mod:`hacienda_gpt.conocimiento`: every figure must be spelled in one of its quotes and mean the stored
+value, and, given the law texts, every quote must appear verbatim in its law. The file is declared in
+``FICHEROS_LEGALES``: the weekly BOE verification and the reading dates cover it. ``python -m hacienda_gpt.modulos.suscripciones.derechos <dir>`` runs the check
 against freshly downloaded pages (``<BOE-ID>.html`` or ``.txt``).
 """
 
 from __future__ import annotations
 
-from datetime import date
 from decimal import Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
-import re
 import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.autonomos_params import textos_de_directorio
+from hacienda_gpt.conocimiento import (
+    FRONTERA_PALABRA,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    citas_de_evidencia,
+    fuente_de,
+)
+from hacienda_gpt.conocimiento import textos_de_directorio as _textos_de_directorio
 from hacienda_gpt.tax.params import Fuente, FuentePrincipal
 
 DATA = Path(__file__).parent / "data" / "derechos_consumidor.json"
@@ -106,40 +113,48 @@ def cifra_a_decimal(literal: str) -> Decimal:
     return Decimal(token.replace(".", "").replace(",", "."))
 
 
-def _compacto(texto: str) -> str:
-    return " ".join(texto.split())
+ORTOGRAFIA = Ortografia(leer_cifra=cifra_a_decimal, frontera=FRONTERA_PALABRA)
+
+
+def grupos_legales(datos: DerechosConsumidor) -> list[GrupoLegal]:
+    """The file as groups of the shared library: each right, its figures (``valores``) and its quotes."""
+    return [
+        GrupoLegal(
+            nombre=clave,
+            ruta=["derechos", clave],
+            descripcion=f"{derecho.titulo} ({derecho.fuente.referencia})",
+            fuente=fuente_de(derecho.fuente),
+            cifras=dict(derecho.valores),
+            citas=citas_de_evidencia(derecho.evidencia),
+        )
+        for clave, derecho in datos.derechos.items()
+    ]
+
+
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="suscripciones",
+        modulo="suscripciones",
+        titulo="Suscripciones: derechos de la persona consumidora",
+        ruta=DATA,
+        cargar=DerechosConsumidor.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda datos: set(datos.fuentes_principales),
+        limpiar=lambda: cargar.cache_clear(),
+        solo_persona=(
+            "Cada derecho lleva un resumen en lenguaje llano que el usuario lee como consejo, y ninguna calculadora "
+            "convierte sus plazos en un importe que un caso de prueba pueda contrastar. Una persona los relee; la "
+            "verificación semanal comprueba cada cita y cada cifra."
+        ),
+    ),
+)
 
 
 def comprobar(datos: DerechosConsumidor, textos: dict[str, str] | None = None) -> list[str]:
-    """Problems found re-reading the data against its quotes (and against the laws, given ``textos``)."""
-    problemas: list[str] = []
-    for clave, derecho in datos.derechos.items():
-        sin_evidencia = set(derecho.valores)
-        for ev in derecho.evidencia:
-            if ev.boe_id not in datos.fuentes_principales:
-                problemas.append(f"{clave}: {ev.boe_id} no figura en fuentes_principales")
-            if textos is not None:
-                texto = textos.get(ev.boe_id)
-                if texto is None:
-                    problemas.append(f"{clave}: no se ha aportado el texto de {ev.boe_id}")
-                elif _compacto(ev.cita) not in _compacto(texto):
-                    problemas.append(f"{clave}: la cita de {ev.articulo} no aparece literal en {ev.boe_id}")
-            for campo, literal in ev.cifras.items():
-                if campo not in derecho.valores:
-                    problemas.append(f"{clave}: la evidencia cita una cifra inexistente ({campo})")
-                    continue
-                if not re.search(rf"(?<![\w.,]){re.escape(literal)}(?![\w]|[.,]\d)", ev.cita):
-                    problemas.append(f"{clave}.{campo}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                if cifra_a_decimal(literal) != derecho.valores[campo]:
-                    problemas.append(f"{clave}.{campo}: el dato es {derecho.valores[campo]} y la cita dice «{literal}»")
-                sin_evidencia.discard(campo)
-        problemas.extend(f"{clave}.{campo}: cifra sin evidencia" for campo in sorted(sin_evidencia))
-        try:
-            date.fromisoformat(derecho.fuente.en_vigor_desde)
-        except ValueError:
-            problemas.append(f"{clave}: en_vigor_desde no es una fecha")
-    return problemas
+    """Problems found re-reading the data against its quotes (and against the laws, given ``textos``), with the
+    shared checker of :mod:`hacienda_gpt.conocimiento`."""
+    return FICHEROS_LEGALES[0].comprobar(datos, textos)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -147,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     if len(args) != 1:
         print("uso: python -m hacienda_gpt.modulos.suscripciones.derechos <directorio con BOE-A-*.html|txt>")
         return 2
-    problemas = comprobar(cargar(), textos_de_directorio(Path(args[0])))
+    problemas = comprobar(cargar(), _textos_de_directorio(Path(args[0]), "BOE-A-*"))
     for problema in problemas:
         print(problema)
     print("Datos coherentes con el texto de la ley." if not problemas else f"{len(problemas)} problema(s).")

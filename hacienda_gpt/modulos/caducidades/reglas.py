@@ -2,9 +2,11 @@
 
 Every figure (years of validity, ITV frequencies, warranty and withdrawal periods…) is read from the
 consolidated text on boe.es and stored with the literal sentence it comes from (``evidencia``) and how each
-number is spelled there (``cifras``). :func:`comprobar_evidencias` re-checks the data mechanically: each
-figure is spelled in one of its group's quotes and means the stored value, and — given the law texts —
-each quote is verbatim in its law. Nothing here is recited from memory.
+number is spelled there (``cifras``). :func:`comprobar_evidencias` re-checks the data mechanically with the
+shared checker of :mod:`hacienda_gpt.conocimiento`: each figure is spelled in one of its group's quotes and means
+the stored value, and — given the law texts — each quote is verbatim in its law. Nothing here is recited from
+memory. The file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification, the reading dates and the
+agentic re-encoding loop (with test cases run through this module's calculator) cover it.
 """
 
 from __future__ import annotations
@@ -14,10 +16,23 @@ from decimal import Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
-import re
 import sys
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from hacienda_gpt.conocimiento import (
+    FRONTERA_PALABRA,
+    CitaLegal,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    Recodificable,
+    citas_de_evidencia,
+    fuente_de,
+    hojas,
+)
+from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "reglas.json"
 
@@ -251,31 +266,16 @@ def cifra_a_numero(literal: str) -> Decimal:
 
 def _hojas(value: object, prefix: str = "") -> dict[str, Decimal]:
     """Every numeric figure inside a group, by dotted path (texts, dates and procedure steps excluded)."""
-    if isinstance(value, bool):
-        return {}
-    if isinstance(value, int | Decimal):
-        return {prefix: Decimal(value)}
-    items: list[tuple[str, object]]
-    if isinstance(value, BaseModel):
-        items = [
-            (name, getattr(value, name))
-            for name in type(value).model_fields
-            if name not in {"fuente", "evidencia", "avisos", "tramite"}
-        ]
-    elif isinstance(value, dict):
-        items = [(str(key), item) for key, item in value.items()]
-    elif isinstance(value, list):
-        items = [(str(index), item) for index, item in enumerate(value)]
-    else:
-        return {}
-    found: dict[str, Decimal] = {}
-    for name, item in items:
-        found.update(_hojas(item, f"{prefix}.{name}" if prefix else name))
-    return found
+    return {
+        ruta: valor
+        for ruta, valor in hojas(
+            value, tipos=(int, Decimal), excluir=("fuente", "evidencia", "avisos", "tramite"), prefijo=prefix
+        ).items()
+        if isinstance(valor, Decimal)
+    }
 
 
-def _compacto(text: str) -> str:
-    return " ".join(text.split())
+ORTOGRAFIA = Ortografia(leer_cifra=cifra_a_numero, frontera=FRONTERA_PALABRA)
 
 
 def textos_literales(reglas: Reglas) -> list[tuple[str, str, str]]:
@@ -289,55 +289,66 @@ def textos_literales(reglas: Reglas) -> list[tuple[str, str, str]]:
     return found
 
 
+def grupos_legales(reglas: Reglas) -> list[GrupoLegal]:
+    """The file as groups of the shared library. The literal letters of the withdrawal exceptions (art. 103
+    TRLGDCU) are quotes of the ``desistimiento`` group."""
+    out: list[GrupoLegal] = []
+    for nombre, grupo in reglas.grupos().items():
+        citas = citas_de_evidencia(grupo.evidencia)
+        if nombre == "desistimiento":
+            citas += [
+                CitaLegal(boe_id="BOE-A-2007-20555", articulo=f"art. 103.{e.letra}", cita=e.texto)
+                for e in reglas.desistimiento.excepciones
+            ]
+        out.append(
+            GrupoLegal(
+                nombre=nombre,
+                ruta=[nombre],
+                descripcion=f"{nombre} ({grupo.fuente.referencia})",
+                fuente=fuente_de(grupo.fuente),
+                cifras=dict(_hojas(grupo)),
+                citas=citas,
+            )
+        )
+    return out
+
+
+def _familia() -> Any:
+    """The rules in the agentic re-encoding loop (:mod:`hacienda_gpt.conocimiento.recodificacion`)."""
+    from hacienda_gpt.conocimiento.casos_caducidades import familia_caducidades
+
+    return familia_caducidades()
+
+
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="caducidades",
+        modulo="caducidades",
+        titulo="Caducidades: reglas de vigencia y plazos",
+        ruta=DATA_PATH,
+        cargar=Reglas.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda reglas: set(reglas.fuentes_principales),
+        limpiar=lambda: cargar_reglas.cache_clear(),
+        recodificable=Recodificable(familia=_familia),
+    ),
+)
+
+
 def comprobar_evidencias(reglas: Reglas, textos: dict[str, str] | None = None) -> list[str]:
     """Problems found re-reading the rules against their quotes (and, given ``textos``, against the laws).
 
     ``textos``: BOE id -> plain text of the consolidated page (or of extracts of the quoted articles).
-    An empty list means the data is consistent with the text it claims to come from.
+    An empty list means the data is consistent with the text it claims to come from. The checker is the shared
+    one of :mod:`hacienda_gpt.conocimiento`.
     """
-    problemas: list[str] = []
-    for nombre, grupo in reglas.grupos().items():
-        hojas = _hojas(grupo)
-        sin_evidencia = set(hojas)
-        for ev in grupo.evidencia:
-            if ev.boe_id not in reglas.fuentes_principales:
-                problemas.append(f"{nombre}: {ev.boe_id} no figura en fuentes_principales")
-            for ruta, literal in ev.cifras.items():
-                if ruta not in hojas:
-                    problemas.append(f"{nombre}: la evidencia cita una cifra inexistente ({ruta})")
-                    continue
-                if not re.search(rf"(?<![\w.,]){re.escape(literal)}(?![\w]|[.,]\d)", ev.cita):
-                    problemas.append(f"{nombre}.{ruta}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                try:
-                    leido = cifra_a_numero(literal)
-                except ValueError as exc:
-                    problemas.append(f"{nombre}.{ruta}: {exc}")
-                    continue
-                if leido != hojas[ruta]:
-                    problemas.append(f"{nombre}.{ruta}: el dato es {hojas[ruta]} y la cita dice «{literal}»")
-                sin_evidencia.discard(ruta)
-        problemas.extend(f"{nombre}.{ruta}: cifra sin evidencia" for ruta in sorted(sin_evidencia))
-    if textos is not None:
-        for nombre, boe_id, literal in textos_literales(reglas):
-            texto = textos.get(boe_id)
-            if texto is None:
-                problemas.append(f"{nombre}: no se ha aportado el texto de {boe_id}")
-            elif _compacto(literal) not in _compacto(texto):
-                problemas.append(f"{nombre}: «{literal[:80]}…» no aparece literal en {boe_id}")
-    return problemas
+    return FICHEROS_LEGALES[0].comprobar(reglas, textos)
 
 
 def textos_de_directorio(directorio: Path) -> dict[str, str]:
     """BOE id -> plain text, from ``<BOE-ID>.html`` (downloaded consolidated pages) or ``<BOE-ID>.txt`` extracts."""
-    from hacienda_gpt.tax.autonomos_params import texto_de_html
-
-    textos: dict[str, str] = {}
-    for path in sorted(directorio.glob("BOE-A-*.txt")):
-        textos[path.stem] = path.read_text(encoding="utf-8")
-    for path in sorted(directorio.glob("BOE-A-*.html")):
-        textos[path.stem] = texto_de_html(path.read_text(encoding="utf-8"))
-    return textos
+    return textos_de_directorio_comun(directorio, "BOE-A-*")
 
 
 def main(argv: list[str] | None = None) -> int:

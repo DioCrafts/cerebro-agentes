@@ -51,6 +51,8 @@ _TIPOS = frozenset(get_args(TipoHecho))
 # Notification kinds and key prefixes the core already uses: a module named like them would be ambiguous.
 CLAVES_RESERVADAS = frozenset(
     {"plazo", "fin_de_ejercicio", "cambio_normativo", "resumen_semanal", "modulo", "nucleo", "contrato", "registro"}
+    # The long-running tasks use ``modulo:tareas`` notices and the bus timer «tareas» (hacienda_gpt/tareas).
+    | {"tareas"}
 )
 
 

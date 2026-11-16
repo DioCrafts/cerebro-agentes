@@ -1,8 +1,10 @@
 """Regulated figures of a Spanish household electricity bill (2.0TD), loaded from versioned JSON.
 
 Every figure was read on www.boe.es and is stored with the literal sentence (or table row) it comes from,
-like ``hacienda_gpt/tax/autonomos_params.py``. :func:`comprobar_evidencias` re-checks the data: each figure
-is spelled in one of its quotes and, given the law texts, each quote is verbatim in its law.
+like ``hacienda_gpt/tax/autonomos_params.py``. :func:`comprobar_evidencias` re-checks the data with the shared
+checker of :mod:`hacienda_gpt.conocimiento` (the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
+verification and the reading dates cover it): each figure is spelled in one of its quotes and, given the law texts,
+each quote is verbatim in its law.
 
 Figures that change during the year are stored as dated items (``desde``/``hasta``, both inclusive); the
 calculators split a billing period wherever one of them changes.
@@ -10,19 +12,30 @@ calculators split a billing period wherever one of them changes.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
-import re
 import sys
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.autonomos_params import cifra_a_decimal, texto_de_html
+from hacienda_gpt.conocimiento import (
+    FRONTERA_CIFRA,
+    VERSION_DIARIO,
+    CitaLegal,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    citas_de_evidencia,
+    fuente_de,
+    hojas,
+)
+from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
+from hacienda_gpt.tax.autonomos_params import cifra_a_decimal
 
 DATA = Path(__file__).resolve().parent / "data" / "regulados.json"
 Periodo3 = Literal["p1", "p2", "p3"]
@@ -38,7 +51,7 @@ class FuentePrincipal(_Model):
     boe_id: str
     url: str
     # Consolidated texts: date of the last update shown by the BOE; diary texts: publication date.
-    fecha: str
+    consolidado_a: str
     tipo_texto: Literal["consolidado", "diario"]
     consultado_el: str
     sha256_html: str
@@ -207,31 +220,59 @@ def cargar_regulados() -> Regulados:
     return Regulados.model_validate(json.loads(DATA.read_text(encoding="utf-8")))
 
 
-# --- Self-check against the law -------------------------------------------------------------------
+# --- Self-check against the law (the shared checker of hacienda_gpt.conocimiento) ----------------------
+
+_NO_CIFRAS = ("fuente", "evidencia", "desde", "hasta", "estado", "condicion")
+ORTOGRAFIA = Ortografia(leer_cifra=cifra_a_decimal, frontera=FRONTERA_CIFRA)
+
+
+def _hojas(value: object, prefix: str = "") -> dict[str, Decimal]:
+    """Every Decimal of a group by dotted path (dates, states and conditions are not figures)."""
+    return {
+        ruta: valor
+        for ruta, valor in hojas(value, excluir=_NO_CIFRAS, listas=False, prefijo=prefix).items()
+        if isinstance(valor, Decimal)
+    }
+
+
+def grupos_legales(datos: Regulados) -> list[GrupoLegal]:
+    """The file as groups of the shared library: every regulated group, and each holiday row with its quote."""
+    versiones: dict[str, str | None] = {
+        b: VERSION_DIARIO if f.tipo_texto == "diario" else None for b, f in datos.fuentes_principales.items()
+    }
+    out = [
+        GrupoLegal(
+            nombre=nombre,
+            ruta=[nombre],
+            descripcion=f"{nombre} ({grupo.fuente.referencia})",
+            fuente=fuente_de(grupo.fuente),
+            cifras=dict(_hojas(grupo)),
+            citas=citas_de_evidencia(grupo.evidencia, versiones=versiones),
+        )
+        for nombre, grupo in datos.grupos().items()
+    ]
+    for festivo in datos.festivos:
+        nombre = f"festivos[{festivo.fecha}]"
+        out.append(
+            GrupoLegal(
+                nombre=nombre,
+                ruta=["festivos", nombre],
+                descripcion=f"fiesta nacional del {festivo.fecha:%d-%m-%Y}",
+                citas=[
+                    CitaLegal(
+                        boe_id=festivo.boe_id,
+                        version=versiones.get(festivo.boe_id),
+                        articulo="anexo",
+                        cita=festivo.cita,
+                    )
+                ],
+            )
+        )
+    return out
 
 
 def _compacto(text: str) -> str:
     return " ".join(text.split())
-
-
-def _hojas(value: object, prefix: str = "") -> dict[str, Decimal]:
-    if isinstance(value, Decimal):
-        return {prefix: value}
-    items: list[tuple[str, object]]
-    if isinstance(value, BaseModel):
-        items = [
-            (name, getattr(value, name))
-            for name in type(value).model_fields
-            if name not in {"fuente", "evidencia", "desde", "hasta", "estado", "condicion"}
-        ]
-    elif isinstance(value, dict):
-        items = [(str(k), v) for k, v in value.items()]
-    else:
-        return {}
-    found: dict[str, Decimal] = {}
-    for name, item in items:
-        found.update(_hojas(item, f"{prefix}.{name}" if prefix else name))
-    return found
 
 
 _MESES = (
@@ -263,46 +304,9 @@ def _mes_de_la_fila(texto: str, cita: str) -> int | None:
     return None
 
 
-def comprobar_evidencias(datos: Regulados, textos: dict[str, str] | None = None) -> list[str]:
-    """Problems found re-reading the data against its quotes (and, with ``textos``, against the law).
-
-    ``textos`` maps BOE id -> plain text of the page (or an extract with the quoted paragraphs).
-    """
+def _comprobaciones_propias(datos: Regulados, textos: Mapping[str, str] | None) -> list[str]:
+    """What only this module knows: the hour ranges of the periods and the layout of the holidays table."""
     problemas: list[str] = []
-    compactos = {k: _compacto(v) for k, v in (textos or {}).items()}
-
-    def _cita_en_ley(nombre: str, boe_id: str, articulo: str, cita: str) -> None:
-        if boe_id not in datos.fuentes_principales:
-            problemas.append(f"{nombre}: {boe_id} no figura en fuentes_principales")
-        if textos is None:
-            return
-        if boe_id not in compactos:
-            problemas.append(f"{nombre}: no se ha aportado el texto de {boe_id}")
-        elif _compacto(cita) not in compactos[boe_id]:
-            problemas.append(f"{nombre}: la cita de {articulo} no aparece literal en {boe_id}")
-
-    for nombre, grupo in datos.grupos().items():
-        hojas = _hojas(grupo)
-        sin_evidencia = set(hojas)
-        for ev in grupo.evidencia:
-            _cita_en_ley(nombre, ev.boe_id, ev.articulo, ev.cita)
-            for ruta, literal in ev.cifras.items():
-                if ruta not in hojas:
-                    problemas.append(f"{nombre}: la evidencia cita una cifra inexistente ({ruta})")
-                    continue
-                if not re.search(rf"(?<![\d.,]){re.escape(literal)}(?!\d|[.,]\d)", ev.cita):
-                    problemas.append(f"{nombre}.{ruta}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                try:
-                    leido = cifra_a_decimal(literal)
-                except (InvalidOperation, IndexError):
-                    problemas.append(f"{nombre}.{ruta}: «{literal}» no es una cifra")
-                    continue
-                if leido != hojas[ruta]:
-                    problemas.append(f"{nombre}.{ruta}: el dato es {hojas[ruta]} y la cita dice «{literal}»")
-                sin_evidencia.discard(ruta)
-        problemas.extend(f"{nombre}.{ruta}: cifra sin evidencia" for ruta in sorted(sin_evidencia))
-
     # Hour ranges of the periods: every "a h-b h" must be printed in the table quote, in this order.
     tabla = _compacto(datos.periodos_2_0td.evidencia[0].cita)
     esperado: list[str] = []
@@ -315,7 +319,6 @@ def comprobar_evidencias(datos: Regulados, textos: dict[str, str] | None = None)
     # Holidays: the quote is the row of the BOE table, with the day number first and under its month.
     for festivo in datos.festivos:
         nombre = f"festivos[{festivo.fecha}]"
-        _cita_en_ley(nombre, festivo.boe_id, "anexo", festivo.cita)
         if not festivo.cita.startswith(f"{festivo.fecha.day} "):
             problemas.append(f"{nombre}: la fila citada no empieza por el día {festivo.fecha.day}")
         if festivo.cita.count("*") != 19 or "**" in festivo.cita:
@@ -327,14 +330,40 @@ def comprobar_evidencias(datos: Regulados, textos: dict[str, str] | None = None)
     return problemas
 
 
+FICHEROS_LEGALES = (
+    FicheroLegal(
+        clave="luz",
+        modulo="luz",
+        titulo="Luz: cifras reguladas de la factura",
+        ruta=DATA,
+        cargar=Regulados.model_validate,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda datos: set(datos.fuentes_principales),
+        propias=_comprobaciones_propias,
+        limpiar=lambda: cargar_regulados.cache_clear(),
+        solo_persona=(
+            "Peajes, cargos y bono social se fijan cada año en una resolución de la CNMC o una orden ministerial "
+            "nueva (texto del BOE diario, no consolidado), con tablas por período: no es la nueva redacción de un "
+            "artículo que el bucle pueda releer. Al publicarse la del año siguiente, una persona la lee y añade sus "
+            "cifras con su cita; la verificación semanal comprueba después cada cita y cada cifra."
+        ),
+    ),
+)
+
+
+def comprobar_evidencias(datos: Regulados, textos: dict[str, str] | None = None) -> list[str]:
+    """Problems found re-reading the data against its quotes (and, with ``textos``, against the law).
+
+    ``textos`` maps BOE id -> plain text of the page (or an extract with the quoted paragraphs). The checks are
+    the shared ones of :mod:`hacienda_gpt.conocimiento` plus this module's own (period table, holidays).
+    """
+    return FICHEROS_LEGALES[0].comprobar(datos, textos)
+
+
 def textos_de_directorio(directorio: Path) -> dict[str, str]:
     """BOE id -> plain text, from ``<BOE-ID>.html`` (pages from boe.es) or ``<BOE-ID>.txt`` (extracts)."""
-    textos: dict[str, str] = {}
-    for path in sorted(directorio.glob("BOE-*.txt")):
-        textos[path.stem] = path.read_text(encoding="utf-8")
-    for path in sorted(directorio.glob("BOE-*.html")):
-        textos[path.stem] = texto_de_html(path.read_text(encoding="utf-8"))
-    return textos
+    return textos_de_directorio_comun(directorio)
 
 
 def main(argv: list[str] | None = None) -> int:

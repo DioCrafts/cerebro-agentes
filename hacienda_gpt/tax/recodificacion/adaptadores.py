@@ -1891,7 +1891,9 @@ def objetivo_de_ruta(
     if hay_familia and familia != "irpf":
         for modulo in _otros_modulos():
             buscar = getattr(modulo, "objetivo_de_ruta", None)
-            if callable(buscar):
+            # A module that lists its families only answers for those (the tax files', the modules' legal data).
+            suyas = {str(getattr(f, "clave", "")) for f in getattr(modulo, "FAMILIAS", ())}
+            if callable(buscar) and (not suyas or familia in suyas):
                 objetivo: Objetivo = buscar(
                     familia,
                     ejercicios,

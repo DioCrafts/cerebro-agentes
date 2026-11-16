@@ -11,7 +11,7 @@ from decimal import Decimal
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.agent.tools import ISD_TOOL
+from hacienda_gpt.modulos.fiscal.especificaciones import ISD_TOOL
 from hacienda_gpt.tax.sucesiones import BeneficiarioISD, calcular_isd
 from hacienda_gpt.tax.sucesiones_params import (
     AdquirenteBienes,

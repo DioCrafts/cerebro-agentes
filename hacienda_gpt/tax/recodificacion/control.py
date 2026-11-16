@@ -5,8 +5,9 @@ Three families of helpers:
 * locating the article(s) of a law in a BOE consolidated page and flattening
   them to the text the reader and the reviewer are shown;
 * literal-quote and "every figure is inside a quote" checks, ported from the
-  self-check the human-driven encoders had to pass (``check_ded3.py``) and built
-  on the same normalisation ``verificacion`` uses;
+  self-check the human-driven encoders had to pass (``check_ded3.py``); the
+  literal-quote rule and the normalisation are the shared legal-data library's
+  (:mod:`hacienda_gpt.conocimiento.comprobacion`), re-exported here;
 * the effects date of a wording, which decides the tax years a proposal touches.
 
 Nothing in this module trusts the model: a proposal that does not pass these
@@ -28,10 +29,12 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.verificacion import _comprimido, _formas
+# The literal-quote rules are the shared legal-data library's (one normalisation for every check).
+from hacienda_gpt.conocimiento.comprobacion import MIN_CITA, es_literal
+from hacienda_gpt.conocimiento.comprobacion import citas_no_literales as citas_no_literales
+from hacienda_gpt.conocimiento.texto import comprimido as _comprimido
+from hacienda_gpt.conocimiento.texto import formas as _formas
 
-# A quote shorter than this (ignoring whitespace) proves nothing: "300" is in every law.
-MIN_CITA = 15
 CENT = Decimal("0.01")
 
 
@@ -639,30 +642,7 @@ def pasajes_que_nombran(pagina: str, ley: str) -> str:
 # --------------------------------------------------------------------------- #
 
 
-def citas_no_literales(citas: Iterable[str], comprimido: str) -> list[str]:
-    """Problems of ``citas`` against a text already compressed with ``verificacion._comprimido``.
-
-    Stricter than the weekly re-verification: a quote must be ONE contiguous
-    passage (no "[...]" stitching, which would let a figure travel between
-    unrelated sentences) and long enough to mean something.
-    """
-    problemas: list[str] = []
-    vistas = 0
-    for cita in citas:
-        vistas += 1
-        propia = _comprimido(cita)
-        if len(propia) < MIN_CITA:
-            problemas.append(f"cita demasiado corta para probar nada: «{cita[:60]}»")
-        elif propia not in comprimido:
-            problemas.append(f"cita no literal (no está en el texto legal): «{cita[:90]}»")
-    if not vistas:
-        problemas.append("no hay ninguna cita literal")
-    return problemas
-
-
-def es_literal(cita: str, comprimido: str) -> bool:
-    propia = _comprimido(cita)
-    return len(propia) >= MIN_CITA and propia in comprimido
+# ``citas_no_literales`` and ``es_literal`` (imported above) are re-exported from here for the adapters.
 
 
 # --------------------------------------------------------------------------- #

@@ -1,7 +1,7 @@
 """Self-employed calculators over HTTP: net income of the activity, modelo 130
 and modelo 303.
 
-Thin wrappers around the deterministic calculators of ``hacienda_gpt.tax`` —
+Thin wrappers around the deterministic calculators of the tax module (``hacienda_gpt.modulos.fiscal.calculo``) —
 no LLM, no case state. Mount with::
 
     from hacienda_gpt.api.routers.autonomos import router as autonomos_router
@@ -23,11 +23,19 @@ from fastapi.routing import APIRoute
 from pydantic import BaseModel, ConfigDict
 
 from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.tax.actividad import ActividadInput, ResultadoActividad, calcular_rendimiento_actividad
-from hacienda_gpt.tax.autonomos_params import ejercicios_autonomos_disponibles
-from hacienda_gpt.tax.iva import Modelo303Input, ResultadoModelo303, calcular_modelo_303
-from hacienda_gpt.tax.pagos_fraccionados import Modelo130Input, ResultadoModelo130, calcular_modelo_130
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
+from hacienda_gpt.modulos.fiscal.calculo.actividad import (
+    ActividadInput,
+    ResultadoActividad,
+    calcular_rendimiento_actividad,
+)
+from hacienda_gpt.modulos.fiscal.calculo.autonomos_params import ejercicios_autonomos_disponibles
+from hacienda_gpt.modulos.fiscal.calculo.iva import Modelo303Input, ResultadoModelo303, calcular_modelo_303
+from hacienda_gpt.modulos.fiscal.calculo.pagos_fraccionados import (
+    Modelo130Input,
+    ResultadoModelo130,
+    calcular_modelo_130,
+)
+from hacienda_gpt.modulos.fiscal.calculo.params import EjercicioNoDisponibleError
 
 # Pydantic error type -> Spanish sentence ({ctx} values of the error are available).
 _MENSAJES: dict[str, str] = {

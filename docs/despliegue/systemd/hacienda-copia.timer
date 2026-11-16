@@ -1,0 +1,11 @@
+# Copia diaria a las 03:17 (systemctl enable --now hacienda-copia.timer).
+[Unit]
+Description=HaciendaGPT: copia de seguridad diaria
+
+[Timer]
+OnCalendar=*-*-* 03:17:00
+Persistent=true
+RandomizedDelaySec=10min
+
+[Install]
+WantedBy=timers.target

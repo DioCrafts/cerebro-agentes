@@ -54,6 +54,7 @@ from hacienda_gpt.modulos.acciones import AccionPendiente
 from hacienda_gpt.modulos.contrato import Modulo
 from hacienda_gpt.modulos.propuestas_chat import PropuestasChat
 from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
+from hacienda_gpt.tareas.herramientas import TareasAgente
 
 logger = logging.getLogger(__name__)
 
@@ -227,9 +228,11 @@ class TaxAgent:
     ) -> AgentResult:
         """Answer ``query``. Raises :class:`ProviderError` if the agent model fails.
 
-        ``modulos`` are the household modules switched on for this user: every one but the tax module adds
-        a ``consultar_<clave>`` specialist tool (see :mod:`hacienda_gpt.agent.especialistas`). Without them
-        (or with only the tax module) the advisor runs exactly as it always has.
+        ``modulos`` are the household modules switched on for this user: every one without direct tools adds
+        a ``consultar_<clave>`` specialist tool (see :mod:`hacienda_gpt.agent.especialistas`). The tools of the
+        modules flagged ``herramientas_directas`` (the tax module) are always the toolbox's own, offered right
+        after the corpus search (see :class:`~hacienda_gpt.agent.tools.Toolbox`). Without other modules the
+        advisor runs exactly as it always has.
 
         Team mode passes three extras: a ``ledger`` already holding the
         researchers' fragments, a ``briefing`` with their memos, and a
@@ -256,6 +259,8 @@ class TaxAgent:
         memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
         # Tax facts the household modules propose (modulos/puentes.py): a context block and `aceptar_propuesta`.
         propuestas = PropuestasChat.para(case, modulos, query=query, chat_history=chat_history)
+        # Long-running tasks (hacienda_gpt/tareas): tools and a paragraph, with a case and household modules or tasks.
+        tareas = TareasAgente.para(case, query=query, chat_history=chat_history, modulos=modulos or ())
         toolbox = Toolbox(
             searcher=self._searcher,
             ledger=ledger,
@@ -268,6 +273,7 @@ class TaxAgent:
                 *(especialistas.herramientas() if especialistas is not None else ()),
                 *(memoria.herramientas() if memoria is not None else ()),
                 *(propuestas.herramientas() if propuestas is not None else ()),
+                *(tareas.herramientas() if tareas is not None else ()),
             ],
         )
         if memoria is not None:
@@ -279,6 +285,8 @@ class TaxAgent:
         if especialistas is not None:
             especialistas.vincular(toolbox)
             system += especialistas.addendum()
+        if tareas is not None:  # the long-running tasks' paragraph (hacienda_gpt/tareas/prompt.py)
+            system += tareas.addendum()
         # The household planner's paragraph, only when its tool is offered (a case and household modules).
         if any(spec.name == PLANIFICAR_TOOL.name for spec in toolbox.specs()):
             system += PLANIFICADOR_ADDENDUM

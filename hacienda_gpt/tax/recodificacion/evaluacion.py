@@ -18,7 +18,6 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from decimal import Decimal, InvalidOperation
-import json
 from pathlib import Path
 import random
 from typing import Any
@@ -33,7 +32,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     Objetivo,
     RecodificacionError,
     adaptador_de,
-    ejercicios_en,
+    ficheros_de,
     recodificar,
 )
 from hacienda_gpt.tax.verificacion import TextoDe
@@ -195,10 +194,7 @@ def evaluar(
             continue
         ejercicio = con_grupo[0]
         humano = objetivo.antes[ejercicio]
-        ficheros = {
-            e: json.loads((data_dir / objetivo.fichero.format(ejercicio=e)).read_text(encoding="utf-8"))
-            for e in ejercicios_en(data_dir, objetivo.fichero)
-        }
+        ficheros = ficheros_de(data_dir, objetivo)
         fila = GrupoEvaluado(
             grupo=objetivo.etiqueta,
             tipo=objetivo.tipo,

@@ -1,0 +1,93 @@
+{
+  "id": "preparar_renta",
+  "version": 1,
+  "titulo": "Preparar la declaración de la renta",
+  "descripcion": "Comprueba si tienes que declarar, reúne tus datos (también los que proponen tus módulos), calcula la declaración y lo que podrías optimizar, prepara la lista de papeles y te avisa antes del fin del plazo.",
+  "ambito_decision": "tareas:preparar_renta",
+  "vence_dias": null,
+  "parametros": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "ejercicio": {"type": "integer", "minimum": 2025, "maximum": 2026, "x-defecto": "ejercicio_anterior"}
+    }
+  },
+  "pasos": [
+    {
+      "id": "obligacion",
+      "titulo": "¿Tienes que declarar?",
+      "descripcion": "Obligación de declarar con los datos de tu expediente (art. 96 de la Ley del IRPF).",
+      "tipo": "calculo",
+      "herramienta": "obligacion_declarar",
+      "argumentos": {"ejercicio": "${ejercicio}"}
+    },
+    {
+      "id": "correo",
+      "titulo": "Datos que proponen tus correos",
+      "descripcion": "Lo que el módulo de correo ha encontrado y está pendiente de que lo confirmes.",
+      "tipo": "calculo",
+      "herramienta": "correo_propuestas",
+      "argumentos": {},
+      "opcional": true
+    },
+    {
+      "id": "datos",
+      "titulo": "Revisa tus datos",
+      "descripcion": "Comprueba en tu expediente ingresos, retenciones y deducciones, y acepta o descarta lo que proponen tus módulos.",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["obligacion", "correo"]
+    },
+    {
+      "id": "irpf",
+      "titulo": "Calcula la declaración",
+      "descripcion": "Cálculo del IRPF con tus datos.",
+      "tipo": "calculo",
+      "herramienta": "calcular_irpf",
+      "argumentos": {"ejercicio": "${ejercicio}"},
+      "depende_de": ["datos"]
+    },
+    {
+      "id": "optimizar",
+      "titulo": "Qué podrías optimizar",
+      "descripcion": "El optimizador fiscal con tus datos y tus decisiones.",
+      "tipo": "calculo",
+      "herramienta": "optimizar_impuestos",
+      "argumentos": {"ejercicio": "${ejercicio}"},
+      "depende_de": ["irpf"],
+      "opcional": true
+    },
+    {
+      "id": "papeles",
+      "titulo": "Papeles que conviene tener",
+      "descripcion": "Lista orientativa según tus datos.",
+      "tipo": "capacidad",
+      "capacidad": "documentos",
+      "operacion": "lista_de_comprobacion",
+      "parametros": {"origen": "renta"},
+      "depende_de": ["datos"]
+    },
+    {
+      "id": "plazos",
+      "titulo": "Fechas de la campaña",
+      "descripcion": "Tu calendario fiscal.",
+      "tipo": "calculo",
+      "herramienta": "calendario_fiscal",
+      "argumentos": {"dias": 365}
+    },
+    {
+      "id": "recordatorio",
+      "titulo": "Te aviso un mes antes del fin del plazo",
+      "descripcion": "Según el calendario fiscal (la fecha exacta de cada campaña la fija una orden ministerial).",
+      "tipo": "espera",
+      "espera": {"calendario": "irpf_declaracion", "dias_antes": 30},
+      "depende_de": ["papeles", "optimizar", "plazos"]
+    },
+    {
+      "id": "presentada",
+      "titulo": "Presenta la declaración",
+      "descripcion": "Preséntala tú en la sede electrónica de la Agencia Tributaria y márcalo aquí.",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["recordatorio"]
+    }
+  ]
+}

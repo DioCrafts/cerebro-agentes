@@ -11,6 +11,7 @@ from typing import Any
 
 from hacienda_gpt.decision.schemas import CaseState
 from hacienda_gpt.decision.state_store import CaseStateStore, CaseVersionConflictError
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
 
 # Hooks run on the store's connection INSIDE the save / delete transaction, before the write: whatever they
 # write commits or rolls back with the case. The event bus (hacienda_gpt/eventos) writes its outbox here.
@@ -73,6 +74,7 @@ class SQLiteCaseStateStore(CaseStateStore):
 
     def _initialize(self) -> None:
         with self._connect() as conn:
+            asegurar_esquema(conn, "decision")  # migrations (hacienda_gpt/plataforma)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS case_states (
                     case_id TEXT PRIMARY KEY,

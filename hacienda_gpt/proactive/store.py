@@ -17,6 +17,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+
 # The tax module's kinds (unchanged since before the modules existed), the weekly digest, and one kind per
 # household module: ``modulo:<clave>``. The kind lives in the JSON payload, so rows written before the
 # modules existed read exactly as they did: no migration is needed.
@@ -77,6 +79,7 @@ class NotificationStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.execute("PRAGMA journal_mode=WAL;")
+            asegurar_esquema(self._conn, "proactive")  # migrations (hacienda_gpt/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS notifications (
                     seq INTEGER PRIMARY KEY AUTOINCREMENT,

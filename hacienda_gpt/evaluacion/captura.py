@@ -47,6 +47,7 @@ from hacienda_gpt.evaluacion.modelos import (
     Rubrica,
 )
 from hacienda_gpt.evaluacion.senales import Senal, es_repregunta, respuestas, senales_de_turno
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
 
 CONSENTIMIENTO_VERSION = "2026-11-16"
 CONSENTIMIENTO_TEXTO = (
@@ -281,6 +282,7 @@ class FeedbackStore:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
+                asegurar_esquema(conn, "evaluacion")  # migrations (hacienda_gpt/plataforma)
                 conn.execute(_TABLA)
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_evaluacion_feedback_case ON evaluacion_feedback(case_id)")
             self._conn = conn

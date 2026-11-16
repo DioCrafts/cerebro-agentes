@@ -3,13 +3,16 @@
 Same rule as ``hacienda_gpt.tax.autonomos_params``: no figure lives in the arithmetic, and every group
 carries the literal quotes of the law it was read from and how each figure is spelled in them, so the
 data can be re-checked mechanically against the consolidated texts on boe.es
-(:func:`comprobar_evidencias`). Dates read from the law are checked the same way.
+(:func:`comprobar_evidencias`, the shared checker of :mod:`hacienda_gpt.conocimiento`). Dates read from the law are
+checked the same way. Each year's file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification and the
+reading dates cover it.
 """
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -18,7 +21,16 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.autonomos_params import texto_de_html
+from hacienda_gpt.conocimiento import (
+    FRONTERA_MIXTA,
+    FicheroLegal,
+    GrupoLegal,
+    Ortografia,
+    citas_de_evidencia,
+    fuente_de,
+    hojas,
+)
+from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
 from hacienda_gpt.tax.params import Fuente, FuentePrincipal
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
@@ -288,26 +300,53 @@ def fecha_literal(literal: str) -> date:
 
 def _hojas(value: object, prefix: str = "") -> dict[str, object]:
     """Every Decimal and date inside a group, by dotted path."""
-    if isinstance(value, (Decimal, date)):
-        return {prefix: value}
-    if isinstance(value, BaseModel):
-        items: list[tuple[str, object]] = [
-            (name, getattr(value, name))
-            for name in type(value).model_fields
-            if name not in {"fuente", "evidencia", "avisos"}
-        ]
-    elif isinstance(value, list):
-        items = [(str(index), item) for index, item in enumerate(value)]
-    else:
-        return {}
-    found: dict[str, object] = {}
-    for name, item in items:
-        found.update(_hojas(item, f"{prefix}.{name}" if prefix else name))
-    return found
+    return dict(hojas(value, tipos=(Decimal, date), diccionarios=False, prefijo=prefix))
 
 
-def _compacto(text: str) -> str:
-    return " ".join(text.split())
+ORTOGRAFIA = Ortografia(
+    leer_cifra=cifra_a_decimal, leer_fecha=fecha_literal, frontera=FRONTERA_MIXTA, sustantivo="dato"
+)
+
+
+def grupos_legales(params: PrestacionesParams) -> list[GrupoLegal]:
+    """The file as groups of the shared library."""
+    return [
+        GrupoLegal(
+            nombre=nombre,
+            ruta=[nombre],
+            descripcion=f"{nombre} ({grupo.fuente.referencia})",
+            fuente=fuente_de(grupo.fuente),
+            cifras=hojas(grupo, tipos=(Decimal, date), diccionarios=False),
+            citas=citas_de_evidencia(grupo.evidencia),
+        )
+        for nombre, grupo in params.grupos().items()
+    ]
+
+
+def _cargar(raw: dict[str, object]) -> PrestacionesParams:
+    return PrestacionesParams.model_validate(raw)
+
+
+FICHEROS_LEGALES = tuple(
+    FicheroLegal(
+        clave=f"ayudas_{ejercicio}",
+        modulo="ayudas",
+        titulo=f"Ayudas: cifras de las prestaciones de {ejercicio}",
+        ruta=DATA_DIR / f"prestaciones_{ejercicio}.json",
+        cargar=_cargar,
+        grupos=grupos_legales,
+        ortografia=ORTOGRAFIA,
+        fuentes=lambda params: set(params.fuentes_principales),
+        limpiar=lambda: load_prestaciones.cache_clear(),
+        solo_persona=(
+            "Las cifras de cada año salen de varias normas a la vez (la ley de cada prestación, la de "
+            "presupuestos o el real decreto-ley de revalorización, el IPREM): un grupo se apoya en citas de leyes "
+            "distintas y el evaluador de ayudas no recibe un fichero alternativo. Una persona las relee; la "
+            "verificación semanal comprueba cada cita y cada cifra."
+        ),
+    )
+    for ejercicio in ejercicios_disponibles()
+)
 
 
 def comprobar_evidencias(params: PrestacionesParams, textos: dict[str, str] | None = None) -> list[str]:
@@ -315,48 +354,18 @@ def comprobar_evidencias(params: PrestacionesParams, textos: dict[str, str] | No
 
     Always checked: every figure and date of every group is spelled in one of the group's quotes and
     that spelling means the stored value. With ``textos`` (BOE id -> plain text of the law, or of the
-    quoted articles) each quote must also appear verbatim in its law.
+    quoted articles) each quote must also appear verbatim in its law. The checker is the shared one of
+    :mod:`hacienda_gpt.conocimiento`.
     """
-    problemas: list[str] = []
-    for nombre, grupo in params.grupos().items():
-        hojas = _hojas(grupo)
-        sin_evidencia = set(hojas)
-        for ev in grupo.evidencia:
-            if ev.boe_id not in params.fuentes_principales:
-                problemas.append(f"{nombre}: {ev.boe_id} no figura en fuentes_principales")
-            if textos is not None:
-                texto = textos.get(ev.boe_id)
-                if texto is None:
-                    problemas.append(f"{nombre}: no se ha aportado el texto de {ev.boe_id}")
-                elif _compacto(ev.cita) not in _compacto(texto):
-                    problemas.append(f"{nombre}: la cita de {ev.articulo} no aparece literal en {ev.boe_id}")
-            for ruta, literal in [*ev.cifras.items(), *ev.fechas.items()]:
-                if ruta not in hojas:
-                    problemas.append(f"{nombre}: la evidencia cita un dato inexistente ({ruta})")
-                    continue
-                if not re.search(rf"(?<![\d.,\w]){re.escape(literal)}(?!\d|[.,]\d)", ev.cita):
-                    problemas.append(f"{nombre}.{ruta}: «{literal}» no aparece en la cita de {ev.articulo}")
-                    continue
-                try:
-                    leido: object = fecha_literal(literal) if ruta in ev.fechas else cifra_a_decimal(literal)
-                except (InvalidOperation, ValueError, IndexError):
-                    problemas.append(f"{nombre}.{ruta}: «{literal}» no se puede leer")
-                    continue
-                if leido != hojas[ruta]:
-                    problemas.append(f"{nombre}.{ruta}: el dato es {hojas[ruta]} y la cita dice «{literal}»")
-                sin_evidencia.discard(ruta)
-        problemas.extend(f"{nombre}.{ruta}: dato sin evidencia" for ruta in sorted(sin_evidencia))
-    return problemas
+    fichero = next((f for f in FICHEROS_LEGALES if f.clave == f"ayudas_{params.ejercicio}"), None)
+    if fichero is None:  # a year built in memory (tests): same declaration, no file
+        fichero = replace(FICHEROS_LEGALES[-1], clave=f"ayudas_{params.ejercicio}")
+    return fichero.comprobar(params, textos)
 
 
 def textos_de_directorio(directorio: Path) -> dict[str, str]:
     """BOE id -> plain text, from ``<BOE-ID>.html`` (downloaded pages) or ``<BOE-ID>.txt`` extracts."""
-    textos: dict[str, str] = {}
-    for path in sorted(directorio.glob("BOE-A-*.txt")):
-        textos[path.stem] = path.read_text(encoding="utf-8")
-    for path in sorted(directorio.glob("BOE-A-*.html")):
-        textos[path.stem] = texto_de_html(path.read_text(encoding="utf-8"))
-    return textos
+    return textos_de_directorio_comun(directorio, "BOE-A-*")
 
 
 def main(argv: list[str] | None = None) -> int:

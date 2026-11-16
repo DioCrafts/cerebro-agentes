@@ -4,9 +4,13 @@ Every :class:`FuenteModulo` whose identifier (or URL) names a BOE document joins
 
 * ``boe-novedades`` treats it as a watched law (a new provision that amends it is detected);
 * ``params-check`` asks the BOE when the consolidated text was last updated and lists the module's law for
-  re-reading when that date is later than the module's reading. The contract's ``FuenteModulo`` carries no
-  reading date yet, so the first date seen is kept as the baseline in ``MODULOS_FUENTES_STATE_PATH``; a
-  ``consultado_el`` attribute on the source, when a module provides one, takes precedence.
+  re-reading when that date is later than the module's reading. The reading date is the one the module's legal
+  data file records (``fuentes_principales[*].consultado_el``, declared to :mod:`hacienda_gpt.conocimiento`), the
+  same field the tax files use: ``params-verify``/``params-autopilot`` move it when every group quoting the law
+  still matches, and the weekly pull request of readings carries it, so nothing depends on state kept between
+  runs. Only a source no data file records (a module outside the shared library) falls back to the first date
+  seen, kept as a baseline in ``MODULOS_FUENTES_STATE_PATH``; a ``consultado_el`` attribute on the source, when a
+  module provides one, takes precedence over both.
 
 Sources outside the BOE (REE, Banco de España…) are listed for the operator; their formats are watched by
 each module's own adapter, since the core cannot know how to parse them.
@@ -18,12 +22,15 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import date
 import json
+import logging
 from pathlib import Path
 import re
 from typing import Any
 
 from hacienda_gpt import settings
 from hacienda_gpt.modulos.registro import FISCAL, Registro, registro
+
+logger = logging.getLogger(__name__)
 
 _BOE_ID = re.compile(r"BOE-[A-Z]-\d{4}-\d+")
 
@@ -36,6 +43,9 @@ class FuenteVigilada:
     url: str
     boe_id: str | None
     consultado_el: date | None
+    # Where that reading date comes from: "datos" (the module's legal data file), "fuente" (an attribute of the
+    # source) or "" (none: the state file's baseline is used).
+    origen_lectura: str = ""
 
 
 def _fecha(valor: Any) -> date | None:
@@ -49,22 +59,48 @@ def _fecha(valor: Any) -> date | None:
     return None
 
 
+def lecturas_en_datos() -> dict[tuple[str, str], date]:
+    """(module, BOE id) -> the earliest reading of the law's CURRENT text recorded in that module's legal data files
+    (a source pinned to a version or to the daily BOE only counts when nothing else names the law)."""
+    try:
+        from hacienda_gpt.conocimiento import lecturas_de_modulos
+
+        lecturas = lecturas_de_modulos()
+    except Exception:  # a broken declaration must not hide the BOE watch: the baselines still work
+        logger.exception("Could not read the reading dates of the modules' legal data")
+        return {}
+    out: dict[tuple[str, str], date] = {}
+    for clave in {(x.modulo, x.boe_id) for x in lecturas}:
+        suyas = [x for x in lecturas if (x.modulo, x.boe_id) == clave]
+        fechas = [f for x in suyas if not x.fijada and (f := _fecha(x.consultado_el))] or [
+            f for x in suyas if (f := _fecha(x.consultado_el))
+        ]
+        if fechas:
+            out[clave] = min(fechas)
+    return out
+
+
 def fuentes_de_modulos(reg: Registro | None = None) -> list[FuenteVigilada]:
     """Sources of every registered household module (the tax module's are in ``tax/fuentes.py``)."""
     out: list[FuenteVigilada] = []
+    en_datos = lecturas_en_datos()
     for modulo in (reg or registro()).modulos.values():
         if modulo.clave == FISCAL:
             continue
         for fuente in modulo.fuentes:
             encontrado = _BOE_ID.search(fuente.identificador) or _BOE_ID.search(fuente.url or "")
+            boe_id = encontrado.group(0) if encontrado else None
+            propia = _fecha(getattr(fuente, "consultado_el", None))
+            de_datos = en_datos.get((modulo.clave, boe_id)) if boe_id else None
             out.append(
                 FuenteVigilada(
                     modulo=modulo.clave,
                     identificador=fuente.identificador,
                     descripcion=fuente.descripcion,
                     url=fuente.url,
-                    boe_id=encontrado.group(0) if encontrado else None,
-                    consultado_el=_fecha(getattr(fuente, "consultado_el", None)),
+                    boe_id=boe_id,
+                    consultado_el=propia or de_datos,
+                    origen_lectura="fuente" if propia else "datos" if de_datos else "",
                 )
             )
     return out
@@ -100,9 +136,12 @@ def revisar(
     fuentes: list[FuenteVigilada],
     marcar_revisadas: bool = False,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
-    """(module laws to re-read, new state). A law seen for the first time sets its baseline and is not listed.
+    """(module laws to re-read, new state).
 
-    With ``marcar_revisadas`` the operator says the modules were re-read: every baseline moves to the BOE's date.
+    A law whose reading date the module's data records is compared with it, like the tax laws. Otherwise a law seen
+    for the first time sets its baseline and is not listed. With ``marcar_revisadas`` the operator says the modules
+    were re-read: every baseline moves to the BOE's date (a date recorded in a data file only moves when the file
+    records a new reading).
     """
     lineas: dict[str, Any] = dict(estado.get("fuentes", {}))
     pendientes: list[dict[str, Any]] = []
@@ -110,21 +149,25 @@ def revisar(
         if fuente.boe_id is None or fuente.boe_id not in fechas_boe:
             continue
         fecha = fechas_boe[fuente.boe_id]
-        registrada = _fecha((lineas.get(fuente.boe_id) or {}).get("linea_base"))
-        if registrada is None or marcar_revisadas:
-            lineas[fuente.boe_id] = {"linea_base": fecha.isoformat()}
-            registrada = fecha
-        referencia = fuente.consultado_el or registrada
+        if fuente.consultado_el is not None:
+            referencia = fuente.consultado_el
+        else:
+            registrada = _fecha((lineas.get(fuente.boe_id) or {}).get("linea_base"))
+            if registrada is None or marcar_revisadas:
+                lineas[fuente.boe_id] = {"linea_base": fecha.isoformat()}
+                registrada = fecha
+            referencia = registrada
         if fecha > referencia:
-            pendientes.append(
-                {
-                    "modulo": fuente.modulo,
-                    "boe_id": fuente.boe_id,
-                    "norma": fuente.descripcion,
-                    "leida_el": referencia.isoformat(),
-                    "actualizada_en_boe_el": fecha.isoformat(),
-                }
-            )
+            pendiente: dict[str, Any] = {
+                "modulo": fuente.modulo,
+                "boe_id": fuente.boe_id,
+                "norma": fuente.descripcion,
+                "leida_el": referencia.isoformat(),
+                "actualizada_en_boe_el": fecha.isoformat(),
+            }
+            if fuente.origen_lectura == "datos":
+                pendiente["lectura_en"] = "datos del módulo (consultado_el)"
+            pendientes.append(pendiente)
     return pendientes, {**dict(estado), "fuentes": lineas}
 
 
@@ -133,6 +176,7 @@ __all__ = [
     "boe_ids_de_modulos",
     "fuentes_de_modulos",
     "guardar_estado",
+    "lecturas_en_datos",
     "leer_estado",
     "revisar",
 ]

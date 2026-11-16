@@ -88,7 +88,9 @@ def env(tmp_path, monkeypatch, entorno: Sitios, chromium: str | None) -> Iterato
             "espera_login_s": 15,
             "timeout_paso_ms": 4_000,
             "entrega_max_s": 0,
-        }
+        },
+        # Tasks shared through the cases' database (navegador/persistencia.py), as the service runs them.
+        db_path=db_path,
     )
     monkeypatch.setattr(tareas, "_gestor", [gestor])
     registro_mod.reiniciar()
