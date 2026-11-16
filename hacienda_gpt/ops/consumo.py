@@ -950,13 +950,20 @@ class MeteredConversation:
         self._conversation.add_user_message(text)
 
 
-def medir(provider: LLMProvider, purpose: str) -> MeteredProvider:
+def medir(provider: LLMProvider, purpose: str, *, ruta: enrutado.Ruta | None = None) -> MeteredProvider:
     """Wrap a long-lived provider with the default store and the limits from settings.
 
     For the places that build a provider once per process. Attribute each
     question with :func:`contexto_consumo` around the code that answers it.
+    ``ruta`` pins the route instead of resolving it from the purpose (e.g. a model
+    chosen explicitly for one run, which routing must not replace).
     """
     store = almacen_por_defecto()
     return MeteredProvider(
-        provider, store, purpose=purpose, presupuesto=Presupuesto.desde_settings(store), compartido=True
+        provider,
+        store,
+        purpose=purpose,
+        presupuesto=Presupuesto.desde_settings(store),
+        compartido=True,
+        _ruta=ruta,
     )

@@ -290,3 +290,12 @@ def test_the_next_tier_skips_tiers_that_run_the_same_model(monkeypatch) -> None:
     assert siguiente is not None and (siguiente.nivel, siguiente.modelo) == ("grande", "m-grande")
     grande = enrutado.resolver("agente", proveedor="anthropic")
     assert enrutado.siguiente(grande, proveedor="anthropic", modelo_base="m-grande") is None
+
+
+def test_the_aid_calls_classifier_purpose_is_routed_to_the_small_tier() -> None:
+    from hacienda_gpt.modulos.ayudas.convocatorias import PROPOSITO_CLASIFICADOR
+
+    assert PROPOSITO_CLASIFICADOR.startswith("ayudas:")
+    assert enrutado.nivel_de_tabla(PROPOSITO_CLASIFICADOR) == "pequeno"
+    # With no routing setting, it keeps the provider's model (nothing changes).
+    assert enrutado.resolver(PROPOSITO_CLASIFICADOR, proveedor="anthropic").modelo is None

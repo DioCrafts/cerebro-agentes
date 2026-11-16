@@ -327,6 +327,7 @@ class Planificador:
             donativo_previsto=previsto,
             presupuesto_donativos=presupuesto,
             donativo_recurrente_importe_anterior=e.donativo_recurrente_importe_anterior,
+            modalidades_excluidas=list(e.restricciones.tributacion_excluida),
         )
 
     def _preparar_hipoteca(self) -> None:
@@ -1090,6 +1091,7 @@ def _plan_fiscal(planif: Planificador, a: Asignacion) -> PlanOptimo | None:
         donativo_previsto=a.donativo,
         presupuesto_donativos=a.donativo,
         donativo_recurrente_importe_anterior=r.donativo_recurrente_importe_anterior,
+        modalidades_excluidas=r.modalidades_excluidas,
     )
     try:
         return optimizar(

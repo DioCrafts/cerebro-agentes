@@ -25,6 +25,7 @@ from hacienda_gpt.agent.prompts import (
     CASE_TOOLS_ADDENDUM,
     CRITIC_REVISION_MESSAGE,
     FORCE_ANSWER_MESSAGE,
+    PLANIFICADOR_ADDENDUM,
 )
 from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError, ToolResult
 from hacienda_gpt.agent.search import CorpusSearcher
@@ -50,6 +51,7 @@ from hacienda_gpt.evaluacion.variantes import argumentos_proveedor, prompt_activ
 from hacienda_gpt.memoria.agente import MemoriaAgente
 from hacienda_gpt.modulos.acciones import AccionPendiente
 from hacienda_gpt.modulos.contrato import Modulo
+from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +270,9 @@ class TaxAgent:
         if especialistas is not None:
             especialistas.vincular(toolbox)
             system += especialistas.addendum()
+        # The household planner's paragraph, only when its tool is offered (a case and household modules).
+        if any(spec.name == PLANIFICAR_TOOL.name for spec in toolbox.specs()):
+            system += PLANIFICADOR_ADDENDUM
         conversation = self._provider.start(
             system=system,
             tools=toolbox.specs(),

@@ -166,3 +166,41 @@ def test_rejecting_loss_harvesting_leaves_the_losses_out(db) -> None:
     assert "perdidas_contribuyente" not in {p.id for p in plan.palancas}
     assert not any(nd.id.startswith("perdidas") for nd in plan.no_disponibles)
     assert any("no vendo el fondo" in s for s in plan.supuestos)
+
+
+_PAREJA = {
+    "rendimiento_trabajo_bruto": 70000.0,
+    "cotizaciones_seguridad_social": 4445.0,
+    "comunidad_autonoma": "Madrid",
+    "estado_civil": "casado",
+}
+_CONYUGE = {"rendimiento_trabajo_bruto": 4000, "cotizaciones_seguridad_social": 254}
+
+
+def test_a_rejected_joint_filing_is_excluded_not_only_warned_about(db) -> None:
+    kwargs = {"ejercicio": 2026, "fecha": HOY, "facts": _PAREJA, "conyuge": _CONYUGE}
+    kwargs["restricciones"] = {"acepta_iliquidez": True}
+    antes = optimizar_con_memoria(case_id="c1", db_path=db, **kwargs)
+    assert antes.optimo.tributacion == "conjunta_biparental"
+
+    registrar(
+        db,
+        case_id="c1",
+        ambito="fiscal:tributacion:conjunta",
+        tipo="rechazo",
+        razon="no queremos hacer la declaración conjunta",
+        fuente="chat",
+    )
+    plan = optimizar_con_memoria(case_id="c1", db_path=db, **kwargs)
+    assert plan.optimo.tributacion == "individual" and all(p.id != "tributacion" for p in plan.palancas)
+    assert any(
+        s.startswith("No se propone «Declaración conjunta»") and "no queremos hacer la declaración conjunta" in s
+        for s in plan.supuestos
+    )
+    assert "No se considera la declaración conjunta: la has descartado." not in plan.supuestos
+    assert not any("todavía no puede" in a for a in plan.avisos)
+    # «Ya lo hice» about a filing mode excludes nothing (it means they file that way).
+    registrar(
+        db, case_id="c1", ambito="fiscal:tributacion:conjunta", tipo="aceptacion", razon="Ya lo hice", fuente="boton"
+    )
+    assert optimizar_con_memoria(case_id="c1", db_path=db, **kwargs).optimo.tributacion == "conjunta_biparental"

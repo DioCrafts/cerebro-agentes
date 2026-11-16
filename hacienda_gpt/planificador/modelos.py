@@ -32,6 +32,8 @@ NOMBRES_PALANCAS: dict[str, str] = {
     "liquidez": "Mantener líquido",
 }
 Modalidad = Literal["plazo", "cuota"]
+# How the household files its IRPF (``Restricciones.modalidades_excluidas`` of the tax optimiser).
+Tributacion = Literal["conjunta", "individual"]
 VistaPensiones = Literal["diferimiento", "definitivo"]
 # What a component of the net position is: a definitive saving, a tax only deferred (pension contributions are
 # taxed when redeemed), a cost, a return foregone or earned, or the user's own liquidity penalty.
@@ -51,7 +53,10 @@ class RestriccionesPlan(_Modelo):
     """
 
     excluidas: list[PalancaId] = Field(default_factory=list, max_length=len(PALANCAS))
+    # Ways of repaying the mortgage the user rules out (reduce the term / the instalment).
     modalidades_excluidas: list[Modalidad] = Field(default_factory=list, max_length=2)
+    # Filing modes the user rules out: the tax optimiser never uses them for the plan's IRPF.
+    tributacion_excluida: list[Tributacion] = Field(default_factory=list, max_length=2)
     # Most each lever may take, in euros (on top of the budget, which always applies).
     maximos: dict[PalancaId, Decimal] = Field(default_factory=dict)
     # Why each lever is excluded or capped, in the user's words (shown as is).

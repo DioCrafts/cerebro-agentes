@@ -210,6 +210,9 @@ AGENT_MAX_REVISIONS = int(os.environ.get("AGENT_MAX_REVISIONS", "1"))
 AGENT_SEARCH_DEFAULT_K = int(os.environ.get("AGENT_SEARCH_DEFAULT_K", "6"))
 # Thinking depth for the fact extractor when it runs on Claude.
 DECISION_EXTRACTOR_EFFORT = os.environ.get("DECISION_EXTRACTOR_EFFORT", "low")
+# Model for the fact extractor (empty: the provider's). The extractor reads the environment at call time;
+# this copy lets the model routing (agent/enrutado.py) see that a model was chosen for purpose "hechos".
+DECISION_EXTRACTOR_MODEL = os.environ.get("DECISION_EXTRACTOR_MODEL", "")
 
 # --- Doctrine graph ----------------------------------------------------------
 # SQLite file built by `python -m hacienda_gpt.cli.doctrine_graph build`. When it

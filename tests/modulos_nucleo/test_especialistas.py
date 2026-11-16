@@ -8,7 +8,7 @@ import json
 import pytest
 
 from hacienda_gpt.agent.agent import AgentMode, TaxAgent, TeamAgent
-from hacienda_gpt.agent.prompts import AGENT_SYSTEM_PROMPT, CASE_TOOLS_ADDENDUM
+from hacienda_gpt.agent.prompts import AGENT_SYSTEM_PROMPT, CASE_TOOLS_ADDENDUM, PLANIFICADOR_ADDENDUM
 from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
 from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
@@ -220,6 +220,21 @@ def test_without_household_modules_the_advisor_is_unchanged(modulos) -> None:
     (start,) = provider.starts
     assert start["system"] == AGENT_SYSTEM_PROMPT + CASE_TOOLS_ADDENDUM
     assert not any(name.startswith("consultar_") and name != "consultar_expediente" for name in _names(start["tools"]))
+
+
+def test_the_planner_paragraph_comes_only_with_the_planner_tool(hogar) -> None:
+    _llamadas, modulos = hogar
+    assert "planificar_hogar" not in AGENT_SYSTEM_PROMPT
+    # With a case and household modules: the tool and its paragraph.
+    provider = RecordingProvider([text_turn("Hola.")], [verdict("pregunta_aclaratoria")])
+    TaxAgent(provider=provider, searcher=FakeSearcher(corpus())).run("Hola", case=_case(), modulos=modulos)
+    (start,) = provider.starts
+    assert "planificar_hogar" in _names(start["tools"]) and start["system"].endswith(PLANIFICADOR_ADDENDUM)
+    # Household modules without a case: neither.
+    provider = RecordingProvider([text_turn("Hola.")], [verdict("pregunta_aclaratoria")])
+    TaxAgent(provider=provider, searcher=FakeSearcher(corpus())).run("Hola", modulos=modulos)
+    (start,) = provider.starts
+    assert "planificar_hogar" not in _names(start["tools"]) and "planificar_hogar" not in start["system"]
 
 
 def test_the_team_agent_passes_the_modules_through(hogar) -> None:

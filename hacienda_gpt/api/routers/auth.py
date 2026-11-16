@@ -38,6 +38,8 @@ from hacienda_gpt.auth.store import (
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.memoria.almacen import exportar_decisiones
 from hacienda_gpt.modulos.acciones import AccionStore
+from hacienda_gpt.navegador import tareas as tareas_navegador
+from hacienda_gpt.navegador import vigilancia
 from hacienda_gpt.proactive.store import NotificationStore
 
 _limiter_lock = threading.Lock()
@@ -348,6 +350,11 @@ def build_router(
             notifications.delete_for_case(case_id)
             if acciones is not None:
                 acciones.delete_for_case(case_id)
+            # The browser agent's redacted diagnoses (files) and this process's tasks of the case, before the
+            # case itself: if the erasure fails, the case is still listed and a new request retries it.
+            vigilancia.borrar_de_caso(case_id)
+            for tarea in tareas_navegador.gestor().de_caso(case_id):
+                tareas_navegador.gestor().cerrar(tarea)
             cases.delete_case(case_id)
         store.delete_user(user.id)
         limiter.reset(key)

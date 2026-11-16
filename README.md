@@ -462,11 +462,19 @@ rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `
   vigor en `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el
   primero en `supuestos`, con las palabras y la fecha (con «ya lo hice», pide el importe para el cálculo);
   quita las entradas de «no disponibles» que invitarían a hacerlo.
-  Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Limitación: el
-  optimizador no tiene restricción para excluir una **modalidad de declaración**; si el usuario rechazó la
-  conjunta y el plan óptimo la usa, el plan lo dice en `avisos` y `supuestos` en lugar de ocultarlo (cambio
-  propuesto: un campo `Restricciones.modalidades_excluidas`). Una preferencia de modalidad se menciona, no se
-  impone.
+  Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Un rechazo o una
+  restricción sobre una **modalidad de declaración** (`fiscal:tributacion:conjunta` / `…:individual`) va a
+  `Restricciones.modalidades_excluidas`: el optimizador no la compara ni la propone y el plan dice por qué (si es la
+  única que se puede calcular con los datos, la usa y lo avisa). Una preferencia de modalidad se menciona, no se
+  impone; «ya lo hice» sobre una modalidad no excluye nada.
+- **Planificador del hogar:** `memoria.planificador.planificar_con_memoria` (lo usan `POST /planificar` y
+  `planificar_hogar`) añade a las `restricciones` del plan las palancas rechazadas (planes de pensiones de cada
+  cónyuge, donativo, `hipoteca` / `hipoteca:amortizar` → amortizar), la forma de amortizar descartada
+  (`hipoteca:amortizar:plazo|cuota`) y la modalidad de declaración rechazada, con el motivo y la fecha primero en
+  `supuestos`. **Regla:** lo que pide la llamada solo puede añadir restricciones; una decisión en vigor manda incluso
+  frente a una cifra de la petición (como en el optimizador). El usuario la levanta diciéndolo ahora: el asistente
+  registra su decisión nueva con `registrar_decision` (con sus palabras) o la cambia en «Lo que sé de tus
+  preferencias»; una cifra que pone el modelo o un formulario nunca cuenta como cambio de opinión.
 - **Asistente central:** con expediente recibe `<preferencias_del_usuario>` (las decisiones que siguen
   contando, con su estado) y las herramientas `registrar_decision` y `leer_preferencias`; el *prompt* le
   prohíbe volver a proponer lo rechazado salvo que la decisión «se pueda reabrir», y entonces una vez diciendo
@@ -516,7 +524,9 @@ sitio real» y la sede es una demostración (`*.ejemplo.invalid`, solo se ofrece
 la apunta a sitios locales). La primera ejecución real que no encuentre un elemento fallará sin hacer nada y lo
 avisará la vigilancia de formatos. Para probarlo a mano: `python -m tests.navegador.simulacion` (imprime el valor
 de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las pruebas con navegador necesitan Chromium
-(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose.
+(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose. En CI se
+instala antes de las pruebas y `NAVEGADOR_EXIGIR_CHROMIUM=1` convierte la falta de Chromium en un fallo (nunca se
+omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
 
 ---
 
@@ -836,7 +846,9 @@ expediente:
 
 `restricciones` admite además `aportacion_maxima_pensiones_conyuge`,
 `presupuesto_donativos` (máximo a donar; sin él nunca se propone donar más de lo
-previsto), `donativo_recurrente_importe_anterior` y `ganancias_latentes`; cada
+previsto), `donativo_recurrente_importe_anterior`, `modalidades_excluidas` (`conjunta`
+y/o `individual`: formas de declarar que no se comparan ni se proponen) y
+`ganancias_latentes`; cada
 posición latente lleva `importe` (positivo), `tipo` (`valores_cotizados`,
 `valores_no_cotizados`, `otro_elemento`), `titular` (`contribuyente` o `conyuge`) y
 `descripcion`.
@@ -941,10 +953,15 @@ norma, el plan fiscal del optimizador para el reparto elegido (`plan_fiscal`, co
 avisos (p. ej. que el 15 % y los 9.040 € de la deducción por vivienda no están verificados), lo no modelado y la
 búsqueda.
 
-**Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas`, `maximos`, `motivos`, `origen`)
-es el punto de enganche de la memoria de decisiones (`hacienda_gpt/memoria/`): su adaptador puede traducir los
-rechazos (`fiscal:plan_pensiones:contribuyente` → `plan_pensiones_contribuyente`, `fiscal:donativo` → `donativo`,
-`hipoteca` → `amortizar_hipoteca`) sin que el planificador importe ese paquete.
+**Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas` —formas de amortizar: `plazo`,
+`cuota`—, `tributacion_excluida` —formas de declarar: `conjunta`, `individual`, que el optimizador fiscal no usa—,
+`maximos`, `motivos`, `origen`) es el punto de enganche de la memoria de decisiones: con expediente, las dos vías
+(`POST /planificar` y `planificar_hogar`) pasan por `memoria.planificador.planificar_con_memoria`, que traduce las
+decisiones en vigor (`fiscal:plan_pensiones[:contribuyente|:conyuge]` → `plan_pensiones_*`, `fiscal:donativo` →
+`donativo`, `hipoteca` / `hipoteca:amortizar` → `amortizar_hipoteca`, `hipoteca:amortizar:plazo|cuota` →
+`modalidades_excluidas`, `fiscal:tributacion:conjunta|individual` → `tributacion_excluida`) y pone el motivo, con las
+palabras y la fecha del usuario, el primero en `supuestos`; el planificador no importa ese paquete. Una decisión en
+vigor manda sobre las cifras de la petición (ver «Memoria de decisiones»).
 
 **Dónde se usa**: `POST /planificar` (sin modelo de lenguaje; mismas reglas de acceso que `/optimize`: sesión,
 propiedad del expediente, 404 si no es tuyo, 422 con una frase en español; los datos de hipoteca y ayudas solo si el
@@ -1144,7 +1161,7 @@ se repite.
 | `modulo.activado` / `modulo.desactivado` | `PUT /me/modulos/{clave}` | Ese módulo / ninguno (se cancelan su temporizador y su trabajo pendiente) |
 | `fecha.umbral` | El propio bus, el día que el módulo pidió | Solo ese módulo para ese expediente |
 | `boe.norma_nueva` | `boe-novedades` (las de relevancia alta) | Fiscal, en cada expediente abierto (mismo aviso y mismos criterios de perfil que ya usaba) |
-| `boe.cambio_normativo` | (preparado: `procesar_eventos` aún avisa directamente) | Fiscal (`impacto.notificar_cambio`) |
+| `boe.cambio_normativo` | `boe-impact` (`procesar_eventos`, uno por cambio analizado, después del aviso directo de siempre) | Fiscal (`impacto.notificar_cambio`) |
 | `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
 
 **Cómo funciona** (`hacienda_gpt/eventos/`, todo en el mismo SQLite que los

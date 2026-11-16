@@ -7,6 +7,7 @@ So the assistant never repeats a proposal the user rejected and personalises wit
 * :mod:`~hacienda_gpt.memoria.servicio` — recording from the chat, the buttons, the settings and actions;
 * :mod:`~hacienda_gpt.memoria.bandeja` — the inbox's write path: hold back or let come back once;
 * :mod:`~hacienda_gpt.memoria.optimizador` — decisions as constraints of the tax optimiser;
+* :mod:`~hacienda_gpt.memoria.planificador` — decisions as restrictions of the household planner;
 * :mod:`~hacienda_gpt.memoria.agente` — the agent's tools and context block.
 
 This ``__init__`` imports nothing on purpose: the prompts and the inbox import submodules lazily.

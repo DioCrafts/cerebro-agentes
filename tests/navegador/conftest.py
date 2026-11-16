@@ -46,12 +46,20 @@ def _buscar_chromium() -> tuple[str | None, bool]:
     return resultado
 
 
+# CI sets it (after ``playwright install chromium``) so a missing browser fails instead of skipping silently.
+EXIGIR_CHROMIUM = "NAVEGADOR_EXIGIR_CHROMIUM"
+
+
 @pytest.fixture(scope="session")
 def chromium() -> str | None:
-    """Path of the Chromium executable (None = Playwright's own). Skips when no browser can start."""
+    """Path of the Chromium executable (None = Playwright's own). Skips when no browser can start, or fails
+    when ``NAVEGADOR_EXIGIR_CHROMIUM`` is set (CI)."""
     ruta, usable = _buscar_chromium()
     if not usable:
-        pytest.skip("No hay un Chromium que Playwright pueda abrir en esta máquina")
+        mensaje = "No hay un Chromium que Playwright pueda abrir en esta máquina"
+        if os.environ.get(EXIGIR_CHROMIUM, "").strip().lower() in ("1", "true", "yes", "si", "sí"):
+            pytest.fail(f"{mensaje} y {EXIGIR_CHROMIUM} lo exige: ejecuta `uv run playwright install chromium`.")
+        pytest.skip(mensaje)
     return ruta
 
 

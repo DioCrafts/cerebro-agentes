@@ -591,6 +591,9 @@ def ambito_de(*textos: str) -> list[str]:
 
 ClasificadorLLM = Callable[[str, str], Mapping[str, Any] | None]
 _clasificador_llm: ClasificadorLLM | None = None
+# Purpose under which an LLM classifier's calls are metered and routed (``medir(provider, PROPOSITO_CLASIFICADOR)``):
+# it starts with «ayudas:», so the routing table sends it to the small tier.
+PROPOSITO_CLASIFICADOR = "ayudas:clasificador"
 _DESTINATARIOS: frozenset[str] = frozenset(
     {"personas", "autonomos_empresas", "entidades", "investigacion", "mixto", "desconocido"}
 )
@@ -601,6 +604,8 @@ def registrar_clasificador_llm(funcion: ClasificadorLLM | None) -> None:
 
     It is used only when ``AYUDAS_CLASIFICADOR_LLM=1`` and the rules leave the call undecided
     ("desconocido" or "mixto"). Its answer is discarded unless ``cita`` is literally in the text.
+    An adapter that calls a model wraps its provider with
+    ``hacienda_gpt.ops.consumo.medir(provider, PROPOSITO_CLASIFICADOR)`` (metering and routing).
     """
     global _clasificador_llm
     _clasificador_llm = funcion

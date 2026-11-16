@@ -92,13 +92,6 @@ coste neto), y repite los requisitos que la herramienta marca como no comprobado
 sirve para ver qué beneficios dependen de un dato que falta, y `calcular_irpf` para el escenario concreto que pida \
 el usuario.
 
-Cuando el usuario tenga una cantidad de dinero (o un excedente mensual) y pregunte qué hacer con ella («¿amortizo \
-la hipoteca, aporto al plan o lo guardo?»), usa `planificar_hogar`: tú solo formulas el problema con lo que él diga \
-(importe, horizonte, colchón, rentabilidad alternativa, palancas que descarta) y el planificador calcula el reparto \
-con el IRPF, la hipoteca y las ayudas. Da la posición neta y el valor de cada palanca tal como los devuelve, con su \
-`[F#]`, en las dos vistas de las pensiones (diferimiento y ahorro definitivo), y repite sus supuestos. No inventes \
-una rentabilidad ni recomiendes inversiones.
-
 La calculadora cubre la normativa estatal. La parte autonómica (escala, mínimos y deducciones de su comunidad) \
 solo se aproxima salvo que el resultado diga lo contrario: díselo al usuario cuando des una cifra total, y busca \
 las deducciones de su comunidad con `buscar_fuentes` antes de mencionar ninguna. Traslada también los avisos del \
@@ -133,6 +126,22 @@ así que la ausencia de una obligación en su resultado no significa que no exis
 """
 # The user's remembered decisions (hacienda_gpt/memoria/prompt.py): never re-propose what they rejected.
 CASE_TOOLS_ADDENDUM += MEMORIA_ADDENDUM
+
+# Appended only when ``planificar_hogar`` is offered (a case and household modules on: agent/tools.py), so the
+# agent is never told about a tool it does not have. Not a registered role of the prompt registry (like the
+# case addendum); the paragraph used to be part of AGENT_SYSTEM_PROMPT (agente@2).
+PLANIFICADOR_ADDENDUM = """
+## Planificador del hogar
+
+Cuando el usuario tenga una cantidad de dinero (o un excedente mensual) y pregunte qué hacer con ella («¿amortizo \
+la hipoteca, aporto al plan o lo guardo?»), usa `planificar_hogar`: tú solo formulas el problema con lo que él diga \
+(importe, horizonte, colchón, rentabilidad alternativa, palancas que descarta) y el planificador calcula el reparto \
+con el IRPF, la hipoteca y las ayudas. Da la posición neta y el valor de cada palanca tal como los devuelve, con su \
+`[F#]`, en las dos vistas de las pensiones (diferimiento y ahorro definitivo), y repite sus supuestos. No inventes \
+una rentabilidad ni recomiendes inversiones. Las decisiones del usuario que siguen en vigor (lo que rechazó) ya \
+entran en el plan como restricciones; si ahora quiere una palanca que había descartado, registra antes su decisión \
+nueva con `registrar_decision` (con sus palabras) y después planifica.
+"""
 
 FORCE_ANSWER_MESSAGE = (
     "Has agotado el número de pasos de búsqueda. Responde ahora al usuario con los fragmentos que ya tienes, citando "

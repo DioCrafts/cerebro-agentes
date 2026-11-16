@@ -18,6 +18,7 @@ from hacienda_gpt.eventos.bus import Bus, Configuracion
 from hacienda_gpt.eventos.productores import (
     emitir,
     emitir_cambio_modulo,
+    emitir_cambio_normativo,
     emitir_indices,
     emitir_novedades,
     instalar,
@@ -30,6 +31,7 @@ __all__ = [
     "Evento",
     "emitir",
     "emitir_cambio_modulo",
+    "emitir_cambio_normativo",
     "emitir_indices",
     "emitir_novedades",
     "instalar",

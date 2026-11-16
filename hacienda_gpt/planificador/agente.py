@@ -16,7 +16,6 @@ from hacienda_gpt.agent.evidence import EvidenceLedger
 from hacienda_gpt.agent.providers.base import ToolSpec
 from hacienda_gpt.decision.schemas import CaseState, parse_fiscal_year
 from hacienda_gpt.planificador.modelos import PALANCAS, PlanHogar
-from hacienda_gpt.planificador.motor import planificar
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError
 from hacienda_gpt.tax.profile import DatosInvalidosError
@@ -85,6 +84,11 @@ PLANIFICAR_TOOL = ToolSpec(
                 "description": "Palancas que el usuario ha descartado.",
             },
             "modalidades_excluidas": {"type": "array", "items": {"type": "string", "enum": ["plazo", "cuota"]}},
+            "tributacion_excluida": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["conjunta", "individual"]},
+                "description": "Formas de declarar que el usuario ha descartado.",
+            },
             "proteger_ayudas": {
                 "type": "boolean",
                 "description": "false para permitir planes que reduzcan una ayuda que hoy le corresponde.",
@@ -96,7 +100,7 @@ PLANIFICAR_TOOL = ToolSpec(
     },
 )
 
-_RESTRICCIONES = ("excluidas", "modalidades_excluidas")
+_RESTRICCIONES = ("excluidas", "modalidades_excluidas", "tributacion_excluida")
 
 
 def _eur(importe: Decimal) -> str:
@@ -183,8 +187,18 @@ def planificar_para_agente(
         if ano is not None:
             datos["ejercicio"] = ano
     facts = {fact.name: fact.value for fact in case.facts} if case is not None else {}
+    # With a case, the user's decisions in force are restrictions too (hacienda_gpt/memoria/planificador.py:
+    # they always hold; the user lifts one by changing the decision, never through a figure of this call).
+    from hacienda_gpt.memoria.planificador import planificar_con_memoria
+
     try:
-        plan = planificar(datos, facts=facts, modulos_activos=_modulos_activos(case), hoy=hoy_en_espana())
+        plan = planificar_con_memoria(
+            datos,
+            case_id=case.case_id if case is not None else None,
+            facts=facts,
+            modulos_activos=_modulos_activos(case),
+            hoy=hoy_en_espana(),
+        )
     except (DatosInvalidosError, EjercicioNoDisponibleError) as exc:
         return str(exc), str(exc)[:120], True
     texto = texto_plan(plan)

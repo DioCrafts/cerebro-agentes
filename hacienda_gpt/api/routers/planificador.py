@@ -2,7 +2,8 @@
 
 Same access rules as ``/optimize``: API key, session when accounts are on, and ownership of the case (404 for
 someone else's case, like one that does not exist). With ``case_id`` the case's facts are the household's
-figures; the mortgage and aid data are used only when the user has those modules switched on. Nothing is stored:
+figures and its decisions in force (``hacienda_gpt.memoria``) are restrictions the request cannot lift; the
+mortgage and aid data are used only when the user has those modules switched on. Nothing is stored:
 the plan is computed and returned. Body-validation errors and bad data come back as a 422 with one Spanish
 sentence in ``detail``.
 
@@ -20,9 +21,9 @@ from hacienda_gpt.api.security import require_api_key
 from hacienda_gpt.auth.deps import CaseAccess, get_case_access
 from hacienda_gpt.decision.schemas import parse_fiscal_year
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from hacienda_gpt.memoria.planificador import planificar_con_memoria
 from hacienda_gpt.modulos.preferencias import modulos_activos_para, modulos_activos_para_caso
 from hacienda_gpt.planificador.modelos import EntradaPlan, PlanHogar
-from hacienda_gpt.planificador.motor import planificar
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError
 from hacienda_gpt.tax.profile import DatosInvalidosError
@@ -61,7 +62,15 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
             if ano is not None:
                 entrada = entrada.model_copy(update={"ejercicio": ano})
         try:
-            return planificar(entrada, facts=facts, modulos_activos=activos, hoy=hoy_en_espana())
+            # With a case, the user's decisions in force are restrictions too (hacienda_gpt/memoria/planificador.py).
+            return planificar_con_memoria(
+                entrada,
+                case_id=payload.case_id,
+                facts=facts,
+                modulos_activos=activos,
+                hoy=hoy_en_espana(),
+                db_path=store.db_path,
+            )
         except (DatosInvalidosError, EjercicioNoDisponibleError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
 

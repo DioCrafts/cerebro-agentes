@@ -14,6 +14,8 @@ export type VistaPensiones = "diferimiento" | "definitivo";
 export interface RestriccionesPlan {
   excluidas?: PalancaId[];
   modalidades_excluidas?: Modalidad[];
+  // Filing modes ruled out (by the user or their decisions in memory).
+  tributacion_excluida?: ("conjunta" | "individual")[];
   maximos?: Partial<Record<PalancaId, number>>;
   motivos?: Partial<Record<PalancaId, string>>;
   origen?: string | null;

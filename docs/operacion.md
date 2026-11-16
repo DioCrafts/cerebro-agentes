@@ -893,8 +893,11 @@ extracción a propósito: nada comprueba la cifra leída contra la imagen.
 de su proveedor, como hasta ahora, y las peticiones son idénticas byte a byte (hay una prueba que lo
 comprueba). El orden de preferencia para un propósito es: `LLM_ROUTE_<PROPÓSITO>` o `LLM_ROUTES` →
 el ajuste propio que ya existía (`RECODE_MODEL`, `RECODE_REVIEWER_MODEL`, `VERIFIER_MODEL`,
-`FORMAT_MODEL`, `FORMAT_REVIEWER_MODEL`) → el modelo del nivel (`LLM_MODEL_*`, si no el del perfil)
-→ el modelo del proveedor.
+`FORMAT_MODEL`, `FORMAT_REVIEWER_MODEL`, `DECISION_EXTRACTOR_MODEL` para `hechos`; el `--judge-model` de
+`eval_agent run` para `evaluacion-juez`) → el modelo del nivel (`LLM_MODEL_*`, si no el del perfil)
+→ el modelo del proveedor. El extractor de hechos del chat (`hechos`), el juez de `eval_agent`
+(`evaluacion-juez`) y el clasificador opcional de convocatorias (`ayudas:clasificador`) se miden y
+enrutan como el resto.
 
 | Variable | Qué hace |
 |---|---|

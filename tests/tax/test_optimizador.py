@@ -702,3 +702,44 @@ def test_a_search_that_runs_out_of_budget_says_so_and_still_respects_the_constra
             assert D(300) <= p.importe <= D(3000)
         if p.id == "perdidas_conyuge":
             assert p.importe <= D(3100)
+
+
+def test_an_excluded_filing_mode_is_never_proposed() -> None:
+    # Joint filing is the best plan for this couple; once the user rules it out, it is not even compared.
+    sin_conjunta = SI.model_copy(update={"modalidades_excluidas": ["conjunta"]})
+    plan = optimizar(ALTO, conyuge=BAJO, fecha=NOV, restricciones=sin_conjunta)
+    assert plan.base.tributacion == "individual" and plan.optimo.tributacion == "individual"
+    assert "tributacion" not in [p.id for p in plan.palancas]
+    assert "No se considera la declaración conjunta: la has descartado." in plan.supuestos
+    # The same couple planning a joint return starts from the separate ones instead.
+    conjunta = ALTO.model_copy(update={"tributacion": "conjunta_biparental"})
+    desde_conjunta = optimizar(conjunta, conyuge=BAJO, fecha=NOV, restricciones=sin_conjunta)
+    assert desde_conjunta.base.tributacion == desde_conjunta.optimo.tributacion == "individual"
+    # Ruling out separate returns keeps only the joint one.
+    sin_individual = SI.model_copy(update={"modalidades_excluidas": ["individual"]})
+    solo_conjunta = optimizar(ALTO, conyuge=BAJO, fecha=NOV, restricciones=sin_individual)
+    assert solo_conjunta.base.tributacion == solo_conjunta.optimo.tributacion == "conjunta_biparental"
+    # Without the field the plan is the one of always (backwards compatible).
+    assert Restricciones().modalidades_excluidas == []
+    assert optimizar(ALTO, conyuge=BAJO, fecha=NOV, restricciones=SI).optimo.tributacion == "conjunta_biparental"
+
+
+def test_an_excluded_mode_that_is_the_only_one_is_kept_and_said() -> None:
+    # A single parent rules out joint filing: no invitation to compare it.
+    inp = _asalariado(45000, num_descendientes=1, familia_monoparental=True)
+    plan = optimizar(inp, fecha=NOV, restricciones=SI.model_copy(update={"modalidades_excluidas": ["conjunta"]}))
+    assert plan.optimo.tributacion == "individual" and "tributacion" not in [p.id for p in plan.palancas]
+    # Married without the spouse's figures: the «give us your spouse's figures to compare» entry goes.
+    casado = optimizar(
+        _asalariado(30000),
+        fecha=NOV,
+        estado_civil="casado",
+        restricciones=Restricciones(acepta_iliquidez=False, modalidades_excluidas=["conjunta"]),
+    )
+    assert "tributacion" not in {nd.id for nd in casado.no_disponibles}
+    # A single person who rules out separate returns: there is nothing else to compute; the plan says so.
+    solo = optimizar(
+        _asalariado(30000), fecha=NOV, restricciones=SI.model_copy(update={"modalidades_excluidas": ["individual"]})
+    )
+    assert solo.optimo.tributacion == "individual"
+    assert any("única forma de declarar" in a for a in solo.avisos)

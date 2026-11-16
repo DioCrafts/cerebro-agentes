@@ -28,7 +28,11 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync
+      # Chromium for the browser agent's tests (tests/navegador); without it they would be skipped.
+      - run: uv run playwright install --with-deps chromium
       - run: uv run pytest -q
+        env:
+          NAVEGADOR_EXIGIR_CHROMIUM: "1"
 
   # Apple-Silicon job: the runtime target is arm64 macOS and the MLX deps only
   # have wheels there, so the Linux jobs above install WITHOUT mlx (platform
@@ -47,7 +51,10 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync
+      - run: uv run playwright install chromium
       - run: uv run pytest -q
+        env:
+          NAVEGADOR_EXIGIR_CHROMIUM: "1"
 
   typecheck:
     runs-on: ubuntu-latest

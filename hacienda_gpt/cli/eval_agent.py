@@ -164,7 +164,16 @@ def run(
         cases = cases[:limit]
     if not cases:
         raise click.ClickException(f"{dataset} no contiene casos")
-    judge = create_provider(judge_provider, model=judge_model)
+    from hacienda_gpt.agent import enrutado
+    from hacienda_gpt.ops.consumo import medir
+
+    # Metered (and routed) as purpose "evaluacion-juez"; a --judge-model is kept as chosen.
+    ruta = (
+        enrutado.Ruta("evaluacion-juez", enrutado.nivel_de_tabla("evaluacion-juez"), origen="--judge-model")
+        if judge_model
+        else None
+    )
+    judge = medir(create_provider(judge_provider, model=judge_model), "evaluacion-juez", ruta=ruta)
     if not yes:
         per_case = "varias llamadas (búsquedas + verificación)" if system_name == "agent" else "varias llamadas"
         click.confirm(

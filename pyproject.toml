@@ -54,6 +54,9 @@ dependencies = [
     "uvicorn==0.37.0",
     "pydantic==2.12.3",
     "anthropic==2.8.0",
+    # The browser agent (hacienda_gpt/navegador) drives Chromium through Playwright directly; it also comes
+    # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
+    "playwright>=1.48",
 ]
 
 [dependency-groups]

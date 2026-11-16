@@ -86,15 +86,17 @@ TABLA: tuple[Proposito, ...] = (
 )
 NIVEL_POR_DEFECTO: Nivel = "grande"
 
-# Settings that already chose a model for one purpose. When set, the provider of
-# that purpose is built with it (cli/proactive.py, cli/formatos.py, agent.py) and
-# the routing profile leaves it alone; an explicit LLM_ROUTE_* still wins.
+# Settings that already chose a model for one purpose. When set (in ``settings`` or,
+# for those read straight from the environment, there), the provider of that purpose
+# is built with it (cli/proactive.py, cli/formatos.py, agent.py, decision/fact_extractor.py)
+# and the routing profile leaves it alone; an explicit LLM_ROUTE_* still wins.
 AJUSTES_PREVIOS: dict[str, str] = {
     "verificador": "VERIFIER_MODEL",
     "recodificacion": "RECODE_MODEL",
     "recodificacion-revisor": "RECODE_REVIEWER_MODEL",
     "formatos": "FORMAT_MODEL",
     "formatos-revisor": "FORMAT_REVIEWER_MODEL",
+    "hechos": "DECISION_EXTRACTOR_MODEL",
 }
 
 # Documented profiles: provider -> tier -> (model or None = keep, effort or None = keep).
@@ -219,7 +221,7 @@ def resolver(proposito: str, *, proveedor: str, nivel: Nivel | None = None) -> R
             return Ruta(proposito, nivel_pedido, modelo=modelo, effort=effort, origen=origen)
         nivel = nivel_de_tabla(proposito)
         previo = AJUSTES_PREVIOS.get(proposito)
-        if previo and (getattr(settings, previo, "") or "").strip():
+        if previo and (getattr(settings, previo, "") or os.environ.get(previo, "") or "").strip():
             return Ruta(proposito, nivel, origen=previo)
     modelo, effort, origen = modelo_de_nivel(nivel, proveedor=proveedor)
     return Ruta(proposito, nivel, modelo=modelo, effort=effort, origen=origen)

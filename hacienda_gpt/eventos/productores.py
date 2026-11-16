@@ -7,7 +7,8 @@
   ``cargos.importados`` for the detected charges) on the store's own connection, inside the transaction
   that saves the case. The event exists if and only if the change was committed. Only fact NAMES go in.
 * **Erasure** — deleting a case deletes its events, deliveries and timers in the same transaction.
-* **Global and module events** — :func:`emitir_novedades` (``boe-novedades``), :func:`emitir_indices`
+* **Global and module events** — :func:`emitir_novedades` (``boe-novedades``),
+  :func:`emitir_cambio_normativo` (``boe-impact``, ``proactive.impacto.procesar_eventos``), :func:`emitir_indices`
   (``hipoteca.indices actualizar``) and :func:`emitir_cambio_modulo` (``PUT /me/modulos/{clave}``) write
   through their own connection. A producer never fails because of the bus: an error is logged and the
   daily run (the safety net) still covers what the event would have triggered.
@@ -28,6 +29,7 @@ from hacienda_gpt.eventos.bus import borrar_caso_en, emitir_en
 from hacienda_gpt.eventos.esquema import crear_tablas
 from hacienda_gpt.eventos.rutas import HECHOS_DE_CARGOS
 from hacienda_gpt.eventos.tipos import (
+    CAMBIO_NORMATIVO,
     CARGOS_IMPORTADOS,
     INDICE_PUBLICADO,
     MODULO_ACTIVADO,
@@ -191,6 +193,13 @@ def emitir_novedades(db_path: str | None, novedades: Iterable[Any]) -> int:
     return emitidos
 
 
+def emitir_cambio_normativo(db_path: str | None, cambio: Any) -> int | None:
+    """``boe-impact``: one global event per analysed change of a consolidated law (public data only: the
+    ``proactive.impacto.CambioNormativo``). Keyed by law and revision, so a re-run does not repeat it."""
+    clave = f"{CAMBIO_NORMATIVO}:{cambio.boe_id}:{cambio.actualizado}"
+    return emitir(db_path, CAMBIO_NORMATIVO, payload={"cambio": cambio.model_dump(mode="json")}, clave=clave)
+
+
 def emitir_indices(boe_ids: Iterable[str], db_path: str | None = None) -> int | None:
     """``hipoteca.indices actualizar``: new official indices were read from the BOE."""
     ids = sorted({str(i) for i in boe_ids})
@@ -212,6 +221,7 @@ __all__ = [
     "desinstalar",
     "emitir",
     "emitir_cambio_modulo",
+    "emitir_cambio_normativo",
     "emitir_indices",
     "emitir_novedades",
     "instalado",
