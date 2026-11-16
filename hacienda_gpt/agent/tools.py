@@ -708,7 +708,7 @@ ISD_TOOL = ToolSpec(
             "valor_empresa_familiar": {
                 "type": "number",
                 "minimum": 0,
-                "description": "Parte de valor_recibido con derecho a la reducción de empresa familiar, según declara el usuario.",
+                "description": "Parte de valor_recibido que es empresa individual, negocio profesional o participaciones con derecho a la reducción de empresa familiar, según declara el usuario. La calculadora solo la aplica si el parentesco (y, para ascendientes y colaterales, la falta de descendientes) lo permite.",
             },
             "valor_patrimonio_historico": {"type": "number", "minimum": 0},
             "otras_reducciones": {
@@ -722,6 +722,22 @@ ISD_TOOL = ToolSpec(
                 "description": "Patrimonio del beneficiario antes de la adquisición.",
             },
             "escritura_publica": {"type": "boolean", "description": "La donación consta en escritura pública."},
+            "hay_descendientes_del_causante": {
+                "type": "boolean",
+                "description": "Si el fallecido (o donante) tiene descendientes o adoptados. Pregúntalo cuando un ascendiente o colateral declare empresa o participaciones: la reducción de empresa familiar solo les corresponde si no los hay.",
+            },
+            "hay_adquirentes_grupos_i_ii": {
+                "type": "boolean",
+                "description": "Si hay otros adquirentes de los grupos I o II (descendientes, cónyuge, ascendientes). Lo usa Cantabria para la reducción de empresa de parientes hasta el cuarto grado.",
+            },
+            "hay_familiares_adquirentes_hasta_cuarto_grado": {
+                "type": "boolean",
+                "description": "Si hay otros adquirentes que sean familiares hasta el cuarto grado.",
+            },
+            "vinculo_laboral_empresa": {
+                "type": "boolean",
+                "description": "El beneficiario sin parentesco cercano tiene contrato laboral o de servicios en la empresa y tareas de dirección, con la antigüedad que exige la comunidad (Andalucía, Extremadura).",
+            },
         },
     },
 )

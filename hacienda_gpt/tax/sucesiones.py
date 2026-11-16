@@ -598,6 +598,19 @@ _AFINES: dict[str, frozenset[str]] = {
     "padrastro": frozenset({"padre", "otro_ascendiente"}),
     "suegro": frozenset({"padre", "otro_ascendiente"}),
 }
+# How a relationship reads in a message.
+_NOMBRE_PARENTESCO = {
+    "conyuge": "cónyuge",
+    "pareja_de_hecho": "pareja de hecho",
+    "otro_descendiente": "descendiente (no hijo)",
+    "otro_ascendiente": "ascendiente (no padre ni madre)",
+    "tio": "tío",
+    "colateral_afinidad": "colateral por afinidad",
+    "yerno_nuera": "yerno o nuera",
+    "colateral_cuarto_grado": "colateral de cuarto grado",
+    "colateral_lejano": "colateral de grado más lejano",
+    "extrano": "extraño",
+}
 _REQUISITO_ADQUIRENTE = {
     "vinculo_laboral_empresa": (
         "un contrato laboral o de servicios en la empresa o negocio y tareas de responsabilidad en su gestión o "
@@ -615,8 +628,10 @@ def _adquirente(
     """
     if not regla.adquirentes:
         return True, None, ""
-    quien = f"«{caso.parentesco.replace('_', ' ')}»" if caso.parentesco else f"del grupo {caso.grupo}"
+    nombre = _NOMBRE_PARENTESCO.get(caso.parentesco or "", caso.parentesco or "")
+    quien = f"«{nombre}»" if caso.parentesco else f"del grupo {caso.grupo}"
     motivos: list[str] = []
+    falta_parentesco = False
     for clase in regla.adquirentes:
         if clase.grupos:
             pertenece = caso.grupo in clase.grupos
@@ -625,7 +640,7 @@ def _adquirente(
         elif caso.grupo == "I" and {"hijo", "otro_descendiente"} & set(clase.parentescos):
             pertenece = True  # group I is only descendants and adopted children under 21
         else:
-            motivos.append(f"falta indicar el parentesco exacto para saber si eres de «{clase.texto}»")
+            falta_parentesco = True
             continue
         if not pertenece:
             afines = _AFINES.get(caso.parentesco or "", frozenset())
@@ -655,8 +670,15 @@ def _adquirente(
             motivos.append(f"a «{clase.texto}» se les exige además {exige}")
             continue
         return True, clase, ""
+    para = "; ".join(
+        f"«{c.texto}»"
+        + (f" (solo cuando no hay {_AUSENCIAS[c.solo_si_no_hay][1]})" if c.solo_si_no_hay else "")
+        + (" (con vínculo laboral con la empresa)" if c.requiere else "")
+        for c in regla.adquirentes
+    )
+    if falta_parentesco:
+        motivos.insert(0, f"falta indicar el parentesco exacto para saber si te corresponde (es para {para})")
     if not motivos:
-        para = "; ".join(f"«{c.texto}»" for c in regla.adquirentes)
         motivos.append(f"es solo para {para}, y el beneficiario es {quien}")
     return False, None, "; ".join(motivos)
 

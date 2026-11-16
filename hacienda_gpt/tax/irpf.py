@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from hacienda_gpt.tax import autonomicas
 from hacienda_gpt.tax.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
 from hacienda_gpt.tax.compensacion import compensar_ahorro
+from hacienda_gpt.tax.obligacion import ResultadoObligacion, obligado_a_declarar
 from hacienda_gpt.tax.params import (
     CAMPOS_GASTO,
     GASTOS_DESGLOSADOS,
@@ -282,6 +283,23 @@ class IRPFInput(BaseModel):
     adquisicion_vehiculo_electrico: Decimal = Field(default=ZERO, ge=0)
     inversion_economia_social: Decimal = Field(default=ZERO, ge=0)
 
+    # ---- Obligation to file (art. 96 LIRPF; read by ``tax.obligacion``, the tax itself ignores them) ----
+    # None = not known. Payers of the work income, and what the second and further payers paid, together.
+    num_pagadores_trabajo: int | None = Field(default=None, ge=0, le=50)
+    importe_segundo_y_restantes_pagadores: Decimal | None = Field(default=None, ge=0)
+    # The art. 96.3 cases that lower the work-income limit, and its exception 96.3.a) 2.º.
+    pension_compensatoria_o_anualidades: bool | None = None  # received from the (ex-)spouse, not exempt ones
+    pagador_no_obligado_a_retener: bool | None = None
+    trabajo_tipo_fijo_retencion: bool | None = None
+    pensiones_procedimiento_especial: bool | None = None  # only pensions, withholding set by the special procedure
+    # The capital gains were subject to withholding (e.g. redemptions of investment funds): art. 96.2.b).
+    ganancias_sometidas_a_retencion: bool | None = None
+    # Cases that oblige to file whatever the income (art. 96.2 last paragraph and 96.4 LIRPF; Ley 19/2021 art. 36).
+    alta_autonomo_en_el_ejercicio: bool | None = None  # registered as self-employed at any time of the year
+    deduccion_doble_imposicion_internacional: bool | None = None
+    aportaciones_patrimonio_protegido: bool | None = None
+    beneficiario_ingreso_minimo_vital: bool | None = None
+
     retenciones: Decimal = Field(default=ZERO, ge=0)
 
     @model_validator(mode="after")
@@ -476,6 +494,8 @@ class IRPFResult(BaseModel):
     avisos: list[str]
     parametros_no_verificados: list[str]
     fuente: str
+    # Whether this taxpayer must file (art. 96 LIRPF); individual returns only (see ``tax.obligacion``).
+    obligacion_declarar: ResultadoObligacion | None = None
 
 
 class _Trace:
@@ -1559,7 +1579,7 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
 
     tipo_medio = _round(cuota_liquida / base_liquidable * 100) if base_liquidable > 0 else ZERO
     fp = p.fuente_principal
-    return IRPFResult(
+    result = IRPFResult(
         ejercicio=inp.ejercicio,
         tributacion=inp.tributacion,
         base_imponible_general=_round(base_imponible_general),
@@ -1588,3 +1608,7 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
             else ""
         ),
     )
+    if inp.tributacion == "individual":
+        # The obligation to file is personal: a joint return's summed figures cannot answer it.
+        result.obligacion_declarar = obligado_a_declarar(inp, p, resultado=result)
+    return result
