@@ -66,7 +66,8 @@ def de_extractos(carpeta: Path) -> Callable[[str, str | None], str | None]:
 def test_every_declarant_declares_and_every_file_says_who_maintains_it() -> None:
     claves = {f.clave for f in ficheros_legales()}
     assert set(EXTRACTOS) | set(SIN_EXTRACTOS) == claves
-    assert len(DECLARANTES) == 10
+    # Only the core's own files are listed by hand; domains and capabilities declare theirs.
+    assert DECLARANTES == ("hacienda_gpt.planificador.textos",)
     for fichero in ficheros_legales():
         # Either the loop re-encodes it, or the declaration says why a person does.
         assert (fichero.recodificable is not None) != bool(fichero.solo_persona), fichero.clave
@@ -136,3 +137,54 @@ def test_the_checker_reads_spellings_as_each_module_spells_them() -> None:
     vieja = cita.model_copy(update={"version": "20121031"})
     problemas = comprobar_grupo(grupo.model_copy(update={"citas": [vieja]}), ortografia=ortografia, textos=textos)
     assert problemas == ["regla: no se ha aportado el texto de BOE-A-1-1@20121031"]
+
+
+def test_legal_files_come_from_each_domains_hooks_and_each_capabilitys_declaration() -> None:
+    from hacienda_gpt.capacidades.registro import descubrir as descubrir_capacidades
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from hacienda_gpt.modulos.registro import descubrir as descubrir_ambitos
+
+    de_ambitos = {f.clave for _o, m in descubrir_ambitos()[0] for f in ganchos_de(m).ficheros_legales}
+    de_capacidades = {f.clave for _o, c in descubrir_capacidades()[0] for f in getattr(c, "ficheros_legales", ())}
+    assert de_capacidades == {"correo"}
+    # The same coverage the hand-made list had: every domain's files, the mail's rules and the planner's passages.
+    assert (
+        {f.clave for f in ficheros_legales()}
+        == de_ambitos | de_capacidades | {"planificador"}
+        == {
+            "luz",
+            "caducidades",
+            "ayudas_2026",
+            "hipoteca",
+            "hipoteca_deduccion",
+            "hipoteca_indices",
+            "suscripciones",
+            "correo",
+            "planificador",
+            "fiscal_obligacion",
+            "fiscal_optimizador",
+        }
+    )
+
+
+def test_a_new_domains_legal_file_is_covered_without_listing_it(monkeypatch) -> None:
+    from dataclasses import replace
+
+    from hacienda_gpt.conocimiento import registro as conocimiento_registro
+    from hacienda_gpt.modulos import registro as modulos_registro
+    from hacienda_gpt.modulos.ganchos import Ganchos
+
+    nuevo = replace(fichero_legal("luz"), clave="agua_nueva", modulo="agua")
+
+    class Agua:
+        clave = "agua"
+        ganchos = Ganchos(ficheros_legales=(nuevo,))
+
+    real = modulos_registro.descubrir
+    monkeypatch.setattr(modulos_registro, "descubrir", lambda: (real()[0] + [("agua", Agua())], {}))
+    conocimiento_registro._declarados.cache_clear()
+    try:
+        assert "agua_nueva" in {f.clave for f in ficheros_legales()}
+    finally:
+        monkeypatch.undo()
+        conocimiento_registro._declarados.cache_clear()

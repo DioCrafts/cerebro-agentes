@@ -311,3 +311,30 @@ def test_the_cli_migrates_and_reports(tmp_path) -> None:
     assert resultado.exit_code == 0 and "pendientes" not in resultado.output and "al día" in resultado.output
     resultado = runner.invoke(cli, ["migrar", "--db-path", path, "--estado", "--json"])
     assert resultado.exit_code == 0 and '"version_actual": 1' in resultado.output
+
+
+def test_the_deployment_inventory_lists_every_owner_of_the_catalogue() -> None:
+    """docs/despliegue.md §2.1 is the operator's inventory: same owners, packages, tables, objects and versions."""
+    from pathlib import Path
+
+    from hacienda_gpt.plataforma.migraciones.catalogo import PROPIETARIOS
+
+    texto = (Path(__file__).resolve().parents[2] / "docs" / "despliegue.md").read_text(encoding="utf-8")
+    seccion = texto.split("### 2.1 Inventario de tablas", 1)[1].split("###", 1)[0]
+
+    def nombres(celda: str) -> set[str]:
+        return {n for n in celda.replace("`", "").replace(" ", "").split(",") if n}
+
+    filas = {}
+    for linea in seccion.splitlines():
+        if linea.startswith("| `"):
+            celdas = [c.strip() for c in linea.strip("|").split("|")]
+            filas[celdas[0].strip("`")] = celdas
+    assert set(filas) == {p.nombre for p in PROPIETARIOS}
+    for propietario in PROPIETARIOS:
+        celdas = filas[propietario.nombre]
+        assert celdas[1].strip("`") == propietario.paquete, propietario.nombre
+        assert celdas[2] == propietario.base, propietario.nombre
+        assert nombres(celdas[3]) == set(propietario.tablas), propietario.nombre
+        assert nombres(celdas[4]) == set(propietario.otros_objetos), propietario.nombre
+        assert int(celdas[5]) == len(propietario.migraciones), propietario.nombre

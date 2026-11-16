@@ -333,3 +333,40 @@ def test_purge_forgets_old_finished_work_only(tmp_path) -> None:
     reloj.avanza(days=31)
     assert bus.purgar(dias=30) == {"entregas": 1, "eventos": 1}
     assert bus.salud()["eventos"] == 0
+
+
+def test_a_tasks_cursor_left_behind_no_longer_blocks_the_purge(tmp_path) -> None:
+    """The tasks worker ran once (its ``tareas`` cursor exists) and then never again: the event worker runs the
+    tasks' consumer too, so the cursor keeps up and the purge still forgets old events."""
+    from hacienda_gpt.eventos.bus import consumidores_del_trabajador
+    from hacienda_gpt.tareas.motor import ConsumidorTareas
+
+    db = str(tmp_path / "bus.sqlite3")
+    reloj = Reloj()
+    Bus(db, reloj=reloj, hoy=lambda: HOY, consumidores=[ConsumidorTareas()]).avanzar_consumidores()
+
+    solo_modulos = crear_bus(db, modulos=[FISCAL], reloj=reloj)
+    solo_modulos.emitir(MODULO_ACTIVADO, case_id="c1", payload={"modulo": "agua"})
+    solo_modulos.drenar()
+    reloj.avanza(days=31)
+    # Before: only the modules' consumer ran, the tasks' cursor stayed at 0 and nothing could be forgotten.
+    assert solo_modulos.purgar(dias=30)["eventos"] == 0
+
+    trabajador = crear_bus(db, modulos=[FISCAL], reloj=reloj)
+    trabajador.consumidores = consumidores_del_trabajador()
+    assert [c.nombre for c in trabajador.consumidores] == ["modulos", "tareas"]
+    trabajador.drenar()
+    assert trabajador.purgar(dias=30)["eventos"] == 1
+    assert trabajador.salud()["eventos"] == 0
+
+
+def test_every_event_worker_runs_the_tasks_consumer(tmp_path, monkeypatch) -> None:
+    from hacienda_gpt.cli import eventos as cli_eventos
+    from hacienda_gpt.plataforma import trabajos
+
+    db = str(tmp_path / "bus.sqlite3")
+    assert [c.nombre for c in cli_eventos._bus(db).consumidores] == ["modulos", "tareas"]
+    trabajos.pasada_de_eventos(db, "w")
+    with sqlite3.connect(db) as conn:
+        cursores = {fila[0] for fila in conn.execute("SELECT consumidor FROM eventos_cursores")}
+    assert cursores == {"modulos", "tareas"}

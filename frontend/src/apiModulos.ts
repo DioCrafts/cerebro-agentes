@@ -195,3 +195,48 @@ export function getPropuestas(caseId: string, signal?: AbortSignal): Promise<Pro
     (resp) => resp.propuestas,
   );
 }
+
+// Capabilities (hacienda_gpt/api/routers/capacidades.py): means any module can use (mail, browser, documents,
+// research), shown apart from the modules with the user's consent.
+
+export interface OperacionCapacidadInfo {
+  clave: string;
+  descripcion: string;
+  efecto: Efecto;
+  proposito?: string | null;
+  datos_de_terceros: boolean;
+  requiere_consentimiento: boolean;
+}
+
+export interface CapacidadInfo {
+  clave: string;
+  nombre: string;
+  descripcion: string;
+  requiere_consentimiento: boolean;
+  activa: boolean;
+  elegida: boolean;
+  elegida_el?: string | null;
+  // A module with the same key is its chat front: its switch is the module's (in «Módulos»).
+  modulo?: string | null;
+  usada_por: string[];
+  operaciones: OperacionCapacidadInfo[];
+}
+
+export interface CapacidadesResponse {
+  configurable: boolean;
+  capacidades: CapacidadInfo[];
+}
+
+function isCapacidades(value: unknown): value is CapacidadesResponse {
+  return isRecord(value) && typeof value.configurable === "boolean" && Array.isArray(value.capacidades);
+}
+
+/** The capabilities this service offers and whether the signed-in user consented to each. */
+export function getCapacidades(signal?: AbortSignal): Promise<CapacidadesResponse> {
+  return request("/capacidades", undefined, isCapacidades, { signal, method: "GET" });
+}
+
+/** Give or withdraw consent to a capability that is not also a module (those switch in their module). */
+export function setCapacidad(clave: string, activa: boolean): Promise<CapacidadesResponse> {
+  return request(`/me/capacidades/${encodeURIComponent(clave)}`, { activa }, isCapacidades, { method: "PUT" });
+}

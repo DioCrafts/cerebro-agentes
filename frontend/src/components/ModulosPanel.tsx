@@ -12,6 +12,7 @@ import { ApiError, deleteCaseFact, getCase, updateCaseFact } from "../api";
 import type { AccionPendiente, CampoPropuesto, HechoInfo, HerramientaInfo, ModuloInfo, ModulosResponse, PropuestaHecho } from "../apiModulos";
 import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos";
 import { fileToBase64, relativeTime } from "../lib/presentation";
+import { CapacidadesSeccion } from "./CapacidadesSeccion";
 import { CorreoSeccion } from "./CorreoSeccion";
 
 const FIELD_CLASS =
@@ -111,6 +112,8 @@ export function ModulosPanel(props: ModulosPanelProps) {
           {modulos?.modulos.map((m) => (
             <ModuloCard key={m.clave} modulo={m} configurable={modulos.configurable} {...props} />
           ))}
+
+          {modulos && <CapacidadesSeccion nombres={nombres} disabled={props.disabled} />}
 
           {decididas.length > 0 && (
             <details className="rounded-xl border border-line bg-surface px-4 py-3">

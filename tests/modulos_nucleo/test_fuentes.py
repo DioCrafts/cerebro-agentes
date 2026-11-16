@@ -78,3 +78,18 @@ def test_modulos_command_lists_the_registry() -> None:
     salida = json.loads(CliRunner().invoke(cli_module.cli, ["modulos"]).output)
     assert [m["clave"] for m in salida["modulos"]] == ["fiscal", "agua"]
     assert salida["modulos"][1]["herramientas"]["agua_cambiar_tarifa"] == "actua"
+
+
+def test_a_domain_that_watches_its_own_laws_is_left_out_by_declaration_not_by_key() -> None:
+    from hacienda_gpt.modulos.ganchos import Ganchos
+
+    # A domain (not the tax module) declaring its laws watched by its own maintenance is left out…
+    propio = agua(Llamadas())
+    propio.ganchos = Ganchos(fuentes_vigiladas_aparte=True)
+    reg = instalar(propio, seguros(Llamadas()))
+    assert [f.modulo for f in fuentes.fuentes_de_modulos(reg)] == ["seguros"]
+    # …and the tax module is left out because it declares so (its laws are params-check's), not by its key.
+    from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
+
+    assert FISCAL.ganchos.fuentes_vigiladas_aparte is True
+    assert all(f.modulo != "fiscal" for f in fuentes.fuentes_de_modulos(instalar(agua(Llamadas()))))

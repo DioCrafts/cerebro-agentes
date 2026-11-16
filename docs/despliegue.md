@@ -179,8 +179,10 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 | `eventos` | `hacienda_gpt.eventos` | casos | `eventos`, `eventos_cursores`, `eventos_entregas`, `eventos_temporizadores`, `eventos_trabajadores` | `idx_eventos_case`, `idx_entregas_estado`, `idx_entregas_case`, `idx_temporizadores_fecha` | 1 | Bus de eventos. |
 | `correo` | `hacienda_gpt.modulos.correo` | casos | `correo_conexiones`, `correo_oauth_estados`, `correo_elementos`, `correo_propuestas`, `correo_contactos` | `idx_correo_elementos_fecha` | 1 | Gmail: token cifrado, estados OAuth, elementos derivados, propuestas, contactos. |
 | `consumo` | `hacienda_gpt.ops` | casos | `llm_usage` | `idx_llm_usage_ts` | 1 | Llamadas al LLM: tokens y coste estimado. |
-| `navegador` | `hacienda_gpt.navegador` | casos | `navegador_tareas`, `navegador_inicios` | `idx_navegador_tareas_case`, `idx_navegador_inicios`, `navegador_borrar_con_caso` | 2 | Tareas del agente con navegador (§1.4). **Nueva.** |
-| `plataforma` | `hacienda_gpt.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. **Nueva.** |
+| `navegador` | `hacienda_gpt.navegador` | casos | `navegador_tareas`, `navegador_inicios` | `idx_navegador_tareas_case`, `idx_navegador_inicios`, `navegador_borrar_con_caso` | 2 | Tareas del agente con navegador (§1.4). |
+| `plataforma` | `hacienda_gpt.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. |
+| `tareas` | `hacienda_gpt.tareas` | casos | `tareas`, `tareas_historial`, `tareas_senales` | `idx_tareas_case`, `idx_tareas_estado`, `idx_tareas_historial`, `idx_tareas_historial_case`, `idx_tareas_senales`, `tareas_borrar_con_caso` | 2 | Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus. La v2 (disparador) espera a que exista `case_states`. |
+| `push` | `hacienda_gpt.push` | casos | `push_suscripciones`, `push_consentimientos` | `idx_push_suscripciones_propietario`, `idx_push_consentimientos`, `push_borrar_suscripciones_con_usuario` | 1 | Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario. |
 | `doctrina` | `hacienda_gpt.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
 
 Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrations` (el registro).
@@ -191,11 +193,9 @@ Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrat
 con las convocatorias del BOE), el índice de búsqueda (`FAISS_INDEX_PATH`, reconstruible) y los datos
 legales versionados del repositorio (`hacienda_gpt/tax/data`, `hacienda_gpt/modulos/*/data`).
 
-> **Pendiente de registrar.** Los almacenes nuevos de esta misma fase que crean tablas propias
-> (`hacienda_gpt/push/almacen.py`: `push_suscripciones`, `push_consentimientos`; `hacienda_gpt/tareas/almacen.py`:
-> `tareas`, `tareas_historial`, `tareas_senales`) aún no están en el catálogo: cuando su esquema sea estable,
-> cada uno añade su módulo al catálogo con su línea base y la llamada `asegurar_esquema` (la prueba de
-> línea base los incluirá entonces).
+Cada almacén con tablas propias está en el catálogo (`hacienda_gpt/plataforma/migraciones/catalogo/`), con su
+línea base y la llamada `asegurar_esquema`; `tests/plataforma/test_migraciones.py` comprueba que esta tabla
+dice lo mismo que el catálogo (propietarios, paquetes, tablas, índices y disparadores, versión).
 
 ### 2.2 Preparación para PostgreSQL (no implementado)
 
