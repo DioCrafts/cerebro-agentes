@@ -60,6 +60,7 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "Agregado",
+    "anonimizar_consumo",
     "ConsumoStore",
     "ContextoConsumo",
     "MeteredConversation",
@@ -461,6 +462,28 @@ def _almacen(db_path: str) -> ConsumoStore:
 def almacen_por_defecto() -> ConsumoStore:
     """The process-wide store on the cases database (``DECISION_STATE_DB_PATH``)."""
     return _almacen(settings.DECISION_STATE_DB_PATH)
+
+
+def anonimizar_consumo(db_path: str, *, user_id: str, case_ids: Sequence[str] = ()) -> int:
+    """Detach the usage log from an erased account: its rows keep tokens and cost (the operator's totals)
+    but lose the user and case identifiers. Returns the rows changed; 0 when there is no log yet."""
+    if not Path(db_path).exists():
+        return 0
+    conn = sqlite3.connect(db_path, timeout=30.0)
+    try:
+        existe = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'llm_usage'").fetchone()
+        if existe is None:
+            return 0
+        ids = list(case_ids)
+        marcas = ", ".join("?" for _ in ids)
+        condicion = "user_id = ?" + (f" OR case_id IN ({marcas})" if ids else "")
+        with conn:
+            cursor = conn.execute(
+                f"UPDATE llm_usage SET user_id = NULL, case_id = NULL WHERE {condicion}", (user_id, *ids)
+            )
+        return cursor.rowcount
+    finally:
+        conn.close()
 
 
 # --- Budget -------------------------------------------------------------------

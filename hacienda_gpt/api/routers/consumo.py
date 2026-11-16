@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict
 
 # The dependency lives in api.security (api.api only re-imports it), so there is
 # no import cycle with the module that includes this router.
-from hacienda_gpt.api.security import require_api_key
+from hacienda_gpt.api.security import require_operator
 from hacienda_gpt.ops.consumo import (
     ConsumoStore,
     Presupuesto,
@@ -53,12 +53,12 @@ def get_consumo_store() -> ConsumoStore:
         raise HTTPException(status_code=503, detail=f"El registro de consumo no está disponible: {exc}") from exc
 
 
-@router.get("/usage", response_model=UsageResponse, dependencies=[Depends(require_api_key)])
+@router.get("/usage", response_model=UsageResponse, dependencies=[Depends(require_operator)])
 def get_usage(store: ConsumoStore = Depends(get_consumo_store)) -> UsageResponse:
     """Totals of today and of the last 30 days (today included), overall and by purpose.
 
-    Operator-level figures for the whole service, not per user: keep the route
-    behind the API key.
+    Operator-level figures for the whole service, not per user: behind the API key and, with accounts on,
+    the operator key (``require_operator``).
     """
     hoy = hoy_madrid()
     try:

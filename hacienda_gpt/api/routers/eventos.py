@@ -15,7 +15,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from hacienda_gpt.api.security import require_api_key
+from hacienda_gpt.api.security import require_operator
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.eventos import despacho, productores
 from hacienda_gpt.eventos.bus import metricas_de
@@ -39,7 +39,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
 
     router = APIRouter(tags=["eventos"], lifespan=ciclo_de_vida)
 
-    @router.get("/eventos/salud", dependencies=[Depends(require_api_key)])
+    @router.get("/eventos/salud", dependencies=[Depends(require_operator)])
     def get_salud(cases: Annotated[SQLiteCaseStateStore, Depends(get_case_store)]) -> dict[str, Any]:
         """Backlog, dead letters, timers and workers of the event bus, and per type and module metrics."""
         salud = estado(cases.db_path)

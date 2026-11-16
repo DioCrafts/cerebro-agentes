@@ -7,10 +7,20 @@ calculator does with the value (limits, which payments enter the base) stays the
 Bridges today:
 
 * ``hipoteca`` → ``pagos_vivienda_habitual_pre2013`` (what the IRPF calculator uses for the transitional
-  deduction for the main home bought before 2013): offered when the loan in the profile says it financed the
-  main home (``vivienda_habitual``) bought before 2013 (``adquisicion_antes_2013`` exactly true) and the
-  fact is missing. The figure is what the module's amortisation table says was paid in the case's fiscal
-  year (capital + interest of the instalments + early repayments), shown broken down.
+  deduction for the main home bought before 2013, disposición transitoria 18.ª LIRPF): offered when the loan in
+  the profile says it financed the main home (``vivienda_habitual``) bought before 2013
+  (``adquisicion_antes_2013`` exactly true) and the fact is missing. The figure is what art. 68.1.1.º LIRPF, in
+  its wording in force on 31-12-2012, puts in the base "en el caso de financiación ajena" and the module knows
+  for the case's fiscal year: the amortisation (capital of the instalments due that year plus early
+  repayments), the interest, and the fees paid for early repayments ("demás gastos derivados"). The legal basis,
+  with literal quotes, what is left out (purchase expenses, hedging and its income, other loan costs) and the
+  conditions nobody checks (the deduction applied before 2013, earlier homes, the wealth test of art. 70.1) live
+  in ``modulos/hipoteca/data/deduccion_vivienda.json`` (``modulos/hipoteca/deduccion.py``). The rate and the cap
+  stay the calculator's.
+
+A proposal is about the ámbito ``fiscal:propuesta:<puente>`` of the decision memory (``hacienda_gpt/memoria``):
+a «no» the user said about it holds it back (``modulos/propuestas_chat.py``). A fact recorded from one has the
+source ``puente:<puente>``.
 """
 
 from __future__ import annotations
@@ -60,34 +70,72 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
     pagos = pagos_del_ejercicio(ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id), ejercicio)
     if not pagos:
         return None
-    capital = Decimal(pagos.get("capital") or 0)
-    intereses = Decimal(pagos.get("intereses") or 0)
-    anticipadas = Decimal(pagos.get("amortizaciones_anticipadas") or 0)
-    total = (capital + intereses + anticipadas).quantize(Decimal("0.01"))
+    fundamento = importlib.import_module("hacienda_gpt.modulos.hipoteca.deduccion").cargar_fundamento()
+    # Only what the law puts in the base and the module knows (``incluido`` concepts), each one with its quote.
+    importes = {c.clave: Decimal(pagos.get(c.clave) or 0) for c in fundamento.incluidos()}
+    total = sum(importes.values(), Decimal(0)).quantize(Decimal("0.01"))
     if total <= 0:
         return None
     hasta = " (las cuotas que vencen hasta el 31 de diciembre, según el cuadro)" if ejercicio >= hoy.year else ""
+    limite = _limite_irpf(ejercicio)
+    fuera = ", ".join(c.etiqueta.lower() for c in fundamento.no_incluidos())
     return PropuestaHecho(
         nombre=HECHO_VIVIENDA_PRE2013,
         valor=float(total),
         titulo=f"Lo que pagas de hipoteca en {ejercicio}: {_eur(total)}",
         explicacion=(
-            f"Tu préstamo es de la vivienda habitual comprada antes de 2013. Según su cuadro de amortización, en "
-            f"{ejercicio} pagas {_eur(total)}{hasta}. Si lo confirmas, la calculadora del IRPF lo usará para la "
-            "deducción por vivienda habitual del régimen transitorio y aplicará ella sus límites. Comprueba la "
-            "cifra con el certificado de tu banco: si pagas otros conceptos ligados al préstamo, puedes corregirla."
+            f"Tu préstamo es de la vivienda habitual comprada antes del "
+            f"{_fecha_larga(fundamento.fecha_limite_adquisicion)}. Según su cuadro de amortización, en {ejercicio} "
+            f"pagas {_eur(total)}{hasta}: es lo que la ley cuenta del préstamo para la deducción por vivienda "
+            "habitual del régimen transitorio (la amortización, los intereses y los demás gastos de la financiación; "
+            "art. 68.1 LIRPF en su redacción de 2012, al que remite la disposición transitoria 18.ª). Solo procede "
+            "si ya te aplicaste esa deducción por esta vivienda en algún ejercicio anterior a 2013. Si lo "
+            f"confirmas, la calculadora del IRPF lo usará y aplicará ella sus límites{limite}. No incluye lo que "
+            f"el módulo no sabe ({fuera}); si el préstamo es de varios titulares, cada uno declara lo que pagó. "
+            "Comprueba la cifra con el certificado de tu banco y corrígela si hace falta."
         ),
         modulo="hipoteca",
         desglose={
-            "capital": _eur(capital),
-            "intereses": _eur(intereses),
-            "amortizaciones_anticipadas": _eur(anticipadas),
+            clave: _eur(importe)
+            for clave, importe in importes.items()
+            if importe or clave in ("capital", "intereses", "amortizaciones_anticipadas")
         },
     )
 
 
+def _limite_irpf(ejercicio: int) -> str:
+    """« (como máximo 9.040 € al año por declarante, al 15 %)» from the IRPF parameters, or "" without them."""
+    try:
+        from hacienda_gpt.tax.params import load_params
+
+        v = load_params(ejercicio).vivienda_habitual_transitoria
+    except Exception:  # no parameters for that year: the calculator will say so itself
+        return ""
+    porcentaje = format((v.tipo * 100).normalize(), "f").replace(".", ",")
+    return f" (cuenta como máximo {_eur(v.base_maxima)} al año por declarante, al {porcentaje} %)"
+
+
+_MESES = (
+    "enero febrero marzo abril mayo junio julio agosto septiembre octubre noviembre diciembre".split()  # noqa: SIM905
+)
+
+
+def _fecha_larga(dia: date) -> str:
+    return f"{dia.day} de {_MESES[dia.month - 1]} de {dia.year}"
+
+
 Puente = Callable[[CaseState, dict[str, Any], date], PropuestaHecho | None]
 PUENTES: dict[str, Puente] = {"hipoteca": _hipoteca}
+
+
+def ambito_de(propuesta: PropuestaHecho) -> str:
+    """The decision-memory ámbito of a proposal: a «no» about it is ``fiscal:propuesta:<puente>``."""
+    return f"fiscal:propuesta:{propuesta.modulo}"
+
+
+def fuente_de(propuesta: PropuestaHecho) -> str:
+    """``Fact.source`` of a fact recorded from a proposal (the provenance: which module's bridge)."""
+    return f"puente:{propuesta.modulo}"
 
 
 def propuestas_para(case: CaseState, modulos: Sequence[Modulo], *, hoy: date) -> list[PropuestaHecho]:
@@ -108,4 +156,4 @@ def propuestas_para(case: CaseState, modulos: Sequence[Modulo], *, hoy: date) ->
     return out
 
 
-__all__ = ["HECHO_VIVIENDA_PRE2013", "PUENTES", "PropuestaHecho", "propuestas_para"]
+__all__ = ["HECHO_VIVIENDA_PRE2013", "PUENTES", "PropuestaHecho", "ambito_de", "fuente_de", "propuestas_para"]

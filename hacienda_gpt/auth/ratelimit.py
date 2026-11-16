@@ -35,16 +35,21 @@ class LoginRateLimiter:
             self._failures.pop(key, None)
         return recent
 
-    def retry_after(self, key: str) -> int:
-        """Seconds until ``key`` may try again; 0 when it is not blocked."""
-        if self.max_attempts <= 0:
+    def retry_after(self, key: str, *, max_attempts: int | None = None) -> int:
+        """Seconds until ``key`` may try again; 0 when it is not blocked.
+
+        ``max_attempts`` overrides the budget for this key (e.g. a wider one per client address than per
+        e-mail and address).
+        """
+        limit = self.max_attempts if max_attempts is None else max_attempts
+        if limit <= 0:
             return 0
         now = self._clock()
         with self._lock:
             recent = self._recent(key, now)
-            if len(recent) < self.max_attempts:
+            if len(recent) < limit:
                 return 0
-            return max(1, int(self.window_seconds - (now - recent[0])) + 1)
+            return max(1, int(self.window_seconds - (now - recent[-limit])) + 1)
 
     def record_failure(self, key: str) -> None:
         now = self._clock()

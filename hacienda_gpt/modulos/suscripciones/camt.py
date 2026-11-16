@@ -22,6 +22,7 @@ import xml.etree.ElementTree as ET
 
 from hacienda_gpt.modulos.suscripciones.lectura import enmascarar_cuenta
 from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
+from hacienda_gpt.utils.xml_seguro import XmlInseguroError, parse_seguro
 
 _Elemento = ET.Element
 
@@ -97,10 +98,12 @@ def _parte(tx: _Elemento | None, rol: str) -> str | None:
 
 
 def leer_camt(texto: str) -> Extracto:
-    if re.search(r"<!DOCTYPE|<!ENTITY", texto[:10000], re.I):
-        raise ImportacionError("El XML declara un DOCTYPE o entidades; por seguridad no se procesa.")
+    sin_declaracion = re.sub(r"^\s*<\?xml[^>]*\?>", "", texto.lstrip("﻿"))
     try:
-        raiz = ET.fromstring(re.sub(r"^\s*<\?xml[^>]*\?>", "", texto.lstrip("﻿")))
+        # Anywhere in the prolog, not only in its first kilobytes (a long comment would hide it).
+        raiz = parse_seguro(sin_declaracion)
+    except XmlInseguroError as exc:
+        raise ImportacionError(str(exc)) from exc
     except ET.ParseError as exc:
         raise ImportacionError(f"camt: el XML no está bien formado ({exc}).") from exc
     mensaje = next(iter(raiz), None)

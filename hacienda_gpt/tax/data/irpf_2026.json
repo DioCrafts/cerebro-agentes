@@ -198,8 +198,9 @@
     "fuente": {
       "referencia": "disposición transitoria 18.ª LIRPF y art. 68.1 en su redacción a 31-12-2012",
       "en_vigor_desde": "2013-01-01",
-      "verificado": false,
-      "nota": "El régimen transitorio está verificado; el porcentaje (15 %) y la base máxima (9.040 €) proceden de la redacción de 2012, que no se ha contrastado en esta revisión."
+      "verificado": true,
+      "nota": "Leído de la redacción de la Ley 35/2006 en vigor a 31-12-2012 (versión del BOE de 31-10-2012, la última antes de la Ley 16/2012, que suprimió el art. 68.1 con efectos desde el 1-1-2013). El 15 % es la suma del 7,5 % estatal (art. 68.1.1.º) y del 7,5 % autonómico que rige si la comunidad no aprobó otro (art. 78.2.a); la base máxima de 9.040 € es del art. 68.1.1.º. Citas en evidencia_parametros.json. Algunas comunidades fijaron su propio porcentaje del tramo autonómico (disp. trans. 18.ª.2): Cataluña, el 9 % en ciertos casos (art. 613-1 DLeg. 1/2024); la Comunidad Valenciana remite a su art. 3 bis en la redacción a 31-12-2012, no leído aquí.",
+      "version_historica": "20121031"
     }
   },
   "alquiler_vivienda_habitual": {
@@ -221,10 +222,14 @@
     "limite_trabajo_varios_pagadores": "15876",
     "limite_segundo_pagador": "1500",
     "limite_capital_y_ganancias_con_retencion": "1600",
+    "limite_imputadas_letras_subvenciones": "1000",
+    "limite_conjunto_rentas_minimas": "1000",
+    "limite_perdidas_patrimoniales": "500",
     "fuente": {
       "referencia": "art. 96.2 y 3 LIRPF",
       "en_vigor_desde": "2025-01-23",
-      "verificado": true
+      "verificado": true,
+      "nota": "Leído del texto consolidado del BOE (consultado el 2026-11-16; las citas, en evidencia_parametros.json). El apartado 3 cambió con efectos de 2024 (Real Decreto-ley 4/2024: 15.876 euros en vez de 15.000) y el Real Decreto-ley 9/2024 subió a 2.500 euros el umbral del segundo pagador para 2025, pero el Congreso lo derogó (BOE-A-2025-1136) y la redacción en vigor desde el 23/01/2025, la aplicable a 2025 y 2026, mantiene 1.500 euros. El art. 61.3 del Reglamento (RD 439/2007) sigue diciendo 15.000 euros: rige la cifra de la Ley."
     }
   },
   "comunidades": {

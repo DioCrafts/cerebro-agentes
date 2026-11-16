@@ -28,6 +28,7 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from hacienda_gpt.tax.irpf import Linea
 from hacienda_gpt.tax.sucesiones_params import (
+    AdquirenteBienes,
     CondicionesISD,
     Grupo,
     ISDParams,
@@ -36,6 +37,7 @@ from hacienda_gpt.tax.sucesiones_params import (
     NormativaISD,
     Parentesco,
     Reduccion,
+    ReduccionBienes,
     ReduccionVivienda,
     ReglaBonificacion,
     Seccion,
@@ -114,6 +116,15 @@ class BeneficiarioISD(BaseModel):
     otras_reducciones: Decimal = Field(default=ZERO, ge=0)
     patrimonio_preexistente: Decimal = Field(default=ZERO, ge=0)
     escritura_publica: bool = False  # the gift was formalised in a public deed
+    # Who else there is, for the business and heritage reductions that some relatives may claim only "cuando no
+    # existan descendientes o adoptados" (or no acquirers of groups I and II, or no relatives up to the fourth
+    # degree among the acquirers). None = not stated: those relatives then get no reduction, and are told why.
+    hay_descendientes_del_causante: bool | None = None  # of the deceased or donor, adopted children included
+    hay_adquirentes_grupos_i_ii: bool | None = None  # other acquirers of kinship groups I or II
+    hay_familiares_adquirentes_hasta_cuarto_grado: bool | None = None  # other acquirers related up to the 4th degree
+    # The beneficiary has the work or service contract and the management duties in the business, with the
+    # seniority, that some laws demand of acquirers who are not relatives.
+    vinculo_laboral_empresa: bool = False
 
     @field_validator("parentesco")
     @classmethod
@@ -133,6 +144,10 @@ class BeneficiarioISD(BaseModel):
             raise ValueError("valor_total_vivienda no puede ser menor que la parte de la vivienda que se adquiere")
         if self.fecha_devengo is not None and self.fecha_devengo.year != self.ejercicio:
             raise ValueError("la fecha de devengo no corresponde al ejercicio indicado")
+        if self.hay_descendientes_del_causante is False and (
+            self.grupo == "I" or (self.parentesco is not None and _CLASE_PARENTESCO[self.parentesco] == "descendiente")
+        ):
+            raise ValueError("si el beneficiario es descendiente, el causante o donante sí tiene descendientes")
         return self
 
 
@@ -565,6 +580,105 @@ def _reduccion_seguro(
     return _mas_favorable(candidatos, "Reducción por seguro de vida", t)
 
 
+# Who must be missing for a subsidiary class of acquirers (AdquirenteBienes.solo_si_no_hay): the input that says
+# whether there is someone, and how to name them to the user.
+_AUSENCIAS: dict[str, tuple[str, str]] = {
+    "descendientes": ("hay_descendientes_del_causante", "descendientes (ni adoptados) del causante o donante"),
+    "adquirentes_grupos_I_II": ("hay_adquirentes_grupos_i_ii", "otros adquirentes de los grupos I o II"),
+    "familiares_adquirentes_hasta_cuarto_grado": (
+        "hay_familiares_adquirentes_hasta_cuarto_grado",
+        "otros adquirentes que sean familiares hasta el cuarto grado",
+    ),
+}
+# Relatives by marriage, and the blood relatives a law may name without saying whether it includes them.
+_AFINES: dict[str, frozenset[str]] = {
+    "colateral_afinidad": frozenset({"hermano", "sobrino", "tio"}),
+    "hijastro": frozenset({"hijo", "otro_descendiente"}),
+    "yerno_nuera": frozenset({"hijo", "otro_descendiente"}),
+    "padrastro": frozenset({"padre", "otro_ascendiente"}),
+    "suegro": frozenset({"padre", "otro_ascendiente"}),
+}
+_REQUISITO_ADQUIRENTE = {
+    "vinculo_laboral_empresa": (
+        "un contrato laboral o de servicios en la empresa o negocio y tareas de responsabilidad en su gestión o "
+        "dirección, con la antigüedad que exige la ley (indícalo con vinculo_laboral_empresa si lo cumples)"
+    ),
+}
+
+
+def _adquirente(
+    regla: ReduccionBienes, caso: _Caso, inp: BeneficiarioISD
+) -> tuple[bool, AdquirenteBienes | None, str]:
+    """(admitted, class of acquirers they qualify as, why not) for a reduction of ``reducciones_bienes``.
+
+    A rule with no ``adquirentes`` admits everyone (the data does not restrict it); the caller says so.
+    """
+    if not regla.adquirentes:
+        return True, None, ""
+    quien = f"«{caso.parentesco.replace('_', ' ')}»" if caso.parentesco else f"del grupo {caso.grupo}"
+    motivos: list[str] = []
+    for clase in regla.adquirentes:
+        if clase.grupos:
+            pertenece = caso.grupo in clase.grupos
+        elif caso.parentesco is not None:
+            pertenece = caso.parentesco in clase.parentescos
+        elif caso.grupo == "I" and {"hijo", "otro_descendiente"} & set(clase.parentescos):
+            pertenece = True  # group I is only descendants and adopted children under 21
+        else:
+            motivos.append(f"falta indicar el parentesco exacto para saber si eres de «{clase.texto}»")
+            continue
+        if not pertenece:
+            afines = _AFINES.get(caso.parentesco or "", frozenset())
+            if clase.afinidad_sin_precisar and afines & set(clase.parentescos):
+                motivos.append(
+                    f"la ley habla de «{clase.texto}» sin decir si incluye a los parientes por afinidad, como "
+                    f"{quien}; no se ha aplicado (si la Administración te la reconoce, declárala como importe en "
+                    "otras_reducciones)"
+                )
+            continue
+        if clase.solo_si_no_hay is not None:
+            campo, quienes = _AUSENCIAS[clase.solo_si_no_hay]
+            hay = getattr(inp, campo)
+            if hay is None:
+                motivos.append(
+                    f"a «{clase.texto}» solo les corresponde cuando no hay {quienes}; indica si los hay ({campo})"
+                )
+                continue
+            if hay:
+                motivos.append(
+                    f"a «{clase.texto}» solo les corresponde cuando no hay {quienes}, y has indicado que los hay"
+                )
+                continue
+        faltan = [r for r in clase.requiere if not getattr(inp, r)]
+        if faltan:
+            exige = " y ".join(_REQUISITO_ADQUIRENTE[r] for r in faltan)
+            motivos.append(f"a «{clase.texto}» se les exige además {exige}")
+            continue
+        return True, clase, ""
+    if not motivos:
+        para = "; ".join(f"«{c.texto}»" for c in regla.adquirentes)
+        motivos.append(f"es solo para {para}, y el beneficiario es {quien}")
+    return False, None, "; ".join(motivos)
+
+
+def _primera_admitida(
+    reglas: Sequence[ReduccionBienes], caso: _Caso, inp: BeneficiarioISD, etiqueta: str, t: _Traza
+) -> tuple[tuple[ReduccionBienes, AdquirenteBienes | None] | None, bool]:
+    """(first rule whose conditions hold and that admits the beneficiary, whether any rule's conditions held)."""
+    alguna = False
+    for regla in reglas:
+        motivos = _incumple(regla.cuando, caso)
+        if motivos:
+            _avisar_descartes(f"Reducción por {etiqueta}", regla.articulo, motivos, t)
+            continue
+        alguna = True
+        admitido, clase, motivo = _adquirente(regla, caso, inp)
+        if admitido:
+            return (regla, clase), alguna
+        t.aviso(f"Reducción por {etiqueta} ({regla.articulo}) no aplicada: {motivo}.")
+    return None, alguna
+
+
 def _reduccion_bienes(
     estatal: NormativaISD,
     comunidad: NormativaAutonomicaISD | None,
@@ -572,34 +686,53 @@ def _reduccion_bienes(
     valor: Decimal,
     etiqueta: str,
     vista: _Vista,
+    inp: BeneficiarioISD,
     t: _Traza,
 ) -> Decimal:
     caso_propio = vista.autonomico("reducciones_bienes")
     propias = [r for r in (comunidad.reducciones_bienes if comunidad else []) if r.clase == clase_bienes]
-    propia = _primera(propias, caso_propio, t)
-    del_estado = _primera([r for r in estatal.reducciones_bienes if r.clase == clase_bienes], vista.estatal, t)
-    reglas = [propia] if propia is not None else []
-    if del_estado is not None and (propia is None or propia.estatal_si_mas_favorable):
-        reglas.append(del_estado)
-    if not reglas:
-        t.aviso(f"No hay regla cargada para la reducción por {etiqueta}; no se ha aplicado.")
-        return ZERO
-    candidatos = []
-    for regla in reglas:
-        sub = t.sub()
-        importe = valor * regla.porcentaje
-        sub.linea(f"Reducción por {etiqueta} ({_pct(regla.porcentaje)})", -importe, regla.articulo)
-        sub.usa(regla, f"Reducción por {etiqueta}")
-        sub.aviso(
-            f"Reducción por {etiqueta} ({regla.articulo}): se ha aplicado sobre el valor que has declarado, sin "
-            f"comprobar ninguno de sus requisitos. {regla.resumen}"
-        )
-        candidatos.append((regla, importe, sub))
+    propia, hay_propia = _primera_admitida(propias, caso_propio, inp, etiqueta, t)
+    del_estado, hay_estatal = None, False
+    if propia is None or propia[0].estatal_si_mas_favorable:
+        estatales = [r for r in estatal.reducciones_bienes if r.clase == clase_bienes]
+        del_estado, hay_estatal = _primera_admitida(estatales, vista.estatal, inp, etiqueta, t)
+    elegidas = [(propia, caso_propio)] if propia is not None else []
+    if del_estado is not None:
+        elegidas.append((del_estado, vista.estatal))
     if comunidad is not None and not propias:
         t.aviso(
             f"{comunidad.nombre} puede tener una reducción propia o mejorada por {etiqueta} que no está "
-            "cargada; se ha aplicado la estatal."
+            + ("cargada; se ha aplicado la estatal." if del_estado is not None else "cargada.")
         )
+    if not elegidas:
+        if not hay_propia and not hay_estatal:
+            t.aviso(f"No hay regla cargada para la reducción por {etiqueta}; no se ha aplicado.")
+        return ZERO
+    candidatos = []
+    for (regla, clase), caso in elegidas:
+        sub = t.sub()
+        porcentaje = clase.porcentaje if clase is not None and clase.porcentaje is not None else regla.porcentaje
+        importe = valor * porcentaje
+        sub.linea(f"Reducción por {etiqueta} ({_pct(porcentaje)})", -importe, regla.articulo)
+        sub.usa(regla, f"Reducción por {etiqueta}")
+        if clase is None:
+            comprobado = "sin comprobar ninguno de sus requisitos, tampoco el parentesco"
+        else:
+            comprobado = f"comprobando solo que el adquirente es de «{clase.texto}»"
+            if clase.solo_si_no_hay is not None:
+                _, quienes = _AUSENCIAS[clase.solo_si_no_hay]
+                comprobado += f" y que no hay {quienes}, como has indicado"
+            if clase.requiere:
+                comprobado += " y que cumples el vínculo con la empresa que has indicado"
+        sub.aviso(
+            f"Reducción por {etiqueta} ({regla.articulo}): se ha aplicado sobre el valor que has declarado, "
+            f"{comprobado}. {regla.resumen}"
+        )
+        if caso.parentesco is None and clase is not None and clase.parentescos:
+            sub.aviso(
+                f"Reducción por {etiqueta}: con solo el grupo I se te ha tratado como descendiente menor de 21 años."
+            )
+        candidatos.append((regla, importe, sub))
     return _mas_favorable(candidatos, f"Reducción por {etiqueta}", t)
 
 
@@ -630,21 +763,21 @@ def _porcentaje_bonificacion(regla: ReglaBonificacion, magnitud: Decimal) -> Dec
 def _bonificar(
     regla: ReglaBonificacion,
     cuota: Decimal,
-    inp: BeneficiarioISD,
+    aplicadas: dict[str, Decimal],
     magnitudes: dict[str, Decimal],
     t: _Traza,
     *,
     sucesiva: bool = False,
 ) -> Decimal:
-    """Allowance of ``regla`` on ``cuota`` (the whole tax, or what an earlier allowance left of it)."""
+    """Allowance of ``regla`` on ``cuota`` (the whole tax, or what an earlier allowance left of it).
+
+    ``aplicadas``: the declared-asset reductions actually applied, by category (a business reduction the
+    beneficiary was not entitled to does not forfeit the allowance).
+    """
     perdida = [
         nombre
-        for nombre, valor in (
-            ("empresa", inp.valor_empresa_familiar),
-            ("patrimonio_historico", inp.valor_patrimonio_historico),
-            ("otras_reducciones", inp.otras_reducciones),
-        )
-        if valor and nombre in regla.pierde_con
+        for nombre in ("empresa", "patrimonio_historico", "otras_reducciones")
+        if aplicadas.get(nombre) and nombre in regla.pierde_con
     ]
     if perdida:
         t.aviso(
@@ -834,7 +967,9 @@ def calcular_isd(inp: BeneficiarioISD, params: ISDParams | None = None) -> Resul
         ("patrimonio_historico", inp.valor_patrimonio_historico, "bienes del patrimonio histórico o cultural"),
     ):
         if valor:
-            por_categoria[clase_bienes] = _reduccion_bienes(estatal, comunidad, clase_bienes, valor, etiqueta, vista, t)
+            por_categoria[clase_bienes] = _reduccion_bienes(
+                estatal, comunidad, clase_bienes, valor, etiqueta, vista, inp, t
+            )
     if inp.otras_reducciones:
         por_categoria["otras_reducciones"] = inp.otras_reducciones
         t.linea("Otras reducciones declaradas", -inp.otras_reducciones)
@@ -885,11 +1020,11 @@ def calcular_isd(inp: BeneficiarioISD, params: ISDParams | None = None) -> Resul
         }
         primera = _primera(comunidad.bonificaciones, caso_bonificacion, t)
         if primera is not None:
-            bonificacion = _bonificar(primera, cuota_tributaria, inp, magnitudes, t)
+            bonificacion = _bonificar(primera, cuota_tributaria, por_categoria, magnitudes, t)
         despues = _primera(comunidad.bonificaciones_sucesivas, caso_bonificacion, t)
         if despues is not None:
             bonificacion += _bonificar(
-                despues, cuota_tributaria - bonificacion, inp, magnitudes, t, sucesiva=primera is not None
+                despues, cuota_tributaria - bonificacion, por_categoria, magnitudes, t, sucesiva=primera is not None
             )
     cuota_a_ingresar = cuota_tributaria - bonificacion
     t.linea("Cuota a ingresar", cuota_a_ingresar)

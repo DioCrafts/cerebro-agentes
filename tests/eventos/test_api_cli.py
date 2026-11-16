@@ -114,13 +114,18 @@ def test_switching_a_module_on_and_editing_its_fact_wake_only_it_and_erasure_lea
     assert case_id not in _volcado(env.db_path)
 
 
-def test_the_health_endpoint_reports_aggregates(env) -> None:
-    respuesta = env.client.get("/eventos/salud")
+def test_the_health_endpoint_reports_aggregates(env, monkeypatch) -> None:
+    # With accounts on, the service-wide figures are the operator's (docs/seguridad.md): a user session is not
+    # enough, the operator key is.
+    monkeypatch.setenv("HACIENDA_OPERATOR_KEY", "clave-del-operador")
+    assert env.client.get("/eventos/salud").status_code == 404
+    operador = {"X-Operator-Key": "clave-del-operador"}
+    respuesta = env.client.get("/eventos/salud", headers=operador)
     assert respuesta.status_code == 200
     assert respuesta.json()["salud"] == {"instalado": False}
     bus = crear_bus(env.db_path, modulos=[])
     bus.emitir(MODULO_ACTIVADO, case_id="c-secreto", payload={"modulo": "agua"})
-    cuerpo = env.client.get("/eventos/salud").json()
+    cuerpo = env.client.get("/eventos/salud", headers=operador).json()
     assert cuerpo["salud"]["instalado"] is True and cuerpo["salud"]["sin_repartir"] == {"modulos": 1}
     assert "c-secreto" not in json.dumps(cuerpo)
 

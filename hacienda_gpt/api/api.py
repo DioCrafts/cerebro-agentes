@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from datetime import UTC, date, datetime
 import json
+import logging
 import queue
 import threading
 from typing import Annotated, Any
@@ -75,9 +76,11 @@ from hacienda_gpt.api.routers import modulos as modulos_router
 from hacienda_gpt.api.routers import navegador as navegador_router
 from hacienda_gpt.api.routers import planificador as planificador_router
 from hacienda_gpt.api.security import (
+    BodySizeLimitMiddleware,
     RateLimiter,
     make_rate_limit_middleware,
     require_api_key,
+    security_headers_middleware,
 )
 from hacienda_gpt.auth.deps import (
     CaseAccess,
@@ -122,6 +125,8 @@ from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_dispo
 from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES, DatosInvalidosError
 from hacienda_gpt.tax.simulador import Simulacion, simular
 
+_logger = logging.getLogger(__name__)
+
 app = FastAPI(title="HaciendaGPT Decision API", version="1.0.0")
 
 # CORS: in dev the Vite frontend runs at http://localhost:5173 and
@@ -154,6 +159,10 @@ app.state.api_metrics = ApiMetrics()
 _rate_limiter = RateLimiter(API_RATE_LIMIT_PER_MIN)
 app.middleware("http")(make_rate_limit_middleware(_rate_limiter))
 app.middleware("http")(observability_middleware)
+# Security headers on every response, and the request-body cap outermost so an oversized body is refused
+# before anything reads it (docs/seguridad.md).
+app.middleware("http")(security_headers_middleware)
+app.add_middleware(BodySizeLimitMiddleware)
 
 
 @_thread_safe_singleton
@@ -315,19 +324,24 @@ def post_turn(
     payload: TurnRequest,
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     extractor: Annotated[FactExtractor, Depends(get_fact_extractor)],
+    access: Annotated[CaseAccess, Depends(get_case_access)],
 ) -> TurnResponse:
     case = store.get_case(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="case not found")
 
     try:
-        outcome = process_turn(
-            case=case,
-            user_input=payload.user_input,
-            extractor=extractor,
-            chat_history=payload.chat_history,
-        )
+        # Attributed to the user, so the per-user daily budget applies to the extractor's calls too.
+        with contexto_consumo(user_id=_consumidor(access, case), case_id=case_id):
+            outcome = process_turn(
+                case=case,
+                user_input=payload.user_input,
+                extractor=extractor,
+                chat_history=payload.chat_history,
+            )
     except OpenAIExtractionError as exc:
+        if isinstance(exc.__cause__, PresupuestoAgotadoError):
+            raise HTTPException(status_code=429, detail=str(exc.__cause__)) from exc
         # The fact extractor (LLM) failed after its own retries. Surface a clean
         # 503 instead of an opaque 500 — and never silently fall back to the
         # weaker regex extractor, which could persist wrong fiscal facts.
@@ -479,6 +493,13 @@ def get_agent() -> TaxAgent:
             status_code=503,
             detail=f"El agente no está disponible: {exc}",
         ) from exc
+
+
+def _consumidor(access: CaseAccess, case: CaseState | None) -> str | None:
+    """Who the model calls of a request are charged to (per-user budget): the session's user, else the case's."""
+    if access.user is not None:
+        return access.user.id
+    return case.user_id if case is not None else None
 
 
 def _load_agent_case(case_id: str | None, store: SQLiteCaseStateStore, access: CaseAccess) -> CaseState | None:
@@ -653,8 +674,10 @@ def post_agent_stream(
             events.put({"event": "error", "data": {"status": 503, "detail": f"No se pudo procesar la consulta: {exc}"}})
         except HTTPException as exc:
             events.put({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
-        except Exception as exc:  # the stream must always end with a terminal line
-            events.put({"event": "error", "data": {"status": 500, "detail": f"Error interno: {exc}"}})
+        except Exception:  # the stream must always end with a terminal line
+            # The exception text can carry paths, SQL or data of the case: it goes to the log, not to the client.
+            _logger.exception("agent stream failed")
+            events.put({"event": "error", "data": {"status": 500, "detail": "Error interno."}})
 
     def lines():
         threading.Thread(target=work, name="agent-stream", daemon=True).start()
@@ -1022,6 +1045,7 @@ def post_case_document(
     payload: DocumentRequest,
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     provider: Annotated[LLMProvider, Depends(get_document_provider)],
+    access: Annotated[CaseAccess, Depends(get_case_access)],
 ) -> AnalisisDocumento:
     """Read one of the user's tax documents and PROPOSE profile facts from it.
 
@@ -1032,11 +1056,13 @@ def post_case_document(
     which is then read twice). Only the file name and the proposed fact names are
     audited.
     """
-    if store.get_case(case_id) is None:
+    case = store.get_case(case_id)
+    if case is None:
         raise HTTPException(status_code=404, detail="case not found")
     try:
         data = decode_upload(payload.content_base64)
-        with contexto_consumo(user_id=None, case_id=case_id):
+        # Attributed to the user: without it the per-user daily budget never applied to documents.
+        with contexto_consumo(user_id=_consumidor(access, case), case_id=case_id):
             analysis = analizar_documento(provider, filename=payload.filename, data=data)
     except DocumentoNoLegibleError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc

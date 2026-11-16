@@ -160,14 +160,19 @@ def _describe_oferta(p: Prestamo) -> str:
 
 def pagos_del_ejercicio(contexto: ContextoModulo, ejercicio: int) -> dict[str, Decimal] | None:
     """Capital and interest of the ordinary instalments due in ``ejercicio`` (for the tax module), plus the
-    early repayments made that year. None when there is no loan in the profile."""
+    early repayments made that year and the fees paid for them. None when there is no loan in the profile."""
     if contexto.perfil.get("hipoteca_prestamo") is None:
         return None
     entorno = _Entorno(contexto)
     cuadro = entorno.cuadro()
     capital, intereses = cuadro.pagos_del_ano(ejercicio)
-    extra = sum((a.importe for a in entorno.prestamo.amortizaciones_realizadas if a.fecha.year == ejercicio), ZERO)
-    return {"capital": capital, "intereses": intereses, "amortizaciones_anticipadas": extra}
+    del_ano = [a for a in entorno.prestamo.amortizaciones_realizadas if a.fecha.year == ejercicio]
+    return {
+        "capital": capital,
+        "intereses": intereses,
+        "amortizaciones_anticipadas": sum((a.importe for a in del_ano), ZERO),
+        "comisiones_amortizacion_anticipada": sum((a.comision_pagada for a in del_ano), ZERO),
+    }
 
 
 @_ejecutar

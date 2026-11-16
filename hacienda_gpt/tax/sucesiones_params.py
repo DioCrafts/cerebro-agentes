@@ -65,6 +65,13 @@ Parentesco = Literal[
 ]
 # Facts only the user can state and a rule may demand.
 Requisito = Literal["escritura_publica"]
+# Facts about the beneficiary's tie to the business that some laws demand of non-relatives (a work or service
+# contract and management duties in the business, with the seniority each law sets).
+RequisitoAdquirente = Literal["vinculo_laboral_empresa"]
+# Who must be missing for a subsidiary class of acquirers to qualify: "cuando no existan descendientes o
+# adoptados"; "cuando no existan adquirentes del Grupo I y II"; "cuando no existan familiares adquirentes hasta
+# el cuarto grado".
+Ausencia = Literal["descendientes", "adquirentes_grupos_I_II", "familiares_adquirentes_hasta_cuarto_grado"]
 ClaseReduccion = Literal["parentesco", "discapacidad", "edad", "otra"]
 ClaseBienes = Literal["empresa", "patrimonio_historico"]
 # The rule lists of a community, to say where a scoped assimilation is seen.
@@ -301,13 +308,51 @@ class ReduccionSeguro(_Regla):
     estatal_si_mas_favorable: bool = False  # see Reduccion
 
 
+class AdquirenteBienes(_Model):
+    """One class of beneficiaries a reduction of ``reducciones_bienes`` is for, in the law's own words.
+
+    ``texto`` is how the law names them ("cónyuges, descendientes o adoptados"), copied from one of the
+    rule's quotes (the self-check verifies it). They are named either by relationship (``parentescos``) or by
+    kinship group of art. 20.2.a) Ley 29/1987 (``grupos``), never both. ``solo_si_no_hay`` makes the class
+    subsidiary ("cuando no existan descendientes o adoptados, ... ascendientes, adoptantes y colaterales, hasta
+    el tercer grado"); ``requiere`` names what the user must state about their tie to the business; and
+    ``porcentaje`` replaces the rule's when the law grades it by class ("los ascendientes ... podrán aplicar
+    una reducción por un importe del 95 por ciento").
+
+    ``afinidad_sin_precisar``: the words name relatives ("descendientes", "colaterales hasta el tercer grado")
+    without saying whether relatives by marriage count. The calculator then leaves them out, and says why.
+    """
+
+    texto: str
+    parentescos: list[Parentesco] = Field(default_factory=list)
+    grupos: list[Grupo] = Field(default_factory=list)
+    solo_si_no_hay: Ausencia | None = None
+    requiere: list[RequisitoAdquirente] = Field(default_factory=list)
+    porcentaje: Decimal | None = None
+    afinidad_sin_precisar: bool = False
+
+    @model_validator(mode="after")
+    def _coherente(self) -> AdquirenteBienes:
+        if bool(self.parentescos) == bool(self.grupos):
+            raise ValueError("un adquirente se define por parentescos o por grupos, uno de los dos")
+        if self.porcentaje is not None and not 0 < self.porcentaje <= 1:
+            raise ValueError("porcentaje fuera de rango (0-1)")
+        return self
+
+
 class ReduccionBienes(_Regla):
-    """Percentage reduction of the value of certain assets, on the amount the user declares as qualifying."""
+    """Percentage reduction of the value of certain assets, on the amount the user declares as qualifying.
+
+    ``adquirentes``: who it is for, in order; the first class the beneficiary belongs to (and whose
+    conditions hold) gives the percentage. Empty = the data does not restrict it by kinship (the calculator
+    says so when it applies the rule).
+    """
 
     clase: ClaseBienes
     porcentaje: Decimal
     anos_mantenimiento: int | None = None
     estatal_si_mas_favorable: bool = False  # see Reduccion
+    adquirentes: list[AdquirenteBienes] = Field(default_factory=list)
 
 
 class ReglaTarifa(_Regla):
@@ -648,6 +693,13 @@ def comprobar_normativa(
                 problemas.append(f"{donde}: la cifra {ruta} = {valor} no aparece en ninguna cita ({formas[0]})")
         if isinstance(regla, ReglaTarifa):
             problemas.extend(f"{donde}: {p}" for p in _problemas_escala(regla.escala))
+        if isinstance(regla, ReduccionBienes):
+            # The words that name each class of acquirers are the law's, not a paraphrase.
+            problemas.extend(
+                f"{donde}: adquirentes.{i}.texto «{a.texto}» no aparece en ninguna cita"
+                for i, a in enumerate(regla.adquirentes)
+                if not any(texto_plano(a.texto).casefold() in cita.casefold() for cita in citas)
+            )
     return problemas
 
 

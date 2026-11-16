@@ -1,4 +1,5 @@
-"""API-edge security: optional API-key auth and a per-client rate limiter.
+"""API-edge security: optional API-key auth, a per-client rate limiter, a request-body cap, response
+security headers and the operator-only gate (see docs/seguridad.md).
 
 Both are **opt-in via environment** and disabled by default, so local dev and
 the test suite keep working unauthenticated. Turn them on in any deployment that
@@ -18,6 +19,7 @@ import logging
 import os
 import threading
 import time
+from typing import Any
 
 from fastapi import Header, HTTPException, Request
 
@@ -104,3 +106,141 @@ def make_rate_limit_middleware(limiter: RateLimiter):
         )
 
     return rate_limit_middleware
+
+
+# --- request body cap ----------------------------------------------------------
+
+# The largest legitimate body is a bank statement for a module tool: 20 MB of file, ~27 MB once in base64
+# inside JSON. Anything bigger is refused before it is read into memory.
+DEFAULT_MAX_BODY_BYTES = 32 * 1024 * 1024
+
+
+def max_body_bytes() -> int:
+    """``API_MAX_BODY_BYTES`` (bytes); a value that is not a positive integer keeps the default."""
+    try:
+        valor = int(os.environ.get("API_MAX_BODY_BYTES", ""))
+    except ValueError:
+        return DEFAULT_MAX_BODY_BYTES
+    return valor if valor > 0 else DEFAULT_MAX_BODY_BYTES
+
+
+class _CuerpoDemasiadoGrandeError(Exception):
+    pass
+
+
+_TOO_LARGE = b'{"detail":"La petici\\u00f3n es demasiado grande."}'
+
+
+class BodySizeLimitMiddleware:
+    """Pure ASGI middleware: 413 for a body over the limit, declared (Content-Length) or streamed (chunked).
+
+    uvicorn and Starlette impose no limit of their own: without this a single request could make the
+    process buffer gigabytes while FastAPI parses the JSON.
+    """
+
+    def __init__(self, app: Any, max_bytes: int | None = None) -> None:
+        self.app = app
+        self.max_bytes = max_bytes
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        if scope["type"] != "http":
+            await self.app(scope, receive, send)
+            return
+        limite = self.max_bytes or max_body_bytes()
+        for nombre, valor in scope.get("headers", []):
+            if nombre == b"content-length":
+                try:
+                    declarado = int(valor)
+                except ValueError:
+                    declarado = limite + 1
+                if declarado > limite:
+                    await _responder_413(send)
+                    return
+        leidos = 0
+        respuesta_empezada = False
+
+        async def receive_limitado() -> Any:
+            nonlocal leidos
+            mensaje = await receive()
+            if mensaje["type"] == "http.request":
+                leidos += len(mensaje.get("body", b""))
+                if leidos > limite:
+                    raise _CuerpoDemasiadoGrandeError
+            return mensaje
+
+        async def send_vigilado(mensaje: Any) -> None:
+            nonlocal respuesta_empezada
+            if mensaje["type"] == "http.response.start":
+                respuesta_empezada = True
+            await send(mensaje)
+
+        try:
+            await self.app(scope, receive_limitado, send_vigilado)
+        except _CuerpoDemasiadoGrandeError:
+            if not respuesta_empezada:
+                await _responder_413(send)
+
+
+async def _responder_413(send: Any) -> None:
+    await send(
+        {
+            "type": "http.response.start",
+            "status": 413,
+            "headers": [
+                (b"content-type", b"application/json"),
+                (b"content-length", str(len(_TOO_LARGE)).encode()),
+                (b"connection", b"close"),
+                *((nombre.lower().encode(), valor.encode()) for nombre, valor in SECURITY_HEADERS),
+            ],
+        }
+    )
+    await send({"type": "http.response.body", "body": _TOO_LARGE})
+
+
+# --- response security headers ----------------------------------------------------
+
+# A JSON API: nothing it returns is meant to be rendered as a page, framed, sniffed or cached by a shared
+# cache (answers carry personal and tax data). The Swagger UI pages (/docs, /redoc) load their assets from a
+# CDN, so they keep their own policy; the reverse proxy adds HSTS (it terminates TLS).
+SECURITY_HEADERS: tuple[tuple[str, str], ...] = (
+    ("X-Content-Type-Options", "nosniff"),
+    ("X-Frame-Options", "DENY"),
+    ("Referrer-Policy", "no-referrer"),
+    ("Cross-Origin-Resource-Policy", "same-origin"),
+)
+_API_CSP = "default-src 'none'; frame-ancestors 'none'"
+_PAGINAS_DOCUMENTACION = ("/docs", "/redoc")
+
+
+async def security_headers_middleware(request: Request, call_next: Any) -> Any:
+    response = await call_next(request)
+    for nombre, valor in SECURITY_HEADERS:
+        response.headers.setdefault(nombre, valor)
+    if not request.url.path.startswith(_PAGINAS_DOCUMENTACION):
+        response.headers.setdefault("Content-Security-Policy", _API_CSP)
+    # Personal data must not stay in shared or browser caches; endpoints that set their own policy keep it.
+    response.headers.setdefault("Cache-Control", "no-store")
+    return response
+
+
+# --- operator-only endpoints -------------------------------------------------------
+
+
+def require_operator(
+    x_api_key: str | None = Header(default=None, alias="X-API-Key"),
+    x_operator_key: str | None = Header(default=None, alias="X-Operator-Key"),
+) -> None:
+    """Service-wide figures (``/usage``, ``/eventos/salud``) are for the operator, not for the users.
+
+    Without accounts (``AUTH_MODE=off``) nothing changes: the API key, when configured, is enough. With
+    accounts every user holds a session (and, behind a proxy that injects it, the API key too), so these
+    endpoints need ``HACIENDA_OPERATOR_KEY`` in ``X-Operator-Key``; while it is not configured they answer 404.
+    """
+    require_api_key(x_api_key)
+    from hacienda_gpt import settings
+
+    if settings.AUTH_MODE != "required":
+        return
+    esperado = os.environ.get("HACIENDA_OPERATOR_KEY", "")
+    if not esperado or not x_operator_key or not hmac.compare_digest(x_operator_key, esperado):
+        raise HTTPException(status_code=404, detail="Not Found")

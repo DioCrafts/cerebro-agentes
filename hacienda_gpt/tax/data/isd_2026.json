@@ -303,7 +303,7 @@
       {
         "clase": "empresa",
         "articulo": "art. 20.2.c) Ley 29/1987",
-        "resumen": "Exige que a la empresa, negocio o participaciones les sea aplicable la exención del Impuesto sobre el Patrimonio, que el adquirente sea cónyuge, descendiente o adoptado (ascendientes y colaterales hasta el tercer grado solo si no hay descendientes) y mantener lo adquirido diez años.",
+        "resumen": "Reducción estatal del 95 % del valor de la empresa individual, el negocio profesional o las participaciones exentos en el Impuesto sobre el Patrimonio, para el cónyuge, los descendientes o adoptados y, cuando no existan descendientes o adoptados, para ascendientes, adoptantes y colaterales hasta el tercer grado; hay que mantener lo adquirido diez años.",
         "en_vigor_desde": "2012-12-28",
         "cuando": {
           "modo": "sucesion"
@@ -315,7 +315,44 @@
             "boe_id": "BOE-A-1987-28141",
             "articulo": "art. 20.2.c) Ley 29/1987",
             "cita": "c) En los casos en los que en la base imponible de una adquisición \"mortis causa\" que corresponda a los cónyuges, descendientes o adoptados de la persona fallecida, estuviese incluido el valor de una empresa individual, de un negocio profesional o participaciones en entidades, a los que sea de aplicación la exención regulada en el apartado octavo del artículo 4 de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio, o el valor de derechos de usufructo sobre los mismos, o de derechos económicos derivados de la extinción de dicho usufructo, siempre que con motivo del fallecimiento se consolidara el pleno dominio en el cónyuge, descendientes o adoptados, o percibieran éstos los derechos debidos a la finalización del usufructo en forma de participaciones en la empresa, negocio o entidad afectada, para obtener la base liquidable se aplicará en la imponible, con independencia de las reducciones que procedan de acuerdo con los apartados anteriores, otra del 95 por 100 del mencionado valor, siempre que la adquisición se mantenga, durante los diez años siguientes al fallecimiento del causante, salvo que falleciera el adquirente dentro de ese plazo."
+          },
+          {
+            "boe_id": "BOE-A-1987-28141",
+            "articulo": "art. 20.2.c) Ley 29/1987",
+            "cita": "En los supuestos del párrafo anterior, cuando no existan descendientes o adoptados, la reducción será de aplicación a las adquisiciones por ascendientes, adoptantes y colaterales, hasta el tercer grado y con los mismos requisitos recogidos anteriormente. En todo caso, el cónyuge supérstite tendrá derecho a la reducción del 95 por 100."
+          },
+          {
+            "boe_id": "BOE-A-1987-28141",
+            "articulo": "art. 20.2.c) Ley 29/1987",
+            "cita": "En el caso de no cumplirse el requisito de permanencia al que se refiere el presente apartado, deberá pagarse la parte del impuesto que se hubiese dejado de ingresar como consecuencia de la reducción practicada y los intereses de demora."
           }
+        ],
+        "adquirentes": [
+          {
+            "texto": "cónyuges, descendientes o adoptados de la persona fallecida",
+            "parentescos": [
+              "conyuge",
+              "hijo",
+              "otro_descendiente"
+            ],
+            "afinidad_sin_precisar": true
+          },
+          {
+            "texto": "ascendientes, adoptantes y colaterales, hasta el tercer grado",
+            "parentescos": [
+              "padre",
+              "otro_ascendiente",
+              "hermano",
+              "sobrino",
+              "tio"
+            ],
+            "solo_si_no_hay": "descendientes",
+            "afinidad_sin_precisar": true
+          }
+        ],
+        "requisitos_no_comprobados": [
+          "Que a la empresa individual, el negocio profesional o las participaciones les sea aplicable la exención del apartado octavo del artículo 4 de la Ley del Impuesto sobre el Patrimonio",
+          "Mantener la adquisición durante los diez años siguientes al fallecimiento, salvo que el adquirente fallezca en ese plazo; si no, hay que pagar la parte del impuesto que se dejó de ingresar y los intereses de demora"
         ]
       },
       {
@@ -344,6 +381,23 @@
             "articulo": "art. 20.6.c) Ley 29/1987",
             "cita": "c) En cuanto al donatario, deberá mantener lo adquirido y tener derecho a la exención en el Impuesto sobre el Patrimonio durante los diez años siguientes a la fecha de la escritura pública de donación, salvo que falleciera dentro de este plazo."
           }
+        ],
+        "adquirentes": [
+          {
+            "texto": "cónyuge, descendientes o adoptados",
+            "parentescos": [
+              "conyuge",
+              "hijo",
+              "otro_descendiente"
+            ],
+            "afinidad_sin_precisar": true
+          }
+        ],
+        "requisitos_no_comprobados": [
+          "Que a la empresa, el negocio o las participaciones les sea aplicable la exención del apartado octavo del artículo 4 de la Ley del Impuesto sobre el Patrimonio",
+          "Donante de sesenta y cinco años o más, o en situación de incapacidad permanente absoluta o gran invalidez",
+          "Si el donante ejercía funciones de dirección, que deje de ejercerlas y de cobrar por ellas desde la donación",
+          "Que el donatario mantenga lo adquirido y el derecho a la exención en el Impuesto sobre el Patrimonio durante los diez años siguientes a la escritura pública de donación"
         ]
       },
       {
@@ -366,6 +420,17 @@
             "boe_id": "BOE-A-1987-28141",
             "articulo": "art. 20.2.c) Ley 29/1987",
             "cita": "siempre que la adquisición se mantenga, durante los diez años siguientes al fallecimiento del causante, salvo que falleciera el adquirente dentro de ese plazo."
+          }
+        ],
+        "adquirentes": [
+          {
+            "texto": "cónyuge, descendientes o adoptados de la persona fallecida",
+            "parentescos": [
+              "conyuge",
+              "hijo",
+              "otro_descendiente"
+            ],
+            "afinidad_sin_precisar": true
           }
         ]
       },
@@ -394,6 +459,17 @@
             "boe_id": "BOE-A-1987-28141",
             "articulo": "art. 20.6.c) Ley 29/1987",
             "cita": "c) En cuanto al donatario, deberá mantener lo adquirido y tener derecho a la exención en el Impuesto sobre el Patrimonio durante los diez años siguientes a la fecha de la escritura pública de donación, salvo que falleciera dentro de este plazo."
+          }
+        ],
+        "adquirentes": [
+          {
+            "texto": "cónyuge, descendientes o adoptados",
+            "parentescos": [
+              "conyuge",
+              "hijo",
+              "otro_descendiente"
+            ],
+            "afinidad_sin_precisar": true
           }
         ]
       }
@@ -1371,7 +1447,41 @@
               "boe_id": "BOE-A-2021-17915",
               "articulo": "art. 31.1.e) Ley 5/2021 (Andalucía)",
               "cita": "e) Que el adquirente mantenga en su patrimonio las participaciones en la entidad durante los tres años siguientes a la fecha de fallecimiento del causante, salvo que falleciera dentro de este plazo."
+            },
+            {
+              "boe_id": "BOE-A-2021-17915",
+              "articulo": "art. 30.1.a) Ley 5/2021 (Andalucía)",
+              "cita": "a) Que el adquirente esté comprendido en los Grupos I, II y III previstos en el artículo 20.2 a) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones, o en los supuestos de equiparaciones recogidos en el artículo 26."
+            },
+            {
+              "boe_id": "BOE-A-2021-17915",
+              "articulo": "art. 30.3 Ley 5/2021 (Andalucía)",
+              "cita": "3. La reducción prevista en este artículo, con los mismos requisitos de los apartados anteriores, será aplicable a aquellos adquirentes que estén comprendidos en el Grupo IV del artículo 20. 2.a) de la Ley 29/1987, de 18 de diciembre, y que cumplan, además, los siguientes requisitos: a) Tener un contrato laboral o de prestación de servicios dentro de la empresa o negocio profesional del causante que esté vigente a la fecha del fallecimiento de éste y acreditar una antigüedad mínima de cinco años en la empresa o negocio profesional. b) Tener encomendadas tareas de responsabilidad en la gestión o dirección de la empresa o negocio a la fecha del fallecimiento del causante y con una antigüedad mínima de tres años ininterrumpidos en el ejercicio de éstas, inmediatamente anteriores a la fecha del fallecimiento. Se entenderá que tienen encomendadas estas tareas si acreditan la categoría laboral correspondiente a los grupos 1 y 2 de cotización del Régimen General de la Seguridad Social o si el causante les hubiera otorgado un apoderamiento especial para llevar a cabo las actuaciones habituales de gestión de la empresa."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "Grupos I, II y III previstos en el artículo 20.2 a)",
+              "grupos": [
+                "I",
+                "II",
+                "III"
+              ]
+            },
+            {
+              "texto": "adquirentes que estén comprendidos en el Grupo IV",
+              "grupos": [
+                "IV"
+              ],
+              "requiere": [
+                "vinculo_laboral_empresa"
+              ]
+            }
+          ],
+          "requisitos_no_comprobados": [
+            "Que el causante ejerciera la actividad de forma habitual, personal y directa y percibiera rendimientos por ella (o, si estaba jubilado o incapacitado, que la ejerza así uno de los adquirentes de los grupos I a III); en participaciones, los porcentajes mínimos de participación, las funciones de dirección remuneradas y que la entidad no gestione un patrimonio mobiliario o inmobiliario",
+            "En el grupo IV: contrato laboral o de prestación de servicios en la empresa vigente al fallecimiento, con una antigüedad mínima de cinco años, y tareas de responsabilidad en su gestión o dirección durante los tres años ininterrumpidos anteriores",
+            "Mantener lo adquirido durante los tres años siguientes al fallecimiento"
           ]
         },
         {
@@ -1404,7 +1514,47 @@
               "boe_id": "BOE-A-2021-17915",
               "articulo": "art. 36.1.e) Ley 5/2021 (Andalucía)",
               "cita": "e) Que el donatario mantenga en su patrimonio las participaciones en la entidad durante los tres años siguientes a la fecha de la donación, salvo que falleciera dentro de este plazo."
+            },
+            {
+              "boe_id": "BOE-A-2021-17915",
+              "articulo": "art. 35.1.a) Ley 5/2021 (Andalucía)",
+              "cita": "a) Que el donante esté comprendido en los Grupos I, II y III previstos en el artículo 20.2.a) de la Ley 29/1987, de 18 de diciembre, o en los supuestos de equiparaciones recogidos en el artículo 26."
+            },
+            {
+              "boe_id": "BOE-A-2021-17915",
+              "articulo": "art. 36.1.a) Ley 5/2021 (Andalucía)",
+              "cita": "a) Que el donatario esté comprendido en los Grupos I, II y III previstos en el artículo 20.2 a) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones, o en los supuestos de equiparaciones recogidos en el artículo 26."
+            },
+            {
+              "boe_id": "BOE-A-2021-17915",
+              "articulo": "art. 35.3 Ley 5/2021 (Andalucía)",
+              "cita": "3. La reducción prevista en este artículo, con los mismos requisitos de los apartados anteriores, será aplicable a aquellos adquirentes que estén comprendidos en el Grupo IV del artículo 20.2.a) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones, y que cumplan, además, los siguientes requisitos: a) Tener un contrato laboral o de prestación de servicios dentro de la empresa o negocio profesional del donante que esté vigente a la fecha de la donación y acreditar una antigüedad mínima de cinco años en la empresa o negocio. b) Tener encomendadas tareas de responsabilidad en la gestión o dirección de la empresa o negocio a la fecha de la donación y con una antigüedad mínima de tres años ininterrumpidos en el ejercicio de estas inmediatamente anteriores a la fecha de la donación. Se entenderá que tienen encomendadas estas tareas si acreditan la categoría laboral correspondiente a los grupos 1 y 2 de cotización del Régimen General de la Seguridad Social o si el donante les hubiera otorgado un apoderamiento especial para llevar a cabo las actuaciones habituales de gestión de la empresa."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "Grupos I, II y III previstos en el artículo 20.2 a)",
+              "grupos": [
+                "I",
+                "II",
+                "III"
+              ]
+            },
+            {
+              "texto": "adquirentes que estén comprendidos en el Grupo IV",
+              "grupos": [
+                "IV"
+              ],
+              "requiere": [
+                "vinculo_laboral_empresa"
+              ]
+            }
+          ],
+          "requisitos_no_comprobados": [
+            "El art. 35.1.a) dice literalmente que sea «el donante» quien esté en los grupos I, II y III; el art. 36.1.a) (participaciones) dice «el donatario». Se ha aplicado al donatario en los dos casos",
+            "Que el donante ejerciera la actividad de forma habitual, personal y directa y percibiera rendimientos por ella; en participaciones, los porcentajes mínimos de participación, las funciones de dirección remuneradas y que la entidad no gestione un patrimonio mobiliario o inmobiliario",
+            "En el grupo IV: contrato laboral o de prestación de servicios en la empresa vigente a la fecha de la donación, con una antigüedad mínima de cinco años, y tareas de responsabilidad en su gestión o dirección durante los tres años ininterrumpidos anteriores",
+            "Mantener lo adquirido durante los tres años siguientes a la donación"
           ]
         }
       ],
@@ -2615,19 +2765,18 @@
         {
           "clase": "empresa",
           "articulo": "arts. 131-3 y 131-4 DLeg 1/2005 (Aragón)",
-          "resumen": "Reducción propia del 99 % para el cónyuge o los descendientes: la empresa o negocio debe haber estado exenta en el Impuesto sobre el Patrimonio en alguno de los dos años anteriores (las participaciones, cumplir los requisitos de la exención en la fecha del fallecimiento, y solo en la parte afecta a la actividad) y mantenerse cinco años. Es incompatible con la reducción estatal del art. 20.2.c) Ley 29/1987.",
+          "resumen": "Reducción propia del 99 % para el cónyuge o los descendientes (y, cuando no existan descendientes, para ascendientes y colaterales hasta el tercer grado): la empresa o negocio debe haber estado exenta en el Impuesto sobre el Patrimonio en alguno de los dos años anteriores (las participaciones, cumplir los requisitos de la exención en la fecha del fallecimiento, y solo en la parte afecta a la actividad) y mantenerse cinco años. Es incompatible con la reducción estatal del art. 20.2.c) Ley 29/1987.",
           "en_vigor_desde": "2025-07-08",
           "cuando": {
-            "modo": "sucesion",
-            "parentescos": [
-              "conyuge",
-              "hijo",
-              "otro_descendiente"
-            ]
+            "modo": "sucesion"
           },
           "porcentaje": "0.99",
           "anos_mantenimiento": 5,
-          "requisitos_no_comprobados": [],
+          "requisitos_no_comprobados": [
+            "Empresa o negocio exentos en el Impuesto sobre el Patrimonio en cualquiera de los dos años naturales anteriores al fallecimiento; participaciones que cumplan los requisitos de esa exención en la fecha del fallecimiento (la reducción solo alcanza la parte del valor que corresponde a los activos necesarios para la actividad)",
+            "Mantener la afectación a una actividad económica (o las participaciones) durante los cinco años siguientes al fallecimiento",
+            "Es incompatible con la reducción estatal del art. 20.2.c) de la Ley 29/1987: hay que optar por una de las dos"
+          ],
           "evidencia": [
             {
               "boe_id": "BOA-d-2005-90006",
@@ -2648,6 +2797,39 @@
               "boe_id": "BOA-d-2005-90006",
               "articulo": "art. 131-4.4 DLeg 1/2005 (Aragón)",
               "cita": "4. La reducción estará condicionada a que el adquirente mantenga las participaciones durante el plazo de los cinco años siguientes al fallecimiento del causante, salvo que aquel falleciera dentro de este plazo."
+            },
+            {
+              "boe_id": "BOA-d-2005-90006",
+              "articulo": "art. 131-3.3 y 4 DLeg 1/2005 (Aragón)",
+              "cita": "3. En el supuesto de que no existan descendientes, la reducción será de aplicación a las adquisiciones por ascendientes y colaterales, hasta el tercer grado, con los mismos requisitos y condiciones del apartado anterior. 4. Esta reducción es incompatible con la contemplada en el artículo 20.2.c) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones. La opción por una de estas reducciones, que deberá efectuarse dentro del plazo de presentación de la autoliquidación correspondiente al fallecimiento del causante, determinará la inaplicabilidad de la otra."
+            },
+            {
+              "boe_id": "BOA-d-2005-90006",
+              "articulo": "art. 131-4.5 DLeg 1/2005 (Aragón)",
+              "cita": "5. En el supuesto de que no existan descendientes, la reducción será de aplicación a las adquisiciones por ascendientes y colaterales, hasta el tercer grado, con los mismos requisitos y condiciones de los apartados anteriores."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge o descendientes de la persona fallecida",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente"
+              ],
+              "afinidad_sin_precisar": true
+            },
+            {
+              "texto": "ascendientes y colaterales, hasta el tercer grado",
+              "parentescos": [
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio"
+              ],
+              "solo_si_no_hay": "descendientes",
+              "afinidad_sin_precisar": true
             }
           ]
         }
@@ -2786,7 +2968,7 @@
         "Bonificación del 65 % de la cuota que corresponde a la vivienda habitual del fallecido para cónyuge, ascendientes y descendientes cuando la vivienda vale 300.000 € o menos (art. 131-10): depende del valor total de la vivienda y de la parte de cuota que le corresponde.",
         "Incremento de 150.000 € por hijo menor conviviente en el límite del cónyuge (art. 131-5.2), reparto del límite entre descendientes de distinto grado (art. 131-5.3) y minoraciones por donaciones previas del fallecido (art. 131-5.6 y 7).",
         "Nietos del donante cuyo progenitor (hijo del donante) hubiera premuerto: también tienen la reducción de 100.000 € del art. 132-2; no se aplica automáticamente.",
-        "Reducciones del 99 % por empresa o participaciones para herederos distintos del cónyuge y descendientes, por creación de empresas y empleo, y las de donaciones de empresa, participaciones y vivienda habitual de los hijos (arts. 131-6, 131-7, 132-1, 132-3 a 132-5 y 132-8).",
+        "Reducciones del 99 % por empresa o participaciones para herederos distintos del cónyuge y descendientes (art. 131-6, con requisitos de actividad y empleo), por creación de empresas y empleo, y las de donaciones de empresa, participaciones y vivienda habitual de los hijos (arts. 131-6, 131-7, 132-1, 132-3 a 132-5 y 132-8).",
         "Liquidación de herencias ordenadas mediante fiducia (art. 133-2)."
       ],
       "fuentes_complementarias": [
@@ -3490,7 +3672,7 @@
         {
           "clase": "empresa",
           "articulo": "arts. 25 a 27 DLeg 1/2014 (Illes Balears)",
-          "resumen": "Reducción del 95 % del valor de la empresa individual, negocio profesional o participaciones exentos en el Impuesto sobre el Patrimonio, para el cónyuge o los descendientes (si no hay descendientes, también ascendientes y colaterales hasta el tercer grado), manteniendo lo adquirido cinco años. Es del 99 % para empresas culturales, científicas, de desarrollo tecnológico o deportivas (no aplicado aquí).",
+          "resumen": "Mejora balear: reducción del 95 % del valor de la empresa individual, negocio profesional o participaciones exentos en el Impuesto sobre el Patrimonio, para el cónyuge o los descendientes y, cuando no haya descendientes, para ascendientes y colaterales hasta el tercer grado, manteniendo lo adquirido cinco años. Es del 99 % para empresas culturales, científicas, de desarrollo tecnológico o deportivas (no aplicado aquí).",
           "en_vigor_desde": "2023-11-26",
           "cuando": {
             "modo": "sucesion"
@@ -3522,7 +3704,44 @@
               "boe_id": "BOE-A-2014-6925",
               "articulo": "art. 20.2 DLeg 1/2014 (Illes Balears)",
               "cita": "2. Las reducciones reguladas en esta subsección constituyen mejoras de las reducciones que establece el Estado en la Ley 29/1987, de 18 de diciembre, del impuesto sobre sucesiones y donaciones, salvo las previstas en los artículos 28, 28 bis, 28 ter y 32, que constituyen reducciones propias de la comunidad autónoma de las Illes Balears."
+            },
+            {
+              "boe_id": "BOE-A-2014-6925",
+              "articulo": "art. 26.2 DLeg 1/2014 (Illes Balears)",
+              "cita": "2. En los supuestos del apartado anterior, cuando no haya descendientes, la reducción será aplicable a las adquisiciones por ascendientes y colaterales, hasta el tercer grado, y con los mismos requisitos recogidos anteriormente. En todo caso, el cónyuge del causante tendrá derecho a la reducción del 95 %."
+            },
+            {
+              "boe_id": "BOE-A-2014-6925",
+              "articulo": "art. 27.2 DLeg 1/2014 (Illes Balears)",
+              "cita": "2. Asimismo, y durante el mismo plazo de cinco años, los beneficiarios de estas reducciones no podrán realizar actos de disposición ni operaciones societarias que, directa o indirectamente, puedan dar lugar a una minoración sustancial del valor de la adquisición."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge o a los descendientes del causante",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente"
+              ],
+              "afinidad_sin_precisar": true
+            },
+            {
+              "texto": "ascendientes y colaterales, hasta el tercer grado",
+              "parentescos": [
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio"
+              ],
+              "solo_si_no_hay": "descendientes",
+              "afinidad_sin_precisar": true
+            }
+          ],
+          "requisitos_no_comprobados": [
+            "Que a la empresa, el negocio o las participaciones les sea aplicable la exención del apartado ocho del artículo 4 de la Ley del Impuesto sobre el Patrimonio",
+            "Mantener la adquisición durante los cinco años siguientes, salvo que el adquirente muera en ese plazo, sin actos de disposición ni operaciones societarias que minoren sustancialmente su valor"
           ]
         },
         {
@@ -3531,12 +3750,7 @@
           "resumen": "Reducción del 95 % del valor de los bienes del patrimonio histórico español o del patrimonio histórico o cultural de otras comunidades heredados por el cónyuge o los descendientes, manteniéndolos cinco años. Los bienes del patrimonio histórico o cultural de las Illes Balears tienen una reducción propia mayor (art. 29), que aquí no se aplica: figura entre las otras reducciones.",
           "en_vigor_desde": "2023-11-26",
           "cuando": {
-            "modo": "sucesion",
-            "parentescos": [
-              "conyuge",
-              "hijo",
-              "otro_descendiente"
-            ]
+            "modo": "sucesion"
           },
           "porcentaje": "0.95",
           "anos_mantenimiento": 5,
@@ -3550,6 +3764,17 @@
               "boe_id": "BOE-A-2014-6925",
               "articulo": "art. 27.1 DLeg 1/2014 (Illes Balears)",
               "cita": "1. El disfrute definitivo de las reducciones que establecen los artículos 25 y 26 anteriores queda condicionado al mantenimiento de la adquisición durante los cinco años siguientes a la adquisición, excepto que el adquiriente muera durante este plazo."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge o de los descendientes del causante",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente"
+              ],
+              "afinidad_sin_precisar": true
             }
           ]
         }
@@ -4733,7 +4958,81 @@
           "estatal_si_mas_favorable": true
         }
       ],
-      "reducciones_bienes": [],
+      "reducciones_bienes": [
+        {
+          "articulo": "arts. 22 y 22 bis DLeg 1/2009 (Canarias)",
+          "resumen": "Mejora canaria que sustituye a la reducción estatal: 99 % del valor neto de la empresa individual o negocio profesional (o de las participaciones no cotizadas, en la parte afecta a la actividad) para el cónyuge, los descendientes o adoptados; cuando no existan descendientes o adoptados, 95 % para ascendientes, adoptantes y colaterales hasta el tercer grado. Hay que mantener lo adquirido cinco años. Si la estatal resulta más favorable, se aplica la estatal.",
+          "en_vigor_desde": "2024-01-01",
+          "cuando": {
+            "modo": "sucesion"
+          },
+          "requisitos_no_comprobados": [
+            "Empresa o negocio exentos en el Impuesto sobre el Patrimonio en alguno de los dos años anteriores al fallecimiento, con su actividad, dirección y control en Canarias al fallecer y durante los cinco años siguientes",
+            "En participaciones: entidad no cotizada que no gestione un patrimonio mobiliario o inmobiliario, con los porcentajes mínimos de participación del causante y las funciones de dirección remuneradas que exige el art. 22 bis; la reducción solo alcanza la parte del valor que corresponde a los activos necesarios para la actividad, y nunca a participaciones en instituciones de inversión colectiva",
+            "Mantener lo adquirido durante los cinco años siguientes al fallecimiento, salvo que el adquirente fallezca en ese plazo"
+          ],
+          "evidencia": [
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 22.1 DLeg 1/2009 (Canarias)",
+              "cita": "1. En los casos en los que en la base imponible de una adquisición mortis causa que corresponda a los cónyuges, descendientes o adoptados de la persona fallecida, estuviese incluido el valor de una empresa individual o de un negocio profesional, o de derechos de usufructo sobre los mismos, o de derechos económicos derivados de la extinción de dicho usufructo, siempre que con motivo del fallecimiento se consolidara el pleno dominio en el cónyuge, descendientes o adoptados, o percibieran éstos los derechos debidos a la finalización del usufructo en forma de participaciones en la empresa o negocio afectado, se podrá aplicar a la base imponible una reducción del 99 por ciento del valor neto de los elementos patrimoniales afectos a la actividad empresarial o profesional. Cuando no existan descendientes o adoptados, los ascendientes, adoptantes y colaterales, hasta el tercer grado, podrán aplicar una reducción por un importe del 95 por ciento. En todo caso, el cónyuge supérstite tendrá derecho a la reducción del 99 por ciento."
+            },
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 22.4.b) DLeg 1/2009 (Canarias)",
+              "cita": "b) Que el adquirente mantenga en su patrimonio y afectos a una actividad o negocio la adquisición durante los cinco años siguientes al fallecimiento, salvo que el adquirente falleciese dentro de ese plazo."
+            },
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 22 bis.1 DLeg 1/2009 (Canarias)",
+              "cita": "Cuando no existan descendientes o adoptados, los ascendientes, adoptantes y colaterales, hasta el tercer grado, podrán aplicar una reducción por un importe del 95 por ciento. En todo caso, el cónyuge supérstite tendrá derecho a la reducción del 99 por ciento. La presente reducción no se aplica en ningún caso a las participaciones en instituciones de inversión colectiva."
+            },
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 22 bis.5 DLeg 1/2009 (Canarias)",
+              "cita": "5. La efectiva aplicación de la reducción establecida en el presente artículo queda condicionada a que el adquirente mantenga en su patrimonio lo adquirido durante los cinco años siguientes a la fecha de fallecimiento del causante, salvo que falleciera dentro de este plazo."
+            },
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 19.2 DLeg 1/2009 (Canarias)",
+              "cita": "– Artículo 22: Reducción por la adquisición de una empresa individual o de un negocio profesional (sustituye a la establecida en el artículo 20.2.c) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones). – Artículo 22 bis: Reducción por la adquisición de participaciones en entidades (sustituye a la establecida en el artículo 20.2.c) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones)."
+            },
+            {
+              "boe_id": "BOC-j-2009-90008",
+              "articulo": "art. 19.5 DLeg 1/2009 (Canarias)",
+              "cita": "5. No obstante lo anterior, siempre serán de aplicación las reducciones establecidas en la normativa estatal reguladora del Impuesto cuando las mismas determinen unas condiciones más favorables para el obligado tributario."
+            }
+          ],
+          "clase": "empresa",
+          "porcentaje": "0.99",
+          "anos_mantenimiento": 5,
+          "estatal_si_mas_favorable": true,
+          "adquirentes": [
+            {
+              "texto": "cónyuges, descendientes o adoptados de la persona fallecida",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente"
+              ],
+              "afinidad_sin_precisar": true
+            },
+            {
+              "texto": "ascendientes, adoptantes y colaterales, hasta el tercer grado",
+              "parentescos": [
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio"
+              ],
+              "solo_si_no_hay": "descendientes",
+              "porcentaje": "0.95",
+              "afinidad_sin_precisar": true
+            }
+          ]
+        }
+      ],
       "tarifas": [],
       "coeficientes": [],
       "bonificaciones": [
@@ -4790,16 +5089,6 @@
       ],
       "otras_reducciones": [
         {
-          "articulo": "art. 22 DLeg 1/2009 (Canarias)",
-          "titulo": "Reducción del 99 % del valor neto de la empresa individual o negocio profesional para cónyuge y descendientes (95 % para ascendientes y colaterales hasta el tercer grado si no hay descendientes), en lugar de la estatal",
-          "modo": "sucesion"
-        },
-        {
-          "articulo": "art. 22 bis DLeg 1/2009 (Canarias)",
-          "titulo": "Reducción del 99 % del valor de participaciones en entidades no cotizadas para cónyuge y descendientes (95 % para ascendientes y colaterales hasta el tercer grado si no hay descendientes), en lugar de la estatal",
-          "modo": "sucesion"
-        },
-        {
           "articulo": "art. 23 DLeg 1/2009 (Canarias)",
           "titulo": "Reducción del 97 % del valor de bienes del Patrimonio Histórico o Cultural para cónyuge y descendientes, en lugar de la estatal",
           "modo": "sucesion"
@@ -4838,7 +5127,7 @@
         "Las reducciones estatales se aplican cuando resultan más favorables que las canarias (art. 19.5): la calculadora compara la de parentesco, la de discapacidad, la de seguro de vida y la de vivienda habitual, aplica la mayor e indica cuál ha sido. Ocurre, por ejemplo, con la vivienda repartida entre varios herederos (límite canario de 200.000 € para toda la vivienda frente a 122.606,47 € por heredero en la estatal)."
       ],
       "no_modelado": [
-        "Reducciones canarias por empresa individual, negocio profesional o participaciones (arts. 22, 22 bis, 26 y 26 bis) y por Patrimonio Histórico, Cultural o Natural (arts. 23 y 23 bis): si declaras esos bienes se aplica la reducción estatal (95 %); las canarias (99 % o 97 % para cónyuge y descendientes en herencias) tienen requisitos propios y no se calculan.",
+        "Reducciones canarias por donación de empresa individual, negocio profesional o participaciones (arts. 26 y 26 bis) y por Patrimonio Histórico, Cultural o Natural en herencias (arts. 23 y 23 bis): si declaras esos bienes se aplica la reducción estatal (95 %); las canarias tienen porcentajes y requisitos propios y no se calculan.",
         "Reducciones propias en donaciones de dinero para vivienda habitual (art. 26 ter) o para empresa (art. 26 quáter) y por aportaciones a patrimonios protegidos (art. 26 quinquies): dependen del donante, del destino del dinero y de límites propios; pueden declararse en «otras reducciones».",
         "Reducción por sobreimposición decenal (art. 24) y seguro de vida sin límite por actos de terrorismo o misiones internacionales (art. 21.3).",
         "Regla de la mitad del valor en bienes gananciales para las reducciones por bienes (art. 24 bis.3)."
@@ -5036,14 +5325,10 @@
         {
           "clase": "empresa",
           "articulo": "art. 5.A).4 DLeg 62/2008 (Cantabria)",
-          "resumen": "Reducción del 99 % del valor de la empresa individual, negocio profesional o participaciones exentas en el Impuesto sobre el Patrimonio (art. 4.Ocho Ley 19/1991) heredados por los grupos I y II; mantenimiento durante cinco años sin actos que minoren sustancialmente su valor.",
+          "resumen": "Mejora cántabra: reducción del 99 % del valor de la empresa individual, negocio profesional o participaciones exentos en el Impuesto sobre el Patrimonio (art. 4.Ocho Ley 19/1991) heredados por los grupos I y II y, cuando no existan adquirentes de esos grupos, por parientes hasta el cuarto grado; mantenimiento durante cinco años sin actos que minoren sustancialmente su valor.",
           "en_vigor_desde": "2024-01-01",
           "cuando": {
-            "modo": "sucesion",
-            "grupos": [
-              "I",
-              "II"
-            ]
+            "modo": "sucesion"
           },
           "porcentaje": "0.99",
           "anos_mantenimiento": 5,
@@ -5057,20 +5342,45 @@
               "boe_id": "BOCT-c-2008-90028",
               "articulo": "art. 5.A).8 DLeg 62/2008 (Cantabria)",
               "cita": "8. El disfrute definitivo de las reducciones establecidas en los apartados 4, 5 y 6, queda condicionado al mantenimiento de los bienes o derechos en el patrimonio del adquirente durante los cinco años siguientes a la muerte del causante, salvo que el adquirente fallezca en este plazo."
+            },
+            {
+              "boe_id": "BOCT-c-2008-90028",
+              "articulo": "art. 5.A).4 DLeg 62/2008 (Cantabria)",
+              "cita": "En los supuestos del párrafo anterior, cuando no existan adquirentes del Grupo I y II, la reducción será de aplicación a las adquisiciones hasta el cuarto grado y con los mismos requisitos recogidos anteriormente. En todo caso, el cónyuge supérstite tendrá derecho a la reducción del 99 por ciento."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "personas que correspondan al grupo de parentesco I y II",
+              "grupos": [
+                "I",
+                "II"
+              ]
+            },
+            {
+              "texto": "adquisiciones hasta el cuarto grado",
+              "parentescos": [
+                "hermano",
+                "sobrino",
+                "tio",
+                "colateral_cuarto_grado"
+              ],
+              "solo_si_no_hay": "adquirentes_grupos_I_II",
+              "afinidad_sin_precisar": true
+            }
+          ],
+          "requisitos_no_comprobados": [
+            "Que a la empresa, el negocio o las participaciones les sea aplicable la exención del apartado octavo del artículo 4 de la Ley del Impuesto sobre el Patrimonio",
+            "Mantener los bienes durante los cinco años siguientes a la muerte del causante, sin actos de disposición ni operaciones societarias que minoren sustancialmente su valor"
           ]
         },
         {
           "clase": "empresa",
           "articulo": "art. 5.B).1 DLeg 62/2008 (Cantabria)",
-          "resumen": "Reducción del 99 % del valor de la empresa individual, negocio profesional o participaciones exentas en el Impuesto sobre el Patrimonio donados a familiares (aquí solo se aplica a los grupos I y II), si el donante tiene 65 años o más o incapacidad permanente absoluta o gran invalidez y el donatario mantiene lo adquirido y la exención durante cinco años.",
+          "resumen": "Mejora cántabra: reducción del 99 % del valor de la empresa individual, negocio profesional o participaciones exentos en el Impuesto sobre el Patrimonio donados a familiares hasta el cuarto grado (el cónyuge se incluye porque es una mejora de la reducción estatal, que lo comprende), si el donante tiene 65 años o más o incapacidad permanente absoluta o gran invalidez y el donatario mantiene lo adquirido y la exención durante cinco años.",
           "en_vigor_desde": "2024-01-01",
           "cuando": {
-            "modo": "donacion",
-            "grupos": [
-              "I",
-              "II"
-            ]
+            "modo": "donacion"
           },
           "porcentaje": "0.99",
           "anos_mantenimiento": 5,
@@ -5080,6 +5390,27 @@
               "articulo": "art. 5.B).1 DLeg 62/2008 (Cantabria)",
               "cita": "1. Mejora reducción por adquisición de empresa, negocio o participaciones: Las adquisiciones de participaciones ínter vivos, a favor de familiares hasta el cuarto grado, de una empresa individual, de un negocio profesional, incluidos los relacionados con la producción y comercialización en el sector ganadero, agrario o pesquero, o de participaciones en entidades del donante a los que sea de aplicación la exención regulada en el apartado octavo del artículo 4 de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio, se aplicará una reducción en la base imponible para determinar la liquidable del 99 por ciento del valor de adquisición. Requisitos: a) Que el donante tuviese sesenta y cinco o más años o se encontrase en situación de incapacidad permanente, en grado de absoluta o gran invalidez. b) En cuanto al donatario, deberá mantener lo adquirido y tener derecho a la exención en el Impuesto sobre el Patrimonio durante los cinco años siguientes a la fecha de la escritura pública de donación, salvo que falleciera dentro de este plazo."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "familiares hasta el cuarto grado",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente",
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio",
+                "colateral_cuarto_grado"
+              ],
+              "afinidad_sin_precisar": true
+            }
+          ],
+          "requisitos_no_comprobados": [
+            "Donante de sesenta y cinco años o más, o en situación de incapacidad permanente absoluta o gran invalidez",
+            "Que el donatario mantenga lo adquirido y el derecho a la exención en el Impuesto sobre el Patrimonio durante los cinco años siguientes a la escritura pública de donación, sin actos que minoren sustancialmente su valor"
           ]
         },
         {
@@ -5088,11 +5419,7 @@
           "resumen": "Reducción del 95 % del valor de los bienes del Patrimonio Histórico Español o del Patrimonio Histórico o Cultural de las Comunidades Autónomas heredados por los grupos I y II; mantenimiento durante cinco años.",
           "en_vigor_desde": "2024-01-01",
           "cuando": {
-            "modo": "sucesion",
-            "grupos": [
-              "I",
-              "II"
-            ]
+            "modo": "sucesion"
           },
           "porcentaje": "0.95",
           "anos_mantenimiento": 5,
@@ -5106,6 +5433,15 @@
               "boe_id": "BOCT-c-2008-90028",
               "articulo": "art. 5.A).8 DLeg 62/2008 (Cantabria)",
               "cita": "8. El disfrute definitivo de las reducciones establecidas en los apartados 4, 5 y 6, queda condicionado al mantenimiento de los bienes o derechos en el patrimonio del adquirente durante los cinco años siguientes a la muerte del causante, salvo que el adquirente fallezca en este plazo."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "parientes del grupo I y II de la persona fallecida",
+              "grupos": [
+                "I",
+                "II"
+              ]
             }
           ]
         }
@@ -5409,7 +5745,7 @@
       ],
       "no_modelado": [
         "Vivienda habitual heredada por parientes por afinidad del grupo III (hijastros, yernos, nueras, suegros…): el art. 5.A).5 los incluye, pero la calculadora solo la aplica a cónyuge, descendientes, ascendientes y colaterales mayores de 65 años.",
-        "Reducción del 99 % por empresa, negocio o participaciones para otros adquirentes: en herencias, parientes hasta el cuarto grado cuando no hay adquirentes de los grupos I y II; en donaciones, familiares hasta el cuarto grado distintos de los grupos I y II y, si no los hay, extraños (art. 5.A).4 y B).1). Para ellos la calculadora aplica la reducción estatal.",
+        "Reducción del 99 % por la donación de una empresa individual o un negocio profesional a donatarios extraños cuando no existan familiares adquirentes hasta el cuarto grado (art. 5.B).1): solo para la empresa o el negocio, no para participaciones; no se calcula.",
         "Reducción del 95 % en donaciones de bienes del patrimonio histórico a cónyuge o descendientes (art. 5.B).2): se aplica la estatal, del mismo porcentaje.",
         "Reducciones propias por patrimonios protegidos (art. 5.A).7 y B).3), deducción de lo pagado en transmisiones anteriores de los mismos bienes (art. 5.A).8), acumulación de donaciones (art. 6.3) y deducción de la tasa por valoración previa de inmuebles (art. 8.4)."
       ]
@@ -6024,7 +6360,6 @@
           "anos_mantenimiento": 5,
           "requisitos_no_comprobados": [
             "Empresa o negocio situado en Castilla y León (o entidad no cotizada con domicilio fiscal y social en Castilla y León, que debe mantenerse cinco años)",
-            "Adquirente cónyuge, descendiente o adoptado, ascendiente o adoptante, o colateral por consanguinidad hasta el tercer grado",
             "Requisitos de ejercicio de la actividad, ingresos (50 %) y participación (5 % individual o 20 % con el grupo familiar) del causante",
             "No realizar actos de disposición u operaciones societarias que minoren sustancialmente el valor de lo adquirido (art. 22.2.c)"
           ],
@@ -6063,6 +6398,21 @@
               "boe_id": "BOCL-h-2013-90254",
               "articulo": "art. 17.2.f) DLeg 1/2013 (Castilla y León)",
               "cita": "f) Que el adquirente mantenga en su patrimonio la adquisición durante los cinco años siguientes al fallecimiento del causante, salvo que falleciese el adquirente dentro de este plazo."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge, descendientes o adoptados, ascendientes o adoptantes y colaterales, por consanguinidad, hasta el tercer grado de la persona fallecida",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente",
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio"
+              ]
             }
           ]
         }
@@ -7091,7 +7441,7 @@
           "porcentaje": "0.99",
           "anos_mantenimiento": 5,
           "requisitos_no_comprobados": [
-            "Adquirente de los grupos I, II o III (o equiparado); en el grupo IV, contrato en la empresa con cinco años de antigüedad y tres años en tareas de responsabilidad",
+            "En el grupo IV: contrato laboral o de prestación de servicios en la empresa vigente al fallecimiento, con una antigüedad mínima de cinco años, y tareas de responsabilidad en su gestión o dirección durante los tres años ininterrumpidos anteriores",
             "Exención del art. 4.Ocho de la Ley 19/1991 aplicable y domicilio fiscal (y social, en entidades) en Extremadura durante cinco años",
             "En participaciones: 5 % individual o 20 % con el grupo de parentesco, funciones de dirección remuneradas con más del 50 % de los rendimientos, entidad no cotizada y que el causahabiente alcance al menos el 50 % del capital",
             "Solo puede aplicarla el adquirente que se adjudique la empresa, el negocio o las participaciones"
@@ -7126,6 +7476,30 @@
               "boe_id": "BOE-A-2018-8159",
               "articulo": "art. 19 bis.3 DLeg 1/2018 (Extremadura)",
               "cita": "3. La reducción prevista en este artículo, con los mismos requisitos de los apartados anteriores, será aplicable a aquellos adquirentes que estén comprendidos en el Grupo IV del artículo 20.2.a) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones y que cumplan, además, los siguientes requisitos: a) Tener un contrato laboral o de prestación de servicios dentro de la empresa o negocio profesional del causante que esté vigente a la fecha del fallecimiento de este y acreditar una antigüedad mínima de cinco años en la empresa o negocio. b) Tener encomendadas tareas de responsabilidad en la gestión o dirección de la empresa o negocio a la fecha del fallecimiento del causante y con una antigüedad mínima de tres años ininterrumpidos en el ejercicio de éstas inmediatamente anteriores a la fecha del fallecimiento."
+            },
+            {
+              "boe_id": "BOE-A-2018-8159",
+              "articulo": "art. 19.3 DLeg 1/2018 (Extremadura)",
+              "cita": "3. Esta misma reducción, con los mismos requisitos de los apartados anteriores, será aplicable a aquellos adquirentes que estén comprendidos en el Grupo IV del artículo 20.2.a) de la Ley 29/1987, de 18 de diciembre, y que cumplan, además, los siguientes requisitos: a) Tener un contrato laboral o de prestación de servicios dentro de la empresa o negocio profesional del causante que esté vigente a la fecha del fallecimiento de éste y acreditar una antigüedad mínima de cinco años en la empresa o negocio profesional. b) Tener encomendadas tareas de responsabilidad en la gestión o dirección de la empresa o negocio a la fecha del fallecimiento del causante y con una antigüedad mínima de tres años ininterrumpidos en el ejercicio de éstas, inmediatamente anteriores a la fecha del fallecimiento."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "Grupos I, II y III previstos en el artículo 20.2 a)",
+              "grupos": [
+                "I",
+                "II",
+                "III"
+              ]
+            },
+            {
+              "texto": "adquirentes que estén comprendidos en el Grupo IV",
+              "grupos": [
+                "IV"
+              ],
+              "requiere": [
+                "vinculo_laboral_empresa"
+              ]
             }
           ]
         }
@@ -8013,7 +8387,7 @@
           "anos_mantenimiento": 5,
           "requisitos_no_comprobados": [
             "Empresa individual o negocio profesional situados en La Rioja y exentos del Impuesto sobre el Patrimonio; o participaciones en entidades no cotizadas con domicilio fiscal y social en La Rioja que cumplan el art. 4.Ocho.Dos de la Ley 19/1991 (participación del causante de al menos el 5 % individual o el 20 % con su grupo familiar)",
-            "Adquirente cónyuge, descendiente, ascendiente (o adoptado, adoptante, acogido) o colateral por consanguinidad hasta el cuarto grado o por afinidad hasta el tercero",
+            "Los colaterales cuyo parentesco procede de la adopción solo tienen derecho, si son de segundo o tercer grado, cuando no existan descendientes o adoptados (art. 35.1.b y 2.b): la calculadora no distingue ese origen del parentesco",
             "Mantener lo adquirido y el domicilio fiscal y social en La Rioja durante los cinco años siguientes al fallecimiento",
             "En participaciones, la reducción solo alcanza a la parte del valor que corresponde a los activos necesarios para la actividad",
             "Es incompatible, para la misma adquisición, con la reducción estatal del art. 20.2.c) de la Ley 29/1987 (art. 36)"
@@ -8029,6 +8403,23 @@
               "articulo": "art. 35.2 Ley 10/2017 (La Rioja)",
               "cita": "2. Reducción por adquisición de participaciones en entidades. Si en la base imponible de la adquisición mortis causa está incluido el valor de participaciones en entidades cuyo domicilio fiscal y social se encuentre en La Rioja y que no coticen en mercados organizados, para obtener la base liquidable se aplicará en la imponible una reducción del 99 % del mencionado valor, siempre que concurran las siguientes circunstancias: a) Que se cumplan los requisitos establecidos en el artículo 4.Ocho.Dos de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio, para la exención de participaciones en entidades, en la fecha de fallecimiento, con la salvedad de que, a los solos efectos de aplicar esta reducción, el requisito establecido en su párrafo b) se entenderá cumplido cuando la participación del causante en el capital de la entidad sea al menos del 5 % computado de forma individual o del 20 % conjuntamente con el cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad, hasta el cuarto grado, por afinidad, hasta el tercer grado, o, por origen del parentesco en la adopción, hasta el segundo grado, del causante. b) Que la adquisición corresponda al cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad, hasta el cuarto grado o por afinidad hasta tercer grado, de la persona fallecida. Cuando no existan descendientes o adoptados, los colaterales de segundo y tercer grado con origen en la adopción también podrán ser beneficiarios de esta reducción. c) Que el adquirente mantenga en su patrimonio la adquisición durante los cinco años siguientes al fallecimiento del causante, salvo que falleciese a su vez dentro de este plazo. El adquirente no podrá realizar en el mismo plazo actos de disposición ni operaciones societarias que, directa o indirectamente, puedan dar lugar a una minoración sustancial del valor de la adquisición. d) Que se mantenga el domicilio fiscal y social de la entidad en el territorio de La Rioja durante los cinco años siguientes al fallecimiento del causante."
             }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad, hasta el cuarto grado o por afinidad hasta tercer grado, de la persona fallecida",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente",
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio",
+                "colateral_cuarto_grado",
+                "colateral_afinidad"
+              ]
+            }
           ]
         },
         {
@@ -8043,7 +8434,6 @@
           "anos_mantenimiento": 5,
           "requisitos_no_comprobados": [
             "Empresa individual o negocio profesional situados en La Rioja y exentos del Impuesto sobre el Patrimonio, con donante de 60 años o más (o en incapacidad permanente absoluta o gran invalidez) que deje de ejercer la actividad y de cobrar por ella; o participaciones en entidades con domicilio fiscal y social en La Rioja, con donante de 65 años o más (o en esa incapacidad) que deje las funciones de dirección remuneradas",
-            "Donatario cónyuge, descendiente, ascendiente (o adoptado, adoptante, acogido) o colateral por consanguinidad hasta el cuarto grado o por afinidad hasta el tercero",
             "Mantener lo adquirido, el derecho a la exención en el Impuesto sobre el Patrimonio y el domicilio en La Rioja durante los cinco años siguientes a la escritura pública de donación",
             "En participaciones, la reducción solo alcanza a la parte del valor que corresponde a los activos necesarios para la actividad",
             "Es incompatible, para la misma adquisición, con la reducción estatal del art. 20.6 de la Ley 29/1987 (art. 40)"
@@ -8058,6 +8448,23 @@
               "boe_id": "BOE-A-2017-13750",
               "articulo": "art. 39.2 Ley 10/2017 (La Rioja)",
               "cita": "2. Reducción por adquisición de participaciones en entidades. Cuando en la base imponible de una adquisición esté incluido el valor de participaciones en entidades cuyo domicilio fiscal y social se encuentre en La Rioja, para obtener la base liquidable se aplicará en la imponible una reducción del 99 % del mencionado valor, siempre que concurran las siguientes circunstancias: a) Que se cumplan los requisitos establecidos en el artículo 4.Ocho.Dos de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio, para la exención de participaciones en entidades, en la fecha de devengo, con la salvedad de que, a los solos efectos de aplicar esta reducción, el requisito establecido en su párrafo b) se entenderá cumplido cuando la participación del donante en el capital de la entidad sea al menos del 5 % computado de forma individual o del 20 % conjuntamente con el cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad, hasta el cuarto grado, por afinidad, hasta el tercer grado, o, por origen del parentesco en la adopción, hasta el segundo grado, del donante. b) Que, bien el donante, bien el miembro del grupo familiar con el que se ostente el porcentaje de participación, ejerza efectivamente funciones de dirección en la entidad, percibiendo por ello una remuneración que represente más del 50 % de la totalidad de los rendimientos empresariales, profesionales y de trabajo personal. A los efectos de lo dispuesto en esta letra, será de aplicación lo dispuesto en el artículo 4.Ocho.Dos de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio. c) Que el donante tuviese 65 o más años o se encontrase en situación de incapacidad permanente, en grado de absoluta o gran invalidez. d) Que, si el donante viniere ejerciendo funciones de dirección, dejara de ejercer y de percibir remuneraciones por el ejercicio de dichas funciones desde el momento de la transmisión. A estos efectos, no se entenderá comprendida entre las funciones de dirección la mera pertenencia al Consejo de Administración de la sociedad. e) Que la transmisión se realice a favor del cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad hasta el cuarto grado o por afinidad hasta el tercer grado, del donante. f) Que se mantenga el domicilio fiscal y, en su caso, social de la entidad en el territorio de La Rioja durante los cinco años siguientes a la fecha de la escritura pública de donación. g) En cuanto al donatario, deberá mantener lo adquirido y cumplir los requisitos establecidos en el artículo 4.Ocho.Dos de la Ley 19/1991, de 6 de junio, del Impuesto sobre el Patrimonio, para la exención de participaciones en entidades, con la salvedad establecida en el párrafo a) de este apartado, durante los cinco años siguientes a la fecha de la escritura pública de donación, salvo que falleciera dentro de este plazo."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "cónyuge, descendientes, adoptados o personas objeto de un acogimiento familiar permanente o guarda con fines de adopción, ascendientes, adoptantes o personas que realicen un acogimiento familiar permanente o guarda con fines de adopción, y colaterales, por consanguinidad hasta el cuarto grado o por afinidad hasta el tercer grado, del donante",
+              "parentescos": [
+                "conyuge",
+                "hijo",
+                "otro_descendiente",
+                "padre",
+                "otro_ascendiente",
+                "hermano",
+                "sobrino",
+                "tio",
+                "colateral_cuarto_grado",
+                "colateral_afinidad"
+              ]
             }
           ]
         }
@@ -8229,7 +8636,7 @@
             "Empresa, negocio o entidad con domicilio fiscal y social en la Región de Murcia, a la que sea aplicable la exención del art. 4.Ocho de la Ley del Impuesto sobre el Patrimonio",
             "En participaciones, que el causante tuviera al menos el 5 % de forma individual o el 20 % con su cónyuge, ascendientes, descendientes o colaterales hasta el cuarto grado",
             "Mantener la inversión en los mismos activos o similares y el domicilio fiscal y social en la Región de Murcia durante cinco años",
-            "Adquirente de los grupos I, II o III, o del grupo IV hasta colaterales de cuarto grado, que se adjudique la empresa, el negocio o las participaciones",
+            "Que el adquirente se adjudique la empresa, el negocio o las participaciones",
             "Es incompatible, para la misma adquisición, con las reducciones estatales del art. 20.2.c) de la Ley 29/1987"
           ],
           "evidencia": [
@@ -8237,6 +8644,22 @@
               "boe_id": "BOE-A-2011-10542",
               "articulo": "art. 3.Uno DLeg 1/2010 (Región de Murcia)",
               "cita": "se establece una reducción propia en la base imponible del Impuesto sobre Sucesiones y Donaciones del 99% para las adquisiciones «mortis causa», cuando ésta incluya el valor de una empresa individual o de un negocio profesional, o de participaciones en entidades, a las que sea aplicable la exención regulada en el artículo 4, apartado octavo, de la Ley 19/1991, de 6 de junio, del Impuesto sobre Patrimonio, siempre que cumplan los siguientes requisitos: a) Será aplicable a empresas individuales, negocios profesionales y entidades con domicilio fiscal y social en la Comunidad Autónoma de la Región de Murcia. b) Que la participación del causante en la entidad sea al menos del 5% de forma individual, o del 20% conjuntamente con su cónyuge, ascendientes, descendientes o colaterales hasta el cuarto grado, por consanguinidad, afinidad o adopción. c) Que se mantenga la inversión en los mismos activos o similares, por un período de cinco años. No se considerará incumplimiento de los plazos de posesión ni del requisito del mantenimiento de los plazos de posesión ni del requisito del mantenimiento si se transmiten los bienes derechos y se reinvierten en otros de análoga naturaleza con destino empresarial. El adquiriente no podrá realizar actos de disposición y operaciones societarias que directa o indirectamente puedan dar lugar a una minoración sustancial del valor de la adquisición. d) Que se mantenga el domicilio fiscal y social de la empresa, negocio o entidad en el territorio de la Comunidad Autónoma de la Región de Murcia durante los cinco años siguientes al fallecimiento del causante. 2. La reducción regulada en el apartado anterior sólo la podrán aplicar los adquirentes que se adjudiquen la empresa individual, el negocio profesional o las participaciones en entidades siempre que estén incluidos en los grupos I, II y III, así como en el grupo IV hasta colaterales de cuarto grado, del artículo 20.2 de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones. 3. La reducción regulada en el apartado 1 anterior será incompatible, para una misma adquisición, con la aplicación de las reducciones previstas en el artículo 20.2.c) de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "grupos I, II y III",
+              "grupos": [
+                "I",
+                "II",
+                "III"
+              ]
+            },
+            {
+              "texto": "grupo IV hasta colaterales de cuarto grado",
+              "parentescos": [
+                "colateral_cuarto_grado"
+              ]
             }
           ]
         },
@@ -8254,7 +8677,6 @@
             "Empresa o negocio situados en la Región de Murcia, o entidad con domicilio fiscal y social en ella, a los que sea aplicable la exención del art. 4.Ocho de la Ley del Impuesto sobre el Patrimonio",
             "Donante de 65 años o más, o en situación de incapacidad permanente absoluta o gran invalidez",
             "En participaciones: participación del donante de al menos el 5 % individual o el 20 % con su grupo familiar, y que tras la donación no conserve el 50 % o más del capital si sigue ejerciendo funciones de dirección",
-            "Donatario de los grupos I, II o III, o del grupo IV hasta colaterales de cuarto grado",
             "Mantener lo adquirido, el derecho a la exención en el Impuesto sobre el Patrimonio y el domicilio fiscal y social en la Región de Murcia durante cinco años",
             "Es incompatible, para los mismos bienes, con la reducción estatal del art. 20.6 de la Ley 29/1987"
           ],
@@ -8263,6 +8685,22 @@
               "boe_id": "BOE-A-2011-10542",
               "articulo": "art. 4.Uno DLeg 1/2010 (Región de Murcia)",
               "cita": "se establece una reducción propia en la base imponible del Impuesto sobre Sucesiones y Donaciones del 99% para las transmisiones «inter vivos» de una empresa individual o de un negocio profesional situados en la Comunidad Autónoma de la Región de Murcia, o de participaciones en entidades del donante cuyo domicilio fiscal y social se encuentre en la Comunidad Autónoma de la Región de Murcia, y a las que sea aplicable la exención regulada en el artículo 4, apartado octavo, de la Ley 19/1991, de 6 de junio, del Impuesto sobre Patrimonio, siempre que cumplan los siguientes requisitos: a) El donatario deberá estar incluido en los grupos I, II y III, así como en el grupo IV hasta colaterales de cuarto grado, del artículo 20.2 de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones. b) Que el donante tuviese 65 o más años, o se encontrase en situación de incapacidad permanente, en grado de absoluta o gran invalidez. c) En caso de transmisión de participaciones de una entidad, que el donante, como consecuencia de la donación, no mantenga un porcentaje de participación igual o superior al 50 % del capital social de la empresa en caso de seguir ejerciendo efectivamente funciones de dirección en la entidad. A estos efectos, no se entenderá comprendida entre las funciones de dirección la mera pertenencia al Consejo de Administración de la sociedad. Asimismo, la participación del donante en la entidad a la fecha del devengo debe ser al menos del 5 % de forma individual, o del 20 % conjuntamente con su cónyuge, ascendientes, descendientes o colaterales hasta el cuarto grado, por consanguinidad, afinidad o adopción. d) Que el donatario mantenga lo adquirido y el derecho a la exención en el Impuesto sobre el Patrimonio de esos bienes, por un período de cinco años, salvo que falleciera durante ese plazo. El adquirente no podrá realizar actos de disposición y operaciones societarias que, directa o indirectamente, puedan dar lugar a una minoración sustancial del valor de adquisición. e) Que se mantenga el domicilio fiscal y social de la empresa, negocio o entidad en el territorio de la Comunidad Autónoma de la Región de Murcia durante los cinco años siguientes a la fecha de escritura pública de donación. 2. La reducción contemplada en el apartado anterior será incompatible para los mismos bienes o derechos adquiridos, con la aplicación de la reducción establecida en el artículo 20.6 de la Ley 29/1987, de 18 de diciembre, del Impuesto sobre Sucesiones y Donaciones."
+            }
+          ],
+          "adquirentes": [
+            {
+              "texto": "grupos I, II y III",
+              "grupos": [
+                "I",
+                "II",
+                "III"
+              ]
+            },
+            {
+              "texto": "grupo IV hasta colaterales de cuarto grado",
+              "parentescos": [
+                "colateral_cuarto_grado"
+              ]
             }
           ]
         }

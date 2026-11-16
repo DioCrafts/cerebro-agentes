@@ -40,6 +40,7 @@ from hacienda_gpt.memoria.almacen import exportar_decisiones
 from hacienda_gpt.modulos.acciones import AccionStore
 from hacienda_gpt.navegador import tareas as tareas_navegador
 from hacienda_gpt.navegador import vigilancia
+from hacienda_gpt.ops.consumo import anonimizar_consumo
 from hacienda_gpt.proactive.store import NotificationStore
 
 _limiter_lock = threading.Lock()
@@ -154,6 +155,16 @@ def _client_address(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+# Budget per client address alone (registrations, failed logins across e-mails): wider than per e-mail, so a
+# household or an office behind one address is not locked out. Behind a reverse proxy start uvicorn with
+# ``--proxy-headers`` (docs/seguridad.md), or every client shares the proxy's address and this budget.
+_ADDRESS_FACTOR = 4
+
+
+def _per_address(limiter: LoginRateLimiter) -> int:
+    return limiter.max_attempts * _ADDRESS_FACTOR
+
+
 def _too_many_attempts(retry_after: int) -> HTTPException:
     return HTTPException(
         status_code=429,
@@ -202,9 +213,10 @@ def build_router(
                 status_code=422,
                 detail="Para crear la cuenta tienes que aceptar el tratamiento de tus datos.",
             )
-        # Same budget as failed logins: registering is also a way to test which addresses exist.
+        # Registering is also a way to test which addresses exist, and every new account brings its own
+        # per-user LLM budget: every registration from an address counts, not only the refused ones.
         key = f"register|{_client_address(request)}"
-        if (retry_after := limiter.retry_after(key)) > 0:
+        if (retry_after := limiter.retry_after(key, max_attempts=_per_address(limiter))) > 0:
             raise _too_many_attempts(retry_after)
         consents: dict[ConsentType, bool] = {
             consent_type: getattr(payload.consents, consent_type) for consent_type in CONSENT_TYPES
@@ -219,6 +231,7 @@ def build_router(
                 status_code=409,
                 detail="No se ha podido crear la cuenta con ese correo. Si ya tienes una, inicia sesión.",
             ) from exc
+        limiter.record_failure(key)
         token, session = store.create_session(user.id)
         return SessionResponse(token=token, expires_at=session.expires_at, user=user)
 
@@ -230,11 +243,17 @@ def build_router(
         limiter: Annotated[LoginRateLimiter, Depends(get_login_limiter)],
     ) -> SessionResponse:
         key = f"login|{payload.email.strip().casefold()}|{_client_address(request)}"
-        if (retry_after := limiter.retry_after(key)) > 0:
+        # Also per address alone: one client trying one password on many e-mails (password spraying).
+        address_key = f"login-address|{_client_address(request)}"
+        retry_after = max(
+            limiter.retry_after(key), limiter.retry_after(address_key, max_attempts=_per_address(limiter))
+        )
+        if retry_after > 0:
             raise _too_many_attempts(retry_after)
         user = store.authenticate(payload.email, payload.password)
         if user is None:
             limiter.record_failure(key)
+            limiter.record_failure(address_key)
             # One message for "no such account" and "wrong password".
             raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
         limiter.reset(key)
@@ -346,6 +365,8 @@ def build_router(
             raise HTTPException(status_code=403, detail="La contraseña no es correcta. No se ha borrado nada.")
         # Data first, account last: if anything fails half-way the account still
         # exists and the user can simply ask again.
+        # The usage log keeps the operator's totals but no longer says whose they were.
+        anonimizar_consumo(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         for case_id in store.case_ids_of(user.id):
             notifications.delete_for_case(case_id)
             if acciones is not None:

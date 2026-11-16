@@ -236,10 +236,21 @@ class CompensacionAhorroParams(_Model):
 
 
 class ObligacionDeclarar(_Model):
+    """Income limits below which there is no obligation to file (art. 96 LIRPF), used by ``tax.obligacion``."""
+
+    # Art. 96.2.a): gross work income; 96.3: the lower limit (several payers, compensatory pensions…).
     limite_trabajo_un_pagador: Decimal
     limite_trabajo_varios_pagadores: Decimal
+    # Art. 96.3.a) 1.º: what the second and further payers paid, together, up to which the general limit stays.
     limite_segundo_pagador: Decimal
+    # Art. 96.2.b): capital income and capital gains subject to withholding, together.
     limite_capital_y_ganancias_con_retencion: Decimal
+    # Art. 96.2.c): imputed real-estate income, Treasury bills and subsidies for protected housing, together.
+    limite_imputadas_letras_subvenciones: Decimal
+    # Art. 96.2, penultimate paragraph: work, capital, business income and gains up to this, together, and
+    # capital losses below ``limite_perdidas_patrimoniales``: never obliged to file.
+    limite_conjunto_rentas_minimas: Decimal
+    limite_perdidas_patrimoniales: Decimal
     fuente: Fuente
 
 

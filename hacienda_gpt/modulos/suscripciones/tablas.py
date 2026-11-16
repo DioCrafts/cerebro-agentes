@@ -11,6 +11,7 @@ third-party dependency, with limits against zip bombs.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 import csv
 from datetime import date, timedelta
 from decimal import Decimal, InvalidOperation
@@ -33,6 +34,7 @@ from hacienda_gpt.modulos.suscripciones.lectura import (
     sin_acentos,
 )
 from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Movimiento
+from hacienda_gpt.utils.xml_seguro import XmlInseguroError, rechazar_dtd
 
 DATA = Path(__file__).parent / "data" / "bancos.json"
 Celda = str | Decimal | date | None
@@ -81,18 +83,73 @@ def filas_csv(datos: bytes | str) -> list[list[Celda]]:
 _NS = {"m": "http://schemas.openxmlformats.org/spreadsheetml/2006/main"}
 _REL = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}id"
 _MAX_XML = 50 * 1024 * 1024
+# The workbook, its relationships and the styles are parsed whole: a real one is a few kilobytes.
+_MAX_XML_AUXILIAR = 2 * 1024 * 1024
+# Limits against small files that blow up in memory: a worksheet's columns end at XFD (ECMA-376), and a bank
+# statement has far fewer rows and distinct texts than these.
+_MAX_COLUMNAS = 16_384
+_MAX_FILAS = 100_000
+_MAX_CELDAS = 2_000_000
+_MAX_COMPARTIDAS = 500_000
+_MAX_PROFUNDIDAD = 32
+_MAX_ELEMENTOS_POR_FILA = 4 * _MAX_COLUMNAS
 # Built-in number formats that are dates (ECMA-376 part 1, 18.8.30).
 _FORMATOS_FECHA = set(range(14, 23)) | {45, 46, 47}
 
 
-def _leer_zip(zona: zipfile.ZipFile, nombre: str) -> bytes:
+def _leer_zip(zona: zipfile.ZipFile, nombre: str, limite: int = _MAX_XML) -> bytes:
     info = zona.getinfo(nombre)
-    if info.file_size > _MAX_XML:
+    if info.file_size > limite:
         raise ImportacionError("El XLSX es demasiado grande una vez descomprimido.")
-    datos = zona.read(info)
-    if re.search(rb"<!DOCTYPE|<!ENTITY", datos[:4096]):
-        raise ImportacionError("El XLSX contiene declaraciones DOCTYPE; por seguridad no se procesa.")
+    # Read at most the limit: the declared size is the attacker's to choose.
+    with zona.open(info) as parte:
+        datos = parte.read(limite + 1)
+    if len(datos) > limite:
+        raise ImportacionError("El XLSX es demasiado grande una vez descomprimido.")
+    try:
+        # Anywhere in the prolog, not only in its first kilobytes (a long comment would hide it).
+        rechazar_dtd(datos)
+    except XmlInseguroError as exc:
+        raise ImportacionError("El XLSX contiene declaraciones DOCTYPE; por seguridad no se procesa.") from exc
     return datos
+
+
+def _xml(datos: bytes) -> ET.Element:
+    try:
+        return ET.fromstring(datos)
+    except ET.ParseError as exc:
+        raise ImportacionError("El XLSX está dañado (su XML no está bien formado).") from exc
+
+
+def _elementos(datos: bytes, etiqueta: str) -> Iterator[ET.Element]:
+    """The ``etiqueta`` elements of a part, one at a time, in bounded memory.
+
+    Every element is detached from its parent as soon as it ends (a target after it was yielded), so the tree
+    never holds more than the open path and the current target; deep nesting and oversized targets are refused.
+    """
+    pila: list[ET.Element] = []
+    dentro = 0  # elements inside the open target
+    try:
+        for evento, elemento in ET.iterparse(io.BytesIO(datos), events=("start", "end")):
+            if evento == "start":
+                pila.append(elemento)
+                if len(pila) > _MAX_PROFUNDIDAD:
+                    raise ImportacionError("El XLSX está anidado de forma anómala; no se procesa.")
+                if any(abierto.tag == etiqueta for abierto in pila[:-1]):
+                    dentro += 1
+                    if dentro > _MAX_ELEMENTOS_POR_FILA:
+                        raise ImportacionError("El XLSX tiene una fila o un texto demasiado grande.")
+                continue
+            pila.pop()
+            if elemento.tag == etiqueta:
+                dentro = 0
+                yield elemento
+            elif any(abierto.tag == etiqueta for abierto in pila):
+                continue  # part of the target being built: kept until the target ends
+            if pila and len(pila[-1]) and pila[-1][-1] is elemento:
+                del pila[-1][-1]
+    except ET.ParseError as exc:
+        raise ImportacionError("El XLSX está dañado (su XML no está bien formado).") from exc
 
 
 def _columna(referencia: str) -> int:
@@ -100,6 +157,8 @@ def _columna(referencia: str) -> int:
     numero = 0
     for letra in letras.group(0) if letras else "A":
         numero = numero * 26 + ord(letra) - 64
+        if numero > _MAX_COLUMNAS:
+            raise ImportacionError(f"El XLSX tiene una celda fuera de la hoja ({referencia[:20]}).")
     return numero - 1
 
 
@@ -110,24 +169,26 @@ def filas_xlsx(datos: bytes) -> list[list[Celda]]:
         raise ImportacionError("El fichero XLSX está dañado (no es un ZIP válido).") from exc
     with zona:
         nombres = set(zona.namelist())
-        libro = ET.fromstring(_leer_zip(zona, "xl/workbook.xml"))
+        libro = _xml(_leer_zip(zona, "xl/workbook.xml", _MAX_XML_AUXILIAR))
         hoja = libro.find("m:sheets/m:sheet", _NS)
         if hoja is None:
             raise ImportacionError("El XLSX no tiene hojas.")
         destino = "xl/worksheets/sheet1.xml"
         if "xl/_rels/workbook.xml.rels" in nombres:
-            relaciones = ET.fromstring(_leer_zip(zona, "xl/_rels/workbook.xml.rels"))
+            relaciones = _xml(_leer_zip(zona, "xl/_rels/workbook.xml.rels", _MAX_XML_AUXILIAR))
             for rel in relaciones:
                 if rel.get("Id") == hoja.get(_REL):
                     objetivo = rel.get("Target", "")
                     destino = objetivo.lstrip("/") if objetivo.startswith("/") else f"xl/{objetivo}"
         compartidas: list[str] = []
         if "xl/sharedStrings.xml" in nombres:
-            for si in ET.fromstring(_leer_zip(zona, "xl/sharedStrings.xml")).findall("m:si", _NS):
+            for si in _elementos(_leer_zip(zona, "xl/sharedStrings.xml"), f"{{{_NS['m']}}}si"):
+                if len(compartidas) >= _MAX_COMPARTIDAS:
+                    raise ImportacionError("El XLSX tiene demasiados textos distintos para ser un extracto.")
                 compartidas.append("".join(t.text or "" for t in si.iter(f"{{{_NS['m']}}}t")))
         estilos_fecha: set[int] = set()
         if "xl/styles.xml" in nombres:
-            estilos = ET.fromstring(_leer_zip(zona, "xl/styles.xml"))
+            estilos = _xml(_leer_zip(zona, "xl/styles.xml", _MAX_XML_AUXILIAR))
             propios = {
                 int(nf.get("numFmtId", "0")): nf.get("formatCode", "")
                 for nf in estilos.findall("m:numFmts/m:numFmt", _NS)
@@ -140,17 +201,32 @@ def filas_xlsx(datos: bytes) -> list[list[Celda]]:
         if destino not in nombres:
             raise ImportacionError("El XLSX no contiene la hoja indicada en el libro.")
         filas: list[list[Celda]] = []
-        for fila in ET.fromstring(_leer_zip(zona, destino)).iter(f"{{{_NS['m']}}}row"):
+        celdas = 0
+        for fila in _elementos(_leer_zip(zona, destino), f"{{{_NS['m']}}}row"):
+            if len(filas) >= _MAX_FILAS:
+                raise ImportacionError(f"El XLSX tiene más de {_MAX_FILAS} filas. Exporta un periodo más corto.")
             valores: list[Celda] = []
             for celda in fila.findall("m:c", _NS):
                 posicion = _columna(celda.get("r", "")) if celda.get("r") else len(valores)
+                if posicion >= _MAX_COLUMNAS:
+                    raise ImportacionError("El XLSX tiene más columnas de las que admite una hoja.")
                 valores.extend([None] * (posicion - len(valores)))
                 valores.append(_valor_celda(celda, compartidas, estilos_fecha))
+            celdas += len(valores)
+            if celdas > _MAX_CELDAS:
+                raise ImportacionError("El XLSX tiene demasiadas celdas para ser un extracto.")
             filas.append(valores)
         return filas
 
 
 def _valor_celda(celda: ET.Element, compartidas: list[str], estilos_fecha: set[int]) -> Celda:
+    try:
+        return _leer_celda(celda, compartidas, estilos_fecha)
+    except (IndexError, ValueError, OverflowError) as exc:
+        raise ImportacionError(f"El XLSX tiene una celda que no se puede leer ({celda.get('r', '?')[:20]}).") from exc
+
+
+def _leer_celda(celda: ET.Element, compartidas: list[str], estilos_fecha: set[int]) -> Celda:
     tipo = celda.get("t", "n")
     if tipo == "inlineStr":
         return "".join(t.text or "" for t in celda.iter(f"{{{_NS['m']}}}t"))
