@@ -138,6 +138,7 @@ const DESGLOSE: Record<string, string> = {
   capital: "Capital",
   intereses: "Intereses",
   amortizaciones_anticipadas: "Amortizaciones anticipadas",
+  comisiones_amortizacion_anticipada: "Comisiones de amortización anticipada",
 };
 
 /** Tax facts a module can fill in (e.g. the mortgage payments for the pre-2013 home deduction). */

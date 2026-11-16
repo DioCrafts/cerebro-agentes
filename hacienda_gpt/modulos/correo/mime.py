@@ -6,6 +6,10 @@ styles and hidden elements dropped, and their presence recorded as a signal), an
 (visible text, target host) pairs for the phishing checks. Attachment names are read only to flag
 dangerous types; they are never stored nor shown to a model.
 
+Safety: attachments are never downloaded (only their names and types are seen), links are never
+followed, no XML is parsed here (an XML attachment would go through ``utils/xml_seguro``), and the bytes
+decoded per part and per message are capped (``MAX_BYTES_PARTE``, ``MAX_BYTES_MENSAJE``).
+
 Gmail API format (documented): ``payload`` is a MessagePart ``{mimeType, filename, headers: [{name,
 value}], body: {size, data?, attachmentId?}, parts: [...]}``; ``body.data`` is base64url; ``internalDate``
 is epoch milliseconds as a string.
@@ -31,6 +35,9 @@ from hacienda_gpt.modulos.correo.dominios import host_valido
 ZONA = ZoneInfo("Europe/Madrid")
 MAX_TEXTO = 200_000  # characters of visible text read per message
 MAX_PARTES = 60
+# Raw bytes of one text part and of all of them that are decoded in memory (larger ones are cut).
+MAX_BYTES_PARTE = 1_000_000
+MAX_BYTES_MENSAJE = 3_000_000
 _INVISIBLES = re.compile("[­​‌‍⁠﻿‪-‮⁦-⁩]")
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
 _OMITIR = frozenset({"script", "style", "head", "title", "noscript", "template", "svg", "math"})
@@ -222,7 +229,13 @@ def _recorrer(parte: Mapping[str, Any], planos: list[str], htmls: list[str], adj
     if nombre:
         adjuntos.append(Adjunto(nombre=nombre[:200], tipo=tipo))
     elif tipo in ("text/plain", "text/html") and isinstance(cuerpo.get("data"), str):
-        texto = _texto_de_bytes(_b64url(cuerpo["data"]), _charset(_cabeceras(parte)))
+        restante = MAX_BYTES_MENSAJE - n[1]
+        if restante <= 0:
+            return
+        # base64 is 4/3 of the bytes: never decode more than the caps allow.
+        crudo = _b64url(cuerpo["data"][: (min(MAX_BYTES_PARTE, restante) * 4) // 3 // 4 * 4])
+        n[1] += len(crudo)
+        texto = _texto_de_bytes(crudo, _charset(_cabeceras(parte)))
         (planos if tipo == "text/plain" else htmls).append(texto)
     for hija in parte.get("parts") or []:
         if isinstance(hija, Mapping):
@@ -260,7 +273,7 @@ def leer_mensaje(recurso: Mapping[str, Any], *, solo_metadatos: bool = False) ->
     planos: list[str] = []
     htmls: list[str] = []
     adjuntos: list[Adjunto] = []
-    _recorrer(payload, planos, htmls, adjuntos, [0])
+    _recorrer(payload, planos, htmls, adjuntos, [0, 0])
     enlaces: list[Enlace] = []
     oculto = ""
     texto_html = ""

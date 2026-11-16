@@ -164,7 +164,8 @@ def test_deductions_donations_housing_maternity_and_withholdings() -> None:
     assert _linea(r, "Deducción por inversión en vivienda") == D("-1356.00")  # 9.040 × 15 %
     assert _linea(r, "Deducción por maternidad") == D("-2200.00")  # 1.200 + min(3.000, 1.000)
     # The housing rate comes from the 2012 wording, which was not re-checked: flagged, not hidden.
-    assert len(r.parametros_no_verificados) == 1 and "transitoria 18" in r.parametros_no_verificados[0]
+    # The 15 % and 9.040 € are verified against the wording of 31-12-2012 (version 20121031 of the BOE).
+    assert r.parametros_no_verificados == []
     assert r.resultado == r.cuota_liquida - D(7000) - D(2200)
 
     recurring = _calc(rendimiento_trabajo_bruto=D(40000), donativos=D(400), donativos_recurrentes=True)

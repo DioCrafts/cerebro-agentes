@@ -7,7 +7,6 @@ import { ChevronDown, Scale } from "lucide-react";
 import clsx from "clsx";
 
 import { OBLIGACION_FIELDS, type ObligacionDeclarar } from "../lib/obligacion";
-import { formatMoney } from "../lib/presentation";
 
 const VERDICT = {
   si: { text: "Sí", className: "bg-risk-high-bg text-risk-high-fg" },
@@ -40,12 +39,11 @@ export function ObligacionDeclararCard({ obligacion, value, onChange, dirty }: P
           <Scale size={15} aria-hidden className="text-primary-dark" />
           ¿Estás obligado a declarar?
         </h3>
-        <span className={clsx("flex-shrink-0 rounded-pill px-2 py-0.5 text-[12px] font-bold", verdict.className)}>{verdict.text}</span>
+        <span data-verdict={obligacion.obligado} className={clsx("flex-shrink-0 rounded-pill px-2 py-0.5 text-[12px] font-bold", verdict.className)}>{verdict.text}</span>
       </div>
       <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">{obligacion.respuesta}</p>
       {obligacion.recomendacion && (
         <p className={clsx("mt-2 rounded-lg px-3 py-1.5 text-[12.5px] leading-snug", obligacion.devolucion_estimada ? "bg-grounding-cited-bg font-semibold text-grounding-cited-fg" : "bg-line/40 text-ink-soft")}>
-          {obligacion.devolucion_estimada && <span className="mr-1">Devolución estimada: {formatMoney(obligacion.devolucion_estimada)}.</span>}
           {obligacion.recomendacion}
         </p>
       )}

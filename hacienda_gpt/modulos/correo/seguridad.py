@@ -237,9 +237,8 @@ _REDACCION = "[texto retirado: instrucciones dentro de un correo]"
 
 def citar(texto: str, maximo: int = 200) -> str:
     """``texto`` as a short, inert quotation: one line, no markup, injection bait redacted, «quoted»."""
-    limpio = _CONTROL.sub(" ", texto or "")
-    limpio = sanitize_retrieved_context(limpio)
-    limpio = _INYECCION.sub(_REDACCION, limpio) if _INYECCION.search(_plano(limpio)) is None else _redactar(limpio)
+    limpio = " ".join(_CONTROL.sub(" ", texto or "").split())
+    limpio = _redactar(sanitize_retrieved_context(limpio))
     limpio = " ".join(limpio.replace("<", "‹").replace(">", "›").replace("«", "\"").replace("»", "\"").split())
     if len(limpio) > maximo:
         limpio = limpio[: maximo - 1].rstrip() + "…"
@@ -248,9 +247,8 @@ def citar(texto: str, maximo: int = 200) -> str:
 
 def _redactar(texto: str) -> str:
     """Redact injection wording, matching on the accent-free text but cutting the original string."""
-    plano = "".join(
-        unicodedata.normalize("NFKD", c)[0] if unicodedata.normalize("NFKD", c) else c for c in texto.lower()
-    )
+    # One character of ``plano`` per character of ``texto``, so match offsets cut the original.
+    plano = "".join((unicodedata.normalize("NFKD", c.lower()) or c)[0] for c in texto)
     salida, ultimo = [], 0
     for m in _INYECCION.finditer(plano):
         salida.append(texto[ultimo : m.start()])

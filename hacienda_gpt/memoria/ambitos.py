@@ -20,6 +20,8 @@ CATALOGO: dict[str, str] = {
     "fiscal:plan_pensiones:contribuyente": "Aportar a tu plan de pensiones",
     "fiscal:plan_pensiones:conyuge": "Aportar al plan de pensiones de tu cónyuge",
     "fiscal:donativo": "Hacer donativos para deducir",
+    "fiscal:propuesta": "Cifras que proponen los módulos para la declaración",
+    "fiscal:propuesta:hipoteca": "Usar los pagos de la hipoteca para la deducción por vivienda",
     "fiscal:perdidas": "Vender inversiones con pérdidas para compensar",
     "fiscal:perdidas:contribuyente": "Vender tus inversiones con pérdidas",
     "fiscal:perdidas:conyuge": "Vender inversiones con pérdidas de tu cónyuge",

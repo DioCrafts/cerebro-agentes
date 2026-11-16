@@ -72,7 +72,7 @@ class Extraido:
     fragmento: str
 
 
-def _fragmento(texto: str, inicio: int, fin: int) -> str:
+def fragmento(texto: str, inicio: int, fin: int) -> str:
     """The line holding ``texto[inicio:fin]``, cut to ≤ 200 characters around it (literal)."""
     principio = texto.rfind("\n", 0, inicio) + 1
     final = texto.find("\n", fin)
@@ -141,7 +141,7 @@ def importe_total(texto: str) -> Extraido | None:
     """The amount on a «total / importe / a pagar / cargo» line (the last such line), else the only amount."""
     candidatos: list[tuple[int, int, Decimal, re.Match[str]]] = []
     for valor, m in importes(texto):
-        linea = _fragmento(texto, m.start(), m.end())
+        linea = fragmento(texto, m.start(), m.end())
         candidatos.append((1 if _TOTAL_RE.search(linea) else 0, m.start(), valor, m))
     if not candidatos:
         return None
@@ -152,7 +152,7 @@ def importe_total(texto: str) -> Extraido | None:
         _, _, valor, m = candidatos[0]
     else:
         return None
-    return Extraido("importe", f"{valor}", m.group(0).strip(), _fragmento(texto, m.start(), m.end()))
+    return Extraido("importe", f"{valor}", m.group(0).strip(), fragmento(texto, m.start(), m.end()))
 
 
 def plazo(texto: str, referencia: date) -> Extraido | None:
@@ -167,7 +167,7 @@ def plazo(texto: str, referencia: date) -> Extraido | None:
     if mejor is None:
         return None
     dia, m = mejor
-    return Extraido("plazo", dia.isoformat(), m.group(0).strip(), _fragmento(texto, m.start(), m.end()))
+    return Extraido("plazo", dia.isoformat(), m.group(0).strip(), fragmento(texto, m.start(), m.end()))
 
 
 def fecha_tras(texto: str, referencia: date, patron: str, campo: str) -> Extraido | None:
@@ -176,7 +176,7 @@ def fecha_tras(texto: str, referencia: date, patron: str, campo: str) -> Extraid
         tramo = texto[etiqueta.end() : etiqueta.end() + 40]
         for dia, m in fechas(tramo, referencia):
             inicio = etiqueta.end() + m.start()
-            return Extraido(campo, dia.isoformat(), m.group(0).strip(), _fragmento(texto, inicio, inicio + len(m.group(0))))
+            return Extraido(campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0))))
     return None
 
 
@@ -190,7 +190,7 @@ def periodo(texto: str, referencia: date) -> tuple[Extraido, Extraido] | None:
             for campo, (dia, m) in zip(("periodo_inicio", "periodo_fin"), encontradas[:2], strict=True):
                 inicio = etiqueta.end() + m.start()
                 salida.append(
-                    Extraido(campo, dia.isoformat(), m.group(0).strip(), _fragmento(texto, inicio, inicio + len(m.group(0))))
+                    Extraido(campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0))))
                 )
             return salida[0], salida[1]
     return None
@@ -207,7 +207,7 @@ def potencia_kw(texto: str) -> Extraido | None:
     if not Decimal("0.1") <= valor <= Decimal(15):  # 2.0TD domestic supplies, up to 15 kW
         return None
     literal = texto[m.start("n") : m.end()].strip()
-    return Extraido("potencia_kw", f"{valor.normalize():f}", literal, _fragmento(texto, m.start(), m.end()))
+    return Extraido("potencia_kw", f"{valor.normalize():f}", literal, fragmento(texto, m.start(), m.end()))
 
 
 def aparece(literal: str, texto: str) -> bool:
@@ -221,6 +221,7 @@ __all__ = [
     "aparece",
     "fecha_tras",
     "fechas",
+    "fragmento",
     "importe_decimal",
     "importe_total",
     "importes",
