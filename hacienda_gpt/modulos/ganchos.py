@@ -32,7 +32,9 @@ What each concern means:
   ``puentes`` — values it proposes to OTHER domains (never written without the user); ``entradas`` — data other
   parts of the app may PROPOSE to it (kind -> its tool or fact; the user confirms each); ``capacidades`` — the
   capabilities it asks for with ``capacidades.pedir`` (``"documentos"`` or ``"documentos.leer_campos"``);
-  ``obligatorio`` — always on (the user cannot switch it off: the tax module, the advisor's base).
+  ``obligatorio`` — always on (the user cannot switch it off: the tax module, the advisor's base);
+  ``fuentes_vigiladas_aparte`` — its ``fuentes`` are watched by its own maintenance (the tax module's laws: the
+  tax parameters' ``params-check``), so the household modules' BOE watch (``modulos/fuentes.py``) leaves them out.
 """
 
 from __future__ import annotations
@@ -116,6 +118,7 @@ class Ganchos:
     # kind of proposed data -> the domain's tool (``herramienta:<nombre>``) or fact (``hecho:<nombre>``)
     entradas: Mapping[str, str] = field(default_factory=dict)
     capacidades: tuple[str, ...] = ()
+    fuentes_vigiladas_aparte: bool = False
 
     @property
     def directas(self) -> tuple[str, ...]:
@@ -175,8 +178,9 @@ def desde_v1(modulo: Any) -> Ganchos:
     destino = getattr(modulo, "herramienta_de_documento", None)
     return Ganchos(
         version=1,
-        # v1 compatibility: the v1 core kept the tax module on by its key.
+        # v1 compatibility: the v1 core kept the tax module on by its key and watched its laws apart.
         obligatorio=getattr(modulo, "clave", None) == CLAVE_FISCAL_V1,
+        fuentes_vigiladas_aparte=getattr(modulo, "clave", None) == CLAVE_FISCAL_V1,
         eventos=GanchosEventos(
             tipos=tuple(str(t) for t in (getattr(modulo, "eventos", None) or ())),
             hechos_leidos=tuple(str(n) for n in (getattr(modulo, "hechos_leidos", None) or ())),
@@ -230,6 +234,11 @@ def es_v2(modulo: Any) -> bool:
 def obligatorio(modulo: Any) -> bool:
     """Always on: the user cannot switch it off and the operator's switch does not apply."""
     return ganchos_de(modulo).obligatorio
+
+
+def fuentes_vigiladas_aparte(modulo: Any) -> bool:
+    """Its sources are watched by its own maintenance, not by the household modules' BOE watch."""
+    return ganchos_de(modulo).fuentes_vigiladas_aparte
 
 
 def tiene_especialista(modulo: Any) -> bool:
@@ -298,6 +307,7 @@ __all__ = [
     "directas_de",
     "es_v2",
     "escribe_su_bandeja",
+    "fuentes_vigiladas_aparte",
     "ganchos_de",
     "obligatorio",
     "propietario_de_tipo",

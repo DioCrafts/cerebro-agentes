@@ -3,7 +3,10 @@
 Each module's checker file declares its legal data files as ``FICHEROS_LEGALES`` — a tuple of
 :class:`FicheroLegal`: where the JSON lives, how to load it, and the adapter that turns it into
 :class:`~hacienda_gpt.conocimiento.modelo.GrupoLegal` objects (plus the checks only that module knows how to do).
-The modules that declare are listed in :data:`DECLARANTES`; :func:`registrar` adds more at run time.
+Nobody lists them by hand: every domain hands its files to the core in ``Ganchos.ficheros_legales``
+(``modulos/ganchos.py``) and every capability in its ``ficheros_legales`` attribute (``capacidades/contrato.py``),
+both found by package discovery; :data:`DECLARANTES` only names the core's own files that belong to neither (the
+cross-domain planner); :func:`registrar` adds more at run time.
 
 From that declaration, with nothing else to wire:
 
@@ -38,19 +41,9 @@ _ES_HTML = re.compile(r"<(?:html|body|p|div|h\d|table|tr|pre)\b", re.IGNORECASE)
 # The package root: files are named relative to it in reports ("modulos/luz/data/regulados.json").
 RAIZ = Path(__file__).resolve().parents[1]
 
-# Modules whose checker file declares ``FICHEROS_LEGALES``.
-DECLARANTES: tuple[str, ...] = (
-    "hacienda_gpt.modulos.luz.datos",
-    "hacienda_gpt.modulos.caducidades.reglas",
-    "hacienda_gpt.modulos.ayudas.parametros",
-    "hacienda_gpt.modulos.hipoteca.normativa",
-    "hacienda_gpt.modulos.hipoteca.deduccion",
-    "hacienda_gpt.modulos.hipoteca.indices",
-    "hacienda_gpt.modulos.suscripciones.derechos",
-    "hacienda_gpt.modulos.correo.normativa",
-    "hacienda_gpt.planificador.textos",
-    "hacienda_gpt.conocimiento.citas_fiscales",
-)
+# The core's own files that declare ``FICHEROS_LEGALES`` and belong to no domain or capability (the domains' and
+# capabilities' files are found through their declarations: :func:`_de_ambitos`, :func:`_de_capacidades`).
+DECLARANTES: tuple[str, ...] = ("hacienda_gpt.planificador.textos",)
 
 
 @dataclass(frozen=True)
@@ -138,9 +131,43 @@ def registrar(fichero: FicheroLegal) -> FicheroLegal:
     return fichero
 
 
+def _de_ambitos() -> list[FicheroLegal]:
+    """Every domain package's ``Ganchos.ficheros_legales`` (read through the v1 adapter for a v1 domain).
+
+    Found by the registry's package discovery, not through the cached registry: an operator's switch, a domain
+    refused by validation or a registry replaced by a test never hides legal data from the weekly verification.
+    """
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from hacienda_gpt.modulos.registro import descubrir
+
+    encontrados, errores = descubrir()
+    for nombre, motivo in errores.items():
+        logger.warning("The legal data of domain %s could not be read: %s", nombre, motivo)
+    out: list[FicheroLegal] = []
+    for _origen, modulo in encontrados:
+        try:
+            out += [f for f in ganchos_de(modulo).ficheros_legales if isinstance(f, FicheroLegal)]
+        except Exception:  # one broken declaration must not hide the others
+            logger.exception("Could not read the legal data files of domain %s", _origen)
+    return out
+
+
+def _de_capacidades() -> list[FicheroLegal]:
+    """Every capability package's ``ficheros_legales`` (optional attribute)."""
+    from hacienda_gpt.capacidades.registro import descubrir
+
+    encontrados, errores = descubrir()
+    for nombre, motivo in errores.items():
+        logger.warning("The legal data of capability %s could not be read: %s", nombre, motivo)
+    out: list[FicheroLegal] = []
+    for _origen, capacidad in encontrados:
+        out += [f for f in getattr(capacidad, "ficheros_legales", ()) or () if isinstance(f, FicheroLegal)]
+    return out
+
+
 @lru_cache(maxsize=1)
 def _declarados() -> tuple[FicheroLegal, ...]:
-    encontrados: list[FicheroLegal] = []
+    encontrados: list[FicheroLegal] = [*_de_ambitos(), *_de_capacidades()]
     for nombre in DECLARANTES:
         try:
             modulo = importlib.import_module(nombre)
@@ -150,7 +177,11 @@ def _declarados() -> tuple[FicheroLegal, ...]:
             logger.warning("The legal data of %s is not installed", nombre)
             continue
         encontrados += list(getattr(modulo, "FICHEROS_LEGALES", ()))
-    return tuple(encontrados)
+    # A file declared twice (a domain and the capability it moved to) counts once: the first declaration wins.
+    unicos: dict[str, FicheroLegal] = {}
+    for fichero in encontrados:
+        unicos.setdefault(fichero.clave, fichero)
+    return tuple(unicos.values())
 
 
 def ficheros_legales() -> list[FicheroLegal]:

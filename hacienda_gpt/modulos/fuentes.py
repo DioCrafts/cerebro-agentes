@@ -28,7 +28,8 @@ import re
 from typing import Any
 
 from hacienda_gpt import settings
-from hacienda_gpt.modulos.registro import FISCAL, Registro, registro
+from hacienda_gpt.modulos.ganchos import fuentes_vigiladas_aparte
+from hacienda_gpt.modulos.registro import Registro, registro
 
 logger = logging.getLogger(__name__)
 
@@ -81,11 +82,12 @@ def lecturas_en_datos() -> dict[tuple[str, str], date]:
 
 
 def fuentes_de_modulos(reg: Registro | None = None) -> list[FuenteVigilada]:
-    """Sources of every registered household module (the tax module's are in ``tax/fuentes.py``)."""
+    """Sources of every registered household module, except those a domain declares watched by its own
+    maintenance (``Ganchos.fuentes_vigiladas_aparte``: the tax module's laws, in ``tax/fuentes.py``)."""
     out: list[FuenteVigilada] = []
     en_datos = lecturas_en_datos()
     for modulo in (reg or registro()).modulos.values():
-        if modulo.clave == FISCAL:
+        if fuentes_vigiladas_aparte(modulo):
             continue
         for fuente in modulo.fuentes:
             encontrado = _BOE_ID.search(fuente.identificador) or _BOE_ID.search(fuente.url or "")

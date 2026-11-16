@@ -212,6 +212,8 @@ def problemas_de_ganchos(modulo: Modulo, ganchos: Ganchos) -> list[str]:
     propios = {h.nombre for h in modulo.hechos or () if isinstance(h, HechoModulo)}
     if not isinstance(ganchos.obligatorio, bool):
         problemas.append("obligatorio debe ser True o False")
+    if not isinstance(ganchos.fuentes_vigiladas_aparte, bool):
+        problemas.append("fuentes_vigiladas_aparte debe ser True o False")
     for nombre in ganchos.agente.directas:
         herramienta = por_nombre.get(nombre)
         if herramienta is None:

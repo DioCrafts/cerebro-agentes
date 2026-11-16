@@ -17,7 +17,8 @@ told apart by its key:
   has no access to the notices already written, which the year-end job needs to avoid repeating its request for
   figures;
 * ``eventos``: profile changes, dates, new BOE norms and analysed changes of the law; it reads every shared fact;
-* ``ficheros_legales``: the passages kept in code (``conocimiento/citas_fiscales.py``).
+* ``ficheros_legales``: the passages kept in code (``conocimiento/citas_fiscales.py``);
+* ``fuentes_vigiladas_aparte``: its sources are the tax laws, watched by the tax parameters' ``params-check``.
 
 The v1 attribute names (``herramientas_directas``, ``ayuda_registrar_hechos``, ``hechos_estructurados``,
 ``tipos_en_bandeja``, ``ejecutar_en_bandeja``) are kept as views of the declaration, for older callers.
@@ -137,6 +138,8 @@ class ModuloFiscal:
             ficheros_legales=tuple(FICHEROS_LEGALES),
             # Tax documents (certificates, payslips…) are read by the documents capability.
             capacidades=("documentos.leer_campos", "investigacion"),
+            # Its laws are the tax parameters' (``tax/fuentes.py``), checked by ``params-check`` on their own.
+            fuentes_vigiladas_aparte=True,
         )
 
     # v1 views of the declaration (older callers and tests read them).

@@ -189,6 +189,10 @@ class CapacidadBase:
     consentimiento: Consentimiento = "usuario"
     operaciones: Sequence[OperacionCapacidad] = field(default_factory=tuple)
     ambitos: frozenset[str] | None = None
+    # The capability's legal data files (``conocimiento.FicheroLegal``), like a domain's ``Ganchos.ficheros_legales``:
+    # the maintenance loop (``params-verify``, ``params-check``) covers them without being told. Optional; read
+    # with ``getattr`` so a capability that is not a ``CapacidadBase`` may declare it too.
+    ficheros_legales: tuple[Any, ...] = ()
 
     def operacion(self, clave: str) -> OperacionCapacidad | None:
         return next((op for op in self.operaciones if op.clave == clave), None)

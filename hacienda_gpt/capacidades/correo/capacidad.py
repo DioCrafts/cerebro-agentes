@@ -20,6 +20,7 @@ from hacienda_gpt.capacidades.contrato import CapacidadBase, ContextoPeticion, O
 from hacienda_gpt.capacidades.correo import almacen, decisiones
 from hacienda_gpt.capacidades.correo import resumen as resumenes
 from hacienda_gpt.capacidades.correo.clasificacion import CATEGORIAS
+from hacienda_gpt.capacidades.correo.normativa import FICHEROS_LEGALES
 from hacienda_gpt.capacidades.correo.seguridad import envolver
 from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
 
@@ -166,6 +167,8 @@ CAPACIDAD = CapacidadBase(
             ejecutar=_facturas,
         ),
     ),
+    # The rules of administrative notifications the mail explains (``normativa.py``), re-verified every week.
+    ficheros_legales=tuple(FICHEROS_LEGALES),
 )
 
 __all__ = ["CAPACIDAD", "CATEGORIAS_FACTURA", "MAX_FACTURAS"]
