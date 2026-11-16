@@ -1,11 +1,11 @@
-"""``hacienda_gpt.evaluacion`` (``FeedbackStore``): review rows of the users' feedback (no conversation text).
+"""``asistente.nucleo.evaluacion`` (``FeedbackStore``): review rows of the users' feedback (no conversation text).
 
 Baseline copied byte for byte from ``evaluacion/captura.py``; the trigger waits for ``case_states``.
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 TABLA = """
     CREATE TABLE IF NOT EXISTS evaluacion_feedback (
@@ -25,7 +25,7 @@ DISPARADOR = """
 
 PROPIETARIO = Propietario(
     nombre="evaluacion",
-    paquete="hacienda_gpt.evaluacion",
+    paquete="asistente.nucleo.evaluacion",
     descripcion="Valoraciones de las respuestas y su revisión (el contenido vive en audit_events).",
     tablas=("evaluacion_feedback",),
     otros_objetos=("idx_evaluacion_feedback_case", "evaluacion_feedback_borra_con_el_caso"),

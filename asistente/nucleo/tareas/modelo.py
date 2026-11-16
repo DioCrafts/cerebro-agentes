@@ -73,7 +73,7 @@ class Espera(_Modelo):
     dias: int | None = Field(default=None, ge=0, le=3650)
     # The date the user gave when confirming that (earlier) step, minus ``dias_antes``.
     fecha_de_paso: str | None = Field(default=None, pattern=_ID_PASO)
-    # The first deadline of the tax calendar (hacienda_gpt/tax/calendario.py) whose id starts with this,
+    # The first deadline of the tax calendar (asistente/ambitos/fiscal/calculo/calendario.py) whose id starts with this,
     # minus ``dias_antes``.
     calendario: str | None = Field(default=None, pattern=r"^[a-z][a-z0-9_]{0,60}$")
     dias_antes: int = Field(default=0, ge=0, le=365)
@@ -225,7 +225,7 @@ class Tarea(_Modelo):
     proxima_revision: date | None = None
     pasos: list[Paso] = Field(min_length=1, max_length=MAX_PASOS)
     vinculos: Vinculos = Field(default_factory=Vinculos)
-    # The memory ámbito a cancellation with a reason is recorded on (hacienda_gpt/memoria).
+    # The memory ámbito a cancellation with a reason is recorded on (asistente/nucleo/memoria).
     ambito_decision: str | None = Field(default=None, max_length=200)
     motivo_cancelacion: str | None = Field(default=None, max_length=500)
     # Optimistic concurrency: the store refuses a save over a newer version.

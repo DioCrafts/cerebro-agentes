@@ -18,7 +18,7 @@ Bridges today:
   in ``modulos/hipoteca/data/deduccion_vivienda.json`` (``modulos/hipoteca/deduccion.py``). The rate and the cap
   stay the calculator's.
 
-A proposal is about the ámbito ``fiscal:propuesta:<puente>`` of the decision memory (``hacienda_gpt/memoria``):
+A proposal is about the ámbito ``fiscal:propuesta:<puente>`` of the decision memory (``asistente/nucleo/memoria``):
 a «no» the user said about it holds it back (``modulos/propuestas_chat.py``). A fact recorded from one has the
 source ``puente:<puente>``.
 """
@@ -33,9 +33,9 @@ import importlib
 import logging
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState, parse_fiscal_year
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.perfil import perfil_de
+from asistente.nucleo.decision.schemas import CaseState, parse_fiscal_year
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
+from asistente.nucleo.modulos.perfil import perfil_de
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +67,11 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
     if prestamo.get("vivienda_habitual") is False:
         return None
     ejercicio = parse_fiscal_year(case.tax_period) or hoy.year
-    pagos_del_ejercicio = importlib.import_module("hacienda_gpt.modulos.hipoteca").pagos_del_ejercicio
+    pagos_del_ejercicio = importlib.import_module("asistente.ambitos.hipoteca").pagos_del_ejercicio
     pagos = pagos_del_ejercicio(ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id), ejercicio)
     if not pagos:
         return None
-    from hacienda_gpt.modulos.hipoteca.deduccion import base_deducible, cargar_fundamento, importes_deducibles
+    from asistente.ambitos.hipoteca.deduccion import base_deducible, cargar_fundamento, importes_deducibles
 
     fundamento = cargar_fundamento()
     # Only what the law puts in the base and the module knows (``incluido`` concepts), each one with its quote.
@@ -109,7 +109,7 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
 def _limite_irpf(ejercicio: int) -> str:
     """« (como máximo 9.040 € al año por declarante, al 15 %)» from the IRPF parameters, or "" without them."""
     try:
-        from hacienda_gpt.tax.params import load_params
+        from asistente.ambitos.fiscal.calculo.params import load_params
 
         v = load_params(ejercicio).vivienda_habitual_transitoria
     except Exception:  # no parameters for that year: the calculator will say so itself
@@ -158,7 +158,7 @@ def propuestas_para(case: CaseState, modulos: Sequence[Modulo], *, hoy: date) ->
     """Proposals for this case from the active modules' bridges. A failing bridge is logged and skipped."""
     perfil = perfil_de(case)
     out: list[PropuestaHecho] = []
-    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.ganchos import ganchos_de
 
     for modulo in modulos:
         for puente in ganchos_de(modulo).puentes:

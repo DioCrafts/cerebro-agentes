@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.modulos.caducidades import calculo
-from hacienda_gpt.modulos.caducidades.calculo import CalculoError, Vencimiento, fmt
-from hacienda_gpt.modulos.caducidades.hechos import (
+from asistente.ambitos.caducidades import calculo
+from asistente.ambitos.caducidades.calculo import CalculoError, Vencimiento, fmt
+from asistente.ambitos.caducidades.hechos import (
     HECHO_ANTELACIONES,
     HECHO_COMPRAS,
     HECHO_CONTRATOS,
@@ -26,8 +26,8 @@ from hacienda_gpt.modulos.caducidades.hechos import (
     validar_fechas_nacimiento,
     validar_vehiculos,
 )
-from hacienda_gpt.modulos.caducidades.reglas import Reglas, cargar_reglas
-from hacienda_gpt.modulos.contrato import AvisoModulo, Gravedad
+from asistente.ambitos.caducidades.reglas import Reglas, cargar_reglas
+from asistente.nucleo.modulos.contrato import AvisoModulo, Gravedad
 
 NOMBRE_DOCUMENTO = {
     "dni": "DNI",

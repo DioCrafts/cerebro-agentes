@@ -112,7 +112,7 @@ export interface ResultadoModelo303 extends ResultadoBase {
   puede_solicitar_devolucion: boolean;
 }
 
-/** What the profile bridge did with the activity figures of a case (see hacienda_gpt/tax/profile.py). */
+/** What the profile bridge did with the activity figures of a case (see asistente/ambitos/fiscal/profile.py). */
 export interface ActividadPerfil {
   /** True when the net income was computed from the breakdown. */
   calculado: boolean;

@@ -1,9 +1,9 @@
 """Figures of the stable public benefits (family A), loaded from versioned JSON.
 
-Same rule as ``hacienda_gpt.tax.autonomos_params``: no figure lives in the arithmetic, and every group
+Same rule as ``asistente.ambitos.fiscal.calculo.autonomos_params``: no figure lives in the arithmetic, and every group
 carries the literal quotes of the law it was read from and how each figure is spelled in them, so the
 data can be re-checked mechanically against the consolidated texts on boe.es
-(:func:`comprobar_evidencias`, the shared checker of :mod:`hacienda_gpt.conocimiento`). Dates read from the law are
+(:func:`comprobar_evidencias`, the shared checker of :mod:`asistente.conocimiento`). Dates read from the law are
 checked the same way. Each year's file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification and the
 reading dates cover it.
 """
@@ -21,7 +21,8 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.ambitos.fiscal.calculo.params import Fuente, FuentePrincipal
+from asistente.conocimiento import (
     FRONTERA_MIXTA,
     FicheroLegal,
     GrupoLegal,
@@ -30,8 +31,7 @@ from hacienda_gpt.conocimiento import (
     fuente_de,
     hojas,
 )
-from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
-from hacienda_gpt.tax.params import Fuente, FuentePrincipal
+from asistente.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 
@@ -355,7 +355,7 @@ def comprobar_evidencias(params: PrestacionesParams, textos: dict[str, str] | No
     Always checked: every figure and date of every group is spelled in one of the group's quotes and
     that spelling means the stored value. With ``textos`` (BOE id -> plain text of the law, or of the
     quoted articles) each quote must also appear verbatim in its law. The checker is the shared one of
-    :mod:`hacienda_gpt.conocimiento`.
+    :mod:`asistente.conocimiento`.
     """
     fichero = next((f for f in FICHEROS_LEGALES if f.clave == f"ayudas_{params.ejercicio}"), None)
     if fichero is None:  # a year built in memory (tests): same declaration, no file
@@ -369,10 +369,10 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.modulos.ayudas.parametros <dir with BOE-A-*.html|txt> [ejercicio]``."""
+    """``python -m asistente.ambitos.ayudas.parametros <dir with BOE-A-*.html|txt> [ejercicio]``."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) not in (1, 2):
-        print("uso: python -m hacienda_gpt.modulos.ayudas.parametros <directorio con BOE-A-*.html> [ejercicio]")
+        print("uso: python -m asistente.ambitos.ayudas.parametros <directorio con BOE-A-*.html> [ejercicio]")
         return 2
     params = load_prestaciones(int(args[1]) if len(args) == 2 else None)
     problemas = comprobar_evidencias(params, textos_de_directorio(Path(args[0])))

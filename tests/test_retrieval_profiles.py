@@ -1,5 +1,5 @@
-from hacienda_gpt.llm.retrieval_profiles import build_decision_profile, build_explain_profile
-import hacienda_gpt.settings as settings
+from asistente.conocimiento.llm.retrieval_profiles import build_decision_profile, build_explain_profile
+import asistente.plataforma.settings as settings
 
 
 def test_decision_profile_defaults_and_filter() -> None:

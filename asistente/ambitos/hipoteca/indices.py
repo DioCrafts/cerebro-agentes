@@ -11,7 +11,7 @@ and one around the 18th (IRPH and the euro-area average). This module
 - keeps the series as versioned data (``data/indices_referencia.json``), every value with the BOE id it
   was read from, the literal figure and the publication date; a later «Corrección de erratas» wins;
 - finds new resolutions with the BOE search (``/buscar/boe.php``) behind an injectable fetcher, so the
-  tests never touch the network: ``python -m hacienda_gpt.modulos.hipoteca.indices actualizar``.
+  tests never touch the network: ``python -m asistente.ambitos.hipoteca.indices actualizar``.
 """
 
 from __future__ import annotations
@@ -493,7 +493,7 @@ def _fetch_urllib(url: str) -> bytes:  # pragma: no cover - network
         return data
 
 
-# --- Declaration for the shared legal-data library (hacienda_gpt.conocimiento) ------------------------
+# --- Declaration for the shared legal-data library (asistente.conocimiento) ------------------------
 
 
 def _literales_coherentes(serie: SerieIndices, _textos: object) -> list[str]:
@@ -507,7 +507,7 @@ def _literales_coherentes(serie: SerieIndices, _textos: object) -> list[str]:
 
 
 def _declaracion() -> tuple[object, ...]:
-    from hacienda_gpt.conocimiento import FicheroLegal, Ortografia
+    from asistente.conocimiento import FicheroLegal, Ortografia
 
     return (
         FicheroLegal(
@@ -522,7 +522,7 @@ def _declaracion() -> tuple[object, ...]:
             limpiar=lambda: cargar_serie.cache_clear(),
             solo_persona=(
                 "Serie mensual publicada por el Banco de España en resoluciones del BOE (una por mes, no un texto "
-                "consolidado): la mantiene su propio lector (``python -m hacienda_gpt.modulos.hipoteca.indices "
+                "consolidado): la mantiene su propio lector (``python -m asistente.ambitos.hipoteca.indices "
                 "actualizar``), que lee cada resolución en XML y guarda la cifra tal como se imprime."
             ),
         ),
@@ -559,7 +559,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - network / 
     serie = construir_serie(resoluciones, hoy, sha, base)
     SERIE_PATH.write_text(json.dumps(serie, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if base is not None and resoluciones:  # event bus: wake the mortgage module of every household now
-        from hacienda_gpt.eventos import emitir_indices
+        from asistente.nucleo.eventos import emitir_indices
 
         emitir_indices(xmls)
     print(f"Serie escrita en {SERIE_PATH}: {len(resoluciones)} resolución(es) leída(s), {len(problemas)} aviso(s).")

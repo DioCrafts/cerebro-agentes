@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.decision.rules import (
+from asistente.nucleo.decision.rules import (
     ConditionOperator,
     DecisionRule,
     RuleCondition,
@@ -17,7 +17,7 @@ from hacienda_gpt.decision.rules import (
     RuleSourceRef,
     load_rules_from_directory,
 )
-from hacienda_gpt.decision.schemas import (
+from asistente.nucleo.decision.schemas import (
     CaseState,
     EvidenceRef,
     EvidenceSourceType,
@@ -25,7 +25,7 @@ from hacienda_gpt.decision.schemas import (
     ObligationCandidate,
     parse_fiscal_year,
 )
-from hacienda_gpt.settings import RULES_DIR
+from asistente.plataforma.settings import RULES_DIR
 
 
 def _source_ref_to_evidence(ref: RuleSourceRef, confidence: float) -> EvidenceRef:

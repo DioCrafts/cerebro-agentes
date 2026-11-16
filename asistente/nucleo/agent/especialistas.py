@@ -1,9 +1,9 @@
 """The central agent's specialists: one per household module (luz, hipoteca, suscripciones…).
 
 The advisor calls the tools of a module flagged ``herramientas_directas`` (the tax module) directly (see
-:mod:`hacienda_gpt.agent.tools`). For every other module the user has switched on it gets ONE tool,
+:mod:`asistente.nucleo.agent.tools`). For every other module the user has switched on it gets ONE tool,
 ``consultar_<clave>``, which runs that module's specialist: a bounded sub-agent (the same loop as the
-team's researchers, :func:`hacienda_gpt.agent.team.run_subagent`) whose tools are ONLY the module's tools
+team's researchers, :func:`asistente.nucleo.agent.team.run_subagent`) whose tools are ONLY the module's tools
 plus ``leer_expediente``, and whose system prompt carries the module's ``instrucciones``.
 
 What the core guarantees, whatever the module does:
@@ -12,7 +12,7 @@ What the core guarantees, whatever the module does:
   ``CALCULADORA``), so the specialist's figures reach the final answer with ``[F#]`` ids that the verifier
   checks like any other source;
 * a tool with ``efecto="actua"`` is never executed here: the call becomes a pending action that only runs
-  after the owner of the case confirms it (see :mod:`hacienda_gpt.modulos.acciones`);
+  after the owner of the case confirms it (see :mod:`asistente.nucleo.modulos.acciones`);
 * a ``prepara`` tool runs, and its result is labelled as a draft;
 * a module can only write the facts it declared, validated (``ContextoModulo.registrar``);
 * the specialist sees the shared facts and its own module's, never another module's;
@@ -28,16 +28,21 @@ import json
 import logging
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import LLMProvider, ToolCall, ToolSpec
-from hacienda_gpt.agent.team import SubagentRun, run_subagent
-from hacienda_gpt.agent.tools import ExtraTool, Toolbox, ToolOutcome
-from hacienda_gpt.evaluacion.variantes import prompt_activo
-from hacienda_gpt.modulos.acciones import AccionPendiente, describir
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo, ResultadoHerramienta
-from hacienda_gpt.modulos.perfil import HechoInvalidoError, hechos_para_modulo, perfil_de, registrar_hechos_de_modulo
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import LLMProvider, ToolCall, ToolSpec
+from asistente.nucleo.agent.team import SubagentRun, run_subagent
+from asistente.nucleo.agent.tools import ExtraTool, Toolbox, ToolOutcome
+from asistente.nucleo.evaluacion.variantes import prompt_activo
+from asistente.nucleo.modulos.acciones import AccionPendiente, describir
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo, ResultadoHerramienta
+from asistente.nucleo.modulos.perfil import (
+    HechoInvalidoError,
+    hechos_para_modulo,
+    perfil_de,
+    registrar_hechos_de_modulo,
+)
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +87,7 @@ def consult_spec(modulo: Modulo) -> ToolSpec:
 
 def modules_addendum(modulos: Sequence[Modulo]) -> str:
     lineas = "\n".join(f"- `{nombre_herramienta(m)}` — {m.nombre}: {' '.join(m.descripcion.split())}" for m in modulos)
-    # Active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.MODULES_ADDENDUM.
+    # Active prompt variant (asistente/nucleo/evaluacion/variantes.py); by default prompts.MODULES_ADDENDUM.
     return prompt_activo("modulos").format(especialistas=lineas)
 
 
@@ -170,7 +175,7 @@ class Coordinador:
         cls, provider: LLMProvider, ledger: EvidenceLedger, modulos: Sequence[Modulo] | None, emit: Emit
     ) -> Coordinador | None:
         """A coordinator when at least one module without direct tools is on; None keeps the advisor as it was."""
-        from hacienda_gpt.modulos.ganchos import tiene_especialista
+        from asistente.nucleo.modulos.ganchos import tiene_especialista
 
         especialistas = [m for m in modulos or () if tiene_especialista(m)]
         if not especialistas:
@@ -254,8 +259,8 @@ class Coordinador:
         mensaje = f"<consulta>\n{pregunta}\n</consulta>"
         if contexto:
             mensaje += f"\n\n<contexto_del_asistente>\n{contexto}\n</contexto_del_asistente>"
-        # The user's decisions about THIS module only (hacienda_gpt/memoria): never another module's.
-        from hacienda_gpt.memoria.agente import bloque_para_especialista
+        # The user's decisions about THIS module only (asistente/nucleo/memoria): never another module's.
+        from asistente.nucleo.memoria.agente import bloque_para_especialista
 
         memoria = bloque_para_especialista(self._toolbox.case if self._toolbox is not None else None, modulo.clave)
         if memoria:

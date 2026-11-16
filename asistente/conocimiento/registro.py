@@ -2,7 +2,7 @@
 
 Each module's checker file declares its legal data files as ``FICHEROS_LEGALES`` — a tuple of
 :class:`FicheroLegal`: where the JSON lives, how to load it, and the adapter that turns it into
-:class:`~hacienda_gpt.conocimiento.modelo.GrupoLegal` objects (plus the checks only that module knows how to do).
+:class:`~asistente.conocimiento.modelo.GrupoLegal` objects (plus the checks only that module knows how to do).
 Nobody lists them by hand: every domain hands its files to the core in ``Ganchos.ficheros_legales``
 (``modulos/ganchos.py``) and every capability in its ``ficheros_legales`` attribute (``capacidades/contrato.py``),
 both found by package discovery; :data:`DECLARANTES` only names the core's own files that belong to neither (the
@@ -13,10 +13,10 @@ From that declaration, with nothing else to wire:
 * ``params-verify`` re-verifies every group against today's BOE (:func:`verificar_fichero`);
 * ``params-check`` compares the BOE's update date of each law with the reading date the file records
   (``fuentes_principales[*].consultado_el``), and ``params-verify``/``params-autopilot`` record a new reading in the
-  file when every group that quotes the law still matches (:mod:`hacienda_gpt.tax.recodificacion.procedencia`), so
+  file when every group that quotes the law still matches (:mod:`asistente.conocimiento.recodificacion.procedencia`), so
   the weekly pull request of readings (``params-lecturas``) carries it;
 * the files that declare a re-encoding (:class:`Recodificable`) join the agentic loop
-  (:mod:`hacienda_gpt.conocimiento.recodificacion`); the others say why a person keeps them (``solo_persona``).
+  (:mod:`asistente.conocimiento.recodificacion.de_modulos`); the others say why a person keeps them (``solo_persona``).
 """
 
 from __future__ import annotations
@@ -31,26 +31,39 @@ from pathlib import Path
 import re
 from typing import Any
 
-from hacienda_gpt.conocimiento.comprobacion import SIN_TEXTO, Comprobacion, Resultado, comprobar_grupos
-from hacienda_gpt.conocimiento.modelo import GrupoLegal, Ortografia
-from hacienda_gpt.conocimiento.texto import TextoDe, texto_de_html
+from asistente.conocimiento.comprobacion import SIN_TEXTO, Comprobacion, Resultado, comprobar_grupos
+from asistente.conocimiento.modelo import GrupoLegal, Ortografia
+from asistente.conocimiento.texto import TextoDe, texto_de_html
 
 logger = logging.getLogger(__name__)
 _ES_HTML = re.compile(r"<(?:html|body|p|div|h\d|table|tr|pre)\b", re.IGNORECASE)
 
 # The package root: files are named relative to it in reports ("modulos/luz/data/regulados.json").
 RAIZ = Path(__file__).resolve().parents[1]
+# A file's name is an IDENTIFIER, stored in the reading log, the re-encoding state and its proposals: it keeps the
+# spelling it had under the old package layout (``hacienda_gpt/modulos/<domain>/…``) although the domains now live
+# in ``asistente/ambitos/<domain>/…``. Prefix of the path below :data:`RAIZ` -> prefix of the stored name.
+NOMBRES_ESTABLES: tuple[tuple[str, str], ...] = (("ambitos/", "modulos/"),)
+
+
+def nombre_estable(relativa: str) -> str:
+    """The stored name of a data file whose path below :data:`RAIZ` is ``relativa`` (POSIX)."""
+    for actual, historico in NOMBRES_ESTABLES:
+        if relativa.startswith(actual):
+            return historico + relativa[len(actual) :]
+    return relativa
+
 
 # The core's own files that declare ``FICHEROS_LEGALES`` and belong to no domain or capability (the domains' and
 # capabilities' files are found through their declarations: :func:`_de_ambitos`, :func:`_de_capacidades`).
-DECLARANTES: tuple[str, ...] = ("hacienda_gpt.planificador.textos",)
+DECLARANTES: tuple[str, ...] = ("asistente.nucleo.planificador.textos",)
 
 
 @dataclass(frozen=True)
 class Recodificable:
-    """What the agentic loop needs to re-encode a module's groups (see :mod:`hacienda_gpt.conocimiento.recodificacion`).
+    """What the agentic loop needs to re-encode a module's groups (see :mod:`asistente.conocimiento.recodificacion.de_modulos`).
 
-    ``familia`` builds, lazily, the :class:`~hacienda_gpt.tax.recodificacion.adaptadores_otros.Familia` of the file:
+    ``familia`` builds, lazily, the :class:`~asistente.conocimiento.recodificacion.adaptadores_otros.Familia` of the file:
     its root model, how its figures are printed, its self-check and the calculators a reviewer's test case runs
     through.
     """
@@ -90,7 +103,7 @@ class FicheroLegal:
         if self.ruta is None:
             return f"{self.clave} (citas en el código)"
         try:
-            return self.ruta.resolve().relative_to(RAIZ).as_posix()
+            return nombre_estable(self.ruta.resolve().relative_to(RAIZ).as_posix())
         except ValueError:
             return self.ruta.name
 
@@ -137,8 +150,8 @@ def _de_ambitos() -> list[FicheroLegal]:
     Found by the registry's package discovery, not through the cached registry: an operator's switch, a domain
     refused by validation or a registry replaced by a test never hides legal data from the weekly verification.
     """
-    from hacienda_gpt.modulos.ganchos import ganchos_de
-    from hacienda_gpt.modulos.registro import descubrir
+    from asistente.nucleo.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.registro import descubrir
 
     encontrados, errores = descubrir()
     for nombre, motivo in errores.items():
@@ -154,7 +167,7 @@ def _de_ambitos() -> list[FicheroLegal]:
 
 def _de_capacidades() -> list[FicheroLegal]:
     """Every capability package's ``ficheros_legales`` (optional attribute)."""
-    from hacienda_gpt.capacidades.registro import descubrir
+    from asistente.capacidades.registro import descubrir
 
     encontrados, errores = descubrir()
     for nombre, motivo in errores.items():
@@ -226,7 +239,7 @@ def textos_para(grupos: Iterable[GrupoLegal], texto_de: TextoDe) -> dict[str, st
         pagina = texto_de(boe_id, version)
         if pagina:
             if version is None:
-                from hacienda_gpt.ops import formatos
+                from asistente.conocimiento import formatos
 
                 formatos.observar("boe_consolidado_html", pagina, contexto=boe_id)
             # A page from boe.es is reduced to its text, one paragraph per line; an extract kept as text stays as it is.
@@ -309,7 +322,7 @@ class LecturaDeModulo:
 def lecturas_de_modulos(ficheros: Iterable[FicheroLegal] | None = None) -> list[LecturaDeModulo]:
     """Every reading of a law recorded in a module's data file (``boe_id`` with ``consolidado_a`` and
     ``consultado_el``, wherever it sits in the file)."""
-    from hacienda_gpt.tax.recodificacion.procedencia import fuentes_del_fichero
+    from asistente.conocimiento.recodificacion.procedencia import fuentes_del_fichero
 
     out: list[LecturaDeModulo] = []
     for fichero in con_datos(ficheros):

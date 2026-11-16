@@ -19,7 +19,7 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.processor.strategies.base import IngestStrategy
+from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 
 class DefaultDoclingStrategy(IngestStrategy):
@@ -46,7 +46,7 @@ class DefaultDoclingStrategy(IngestStrategy):
         # because it needs the per-worker ``_WORKER_CHUNKER`` initialised by
         # the multiprocessing pool initialiser. Importing it here avoids a
         # circular import at module load.
-        from hacienda_gpt.processor.document_loader import _docling_parse_default
+        from asistente.conocimiento.processor.document_loader import _docling_parse_default
 
         return _docling_parse_default(file_path)
 
@@ -70,7 +70,7 @@ def docling_parse_files(file_paths: list[str]) -> list[Document]:
     the chunker initialisation. Used by ``BoeConsolidadoTableStrategy``
     after it has produced the temp sub-files.
     """
-    from hacienda_gpt.processor.document_loader import _docling_parse_paths
+    from asistente.conocimiento.processor.document_loader import _docling_parse_paths
 
     return _docling_parse_paths(file_paths)
 
@@ -79,7 +79,7 @@ def docling_parse_files(file_paths: list[str]) -> list[Document]:
 # importing from ``document_loader`` directly — keeps the dependency
 # direction strategies → loader rather than the reverse.
 def _stable_chunk_id_for(file_path: str, idx: int) -> str:
-    from hacienda_gpt.processor.document_loader import _stable_chunk_id
+    from asistente.conocimiento.processor.document_loader import _stable_chunk_id
 
     return _stable_chunk_id(file_path, idx)
 

@@ -15,20 +15,20 @@ import json
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.almacen import olvidar_almacenes
-from hacienda_gpt.memoria.servicio import registrar
-from hacienda_gpt.modulos import registro
-from hacienda_gpt.modulos.contrato import ContextoModulo
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
-from hacienda_gpt.modulos.hipoteca import MODULO as HIPOTECA
-from hacienda_gpt.modulos.hipoteca import pagos_del_ejercicio
-from hacienda_gpt.modulos.propuestas_chat import PropuestasChat, es_confirmacion, muestra_la_cifra
-from hacienda_gpt.modulos.puentes import HECHO_VIVIENDA_PRE2013, propuestas_para
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.ambitos.hipoteca import MODULO as HIPOTECA
+from asistente.ambitos.hipoteca import pagos_del_ejercicio
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.almacen import olvidar_almacenes
+from asistente.nucleo.memoria.servicio import registrar
+from asistente.nucleo.modulos import registro
+from asistente.nucleo.modulos.contrato import ContextoModulo
+from asistente.nucleo.modulos.propuestas_chat import PropuestasChat, es_confirmacion, muestra_la_cifra
+from asistente.nucleo.modulos.puentes import HECHO_VIVIENDA_PRE2013, propuestas_para
+from asistente.plataforma import settings
 from tests.agent.fakes import FakeSearcher, corpus, text_turn, tool_turn, verdict
 from tests.modulos_nucleo.test_especialistas import RecordingProvider
 

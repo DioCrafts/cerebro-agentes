@@ -2,8 +2,9 @@
 
 Two faces: ``CAPACIDAD`` (``capacidad.py``: the read-only operations any domain asks for through
 ``capacidades.pedir``, e.g. «facturas de este emisor») and ``MODULO`` (the chat front: its specialist, notices,
-facts and switch, discovered by the module registry through the shim ``hacienda_gpt.modulos.correo``). Consent
-is ONE switch for both (the module choice ``correo``). Moved here from ``hacienda_gpt/modulos/correo``.
+facts and switch, discovered by the module registry, which also looks for ``MODULO`` in the capabilities' packages). Consent
+is ONE switch for both (the module choice ``correo``). Moved here from ``hacienda_gpt/modulos/correo`` (an alias in
+the compatibility package ``hacienda_gpt``).
 
 Connects with OAuth 2.0 + PKCE and the single scope ``gmail.readonly``; syncs incrementally by
 ``historyId``; parses each message in memory, classifies it deterministically (administration notices,
@@ -21,14 +22,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from hacienda_gpt.capacidades.correo import almacen
-from hacienda_gpt.capacidades.correo.avisos import generar_avisos
-from hacienda_gpt.capacidades.correo.capacidad import CAPACIDAD
-from hacienda_gpt.capacidades.correo.config import VENTANA_DIAS_MAX
-from hacienda_gpt.capacidades.correo.herramientas import HERRAMIENTAS
-from hacienda_gpt.capacidades.correo.normativa import cargar as cargar_normativa
-from hacienda_gpt.capacidades.correo.sincronizacion import EVENTO
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from asistente.capacidades.correo import almacen
+from asistente.capacidades.correo.avisos import generar_avisos
+from asistente.capacidades.correo.capacidad import CAPACIDAD
+from asistente.capacidades.correo.config import VENTANA_DIAS_MAX
+from asistente.capacidades.correo.herramientas import HERRAMIENTAS
+from asistente.capacidades.correo.normativa import cargar as cargar_normativa
+from asistente.capacidades.correo.sincronizacion import EVENTO
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
 
 HECHO_VENTANA = "correo_ventana_dias"
 
@@ -69,7 +70,7 @@ class ModuloCorreo(ModuloBase):
     def borrar_datos_de_caso(self, case_id: str, db_path: str) -> None:
         """Switched off with «borrar datos»: revoke the Gmail grant at Google, delete the token and erase the
         derived items, proposals and pinned contacts of the case."""
-        from hacienda_gpt.capacidades.correo import oauth
+        from asistente.capacidades.correo import oauth
 
         oauth.desconectar(case_id, db_path=db_path)
         almacen.borrar_datos(case_id, db_path)

@@ -5,9 +5,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.agent.prompts import AGENT_SYSTEM_PROMPT
-from hacienda_gpt.decision.fact_extractor import _SYSTEM_PROMPT, EXPECTED_FACT_TYPE, EXTRACTOR_FACT_NAMES
-from hacienda_gpt.tax.profile import build_input
+from asistente.ambitos.fiscal.profile import build_input
+from asistente.nucleo.agent.prompts import AGENT_SYSTEM_PROMPT
+from asistente.nucleo.decision.fact_extractor import _SYSTEM_PROMPT, EXPECTED_FACT_TYPE, EXTRACTOR_FACT_NAMES
 
 HECHOS_OBLIGACION = (
     "num_pagadores_trabajo",

@@ -7,8 +7,8 @@ from pathlib import Path
 import sqlite3
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.eventos.bus import salud_de
+from asistente.nucleo.eventos.bus import salud_de
+from asistente.plataforma import settings
 
 
 def estado(db_path: str | None = None, *, ahora: datetime | None = None) -> dict[str, Any]:
@@ -36,7 +36,7 @@ def problemas(db_path: str | None = None, *, ahora: datetime | None = None) -> l
     if salud["muertas"]:
         out.append(
             f"Bus de eventos: {salud['muertas']} entrega(s) agotaron sus reintentos (cola de errores). "
-            "Revísalas con «python -m hacienda_gpt.cli.eventos estado» y reintenta con «reintentar»."
+            "Revísalas con «python -m asistente.plataforma.cli.eventos estado» y reintenta con «reintentar»."
         )
     try:
         maximo = float(getattr(settings, "EVENTOS_ATRASO_MAX_MINUTOS", 30)) * 60
@@ -46,7 +46,7 @@ def problemas(db_path: str | None = None, *, ahora: datetime | None = None) -> l
         out.append(
             f"Bus de eventos: hay trabajo esperando desde hace {round(salud['atraso_s'] / 60)} min "
             f"({salud['pendientes']} entrega(s) pendiente(s); sin repartir: {salud['sin_repartir']}). "
-            "¿Está en marcha el trabajador («python -m hacienda_gpt.cli.eventos worker») o la API?"
+            "¿Está en marcha el trabajador («python -m asistente.plataforma.cli.eventos worker») o la API?"
         )
     if salud["consumidores_con_error"]:
         out.append(

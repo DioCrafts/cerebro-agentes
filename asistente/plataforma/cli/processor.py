@@ -3,8 +3,8 @@ import os
 
 import click
 
-from hacienda_gpt.processor.document_loader import build_index
-from hacienda_gpt.utils import configure_logging
+from asistente.conocimiento.processor.document_loader import build_index
+from asistente.plataforma.utils import configure_logging
 
 PRJ_DATA_DIR = os.environ.get("PRJ_DATA_DIR", os.path.expanduser("~"))
 FAISS_DIR = os.path.join(PRJ_DATA_DIR, "faiss")

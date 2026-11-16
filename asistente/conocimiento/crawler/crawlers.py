@@ -14,11 +14,11 @@ from scrapy.linkextractors import LinkExtractor
 from scrapy.spidermiddlewares.httperror import HttpError
 from scrapy_playwright.page import PageMethod
 
-from hacienda_gpt.crawler.boe_consolidado import BOECCAACrawler  # re-export
-from hacienda_gpt.crawler.boletin_autonomico import RegionalBoletinCrawler  # re-export
-from hacienda_gpt.crawler.cendoj import CENDOJCrawler  # re-export
-from hacienda_gpt.crawler.teac import TEACCrawler  # re-export
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler  # re-export
+from asistente.conocimiento.crawler.boletin_autonomico import RegionalBoletinCrawler  # re-export
+from asistente.conocimiento.crawler.cendoj import CENDOJCrawler  # re-export
+from asistente.conocimiento.crawler.teac import TEACCrawler  # re-export
 
 __all__ = [
     "AgenciaTributariaWebCrawler",

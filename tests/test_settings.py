@@ -2,7 +2,7 @@ import importlib
 
 import pytest
 
-import hacienda_gpt.settings as settings
+import asistente.plataforma.settings as settings
 
 
 def test_env_bool_truthy_values(monkeypatch: pytest.MonkeyPatch) -> None:

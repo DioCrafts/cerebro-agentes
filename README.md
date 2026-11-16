@@ -27,6 +27,21 @@ HaciendaGPT combina recuperación semántica (RAG), reglas de decisión fiscal y
 4. **Decision Engine**: evalúa reglas por periodo fiscal y hechos detectados.
 5. **UI/API**: expone experiencia de usuario e integración.
 
+### Estructura del código (`asistente/`)
+
+| Paquete | Qué contiene |
+|---|---|
+| `asistente/nucleo/` | El cerebro central (`agent/`: agente, especialistas, prompts, proveedores, enrutado por propósito), el contrato y el registro de ámbitos (`modulos/`: contrato v1 y ganchos v2, perfil, acciones, preferencias, puentes), tareas de larga duración (`tareas/`), bus de eventos (`eventos/`), memoria de decisiones (`memoria/`), expediente y extracción de hechos (`decision/`), bandeja, resumen y entrega (`proactive/`), evaluación continua (`evaluacion/`, `evals/`) y el planificador del hogar (`planificador/`, transversal a varios ámbitos). |
+| `asistente/capacidades/` | Medios que cualquier ámbito pide con `pedir`: `correo`, `navegador`, `documentos`, `investigacion` (y su contrato, registro y consentimiento). |
+| `asistente/ambitos/` | Los dominios: `fiscal` (con `calculo/` y sus datos legales en `data/`), `luz`, `hipoteca`, `ayudas`, `caducidades`, `suscripciones`. Solo paquetes de ámbito: el registro los descubre aquí. |
+| `asistente/conocimiento/` | Datos legales con cita literal, su comprobación y recodificación (`recodificacion/`), fuentes y vigencia de las normas, vigilancia del BOE y de formatos (`formatos*.py`, `data/formatos/`), y el corpus: `crawler/`, `processor/`, `llm/`, `doctrine/`. |
+| `asistente/plataforma/` | API (`api/`), cuentas (`auth/`), almacenamiento con migraciones y procesos (`migraciones/`, `procesos.py`, `trabajos.py`), operación (`ops/`), avisos push (`push/`), `settings.py`, la línea de órdenes (`cli/`), la UI Streamlit (`ui/`), observabilidad, gobernanza y utilidades. |
+
+Las órdenes son `python -m asistente.plataforma.cli.<orden>` y la API `uvicorn asistente.plataforma.api.api:app`.
+**Compatibilidad (una versión):** el paquete `hacienda_gpt` sigue existiendo solo como alias de las rutas antiguas
+(`hacienda_gpt.tax.irpf`, `python -m hacienda_gpt.cli.proactive`…, ver `hacienda_gpt/_alias.py`); cada uso avisa
+con un `DeprecationWarning` que dice la ruta nueva. Actualiza scripts y líneas de cron antes de la próxima versión.
+
 ---
 
 ## ✅ Requisitos
@@ -79,7 +94,7 @@ El proyecto usa **un único embedder local sobre MLX** (runtime nativo de
 Apple Silicon, pesos bf16, **sin cuantización**). Modelo base:
 `Qwen/Qwen3-Embedding-0.6B` convertido a MLX y servido desde
 `data/models/qwen3-emb-mlx-bf16/`. Tanto la indexación como la consulta
-construyen el embedder en `hacienda_gpt/llm/embeddings.py`, así que **no hay
+construyen el embedder en `asistente/conocimiento/llm/embeddings.py`, así que **no hay
 riesgo de mismatch** entre el índice y el retrieval.
 
 Por qué MLX y no PyTorch+MPS: medido **~1.35× más rápido** en M-series con
@@ -107,7 +122,7 @@ defecto. Para cambiar de modelo, convierte uno nuevo con
 > umbrales de similitud viven en `settings.py` y se configuran vía
 > `RETRIEVAL_DECISION_THRESHOLD` / `RETRIEVAL_EXPLAIN_THRESHOLD`. Defaults
 > actuales: 0.45 / 0.35. **Calíbralos** para tu corpus con
-> `uv run python -m hacienda_gpt.cli.benchmark_retrieval`.
+> `uv run python -m asistente.plataforma.cli.benchmark_retrieval`.
 
 > 🍎 **macOS**: si al primer request a `/qa` (uvicorn) o a la UI
 > (Streamlit) el proceso muere con
@@ -122,22 +137,22 @@ defecto. Para cambiar de modelo, convierte uno nuevo con
 
 Para temas concretos cuya página AEAT no es accesible o que necesitan la
 base normativa oficial (ej. Modelo 720), la lista canónica vive en
-[hacienda_gpt/cli/boe_seed_catalog.json](hacienda_gpt/cli/boe_seed_catalog.json).
+[asistente/plataforma/cli/boe_seed_catalog.json](asistente/plataforma/cli/boe_seed_catalog.json).
 Cada entrada referencia un ID de BOE, su tema y el subdirectorio destino
 dentro del snapshot. Vive junto al CLI a propósito: si lo dejásemos bajo
 `rules/`, `load_rules_from_directory` lo intentaría parsear como reglas
 de decisión.
 
 ```bash
-uv run python -m hacienda_gpt.cli.boe_seed
+uv run python -m asistente.plataforma.cli.boe_seed
 # o, para previsualizar sin descargar:
-uv run python -m hacienda_gpt.cli.boe_seed --dry-run
+uv run python -m asistente.plataforma.cli.boe_seed --dry-run
 ```
 
 El CLI escribe los HTML consolidados (`/buscar/act.php?id=...`) en
 `data/html/<snapshot_date>/<subdir>/<ID>.html` junto a un
 `boe-seed-manifest.json` con los tamaños descargados. El reindexado
-posterior (`hacienda_gpt.cli.processor`) los recoge igual que el resto
+posterior (`asistente.plataforma.cli.processor`) los recoge igual que el resto
 del corpus HTML.
 
 ---
@@ -149,9 +164,9 @@ DYCTEA usa identificadores compuestos para sus criterios
 buscador real por rango de fechas y baja cada criterio individualmente:
 
 ```bash
-uv run python -m hacienda_gpt.cli.teac_seed --from-date 2024-01-01 --to-date 2024-12-31
+uv run python -m asistente.plataforma.cli.teac_seed --from-date 2024-01-01 --to-date 2024-12-31
 # previsualización (sin descargar los detalles):
-uv run python -m hacienda_gpt.cli.teac_seed --from-date 2024-01-01 --to-date 2024-06-30 --dry-run
+uv run python -m asistente.plataforma.cli.teac_seed --from-date 2024-01-01 --to-date 2024-06-30 --dry-run
 ```
 
 Salida: `data/html/<snapshot>/teac/<safe_id>.html` + `.json` por
@@ -187,12 +202,12 @@ Para usos individuales y selectivos (consultas puntuales en el
 contexto de tu propio análisis), la spider scrapy existente
 (`--crawler cendoj`) sigue valiendo: tú aportas las URLs
 explícitamente. La plantilla versionada está en
-[hacienda_gpt/cli/cendoj_seed_urls.txt](hacienda_gpt/cli/cendoj_seed_urls.txt):
+[asistente/plataforma/cli/cendoj_seed_urls.txt](asistente/plataforma/cli/cendoj_seed_urls.txt):
 
 ```bash
-uv run python -m hacienda_gpt.cli.crawler \
+uv run python -m asistente.plataforma.cli.crawler \
   --crawler cendoj --folder ./data/cendoj \
-  --cendoj-urls-file hacienda_gpt/cli/cendoj_seed_urls.txt
+  --cendoj-urls-file asistente/plataforma/cli/cendoj_seed_urls.txt
 ```
 
 ## 📄 1.e) PDFs
@@ -210,26 +225,26 @@ Las únicas fuentes PDF que sí funcionan integradas en el repo son:
 
 ```bash
 # Códigos consolidados autonómicos del BOE (4 PDFs verificados):
-uv run python -m hacienda_gpt.cli.crawler --crawler boe-ccaa --folder ./data/boe --skip-unknown-ccaa
+uv run python -m asistente.plataforma.cli.crawler --crawler boe-ccaa --folder ./data/boe --skip-unknown-ccaa
 ```
 
 Si necesitas ingerir PDFs externos (manuales de despacho propio,
 boletines forales, etc.), añade su URL al spider que corresponda
 o crea una mini-CLI siguiendo el patrón de
-[hacienda_gpt/cli/boe_seed.py](hacienda_gpt/cli/boe_seed.py).
+[asistente/plataforma/cli/boe_seed.py](asistente/plataforma/cli/boe_seed.py).
 
 ## 🕸️ 1) Crawling de contenidos
 
 ### HTML (sitio AEAT)
 
 ```bash
-uv run python -m hacienda_gpt.cli.crawler --crawler web --folder ./data/html --depth 1 --mode flat
+uv run python -m asistente.plataforma.cli.crawler --crawler web --folder ./data/html --depth 1 --mode flat
 ```
 
 ### PDF
 
 ```bash
-uv run python -m hacienda_gpt.cli.crawler --crawler pdf --folder ./data/pdf --depth 1
+uv run python -m asistente.plataforma.cli.crawler --crawler pdf --folder ./data/pdf --depth 1
 ```
 
 > El crawler guarda por defecto en carpetas con `snapshot_date` (YYYY-MM-DD).
@@ -245,7 +260,7 @@ uv run python -m hacienda_gpt.cli.crawler --crawler pdf --folder ./data/pdf --de
 ### Primera vez (full build)
 
 ```bash
-uv run python -m hacienda_gpt.cli.processor \
+uv run python -m asistente.plataforma.cli.processor \
   --content-dir ./data/html --output-dir ./data/faiss \
   --full --overwrite-output
 ```
@@ -257,7 +272,7 @@ El processor escribe junto al índice un `manifest.json` que registra
 parsear con Docling + embebir los ficheros **nuevos o modificados**:
 
 ```bash
-uv run python -m hacienda_gpt.cli.processor \
+uv run python -m asistente.plataforma.cli.processor \
   --content-dir ./data/html --output-dir ./data/faiss
 # (--incremental es el default; --full fuerza reconstrucción)
 ```
@@ -278,7 +293,7 @@ Detalles, casos límite y rationale: [`docs/incremental_indexing_plan.md`](docs/
 ## 💬 3) Ejecutar UI (Streamlit)
 
 ```bash
-uv run streamlit run hacienda_gpt/ui/app.py
+uv run streamlit run asistente/plataforma/ui/app.py
 ```
 
 ---
@@ -286,7 +301,7 @@ uv run streamlit run hacienda_gpt/ui/app.py
 ## 🔌 4) Ejecutar API (FastAPI)
 
 ```bash
-uv run uvicorn hacienda_gpt.api.api:app --reload --host 127.0.0.1 --port 8000
+uv run uvicorn asistente.plataforma.api.api:app --reload --host 127.0.0.1 --port 8000
 ```
 
 ### Endpoints: `/qa` vs `/cases`
@@ -354,13 +369,13 @@ dos clases de piezas, cada una con su contrato:
 
 - **Ámbitos** (dominios): `fiscal`, `luz`, `caducidades`, `ayudas`, `suscripciones`, `hipoteca`… Cada uno es
   dueño de sus **datos** (hechos del expediente), sus **calculadoras** deterministas (herramientas) y sus
-  **avisos**. Contrato: [`modulos/contrato.py`](hacienda_gpt/modulos/contrato.py) (v1) y sus integraciones
-  declaradas en [`modulos/ganchos.py`](hacienda_gpt/modulos/ganchos.py) (v2). Paquetes en
-  `hacienda_gpt/modulos/<clave>/`.
+  **avisos**. Contrato: [`modulos/contrato.py`](asistente/nucleo/modulos/contrato.py) (v1) y sus integraciones
+  declaradas en [`modulos/ganchos.py`](asistente/nucleo/modulos/ganchos.py) (v2). Paquetes en
+  `asistente/ambitos/<clave>/`.
 - **Capacidades**: un **medio** que cualquier ámbito puede usar — el correo (`correo`), el navegador
   (`navegador`), los documentos (`documentos`), la investigación con fuentes (`investigacion`). Contrato:
-  [`capacidades/contrato.py`](hacienda_gpt/capacidades/contrato.py). Paquetes en
-  `hacienda_gpt/capacidades/<clave>/`. Un ámbito nunca importa a otro ni las tripas de una capacidad: las
+  [`capacidades/contrato.py`](asistente/capacidades/contrato.py). Paquetes en
+  `asistente/capacidades/<clave>/`. Un ámbito nunca importa a otro ni las tripas de una capacidad: las
   pide con `pedir(capacidad, operación, argumentos, contexto)`.
 
 La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su clave: lo que la hace distinta
@@ -383,12 +398,13 @@ La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su c
 ```
 
 - **Registro de ámbitos** (`modulos/registro.py`): descubre con `pkgutil` cada paquete
-  `hacienda_gpt.modulos.<clave>` que expone `MODULO` y lo valida: claves únicas, hechos con prefijo
+  `asistente.ambitos.<clave>` que expone `MODULO` (y el frente de chat de una capacidad que también lo expone:
+  `correo`, `navegador`) y lo valida: claves únicas, hechos con prefijo
   `<clave>_` salvo los compartidos del núcleo, herramientas únicas con prefijo `<clave>_` salvo las que el
   ámbito declara **directas** (y una herramienta directa tiene que existir y ser de **solo lectura**: si no, el
   ámbito queda fuera), `entradas` que nombran herramientas suyas que no actúan o hechos suyos, puentes hacia
   otro ámbito… Un ámbito roto nunca tumba la aplicación. `MODULOS_DESACTIVADOS` apaga ámbitos para todos
-  (salvo los `obligatorio`). `python -m hacienda_gpt.cli.proactive modulos` lista lo cargado y lo rechazado.
+  (salvo los `obligatorio`). `python -m asistente.plataforma.cli.proactive modulos` lista lo cargado y lo rechazado.
 - **Registro de capacidades** (`capacidades/registro.py`): igual, con `CAPACIDAD`; `CAPACIDADES_DESACTIVADAS`
   las apaga para todos.
 - **Perfil del hogar** (`modulos/perfil.py`): los hechos del expediente son el perfil que comparten todos
@@ -437,7 +453,7 @@ La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su c
 
 ### Cómo escribir un ámbito
 
-1. Crea `hacienda_gpt/modulos/<clave>/` con un `__init__.py` que exponga `MODULO` (hereda de `ModuloBase`). La
+1. Crea `asistente/ambitos/<clave>/` con un `__init__.py` que exponga `MODULO` (hereda de `ModuloBase`). La
    clave coincide con el paquete.
 2. Declara sus hechos (`HechoModulo`, prefijo `<clave>_`, `validar` con errores en español, `sensible=True`
    para datos delicados), herramientas (`HerramientaModulo`, `<clave>_…`, `efecto` correcto) y fuentes
@@ -470,7 +486,7 @@ La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su c
 
 ### Cómo escribir una capacidad
 
-1. Crea `hacienda_gpt/capacidades/<clave>/` con un `__init__.py` que exponga `CAPACIDAD` (`CapacidadBase`).
+1. Crea `asistente/capacidades/<clave>/` con un `__init__.py` que exponga `CAPACIDAD` (`CapacidadBase`).
 2. Declara sus operaciones (`OperacionCapacidad`): `entrada` y `salida` como JSON Schema de tipo objeto,
    `efecto` (`lectura`, `prepara`, `actua`), `proposito` de medición si llama a un modelo (fila en
    `agent/enrutado.py`), `datos_de_terceros` si devuelve contenido ajeno, `ambitos` si solo algunos ámbitos
@@ -482,19 +498,19 @@ La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su c
    devuelve `ResultadoCapacidad` (`datos`, `resumen`, `citas`, `avisos`; para tareas también `estado`,
    `borrador`, `aviso`, `es_error`). Nunca escribe en el expediente de un ámbito: devuelve datos o propuestas.
 5. Si además debe tener cara en el chat (especialista, avisos, interruptor), expón también un `MODULO` y un
-   paquete de descubrimiento en `hacienda_gpt/modulos/<clave>/` (como `correo` y `navegador`).
+   paquete de descubrimiento en `asistente/ambitos/<clave>/` (como `correo` y `navegador`).
 
-Las tareas de larga duración (`hacienda_gpt/tareas`) usan las capacidades registradas con `pedir`
+Las tareas de larga duración (`asistente/nucleo/tareas`) usan las capacidades registradas con `pedir`
 (`tareas/capacidades.py`, ámbito `nucleo`, origen `tarea`).
 
 En la web, el panel **Módulos** lista los ámbitos y las caras de las capacidades (campo `capacidad`), permite
 activarlos, editar sus datos y confirmar o rechazar las acciones pendientes.
 
-**Rutas que se mantienen**: el correo vive en `hacienda_gpt/capacidades/correo/` y el navegador en
-`hacienda_gpt/capacidades/navegador/`; `hacienda_gpt/modulos/correo/` y `hacienda_gpt/navegador/` quedan como
-alias (el mismo objeto de módulo), `python -m hacienda_gpt.modulos.correo` sigue funcionando y las rutas de la
+**Rutas que se mantienen**: el correo vive en `asistente/capacidades/correo/` y el navegador en
+`asistente/capacidades/navegador/`; `asistente/capacidades/correo/` y `asistente/capacidades/navegador/` quedan como
+alias (el mismo objeto de módulo), `python -m asistente.capacidades.correo` sigue funcionando y las rutas de la
 API (`/correo/*`, `/navegador/*`, `/modulos/*`) no cambian. La lectura de documentos vive en
-`hacienda_gpt/capacidades/documentos/`; `hacienda_gpt/tax/documentos.py` es alias del lector fiscal
+`asistente/capacidades/documentos/`; `asistente/ambitos/fiscal/documentos.py` es alias del lector fiscal
 (`modulos/fiscal/documentos.py`).
 
 ### Correo (Gmail, solo lectura)
@@ -511,7 +527,7 @@ contra Google (solo con un servidor falso local); en producción `gmail.readonly
 ### Memoria de decisiones
 
 El asistente recuerda lo que el usuario **decide**, no solo los hechos, para no volver a proponer lo que
-rechazó y no preguntar dos veces (`hacienda_gpt/memoria/`). Una `Decision` dice *sobre qué* (ámbito =
+rechazó y no preguntar dos veces (`asistente/nucleo/memoria/`). Una `Decision` dice *sobre qué* (ámbito =
 módulo + palanca, p. ej. `fiscal:plan_pensiones`, `luz:cambio_tarifa`, `luz:cambio_tarifa:<oferta>`), *qué*
 (`rechazo`, `aceptacion`, `preferencia`, `restriccion`), *con qué palabras* (las del usuario), *de dónde*
 (`chat`, `boton`, `ajustes`, `accion`), *cuándo* y *hasta cuándo*: no dura para siempre (por defecto 12 meses
@@ -600,7 +616,7 @@ supletorio, art. 78.2) y los 9.040 € los aplica la calculadora y están verifi
 
 ### Agente con navegador
 
-`hacienda_gpt/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
+`asistente/capacidades/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
 su control**. Dos usos: (1) descargar el CSV horario de **Datadis** y pasarlo al importador del módulo de luz
 (`luz_importar_consumo`, por la misma vía que una herramienta de módulo); (2) **preparar** un trámite en una
 sede electrónica y detenerse **antes** de «Firmar y enviar». Es la función con más riesgo de la aplicación, así
@@ -641,7 +657,7 @@ omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados d
 
 ### Tareas de larga duración
 
-`hacienda_gpt/tareas/` convierte un objetivo de varios pasos y varios días («renovar el pasaporte», «preparar la
+`asistente/nucleo/tareas/` convierte un objetivo de varios pasos y varios días («renovar el pasaporte», «preparar la
 renta», «cambiar de tarifa de la luz») en una **tarea**: el objetivo con las palabras del usuario, un plan de pasos,
 su estado, fechas (creada, plazo, próxima revisión), un historial y los avisos, acciones pendientes y decisiones que
 ha creado. El cerebro central planifica; el **motor** (una máquina de estados determinista) reparte el trabajo entre
@@ -696,7 +712,7 @@ pausar, reanudar, reintentar, cancelar con motivo). API: `GET /tareas/plantillas
 `POST /tareas/{id}/pasos/{paso}/confirmar|omitir`. En el chat (con expediente y algún módulo del hogar activado, o
 si ya hay tareas): `crear_tarea`, `estado_tareas`, `avanzar_tarea`, `confirmar_paso`, `pausar_tarea`,
 `cancelar_tarea`. Trabajador: el servicio `tareas` del trabajador de la plataforma, o
-`uv run python -m hacienda_gpt.tareas ciclo|worker|estado`; `proactive run-daily` también revisa las tareas (sin
+`uv run python -m asistente.nucleo.tareas ciclo|worker|estado`; `proactive run-daily` también revisa las tareas (sin
 modelo). La API avanza las tareas en el acto salvo las consultas a especialistas.
 
 **Qué no se ha probado contra la realidad.** Sin clave de modelo: las consultas a especialistas y `POST
@@ -722,9 +738,9 @@ curl -X POST http://127.0.0.1:8000/agent \
 #   -d '{"query": "...", "case_id": "case_..."}'
 ```
 
-**Flujo de un turno** (`hacienda_gpt/agent/agent.py`):
+**Flujo de un turno** (`asistente/nucleo/agent/agent.py`):
 
-1. El modelo llama a herramientas (`hacienda_gpt/agent/tools.py`):
+1. El modelo llama a herramientas (`asistente/nucleo/agent/tools.py`):
    - `buscar_fuentes` — búsqueda en el corpus con filtros por tipo de fuente
      (`normativa` / `jurisprudencia` / `doctrina_administrativa` / `aeat`),
      tributo, ámbito (`estatal` / `autonomico:<ccaa>`) y `solo_vinculante`.
@@ -733,7 +749,7 @@ curl -X POST http://127.0.0.1:8000/agent \
    - Con `case_id`: `consultar_expediente`, `registrar_hechos` y
      `evaluar_obligaciones` (motor de reglas determinista).
 2. Redacta la respuesta citando `[F#]` en cada afirmación normativa.
-3. El verificador (`hacienda_gpt/agent/verifier.py`) recibe solo la pregunta,
+3. El verificador (`asistente/nucleo/agent/verifier.py`) recibe solo la pregunta,
    la respuesta y los fragmentos citados, y dictamina cada afirmación:
    `respaldada` / `parcial` / `no_respaldada`.
 4. Si hay afirmaciones sin respaldo, el agente recibe el dictamen y reescribe
@@ -759,7 +775,7 @@ audit log del caso.
 
 ### Proveedor de LLM
 
-El bucle es neutral respecto al proveedor (`hacienda_gpt/agent/providers/`):
+El bucle es neutral respecto al proveedor (`asistente/nucleo/agent/providers/`):
 
 ```bash
 # Claude (por defecto) — SDK oficial de Anthropic
@@ -800,8 +816,8 @@ y por eso responde 404 con `AUTH_MODE=required` (`docs/seguridad.md`, S-14).
 ### Calculadora del IRPF y optimización
 
 El agente no calcula impuestos: llama a una calculadora determinista
-(`hacienda_gpt/tax/irpf.py`) cuyos parámetros son **datos versionados por
-ejercicio** (`hacienda_gpt/tax/data/irpf_<año>.json`), cada uno con el
+(`asistente/ambitos/fiscal/calculo/irpf.py`) cuyos parámetros son **datos versionados por
+ejercicio** (`asistente/ambitos/fiscal/data/irpf_<año>.json`), cada uno con el
 precepto del que sale y un indicador `verificado`.
 
 - **`calcular_irpf`** — rendimientos del trabajo (gastos y reducción de los
@@ -898,7 +914,7 @@ convalidado; `irpf_2026.json` guarda en `revisiones` las normas contrastadas.
 ### Optimizador fiscal
 
 Calcular cuánto puede ahorrar como máximo un hogar, dadas sus circunstancias, es
-**determinista** (`hacienda_gpt/tax/optimizador.py`); lo agéntico es todo lo demás.
+**determinista** (`asistente/ambitos/fiscal/calculo/optimizador.py`); lo agéntico es todo lo demás.
 El catálogo de beneficios valora cada palanca por separado, pero las palancas
 interactúan: una aportación a un plan de pensiones baja la base liquidable y puede
 dejarla por debajo del límite de renta de una deducción autonómica, vender con
@@ -1068,7 +1084,7 @@ palancas no suma `ahorro_total` en general, y `ahorro_aislado` puede ser negativ
 ### Planificador del hogar
 
 «Tengo 20.000 €: ¿amortizo la hipoteca, aporto al plan de pensiones o los guardo?». El planificador
-(`hacienda_gpt/planificador/`) reparte de forma **determinista** una cantidad (o un excedente mensual hasta
+(`asistente/nucleo/planificador/`) reparte de forma **determinista** una cantidad (o un excedente mensual hasta
 diciembre) entre las palancas del hogar y calcula sus interacciones con cada módulo; el agente solo formula el
 problema (importe, horizonte, colchón, rentabilidad alternativa, palancas descartadas).
 
@@ -1166,7 +1182,7 @@ excedente; límites de renta de convocatorias autonómicas y municipales.
   que aplican al perfil (cierre del ejercicio, Renta, IVA trimestral y pagos
   fraccionados si hay actividad económica, modelo 720 si hay bienes en el
   extranjero). Las fechas recurrentes están en
-  `hacienda_gpt/tax/data/calendario.json` con el precepto que las fija; se
+  `asistente/ambitos/fiscal/data/calendario.json` con el precepto que las fija; se
   ajustan fines de semana pero **no festivos**, y el fin de la campaña de Renta
   (30 de junio) figura como no contrastado porque lo fija una orden anual.
 - **`POST /cases/{id}/documents`** — lee un documento (certificado de
@@ -1193,9 +1209,9 @@ lista de URLs individuales, con tope por ejecución.
 
 ```bash
 # Clasificar y filtrar sentencias ya descargadas (sin red)
-uv run python -m hacienda_gpt.cli.supremo_seed --from-dir ./data/cendoj --output-dir ./data/html/<snapshot>/ts
+uv run python -m asistente.plataforma.cli.supremo_seed --from-dir ./data/cendoj --output-dir ./data/html/<snapshot>/ts
 # o URLs concretas, una a una (máx. 25 por ejecución, 5 s entre peticiones)
-uv run python -m hacienda_gpt.cli.supremo_seed --urls-file urls.txt --output-dir ./data/html/<snapshot>/ts
+uv run python -m asistente.plataforma.cli.supremo_seed --urls-file urls.txt --output-dir ./data/html/<snapshot>/ts
 ```
 
 Cada sentencia conservada lleva en su sidecar la sección, el tipo y número de
@@ -1203,7 +1219,7 @@ recurso, si fija doctrina, el pasaje de doctrina y la cuestión casacional. Su
 detección está probada con sentencias sintéticas, no con documentos reales de
 CENDOJ: revisa el manifiesto de la primera ejecución.
 
-**Grafo de vigencia** (`hacienda_gpt/doctrine/`). Extrae las citas entre
+**Grafo de vigencia** (`asistente/conocimiento/doctrine/`). Extrae las citas entre
 consultas de la DGT, resoluciones del TEAC y sentencias del TS y del TC, y
 registra qué hace cada documento con el que cita: lo confirma, lo matiza, lo
 supera o lo contradice. De ahí sale el estado de cada documento: `vigente`,
@@ -1211,10 +1227,10 @@ supera o lo contradice. De ahí sale el estado de cada documento: `vigente`,
 `discutida` (lo contradice otro sin rango para zanjarlo).
 
 ```bash
-uv run python -m hacienda_gpt.cli.doctrine_graph build              # gratis, por redacción expresa
-uv run python -m hacienda_gpt.cli.doctrine_graph build --llm        # relee con el LLM las citas relevantes
-uv run python -m hacienda_gpt.cli.doctrine_graph wanted --limit 50  # sentencias citadas que faltan en el corpus
-uv run python -m hacienda_gpt.cli.doctrine_graph status "V1234-19"
+uv run python -m asistente.plataforma.cli.doctrine_graph build              # gratis, por redacción expresa
+uv run python -m asistente.plataforma.cli.doctrine_graph build --llm        # relee con el LLM las citas relevantes
+uv run python -m asistente.plataforma.cli.doctrine_graph wanted --limit 50  # sentencias citadas que faltan en el corpus
+uv run python -m asistente.plataforma.cli.doctrine_graph status "V1234-19"
 ```
 
 `wanted` es la lista de adquisición: las sentencias en las que la DGT y el TEAC
@@ -1276,9 +1292,9 @@ abrirla, prográmalos:
 
 ```cron
 # Detectar normas cambiadas, avisar a los afectados y, después, plazos y plan de fin de año
-30 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.boe_watch >> logs/boe_watch.log 2>&1
-45 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
-0 7 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive run-daily >> logs/proactive.log 2>&1
+30 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.boe_watch >> logs/boe_watch.log 2>&1
+45 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
+0 7 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive run-daily >> logs/proactive.log 2>&1
 ```
 
 **Normas autonómicas.** La vigilancia cubre también la ley de cada una de las
@@ -1289,7 +1305,7 @@ las cifras de la calculadora. Para saber qué parámetros hay que releer:
 
 ```bash
 # Una petición de metadatos por norma; sin LLM. Con --fail-on-stale termina con código 1 si hay alguna.
-uv run python -m hacienda_gpt.cli.proactive params-check
+uv run python -m asistente.plataforma.cli.proactive params-check
 ```
 
 Lista las normas que el BOE ha actualizado después de la fecha en que se
@@ -1305,7 +1321,7 @@ IRPF aunque su título no lo diga, o la ley de medidas tributarias de una
 comunidad cuando llega al BOE. No usa LLM.
 
 ```cron
-15 7 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive boe-novedades >> logs/proactive.log 2>&1
+15 7 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive boe-novedades >> logs/proactive.log 2>&1
 ```
 
 Guarda un registro en `data/html/_boe_novedades.json` y retoma desde el último
@@ -1342,7 +1358,7 @@ se repite.
 | `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
 | `correo.clasificado` | Una sincronización de Gmail con correo nuevo (módulo `correo`; solo recuentos por categoría) | `correo` y los módulos que se suscriban |
 
-**Cómo funciona** (`hacienda_gpt/eventos/`, todo en el mismo SQLite que los
+**Cómo funciona** (`asistente/nucleo/eventos/`, todo en el mismo SQLite que los
 expedientes, sin broker externo):
 
 - *Bandeja de salida en la misma transacción.* El cambio de un hecho escribe
@@ -1376,9 +1392,9 @@ cambio (`EVENTOS_DESPACHO_EN_PROCESO`); además conviene un trabajador, que
 recoge lo que emiten otros procesos y dispara los temporizadores:
 
 ```bash
-uv run python -m hacienda_gpt.cli.eventos worker          # en marcha continua (systemd, supervisor…)
-uv run python -m hacienda_gpt.cli.eventos estado          # atraso, cola de errores, métricas por tipo y módulo
-uv run python -m hacienda_gpt.cli.eventos reintentar      # vuelve a encolar la cola de errores
+uv run python -m asistente.plataforma.cli.eventos worker          # en marcha continua (systemd, supervisor…)
+uv run python -m asistente.plataforma.cli.eventos estado          # atraso, cola de errores, métricas por tipo y módulo
+uv run python -m asistente.plataforma.cli.eventos reintentar      # vuelve a encolar la cola de errores
 ```
 
 `ops doctor` incluye la salud del bus (y avisa de la cola de errores o de
@@ -1392,7 +1408,7 @@ Cada cifra de la calculadora se leyó de una ley. Esa procedencia es ahora una
 prueba que se puede repetir (todo sin LLM; cron y detalles en
 [`docs/operacion.md`](docs/operacion.md)):
 
-| Comando (`python -m hacienda_gpt.cli.proactive …`) | Qué responde |
+| Comando (`python -m asistente.plataforma.cli.proactive …`) | Qué responde |
 |---|---|
 | `params-check` | ¿Ha actualizado el BOE alguna de las leyes de las que salen los parámetros? |
 | `params-verify` | ¿Qué parámetros concretos ya no coinciden con el texto vigente? Busca la cita literal de cada deducción autonómica, la tabla de cada escala y las cifras del resto. |
@@ -1401,7 +1417,7 @@ prueba que se puede repetir (todo sin LLM; cron y detalles en
 | `boe-novedades` | ¿Qué normas nuevas tocan impuestos? |
 
 Un parámetro que existe solo por un decreto-ley pendiente de convalidación lo
-declara en `fuente.condicionada_a`. `python -m hacienda_gpt.cli.ops` entrega los
+declara en `fuente.condicionada_a`. `python -m asistente.plataforma.cli.ops` entrega los
 avisos por correo o webhook (`deliver`), ejecuta cada tarea bajo vigilancia
 (`run`) y avisa si alguna falló o no llegó a ejecutarse (`doctor`). El flujo
 `.github/workflows/vigilancia.yml` repite `params-check` y `params-verify` cada
@@ -1420,7 +1436,7 @@ publicada en el BOE hasta el dato—, **sin que la calculadora deje de ser
 determinista**: la calculadora
 sigue leyendo datos; el modelo solo *propone* datos, y lo que propone no llega
 a ningún fichero sin pasar controles que no dependen de él
-(`hacienda_gpt/tax/recodificacion/`).
+(`asistente/conocimiento/recodificacion/`).
 
 El bucle, para cada grupo que falla:
 
@@ -1613,7 +1629,7 @@ regla siga teniendo la forma que la calculadora supone. Por eso existe la
 revisión humana y por eso la calculadora avisa mientras no se ha hecho. Detalle y pasos en
 [`docs/operacion.md`](docs/operacion.md#5-recodificación-automática-de-parámetros).
 
-**Todos los módulos, en el mismo ciclo (`hacienda_gpt/conocimiento/`).** Las cifras legales de los
+**Todos los módulos, en el mismo ciclo (`asistente/conocimiento/`).** Las cifras legales de los
 módulos del hogar (luz, caducidades, ayudas, hipoteca, suscripciones, correo), los pasajes del
 planificador y los que el módulo fiscal muestra en el código entran en el mismo mantenimiento que los
 ficheros de parámetros, con una sola biblioteca:
@@ -1645,7 +1661,7 @@ ficheros de parámetros, con una sola biblioteca:
 
 Las leyes cambian y el BOE lo publica; lo que nadie publica es que una clave del JSON del sumario
 se ha renombrado o que el análisis jurídico ha cambiado de sitio en el XML. El lector devuelve
-entonces «nada», que es exactamente lo que devuelve un día sin novedades. `hacienda_gpt/ops/formatos.py`
+entonces «nada», que es exactamente lo que devuelve un día sin novedades. `asistente/conocimiento/formatos.py`
 convierte ese silencio en un estado visible:
 
 - **Canarios deterministas.** Cada lector de un formato externo declara lo que da por supuesto
@@ -1656,7 +1672,7 @@ convierte ese silencio en un estado visible:
 - **El formato es un dato.** Las claves, rutas XML, XPath, etiquetas y expresiones regulares de
   los lectores del BOE, del TEAC (ficha y listado), de los boletines autonómicos, del CENDOJ, de la
   DGT y las rutas que sigue el rastreador de la sede de la AEAT están en specs versionadas
-  (`hacienda_gpt/ops/data/formatos/*.json`). La versión 1 es el comportamiento de siempre, con
+  (`asistente/conocimiento/data/formatos/*.json`). La versión 1 es el comportamiento de siempre, con
   pruebas que lo comparan con el código anterior.
 - **También lo que no es un selector.** Los PDF de los códigos autonómicos (¿llega un PDF?, ¿Docling
   saca texto con encabezados de artículo?, ¿cae el rendimiento?), la ingesta del corpus, las
@@ -1684,10 +1700,10 @@ convierte ese silencio en un estado visible:
   sus propuestas las revisa siempre una persona.
 
 ```bash
-uv run python -m hacienda_gpt.cli.ops formatos check              # estado, sin modelo
-uv run python -m hacienda_gpt.cli.ops formatos probe              # lee ahora del BOE (y las leyes del calendario)
-uv run python -m hacienda_gpt.cli.ops formatos check --diagnose   # + diagnóstico si hay modelo
-uv run python -m hacienda_gpt.cli.ops formatos proposals
+uv run python -m asistente.plataforma.cli.ops formatos check              # estado, sin modelo
+uv run python -m asistente.plataforma.cli.ops formatos probe              # lee ahora del BOE (y las leyes del calendario)
+uv run python -m asistente.plataforma.cli.ops formatos check --diagnose   # + diagnóstico si hay modelo
+uv run python -m asistente.plataforma.cli.ops formatos proposals
 ```
 
 Inventario de fuentes y de lo que queda por instrumentar: `docs/formatos_inventario.md`. Operación
@@ -1735,7 +1751,7 @@ incluye Seguridad Social ni costes de gestión, y no declara un ganador.
   usuario, consentimientos, exportación y borrado de datos. Qué hace y qué no
   cubre respecto al RGPD: [`docs/privacidad.md`](docs/privacidad.md).
 - **Coste**: cada llamada al modelo se registra (`GET /usage`,
-  `python -m hacienda_gpt.cli.consumo resumen`). Límites opcionales:
+  `python -m asistente.plataforma.cli.consumo resumen`). Límites opcionales:
   `LLM_DAILY_BUDGET_USD`, `LLM_DAILY_BUDGET_USD_PER_USER`,
   `LLM_MAX_CALLS_PER_QUESTION`; al agotarse, la API responde 429. Los límites
   en dólares solo cuentan modelos con precio en `ops/data/precios_llm.json`.
@@ -1761,11 +1777,11 @@ avisar en el dispositivo cuando hay algo urgente.
   versión del texto). El mensaje **no lleva datos personales**: solo «Tienes un aviso urgente: abre la app» (o
   «Tienes un aviso nuevo…») y un enlace a `/?panel=avisos`; los detalles se ven dentro de la app, con sesión.
   Va cifrado para el dispositivo (RFC 8291) y firmado con la clave VAPID del operador (RFC 8292), implementados
-  con `cryptography` en `hacienda_gpt/push/` y comprobados con el ejemplo del RFC 8291. Salen los avisos
+  con `cryptography` en `asistente/plataforma/push/` y comprobados con el ejemplo del RFC 8291. Salen los avisos
   `urgente` y `aviso` (los `info` se quedan en la app) por el canal `push` de `ops deliver`, y los urgentes
   también en cuanto se escriben si se conecta `avisar_al_escribir` (ver «Pendiente» en `docs/despliegue.md`).
   En **iPhone/iPad** solo funcionan con la app añadida a la pantalla de inicio (iOS/iPadOS 16.4 o posterior).
-- **Configurar**: `python -m hacienda_gpt.push.vapid` genera las claves; `PUSH_VAPID_PRIVATE_KEY` (secreto),
+- **Configurar**: `python -m asistente.plataforma.push.vapid` genera las claves; `PUSH_VAPID_PRIVATE_KEY` (secreto),
   `PUSH_VAPID_SUBJECT` (`mailto:` o `https://`) y, opcional, `PUSH_VAPID_PUBLIC_KEY`. Sin ellas, la app dice
   que el servicio no tiene avisos en el móvil. Hace falta HTTPS (o `localhost`). API: `GET /push/config`,
   `POST /push/suscripciones`, `POST /push/suscripciones/baja`, `DELETE /push/consentimiento`,
@@ -1797,14 +1813,14 @@ conjunto de evaluación y mide el agente contra él:
 
 ```bash
 # 1) Generar el conjunto (una llamada al LLM por consulta; descarta las no aptas)
-uv run python -m hacienda_gpt.cli.eval_agent build \
+uv run python -m asistente.plataforma.cli.eval_agent build \
   --dgt-dir data/html/<snapshot>/dgt-vinculantes --out eval_data/dgt_golden.jsonl \
   --sample 200 --since-year 2022
 
 # 2) Evaluar el agente y, para comparar, la cadena /qa
-uv run python -m hacienda_gpt.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
+uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
   --system agent --out reports/eval_agent.json
-uv run python -m hacienda_gpt.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
+uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
   --system qa --out reports/eval_qa.json
 ```
 
@@ -1823,7 +1839,7 @@ corta antes de la ejecución completa.
 Cada vez que el asistente se equivoca o el usuario lo corrige, el caso puede
 convertirse en una prueba de regresión; y antes de cambiar un *prompt* o un
 modelo se ejecuta la suite y el cambio solo se aplica si mejora
-(`hacienda_gpt/evaluacion/`, `python -m hacienda_gpt.cli.evaluacion`).
+(`asistente/nucleo/evaluacion/`, `python -m asistente.plataforma.cli.evaluacion`).
 
 - **Valoración en cada respuesta** (web): 👍 / 👎 y «Corregir» (cifra
   equivocada, ámbito equivocado, dato pasado por alto, afirmación inventada,
@@ -1851,7 +1867,7 @@ modelo se ejecuta la suite y el cambio solo se aplica si mejora
   especialistas consultados que no usaron ninguna herramienta (posible
   «no es mi ámbito») y repreguntas. `senales` da recuentos sin contenido;
   etiquetan las valoraciones.
-- **La suite** (`hacienda_gpt/evaluacion/casos/<categoría>/<id>.json`,
+- **La suite** (`asistente/nucleo/evaluacion/casos/<categoría>/<id>.json`,
   versionada) tiene 30 casos sembrados: cálculo fiscal, cifras de cada módulo,
   enrutado, preguntas que cruzan ámbitos, «no sumar cifras de módulos
   distintos», confirmación de lo que `actua` y borradores, y fuera de ámbito.
@@ -1871,7 +1887,7 @@ modelo se ejecuta la suite y el cambio solo se aplica si mejora
   categoría, regresiones frente a un informe base (`--baseline`), coste y
   latencia.
 - **La puerta**: los *prompts* son artefactos versionados por su huella
-  (`hacienda_gpt/evaluacion/prompts/registro.json`) y una variante (versión de
+  (`asistente/nucleo/evaluacion/prompts/registro.json`) y una variante (versión de
   cada *prompt* + proveedor/modelo/esfuerzo) es lo que el agente ejecuta; la
   ACTIVA está en `variante_activa.json` (sin ese fichero, la de siempre).
   `promote --config candidata.json` ejecuta base y candidata y escribe la
@@ -1910,7 +1926,7 @@ export GROUNDING_SNIPPET_CHARS="240"
 Uso programático:
 
 ```python
-from hacienda_gpt.llm.chain import answer_with_grounding, create_openai_chain
+from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
 
 chain = create_openai_chain(openai_api_key=...)
 envelope = answer_with_grounding(chain, query="¿Tengo que declarar IRPF?")
@@ -1947,7 +1963,7 @@ El detector de drift recalcula los hashes contra el snapshot actual y emite un
 reporte con findings clasificados (`ok`, `changed`, `missing`, `unverified`):
 
 ```bash
-uv run python -m hacienda_gpt.cli.drift_check \
+uv run python -m asistente.plataforma.cli.drift_check \
   --rules-dir rules \
   --snapshot-root ./data \
   --output reports/drift.json \
@@ -1962,21 +1978,21 @@ nombre del crawler (`boe`, `aeat`, `teac`, …) y se mapea a `<snapshot-root>/<s
 
 ### 🔁 Refresh dinámico del corpus normativo (`boe_watch`)
 
-Las leyes fiscales **cambian**: BOE re-publica el texto consolidado bajo el mismo ID cada vez que el legislador enmienda algo. Para detectarlo sin re-descargar todo, [`boe_watch`](hacienda_gpt/cli/boe_watch.py) consulta la **API pública de metadatos** del BOE y compara la `fecha_actualizacion` con un estado local.
+Las leyes fiscales **cambian**: BOE re-publica el texto consolidado bajo el mismo ID cada vez que el legislador enmienda algo. Para detectarlo sin re-descargar todo, [`boe_watch`](asistente/plataforma/cli/boe_watch.py) consulta la **API pública de metadatos** del BOE y compara la `fecha_actualizacion` con un estado local.
 
 ```bash
 # Comprobación periódica (segura para ejecutar a diario; no descarga si nada cambió):
-uv run python -m hacienda_gpt.cli.boe_watch
+uv run python -m asistente.plataforma.cli.boe_watch
 
 # Mostrar qué pasaría sin tocar nada:
-uv run python -m hacienda_gpt.cli.boe_watch --dry-run
+uv run python -m asistente.plataforma.cli.boe_watch --dry-run
 
 # Forzar el chequeo de un subset:
-uv run python -m hacienda_gpt.cli.boe_watch --only BOE-A-2006-20764,BOE-A-2014-12328
+uv run python -m asistente.plataforma.cli.boe_watch --only BOE-A-2006-20764,BOE-A-2014-12328
 ```
 
 El comando:
-- Lee `hacienda_gpt/cli/boe_seed_catalog.json` y filtra entries con `track: true` (default).
+- Lee `asistente/plataforma/cli/boe_seed_catalog.json` y filtra entries con `track: true` (default).
 - Para cada uno, llama a `https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<ID>/metadatos` (~1.4 KB JSON).
 - Compara `fecha_actualizacion` con el estado local en `data/html/_boe_watch_state.json`.
 - Si cambió: re-descarga el HTML consolidado a `data/html/<snapshot>/<subdir>/<ID>.html`.
@@ -1985,7 +2001,7 @@ El comando:
 Cuando el script reporta `changed` o `new`, basta con relanzar el processor para que los nuevos vectores entren a FAISS:
 
 ```bash
-uv run python -m hacienda_gpt.cli.processor --incremental --max-tokens 512 --num-workers 8
+uv run python -m asistente.plataforma.cli.processor --incremental --max-tokens 512 --num-workers 8
 ```
 
 Marca `track: false` en el catálogo a documentos que **no** se consolidan (sentencias TC, RDs puntuales sin enmiendas). El watcher los ignora; `boe_seed` los descarga una sola vez.
@@ -2005,7 +2021,7 @@ Marca `track: false` en el catálogo a documentos que **no** se consolidan (sent
     <array>
         <string>/Users/USERNAME/Documents/Repositorios/hacienda-asesor/.venv/bin/python</string>
         <string>-m</string>
-        <string>hacienda_gpt.cli.boe_watch</string>
+        <string>asistente.plataforma.cli.boe_watch</string>
     </array>
     <key>WorkingDirectory</key><string>/Users/USERNAME/Documents/Repositorios/hacienda-asesor</string>
     <key>StartCalendarInterval</key>
@@ -2022,7 +2038,7 @@ Activar: `launchctl load ~/Library/LaunchAgents/com.haciendagpt.boewatch.plist`.
 
 ```cron
 0 6 * * * cd /path/to/hacienda-asesor && \
-    /path/to/hacienda-asesor/.venv/bin/python -m hacienda_gpt.cli.boe_watch >> /var/log/hacienda-boe-watch.log 2>&1
+    /path/to/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.boe_watch >> /var/log/hacienda-boe-watch.log 2>&1
 ```
 
 Para auto-encadenar `boe_watch` con `processor --incremental` solo cuando hay cambios:
@@ -2031,10 +2047,10 @@ Para auto-encadenar `boe_watch` con `processor --incremental` solo cuando hay ca
 #!/usr/bin/env bash
 set -e
 cd /path/to/hacienda-asesor
-out=$(.venv/bin/python -m hacienda_gpt.cli.boe_watch)
+out=$(.venv/bin/python -m asistente.plataforma.cli.boe_watch)
 echo "$out"
 if echo "$out" | grep -qE "changed=[^0]|new=[^0]"; then
-    .venv/bin/python -m hacienda_gpt.cli.processor \
+    .venv/bin/python -m asistente.plataforma.cli.processor \
         --incremental --max-tokens 512 --num-workers 8
 fi
 ```
@@ -2044,7 +2060,7 @@ fi
 ## 📏 5) Evaluación
 
 ```bash
-uv run python -m hacienda_gpt.cli.eval --output ./eval_results.json
+uv run python -m asistente.plataforma.cli.eval --output ./eval_results.json
 ```
 
 La evaluación genera:

@@ -12,14 +12,14 @@ from typing import Any
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError, Usage
-from hacienda_gpt.capacidades.investigacion import capacidad
-from hacienda_gpt.capacidades.investigacion.almacen import AlmacenInvestigacion
-from hacienda_gpt.capacidades.investigacion.fuentes import API_BOE, ClienteBOE
-from hacienda_gpt.capacidades.investigacion.servicio import Investigador
-from hacienda_gpt.capacidades.investigacion.web import DocumentoWeb, ResultadoWeb
-from hacienda_gpt.capacidades.registro import construir_registro, reiniciar
+from asistente.capacidades.investigacion import capacidad
+from asistente.capacidades.investigacion.almacen import AlmacenInvestigacion
+from asistente.capacidades.investigacion.fuentes import API_BOE, ClienteBOE
+from asistente.capacidades.investigacion.servicio import Investigador
+from asistente.capacidades.investigacion.web import DocumentoWeb, ResultadoWeb
+from asistente.capacidades.registro import construir_registro, reiniciar
+from asistente.nucleo.agent.providers.base import ProviderError, Usage
+from asistente.plataforma import settings
 
 AHORA = datetime(2026, 11, 16, 10, 0, tzinfo=UTC)
 

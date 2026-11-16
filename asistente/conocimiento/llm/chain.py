@@ -15,11 +15,11 @@ from langchain_core.retrievers import BaseRetriever
 from langchain_core.runnables import Runnable
 from langchain_openai import ChatOpenAI
 
-from hacienda_gpt.llm.embeddings import create_embeddings
-from hacienda_gpt.llm.grounding import AnswerEnvelope, GroundingGate
-from hacienda_gpt.llm.retrieval_profiles import build_decision_profile, build_explain_profile
-from hacienda_gpt.llm.security import sanitize_retrieved_context
-from hacienda_gpt.settings import (
+from asistente.conocimiento.llm.embeddings import create_embeddings
+from asistente.conocimiento.llm.grounding import AnswerEnvelope, GroundingGate
+from asistente.conocimiento.llm.retrieval_profiles import build_decision_profile, build_explain_profile
+from asistente.conocimiento.llm.security import sanitize_retrieved_context
+from asistente.plataforma.settings import (
     BM25_BM25_WEIGHT,
     BM25_DENSE_WEIGHT,
     BM25_ENABLED,
@@ -217,7 +217,7 @@ def _create_retriever(
         # Stack a Qwen3-Reranker pass on top of the filter: it sees only docs
         # that already passed the cosine threshold and reorders them via
         # cross-encoder scoring, picking the top-K to feed to the LLM.
-        from hacienda_gpt.llm.reranker import MLXReranker
+        from asistente.conocimiento.llm.reranker import MLXReranker
 
         reranker = MLXReranker(model_path=RERANKER_MODEL, top_k=RERANKER_TOP_K)
         compressed = ContextualCompressionRetriever(base_retriever=compressed, base_compressor=reranker)

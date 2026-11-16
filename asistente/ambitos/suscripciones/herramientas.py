@@ -7,12 +7,10 @@ from datetime import date, timedelta
 from decimal import Decimal
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
-from hacienda_gpt.modulos.suscripciones import almacen
-from hacienda_gpt.modulos.suscripciones.capacidades import HERRAMIENTA_CARGOS_DEL_CORREO
-from hacienda_gpt.modulos.suscripciones.derechos import DerechosConsumidor, cargar
-from hacienda_gpt.modulos.suscripciones.deteccion import (
+from asistente.ambitos.suscripciones import almacen
+from asistente.ambitos.suscripciones.capacidades import HERRAMIENTA_CARGOS_DEL_CORREO
+from asistente.ambitos.suscripciones.derechos import DerechosConsumidor, cargar
+from asistente.ambitos.suscripciones.deteccion import (
     ServicioDetectado,
     analizar,
     coste_anual,
@@ -20,7 +18,7 @@ from hacienda_gpt.modulos.suscripciones.deteccion import (
     posible_olvido,
     sumar_meses,
 )
-from hacienda_gpt.modulos.suscripciones.formato import (
+from asistente.ambitos.suscripciones.formato import (
     MEDIO_TEXTO,
     PERIODICIDAD_TEXTO,
     euros,
@@ -28,15 +26,17 @@ from hacienda_gpt.modulos.suscripciones.formato import (
     porcentaje,
     sumar_dias_habiles,
 )
-from hacienda_gpt.modulos.suscripciones.importadores import FORMATOS, bytes_de_entrada, importar
-from hacienda_gpt.modulos.suscripciones.modelos import (
+from asistente.ambitos.suscripciones.importadores import FORMATOS, bytes_de_entrada, importar
+from asistente.ambitos.suscripciones.modelos import (
     CARGOS_POR_ANO,
     CATEGORIAS,
     ETIQUETAS_CATEGORIA,
     ImportacionError,
     ServicioGuardado,
 )
-from hacienda_gpt.modulos.suscripciones.tablas import configuracion_bancos
+from asistente.ambitos.suscripciones.tablas import configuracion_bancos
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 PRIVACIDAD = (
     "Privacidad: el extracto se ha procesado en memoria y no se ha guardado. Solo se guarda en tu expediente la "

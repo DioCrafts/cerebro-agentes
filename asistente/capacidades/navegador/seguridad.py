@@ -25,7 +25,7 @@ import re
 from typing import Any, Literal
 from urllib.parse import urlsplit
 
-from hacienda_gpt.capacidades.navegador.guion import (
+from asistente.capacidades.navegador.guion import (
     Descarga,
     Guion,
     cambia_estado,

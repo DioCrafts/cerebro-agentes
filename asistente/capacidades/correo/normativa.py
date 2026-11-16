@@ -6,8 +6,8 @@
 * Ley 39/2015, art. 41.6 and RD 203/2021 art. 43.1: the e-mail notice is merely informative;
 * RD 203/2021 art. 18.2: state e-offices (sedes electrónicas) use the «.gob.es» domain — a phishing signal.
 
-``python -m hacienda_gpt.capacidades.correo.normativa <dir with BOE-A-*.html|txt>`` re-checks every quote with the
-shared checker of :mod:`hacienda_gpt.conocimiento`; the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
+``python -m asistente.capacidades.correo.normativa <dir with BOE-A-*.html|txt>`` re-checks every quote with the
+shared checker of :mod:`asistente.conocimiento`; the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
 verification and the reading dates cover it.
 """
 
@@ -21,7 +21,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.conocimiento import (
     FRONTERA_PALABRA,
     FicheroLegal,
     GrupoLegal,
@@ -167,16 +167,16 @@ FICHEROS_LEGALES = (
 
 def comprobar(datos: Normativa, textos: dict[str, str] | None = None) -> list[str]:
     """Problems re-reading the data against its quotes (and against the laws, given ``textos``), with the shared
-    checker of :mod:`hacienda_gpt.conocimiento`."""
+    checker of :mod:`asistente.conocimiento`."""
     return FICHEROS_LEGALES[0].comprobar(datos, textos)
 
 
 def main(argv: list[str] | None = None) -> int:
-    from hacienda_gpt.tax.autonomos_params import textos_de_directorio
+    from asistente.ambitos.fiscal.calculo.autonomos_params import textos_de_directorio
 
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
-        print("uso: python -m hacienda_gpt.capacidades.correo.normativa <directorio con BOE-A-*.html|txt>")
+        print("uso: python -m asistente.capacidades.correo.normativa <directorio con BOE-A-*.html|txt>")
         return 2
     problemas = comprobar(cargar(), textos_de_directorio(Path(args[0])))
     for problema in problemas:

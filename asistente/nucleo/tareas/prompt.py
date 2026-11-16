@@ -2,7 +2,7 @@
 
 Appended to the system prompt only when the task tools are offered (a conversation with a case), like the
 household planner's paragraph: the agent is never told about tools it does not have. Not a registered role of
-the prompt registry (``hacienda_gpt/evaluacion/prompts/registro.json``). Plain text with no imports.
+the prompt registry (``asistente/nucleo/evaluacion/prompts/registro.json``). Plain text with no imports.
 """
 
 TAREAS_ADDENDUM = """

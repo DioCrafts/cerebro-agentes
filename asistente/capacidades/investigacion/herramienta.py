@@ -1,6 +1,6 @@
 """The ``investigar`` tool of the central agent (the brain), through the capability contract.
 
-The tool calls :func:`~hacienda_gpt.capacidades.contrato.pedir` (domain ``nucleo``, origin ``agente``), so the
+The tool calls :func:`~asistente.capacidades.contrato.pedir` (domain ``nucleo``, origin ``agente``), so the
 contract's rules apply (schema, metering under ``investigacion:*``, the result wrapped as untrusted data). Its
 output reaches the model only inside the untrusted-data marks, with the sources and their literal quotes.
 
@@ -19,12 +19,12 @@ from datetime import date
 import re
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.capacidades.investigacion.ajustes import ajustes
-from hacienda_gpt.capacidades.investigacion.capacidad import CLAVE
-from hacienda_gpt.capacidades.investigacion.fuentes import plano
-from hacienda_gpt.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.capacidades.investigacion.ajustes import ajustes
+from asistente.capacidades.investigacion.capacidad import CLAVE
+from asistente.capacidades.investigacion.fuentes import plano
+from asistente.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE
+from asistente.nucleo.agent.providers.base import ToolSpec
 
 INVESTIGAR_TOOL = ToolSpec(
     name="investigar",
@@ -116,7 +116,7 @@ def herramienta_investigar(
     """The tool and its handler for one run of the agent (an ``ExtraTool`` of ``agent/tools.py``)."""
 
     def ejecutar(arguments: dict[str, Any]) -> Any:
-        from hacienda_gpt.agent.tools import ToolOutcome
+        from asistente.nucleo.agent.tools import ToolOutcome
 
         pregunta = arguments.get("pregunta")
         if not isinstance(pregunta, str) or len(pregunta.strip()) < 5:
@@ -157,12 +157,12 @@ class InvestigacionAgente:
     ) -> InvestigacionAgente | None:
         if not ajustes().agente:
             return None
-        from hacienda_gpt.agent.procedencia import mensajes_del_usuario
-        from hacienda_gpt.proactive.jobs import hoy_en_espana
+        from asistente.nucleo.agent.procedencia import mensajes_del_usuario
+        from asistente.nucleo.proactive.jobs import hoy_en_espana
 
         privados: list[str] = []
         if case is not None:
-            from hacienda_gpt.modulos.perfil import perfil_de
+            from asistente.nucleo.modulos.perfil import perfil_de
 
             # The case's facts as stored and as the modules read them (the profile).
             datos = {f.name: f.value for f in getattr(case, "facts", None) or []} | perfil_de(case)

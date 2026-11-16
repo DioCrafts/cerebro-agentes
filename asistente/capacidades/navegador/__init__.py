@@ -10,11 +10,13 @@
 * ``capacidad.py`` — the browser as a CAPABILITY (``CAPACIDAD``): what a domain asks for with ``pedir``
   («descarga mi consumo»).
 
-Moved here from ``hacienda_gpt/navegador`` (which stays as aliases of these modules).
+Moved here from ``hacienda_gpt/navegador`` (an alias in the compatibility package ``hacienda_gpt``). ``MODULO`` is
+the chat front the module registry discovers here (the old ``hacienda_gpt/modulos/navegador`` discovery shim).
 
 Playwright is imported lazily: the API starts without it, and no browser starts unless ``NAVEGADOR_ACTIVO``.
 """
 
-from hacienda_gpt.capacidades.navegador.capacidad import CAPACIDAD
+from asistente.capacidades.navegador.capacidad import CAPACIDAD
+from asistente.capacidades.navegador.modulo import MODULO
 
-__all__ = ["CAPACIDAD"]
+__all__ = ["CAPACIDAD", "MODULO"]

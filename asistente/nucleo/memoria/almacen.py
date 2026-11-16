@@ -23,8 +23,8 @@ import sqlite3
 from threading import RLock
 from typing import Any
 
-from hacienda_gpt.memoria.modelo import Decision, ahora
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.nucleo.memoria.modelo import Decision, ahora
+from asistente.plataforma.migraciones import asegurar_esquema
 
 REDACTADO = "[borrado]"
 # ``list`` is also a method of the store below, so the builtin needs another name inside the class.
@@ -32,7 +32,7 @@ _Filas = list[dict[str, Any]]
 
 
 def _crear_tablas(conn: sqlite3.Connection) -> None:
-    asegurar_esquema(conn, "memoria")  # migrations (hacienda_gpt/plataforma)
+    asegurar_esquema(conn, "memoria")  # migrations (asistente/plataforma)
     conn.execute("""
         CREATE TABLE IF NOT EXISTS decisiones (
             seq INTEGER PRIMARY KEY AUTOINCREMENT,

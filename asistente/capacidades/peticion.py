@@ -30,7 +30,7 @@ import logging
 import re
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import (
+from asistente.capacidades.contrato import (
     Capacidad,
     ContextoPeticion,
     OperacionCapacidad,
@@ -38,8 +38,8 @@ from hacienda_gpt.capacidades.contrato import (
     ResultadoCapacidad,
     huella_de,
 )
-from hacienda_gpt.capacidades.registro import RegistroCapacidades, desactivadas_por_operador, registro
-from hacienda_gpt.llm.security import sanitize_retrieved_context
+from asistente.capacidades.registro import RegistroCapacidades, desactivadas_por_operador, registro
+from asistente.conocimiento.llm.security import sanitize_retrieved_context
 
 logger = logging.getLogger(__name__)
 
@@ -145,8 +145,8 @@ def _declaradas_por_ambito(ambito: str) -> frozenset[str] | None:
     if ambito == "nucleo":
         return None
     try:
-        from hacienda_gpt.modulos.ganchos import ganchos_de
-        from hacienda_gpt.modulos.registro import registro as registro_modulos
+        from asistente.nucleo.modulos.ganchos import ganchos_de
+        from asistente.nucleo.modulos.registro import registro as registro_modulos
 
         modulo = registro_modulos().get(ambito)
     except Exception:  # the domain registry must never stop a capability
@@ -165,7 +165,7 @@ def _texto_de(datos: Mapping[str, Any]) -> str:
 def _consumo(contexto: ContextoPeticion) -> Any:
     """Attribute model calls to the user and case, unless a question is already being metered."""
     try:
-        from hacienda_gpt.ops import consumo
+        from asistente.plataforma.ops import consumo
     except Exception:  # pragma: no cover - metering is optional for the call itself
         return nullcontext()
     if consumo._CONTEXTO.get() is not None:
@@ -176,7 +176,7 @@ def _consumo(contexto: ContextoPeticion) -> Any:
 def _proveedor_para(proveedor: Any, proposito: str | None) -> Any:
     if proveedor is None or proposito is None:
         return None
-    from hacienda_gpt.agent import enrutado
+    from asistente.nucleo.agent import enrutado
 
     return enrutado.para(proveedor, proposito)
 
@@ -224,7 +224,7 @@ def pedir(
     )
     if necesita_consentimiento:
         if consentido is None:
-            from hacienda_gpt.capacidades.consentimiento import consentida
+            from asistente.capacidades.consentimiento import consentida
 
             consentido = consentida
         if not consentido(cap, contexto):

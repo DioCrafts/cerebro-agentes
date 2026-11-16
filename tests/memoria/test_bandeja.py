@@ -5,11 +5,11 @@ from __future__ import annotations
 from datetime import date, timedelta
 from decimal import Decimal
 
-from hacienda_gpt.memoria.almacen import almacen
-from hacienda_gpt.memoria.servicio import desde_aviso, registrar
-from hacienda_gpt.proactive.bandeja import avisos_de_modulos, clave_semana, resumen_semanal
-from hacienda_gpt.proactive.jobs import recordatorios_de_plazos
-from hacienda_gpt.proactive.store import Notification
+from asistente.nucleo.memoria.almacen import almacen
+from asistente.nucleo.memoria.servicio import desde_aviso, registrar
+from asistente.nucleo.proactive.bandeja import avisos_de_modulos, clave_semana, resumen_semanal
+from asistente.nucleo.proactive.jobs import recordatorios_de_plazos
+from asistente.nucleo.proactive.store import Notification
 from tests.modulos_nucleo.fakes import Llamadas, agua, aviso
 from tests.proactive import make_case
 from .conftest import HOY, guardar
@@ -234,7 +234,7 @@ def test_one_users_decisions_never_touch_another_users_inbox(db, casos, bandeja)
 def test_without_decisions_nothing_changes_and_no_table_is_created(tmp_path) -> None:
     import sqlite3
 
-    from hacienda_gpt.proactive.store import NotificationStore
+    from asistente.nucleo.proactive.store import NotificationStore
 
     path = str(tmp_path / "solo-avisos.db")
     store = NotificationStore(path)

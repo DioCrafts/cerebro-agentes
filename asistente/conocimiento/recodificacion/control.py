@@ -7,7 +7,7 @@ Three families of helpers:
 * literal-quote and "every figure is inside a quote" checks, ported from the
   self-check the human-driven encoders had to pass (``check_ded3.py``); the
   literal-quote rule and the normalisation are the shared legal-data library's
-  (:mod:`hacienda_gpt.conocimiento.comprobacion`), re-exported here;
+  (:mod:`asistente.conocimiento.comprobacion`), re-exported here;
 * the effects date of a wording, which decides the tax years a proposal touches.
 
 Nothing in this module trusts the model: a proposal that does not pass these
@@ -30,10 +30,10 @@ import unicodedata
 from pydantic import BaseModel, ConfigDict, Field
 
 # The literal-quote rules are the shared legal-data library's (one normalisation for every check).
-from hacienda_gpt.conocimiento.comprobacion import MIN_CITA, es_literal
-from hacienda_gpt.conocimiento.comprobacion import citas_no_literales as citas_no_literales
-from hacienda_gpt.conocimiento.texto import comprimido as _comprimido
-from hacienda_gpt.conocimiento.texto import formas as _formas
+from asistente.conocimiento.comprobacion import MIN_CITA, es_literal
+from asistente.conocimiento.comprobacion import citas_no_literales as citas_no_literales
+from asistente.conocimiento.texto import comprimido as _comprimido
+from asistente.conocimiento.texto import formas as _formas
 
 CENT = Decimal("0.01")
 

@@ -23,12 +23,11 @@ import sqlite3
 import threading
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.eventos import despacho
-from hacienda_gpt.eventos.bus import borrar_caso_en, emitir_en
-from hacienda_gpt.eventos.esquema import crear_tablas
-from hacienda_gpt.eventos.rutas import HECHOS_DE_CARGOS
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.eventos import despacho
+from asistente.nucleo.eventos.bus import borrar_caso_en, emitir_en
+from asistente.nucleo.eventos.esquema import crear_tablas
+from asistente.nucleo.eventos.rutas import HECHOS_DE_CARGOS
+from asistente.nucleo.eventos.tipos import (
     CAMBIO_NORMATIVO,
     CARGOS_IMPORTADOS,
     INDICE_PUBLICADO,
@@ -37,6 +36,7 @@ from hacienda_gpt.eventos.tipos import (
     NORMA_BOE,
     PERFIL_CAMBIADO,
 )
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -116,7 +116,7 @@ def al_borrar_caso(conn: sqlite3.Connection, case_id: str) -> None:
 
 def instalar() -> None:
     """Hook the bus into the case store (idempotent). The API calls it at start-up."""
-    from hacienda_gpt.decision import state_store_sqlite as almacen
+    from asistente.nucleo.decision import state_store_sqlite as almacen
 
     if al_guardar_caso not in almacen.AL_GUARDAR:
         almacen.AL_GUARDAR.append(al_guardar_caso)
@@ -125,7 +125,7 @@ def instalar() -> None:
 
 
 def desinstalar() -> None:
-    from hacienda_gpt.decision import state_store_sqlite as almacen
+    from asistente.nucleo.decision import state_store_sqlite as almacen
 
     while al_guardar_caso in almacen.AL_GUARDAR:
         almacen.AL_GUARDAR.remove(al_guardar_caso)
@@ -134,7 +134,7 @@ def desinstalar() -> None:
 
 
 def instalado() -> bool:
-    from hacienda_gpt.decision import state_store_sqlite as almacen
+    from asistente.nucleo.decision import state_store_sqlite as almacen
 
     return al_guardar_caso in almacen.AL_GUARDAR
 

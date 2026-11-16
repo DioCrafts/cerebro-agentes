@@ -39,7 +39,7 @@ jobs:
       - name: Are the BOE formats and the calendar's laws still understood?
         shell: bash # explicit, so `pipefail` is on and the exit code survives `tee`
         run: |
-          uv run python -m hacienda_gpt.cli.ops formatos probe --fail-on-problem | tee formatos-probe.json
+          uv run python -m asistente.plataforma.cli.ops formatos probe --fail-on-problem | tee formatos-probe.json
       - name: Keep the samples of a failed probe
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

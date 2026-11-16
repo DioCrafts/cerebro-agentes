@@ -21,11 +21,11 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo import autonomicas
-from hacienda_gpt.modulos.fiscal.calculo.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
-from hacienda_gpt.modulos.fiscal.calculo.compensacion import compensar_ahorro
-from hacienda_gpt.modulos.fiscal.calculo.obligacion import ResultadoObligacion, obligado_a_declarar
-from hacienda_gpt.modulos.fiscal.calculo.params import (
+from asistente.ambitos.fiscal.calculo import autonomicas
+from asistente.ambitos.fiscal.calculo.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
+from asistente.ambitos.fiscal.calculo.compensacion import compensar_ahorro
+from asistente.ambitos.fiscal.calculo.obligacion import ResultadoObligacion, obligado_a_declarar
+from asistente.ambitos.fiscal.calculo.params import (
     CAMPOS_GASTO,
     GASTOS_DESGLOSADOS,
     DeduccionesMadrid,
@@ -39,7 +39,7 @@ from hacienda_gpt.modulos.fiscal.calculo.params import (
     load_params,
     normalizar_comunidad,
 )
-from hacienda_gpt.tax.vigencia_normas import estado_de
+from asistente.conocimiento.vigencia_normas import estado_de
 
 CENT = Decimal("0.01")
 ZERO = Decimal(0)

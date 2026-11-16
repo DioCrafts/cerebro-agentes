@@ -10,9 +10,9 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.modulos.caducidades import calculo
-from hacienda_gpt.modulos.caducidades.calculo import CalculoError, sumar_anos, sumar_meses
-from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas, textos_de_directorio
+from asistente.ambitos.caducidades import calculo
+from asistente.ambitos.caducidades.calculo import CalculoError, sumar_anos, sumar_meses
+from asistente.ambitos.caducidades.reglas import cargar_reglas, textos_de_directorio
 
 R = cargar_reglas()
 EXTRACTOS = Path(__file__).resolve().parents[2] / "fixtures" / "modulos" / "caducidades"

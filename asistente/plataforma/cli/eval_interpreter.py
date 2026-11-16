@@ -5,7 +5,7 @@ from pathlib import Path
 
 import click
 
-from hacienda_gpt.decision.interpreter import interpret_turn
+from asistente.nucleo.decision.interpreter import interpret_turn
 
 
 def _safe_div(num: int, den: int) -> float:

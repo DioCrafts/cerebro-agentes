@@ -14,9 +14,9 @@ in ``sucesiones.py`` knows no community by name.
 in the law verbatim and every figure must be spelled inside one of its rule's
 quotes. Command line (also for whoever encodes a new community)::
 
-    python -m hacienda_gpt.modulos.fiscal.calculo.sucesiones_params texto <page.html>
-    python -m hacienda_gpt.modulos.fiscal.calculo.sucesiones_params comprobar <ejercicio> <dir with pages>
-    python -m hacienda_gpt.modulos.fiscal.calculo.sucesiones_params comprobar-ccaa <community.json> <dir with pages>
+    python -m asistente.ambitos.fiscal.calculo.sucesiones_params texto <page.html>
+    python -m asistente.ambitos.fiscal.calculo.sucesiones_params comprobar <ejercicio> <dir with pages>
+    python -m asistente.ambitos.fiscal.calculo.sucesiones_params comprobar-ccaa <community.json> <dir with pages>
 """
 
 from __future__ import annotations
@@ -32,7 +32,7 @@ from typing import Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.params import (
+from asistente.ambitos.fiscal.calculo.params import (
     DATA_DIR,
     EjercicioNoDisponibleError,
     Escala,
@@ -184,7 +184,7 @@ class _Regla(_Model):
     # Legal conditions the calculator cannot see; repeated whenever the rule is applied.
     requisitos_no_comprobados: list[str] = Field(default_factory=list)
     evidencia: list[Cita] = Field(min_length=1)
-    # Set by the re-encoding loop (hacienda_gpt.tax.recodificacion) when it rewrote the rule from the
+    # Set by the re-encoding loop (asistente.conocimiento.recodificacion) when it rewrote the rule from the
     # BOE; cleared when a person confirms it. The calculator says so wherever the rule is applied.
     recodificada_el: str | None = None
 

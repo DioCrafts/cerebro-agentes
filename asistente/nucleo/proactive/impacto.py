@@ -6,7 +6,7 @@ plain-language summary tagged with a fixed vocabulary of taxpayer groups, and
 then matches those tags against each case's facts deterministically.
 
 The safeguard against an invented effect is mechanical, as in
-:mod:`hacienda_gpt.tax.documentos`: the summary must come with a literal quote
+:mod:`asistente.ambitos.fiscal.documentos`: the summary must come with a literal quote
 of the article text, and a summary whose quote is not in the text is discarded.
 """
 
@@ -23,13 +23,13 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.eventos.productores import emitir_cambio_normativo
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasConsolidado
-from hacienda_gpt.proactive.store import Notification, NotificationStore
-from hacienda_gpt.tax.fuentes import comunidad_de, norma_de_parametros
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_boe import ReglasConsolidado
+from asistente.conocimiento.fuentes import comunidad_de, norma_de_parametros
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.eventos.productores import emitir_cambio_normativo
+from asistente.nucleo.proactive.store import Notification, NotificationStore
 
 logger = logging.getLogger(__name__)
 

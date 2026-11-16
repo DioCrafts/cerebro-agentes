@@ -19,11 +19,11 @@ from pathlib import Path
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.api.api import app, get_case_store, get_fact_extractor
-from hacienda_gpt.decision.fact_extractor import ExtractionPayload
-from hacienda_gpt.decision.question_policy import QuestionPolicy
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.decision.fact_extractor import ExtractionPayload
+from asistente.nucleo.decision.question_policy import QuestionPolicy
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma.api.api import app, get_case_store, get_fact_extractor
 
 
 class _ScriptedExtractor:

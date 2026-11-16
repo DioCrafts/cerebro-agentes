@@ -10,11 +10,11 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.modulos.luz.consumo import Lectura, compactar, importar_csv
-from hacienda_gpt.modulos.luz.esios import interpretar
-from hacienda_gpt.modulos.luz.factura import Contrato, FacturaError, calcular_factura
-from hacienda_gpt.modulos.luz.ofertas import Oferta
-from hacienda_gpt.modulos.luz.periodos import es_dia_valle, hora_local, horas_del_dia
+from asistente.ambitos.luz.consumo import Lectura, compactar, importar_csv
+from asistente.ambitos.luz.esios import interpretar
+from asistente.ambitos.luz.factura import Contrato, FacturaError, calcular_factura
+from asistente.ambitos.luz.ofertas import Oferta
+from asistente.ambitos.luz.periodos import es_dia_valle, hora_local, horas_del_dia
 
 D = Decimal
 
@@ -190,7 +190,7 @@ def test_bills_that_cannot_be_computed_explain_why() -> None:
 
 
 def test_offer_validation_messages() -> None:
-    from hacienda_gpt.modulos.luz.ofertas import validar_oferta, validar_ofertas
+    from asistente.ambitos.luz.ofertas import validar_oferta, validar_ofertas
 
     with pytest.raises(ValueError, match="potencia"):
         validar_oferta({"nombre": "X", "energia_eur_kwh": 0.1})

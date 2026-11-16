@@ -8,9 +8,9 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.ayudas.hogar import hogar_del_perfil
-from hacienda_gpt.modulos.ayudas.parametros import load_prestaciones
-from hacienda_gpt.modulos.ayudas.prestaciones import (
+from asistente.ambitos.ayudas.hogar import hogar_del_perfil
+from asistente.ambitos.ayudas.parametros import load_prestaciones
+from asistente.ambitos.ayudas.prestaciones import (
     Evaluacion,
     evaluar_bono_social_electrico,
     evaluar_bono_social_termico,

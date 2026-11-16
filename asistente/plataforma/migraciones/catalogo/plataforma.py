@@ -1,4 +1,4 @@
-"""``hacienda_gpt.plataforma``: the processes that are running and the scheduled jobs of the worker.
+"""``asistente.plataforma``: the processes that are running and the scheduled jobs of the worker.
 
 * ``plataforma_procesos`` — heartbeat of each api / worker process (no user data);
 * ``plataforma_trabajos`` — per scheduled job, the last slot claimed, by whom, and how it ended: the claim
@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 PROCESOS = """CREATE TABLE IF NOT EXISTS plataforma_procesos (
     nombre TEXT PRIMARY KEY,
@@ -30,7 +30,7 @@ TRABAJOS = """CREATE TABLE IF NOT EXISTS plataforma_trabajos (
 
 PROPIETARIO = Propietario(
     nombre="plataforma",
-    paquete="hacienda_gpt.plataforma",
+    paquete="asistente.plataforma",
     descripcion="Latido de los procesos y turnos reclamados de las tareas programadas del worker.",
     tablas=("plataforma_procesos", "plataforma_trabajos"),
     migraciones=(Migracion(1, "esquema_inicial", (PROCESOS, TRABAJOS)),),

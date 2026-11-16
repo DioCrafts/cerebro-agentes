@@ -10,18 +10,16 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
-from hacienda_gpt.modulos.luz import esios
-from hacienda_gpt.modulos.luz.analisis import (
+from asistente.ambitos.luz import esios
+from asistente.ambitos.luz.analisis import (
     comparar,
     dia_valle_texto,
     horas_baratas,
     horas_por_periodo,
     potencia_optima,
 )
-from hacienda_gpt.modulos.luz.capacidades import herramientas_de_capacidades
-from hacienda_gpt.modulos.luz.consumo import (
+from asistente.ambitos.luz.capacidades import herramientas_de_capacidades
+from asistente.ambitos.luz.consumo import (
     ConsumoGuardado,
     FormatoNoReconocidoError,
     Lectura,
@@ -30,10 +28,12 @@ from hacienda_gpt.modulos.luz.consumo import (
     compactar,
     importar_csv,
 )
-from hacienda_gpt.modulos.luz.datos import PERIODOS, DatoNoDisponibleError, cargar_regulados
-from hacienda_gpt.modulos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
-from hacienda_gpt.modulos.luz.ofertas import Oferta, cargar_oferta, cargar_ofertas
-from hacienda_gpt.modulos.luz.periodos import ZONAS, Zona, describir_periodos
+from asistente.ambitos.luz.datos import PERIODOS, DatoNoDisponibleError, cargar_regulados
+from asistente.ambitos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
+from asistente.ambitos.luz.ofertas import Oferta, cargar_oferta, cargar_ofertas
+from asistente.ambitos.luz.periodos import ZONAS, Zona, describir_periodos
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 HECHO_CUPS = "luz_cups"
 HECHO_P1 = "luz_potencia_p1_kw"

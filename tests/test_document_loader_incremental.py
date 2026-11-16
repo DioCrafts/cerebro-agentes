@@ -18,9 +18,9 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.processor import document_loader as dl
-from hacienda_gpt.processor import manifest as mf
+from asistente.conocimiento.processor import document_loader as dl
+from asistente.conocimiento.processor import manifest as mf
+from asistente.plataforma import settings
 
 
 @pytest.fixture(autouse=True)

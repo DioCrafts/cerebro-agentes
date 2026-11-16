@@ -7,10 +7,10 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt.modulos.fiscal.calculo.beneficios import Beneficio, evaluar_beneficios
-from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFInput, IRPFResult, calcular_irpf
-from hacienda_gpt.modulos.fiscal.calculo.params import load_params
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.calculo.beneficios import Beneficio, evaluar_beneficios
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.profile import (
     ACTIVIDAD_FACT_FIELDS,
     CORE_FIELDS,
     RECUENTOS_DEL_DETALLE,

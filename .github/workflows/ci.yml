@@ -21,7 +21,7 @@ jobs:
       - name: ruff
         run: uvx ruff@0.15.8 check --no-fix .
       - name: black
-        run: uvx black@26.3.1 --check --target-version py313 hacienda_gpt tests
+        run: uvx black@26.3.1 --check --target-version py313 asistente hacienda_gpt tests
 
   test:
     runs-on: ubuntu-latest
@@ -71,7 +71,7 @@ jobs:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync
-      - run: uv run mypy hacienda_gpt
+      - run: uv run mypy asistente hacienda_gpt
 
   # React frontend: type-check, lint and production build.
   frontend:

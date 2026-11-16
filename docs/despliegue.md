@@ -41,11 +41,11 @@ Las tareas programadas y su vigilancia (`ops doctor`, *healthchecks*) se explica
 
 | Proceso | Orden | Qué hace |
 |---|---|---|
-| `api` | `uvicorn hacienda_gpt.api.api:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1` | Atiende la interfaz y la API. Escribe los eventos (cambios de perfil, módulos, normas…) en la base de datos de casos. Con `EVENTOS_DESPACHO_EN_API=true` (por defecto, como siempre) además los reparte él mismo en un hilo, para que el aviso salga en segundos. Las tareas del agente con navegador corren en el proceso de la API que las arrancó. Al arrancar, migra la base de datos de casos. |
-| `worker` | `python -m hacienda_gpt.cli.plataforma worker` | Un único punto de entrada para todo lo que no es una petición: el **bus de eventos** (temporizadores, reparto a los módulos, reintentos), las **tareas programadas** que antes eran líneas de cron (tabla siguiente) y los **servicios** que registren otros paquetes (por ejemplo, un motor de tareas largas). Al arrancar, migra la base de datos de casos. Escribe su latido cada `PLATAFORMA_LATIDO_SEGUNDOS`. |
+| `api` | `uvicorn asistente.plataforma.api.api:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1` | Atiende la interfaz y la API. Escribe los eventos (cambios de perfil, módulos, normas…) en la base de datos de casos. Con `EVENTOS_DESPACHO_EN_API=true` (por defecto, como siempre) además los reparte él mismo en un hilo, para que el aviso salga en segundos. Las tareas del agente con navegador corren en el proceso de la API que las arrancó. Al arrancar, migra la base de datos de casos. |
+| `worker` | `python -m asistente.plataforma.cli.plataforma worker` | Un único punto de entrada para todo lo que no es una petición: el **bus de eventos** (temporizadores, reparto a los módulos, reintentos), las **tareas programadas** que antes eran líneas de cron (tabla siguiente) y los **servicios** que registren otros paquetes (por ejemplo, un motor de tareas largas). Al arrancar, migra la base de datos de casos. Escribe su latido cada `PLATAFORMA_LATIDO_SEGUNDOS`. |
 | interfaz | ficheros estáticos de `frontend/dist` (`npm run build`) | Los sirve el proxy inverso. La interfaz llama a la API en `/api` (`VITE_API_BASE` en la compilación, por defecto `/api`). |
 
-`python -m hacienda_gpt.cli.plataforma procesos` imprime este modelo tal como está configurado (servicios,
+`python -m asistente.plataforma.cli.plataforma procesos` imprime este modelo tal como está configurado (servicios,
 tareas activas y su próxima ejecución, extensiones cargadas).
 
 ### 1.1 Las tareas programadas del worker
@@ -56,17 +56,17 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
 
 | Nombre | Cuándo | Orden (`python -m …`) | Por defecto |
 |---|---|---|---|
-| `hipoteca-indices` | 06:20 los días 4 y 19 | `hacienda_gpt.modulos.hipoteca.indices actualizar` | sí |
-| `boe-watch` | 06:30 | `hacienda_gpt.cli.boe_watch` | sí |
-| `boe-impact` | 06:45 | `hacienda_gpt.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes` | sí |
-| `boe-novedades` | 06:50 | `hacienda_gpt.cli.proactive boe-novedades` | sí |
-| `params-autopilot` | 06:55 | `hacienda_gpt.cli.proactive params-autopilot --no-detect` | **no** (escribe en `hacienda_gpt/tax/data`) |
-| `run-daily` | 07:00 | `hacienda_gpt.cli.proactive run-daily` | sí |
-| `deliver` | 07:15 | `hacienda_gpt.cli.ops deliver` (se registra sola) | sí |
-| `run-weekly` | 07:30 los lunes | `hacienda_gpt.cli.proactive run-weekly` | sí |
-| `doctor` | 09:00 | `hacienda_gpt.cli.ops doctor` | sí |
-| `correo-sincronizar` | cada 30 min | `hacienda_gpt.modulos.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
-| `indice-corpus` | 03:40 | `hacienda_gpt.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
+| `hipoteca-indices` | 06:20 los días 4 y 19 | `asistente.ambitos.hipoteca.indices actualizar` | sí |
+| `boe-watch` | 06:30 | `asistente.plataforma.cli.boe_watch` | sí |
+| `boe-impact` | 06:45 | `asistente.plataforma.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes` | sí |
+| `boe-novedades` | 06:50 | `asistente.plataforma.cli.proactive boe-novedades` | sí |
+| `params-autopilot` | 06:55 | `asistente.plataforma.cli.proactive params-autopilot --no-detect` | **no** (escribe en `asistente/ambitos/fiscal/data`) |
+| `run-daily` | 07:00 | `asistente.plataforma.cli.proactive run-daily` | sí |
+| `deliver` | 07:15 | `asistente.plataforma.cli.ops deliver` (se registra sola) | sí |
+| `run-weekly` | 07:30 los lunes | `asistente.plataforma.cli.proactive run-weekly` | sí |
+| `doctor` | 09:00 | `asistente.plataforma.cli.ops doctor` | sí |
+| `correo-sincronizar` | cada 30 min | `asistente.capacidades.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
+| `indice-corpus` | 03:40 | `asistente.plataforma.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
 
 - **Una sola ejecución por turno, con varios workers.** Antes de lanzar una tarea, el worker reclama su
   turno en la tabla `plataforma_trabajos` dentro de una transacción `BEGIN IMMEDIATE`. Si hay dos workers
@@ -77,7 +77,7 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
   al turno siguiente.
 - **Elegir las tareas.** `PLATAFORMA_TRABAJOS` (vacío = las de «por defecto»; `todos`; `ninguno`; o una lista
   separada por comas) y `PLATAFORMA_TRABAJOS_DESACTIVADOS` (lista que se quita).
-- **Sin worker continuo.** `python -m hacienda_gpt.cli.plataforma worker --una-vez` hace una pasada (bus de
+- **Sin worker continuo.** `python -m asistente.plataforma.cli.plataforma worker --una-vez` hace una pasada (bus de
   eventos y tareas debidas) y termina: una sola línea de cron cada 5 minutos sustituye a todas las de
   [operacion.md](operacion.md). Si ya tienes esas líneas de cron, **no** arranques además el worker con las
   mismas tareas: usa `PLATAFORMA_TRABAJOS=ninguno` (solo bus de eventos) o quita las líneas de cron.
@@ -104,7 +104,7 @@ Recomendado: **un** proceso de uvicorn (sin `--workers`). Motivos:
 
 ### 1.4 Tareas del navegador en la base de datos
 
-Las tareas del agente con navegador (`hacienda_gpt/navegador`) están en la tabla `navegador_tareas` de la
+Las tareas del agente con navegador (`asistente/capacidades/navegador`) están en la tabla `navegador_tareas` de la
 base de datos de casos, no solo en memoria:
 
 - Un **reinicio no las pierde**: una tarea preparada (aún sin navegador) se puede empezar después del
@@ -127,7 +127,7 @@ base de datos de casos, no solo en memoria:
 
 Antes, cada paquete creaba o alteraba sus tablas por su cuenta al abrir la conexión («`CREATE TABLE IF NOT
 EXISTS`», «`ALTER` si falta la columna»). Ahora el esquema está versionado en
-`hacienda_gpt/plataforma/migraciones/`:
+`asistente/plataforma/migraciones/`:
 
 - Cada **propietario** (el paquete dueño de unas tablas) tiene migraciones numeradas 1, 2, 3… que se aplican
   en orden y una sola vez por base de datos. Lo aplicado queda en la tabla `schema_migrations`
@@ -148,10 +148,10 @@ EXISTS`», «`ALTER` si falta la columna»). Ahora el esquema está versionado e
   deja solo la orden manual.
 
 ```bash
-uv run python -m hacienda_gpt.cli.plataforma migrar --estado      # versión de cada propietario
-uv run python -m hacienda_gpt.cli.plataforma migrar --dry-run     # qué se aplicaría, con el SQL; no escribe
-uv run python -m hacienda_gpt.cli.plataforma migrar               # aplicar
-uv run python -m hacienda_gpt.cli.plataforma migrar --base doctrina   # el grafo de doctrina (otro fichero)
+uv run python -m asistente.plataforma.cli.plataforma migrar --estado      # versión de cada propietario
+uv run python -m asistente.plataforma.cli.plataforma migrar --dry-run     # qué se aplicaría, con el SQL; no escribe
+uv run python -m asistente.plataforma.cli.plataforma migrar               # aplicar
+uv run python -m asistente.plataforma.cli.plataforma migrar --base doctrina   # el grafo de doctrina (otro fichero)
 ```
 
 **No hay migraciones hacia atrás.** Antes de desplegar una versión con migraciones nuevas, haz una copia
@@ -159,7 +159,7 @@ uv run python -m hacienda_gpt.cli.plataforma migrar --base doctrina   # el grafo
 migración nueva. `migrar --estado` avisa si el código de una migración aplicada ha cambiado.
 
 **Añadir una tabla o una columna.** En el módulo del propietario en
-`hacienda_gpt/plataforma/migraciones/catalogo/`, añade `Migracion(n + 1, "nombre", ("ALTER TABLE …",))`. Un
+`asistente/plataforma/migraciones/catalogo/`, añade `Migracion(n + 1, "nombre", ("ALTER TABLE …",))`. Un
 paquete nuevo añade su módulo al catálogo (o llama a `registrar(Propietario(...))`) y pone
 `asegurar_esquema(conn, "<propietario>")` donde abre su conexión.
 
@@ -169,21 +169,21 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 
 | Propietario | Paquete | Base | Tablas | Índices y disparadores | Versión | Contenido |
 |---|---|---|---|---|---|---|
-| `decision` | `hacienda_gpt.decision` | casos | `case_states`, `audit_events` | `idx_case_states_user`, `idx_case_states_updated`, `idx_audit_case_time` | 1 | Expedientes (estado del caso en JSON) y su registro de auditoría. |
-| `auth` | `hacienda_gpt.auth` | casos | `users`, `auth_sessions`, `user_consents`, `case_owners`, `user_module_choices` | `idx_auth_sessions_user`, `idx_user_consents_user`, `idx_case_owners_user`, `idx_user_module_choices_user` | 1 | Cuentas, sesiones (hash del token), consentimientos, dueño de cada caso y módulos elegidos (las preferencias de módulos viven aquí). |
-| `proactive` | `hacienda_gpt.proactive` | casos | `notifications` | `idx_notifications_case` | 1 | Avisos de cada caso (bandeja), únicos por (case_id, key). |
-| `proactive_entrega` | `hacienda_gpt.proactive` | casos | `notification_deliveries` | | 1 | Qué aviso se entregó por qué canal. |
-| `acciones` | `hacienda_gpt.modulos` | casos | `acciones_pendientes` | `idx_acciones_case` | 1 | Acciones de los módulos pendientes de confirmación. |
-| `memoria` | `hacienda_gpt.memoria` | casos | `decisiones`, `decisiones_historial` | `idx_decisiones_case`, `idx_decisiones_historial_case`, `decisiones_borrar_con_caso` | 2 | Decisiones del usuario y su historial. La v2 (disparador) espera a que exista `case_states`. |
-| `evaluacion` | `hacienda_gpt.evaluacion` | casos | `evaluacion_feedback` | `idx_evaluacion_feedback_case`, `evaluacion_feedback_borra_con_el_caso` | 2 | Valoraciones de respuestas (el contenido vive en `audit_events`). |
-| `eventos` | `hacienda_gpt.eventos` | casos | `eventos`, `eventos_cursores`, `eventos_entregas`, `eventos_temporizadores`, `eventos_trabajadores` | `idx_eventos_case`, `idx_entregas_estado`, `idx_entregas_case`, `idx_temporizadores_fecha` | 1 | Bus de eventos. |
-| `correo` | `hacienda_gpt.modulos.correo` | casos | `correo_conexiones`, `correo_oauth_estados`, `correo_elementos`, `correo_propuestas`, `correo_contactos` | `idx_correo_elementos_fecha` | 1 | Gmail: token cifrado, estados OAuth, elementos derivados, propuestas, contactos. |
-| `consumo` | `hacienda_gpt.ops` | casos | `llm_usage` | `idx_llm_usage_ts` | 1 | Llamadas al LLM: tokens y coste estimado. |
-| `navegador` | `hacienda_gpt.navegador` | casos | `navegador_tareas`, `navegador_inicios` | `idx_navegador_tareas_case`, `idx_navegador_inicios`, `navegador_borrar_con_caso` | 2 | Tareas del agente con navegador (§1.4). |
-| `plataforma` | `hacienda_gpt.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. |
-| `tareas` | `hacienda_gpt.tareas` | casos | `tareas`, `tareas_historial`, `tareas_senales` | `idx_tareas_case`, `idx_tareas_estado`, `idx_tareas_historial`, `idx_tareas_historial_case`, `idx_tareas_senales`, `tareas_borrar_con_caso` | 2 | Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus. La v2 (disparador) espera a que exista `case_states`. |
-| `push` | `hacienda_gpt.push` | casos | `push_suscripciones`, `push_consentimientos` | `idx_push_suscripciones_propietario`, `idx_push_consentimientos`, `push_borrar_suscripciones_con_usuario` | 1 | Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario. |
-| `doctrina` | `hacienda_gpt.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
+| `decision` | `asistente.nucleo.decision` | casos | `case_states`, `audit_events` | `idx_case_states_user`, `idx_case_states_updated`, `idx_audit_case_time` | 1 | Expedientes (estado del caso en JSON) y su registro de auditoría. |
+| `auth` | `asistente.plataforma.auth` | casos | `users`, `auth_sessions`, `user_consents`, `case_owners`, `user_module_choices` | `idx_auth_sessions_user`, `idx_user_consents_user`, `idx_case_owners_user`, `idx_user_module_choices_user` | 1 | Cuentas, sesiones (hash del token), consentimientos, dueño de cada caso y módulos elegidos (las preferencias de módulos viven aquí). |
+| `proactive` | `asistente.nucleo.proactive` | casos | `notifications` | `idx_notifications_case` | 1 | Avisos de cada caso (bandeja), únicos por (case_id, key). |
+| `proactive_entrega` | `asistente.nucleo.proactive` | casos | `notification_deliveries` | | 1 | Qué aviso se entregó por qué canal. |
+| `acciones` | `asistente.nucleo.modulos` | casos | `acciones_pendientes` | `idx_acciones_case` | 1 | Acciones de los módulos pendientes de confirmación. |
+| `memoria` | `asistente.nucleo.memoria` | casos | `decisiones`, `decisiones_historial` | `idx_decisiones_case`, `idx_decisiones_historial_case`, `decisiones_borrar_con_caso` | 2 | Decisiones del usuario y su historial. La v2 (disparador) espera a que exista `case_states`. |
+| `evaluacion` | `asistente.nucleo.evaluacion` | casos | `evaluacion_feedback` | `idx_evaluacion_feedback_case`, `evaluacion_feedback_borra_con_el_caso` | 2 | Valoraciones de respuestas (el contenido vive en `audit_events`). |
+| `eventos` | `asistente.nucleo.eventos` | casos | `eventos`, `eventos_cursores`, `eventos_entregas`, `eventos_temporizadores`, `eventos_trabajadores` | `idx_eventos_case`, `idx_entregas_estado`, `idx_entregas_case`, `idx_temporizadores_fecha` | 1 | Bus de eventos. |
+| `correo` | `asistente.capacidades.correo` | casos | `correo_conexiones`, `correo_oauth_estados`, `correo_elementos`, `correo_propuestas`, `correo_contactos` | `idx_correo_elementos_fecha` | 1 | Gmail: token cifrado, estados OAuth, elementos derivados, propuestas, contactos. |
+| `consumo` | `asistente.plataforma.ops` | casos | `llm_usage` | `idx_llm_usage_ts` | 1 | Llamadas al LLM: tokens y coste estimado. |
+| `navegador` | `asistente.capacidades.navegador` | casos | `navegador_tareas`, `navegador_inicios` | `idx_navegador_tareas_case`, `idx_navegador_inicios`, `navegador_borrar_con_caso` | 2 | Tareas del agente con navegador (§1.4). |
+| `plataforma` | `asistente.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. |
+| `tareas` | `asistente.nucleo.tareas` | casos | `tareas`, `tareas_historial`, `tareas_senales` | `idx_tareas_case`, `idx_tareas_estado`, `idx_tareas_historial`, `idx_tareas_historial_case`, `idx_tareas_senales`, `tareas_borrar_con_caso` | 2 | Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus. La v2 (disparador) espera a que exista `case_states`. |
+| `push` | `asistente.plataforma.push` | casos | `push_suscripciones`, `push_consentimientos` | `idx_push_suscripciones_propietario`, `idx_push_consentimientos`, `push_borrar_suscripciones_con_usuario` | 1 | Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario. |
+| `doctrina` | `asistente.conocimiento.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
 
 Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrations` (el registro).
 
@@ -191,9 +191,9 @@ Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrat
 (`_jobs_state.json`, `_formatos_state.json`, `formatos/`, `_estado_normas.json`, `recodificacion/`,
 `_lotes/`, `_modulos_fuentes_state.json`, `navegador/` con diagnósticos redactados, `modulos/ayudas/`
 con las convocatorias del BOE), el índice de búsqueda (`FAISS_INDEX_PATH`, reconstruible) y los datos
-legales versionados del repositorio (`hacienda_gpt/tax/data`, `hacienda_gpt/modulos/*/data`).
+legales versionados del repositorio (`asistente/ambitos/fiscal/data`, `asistente/ambitos/*/data`).
 
-Cada almacén con tablas propias está en el catálogo (`hacienda_gpt/plataforma/migraciones/catalogo/`), con su
+Cada almacén con tablas propias está en el catálogo (`asistente/plataforma/migraciones/catalogo/`), con su
 línea base y la llamada `asegurar_esquema`; `tests/plataforma/test_migraciones.py` comprueba que esta tabla
 dice lo mismo que el catálogo (propietarios, paquetes, tablas, índices y disparadores, versión).
 
@@ -247,7 +247,7 @@ Por tabla:
 
 ## 3. Variables de entorno
 
-Todas las que lee el código: `hacienda_gpt/settings.py` y las que leen los módulos al usarse. «Secreto»
+Todas las que lee el código: `asistente/plataforma/settings.py` y las que leen los módulos al usarse. «Secreto»
 quiere decir: solo en el entorno o en un gestor de secretos, nunca en el repositorio ni en registros.
 Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirectory`).
 
@@ -269,7 +269,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `MODULOS_FUENTES_STATE_PATH` | `./data/_modulos_fuentes_state.json` | Fecha base de las fuentes del BOE de los módulos. |
 | `NAVEGADOR_DIR` | `./data/navegador` | Diagnósticos redactados del agente con navegador (por caso, 30 días). |
 | `AYUDAS_DATA_DIR` | `./data/modulos/ayudas` | Convocatorias detectadas en el BOE (datos públicos). |
-| `EVALUACION_VARIANTE_ACTIVA_PATH` | vacío (= `hacienda_gpt/evaluacion/variante_activa.json`) | Variante de prompt/modelo activa. |
+| `EVALUACION_VARIANTE_ACTIVA_PATH` | vacío (= `asistente/nucleo/evaluacion/variante_activa.json`) | Variante de prompt/modelo activa. |
 | `PRJ_DATA_DIR` | `~` | Raíz de datos del procesador del corpus (`cli.processor`). |
 
 ### 3.2 Plataforma, procesos y bus de eventos
@@ -517,11 +517,11 @@ Las bases SQLite están en modo WAL y la API y el worker escriben a la vez: **no
 
 ```bash
 # Clave de las copias (una vez): guárdala en el gestor de secretos Y fuera de la máquina.
-uv run python -m hacienda_gpt.cli.plataforma nueva-clave
+uv run python -m asistente.plataforma.cli.plataforma nueva-clave
 export PLATAFORMA_CLAVE_COPIAS=...
 
-uv run python -m hacienda_gpt.cli.plataforma copia --destino /var/backups/hacienda
-uv run python -m hacienda_gpt.cli.plataforma copia --base doctrina --destino /var/backups/hacienda
+uv run python -m asistente.plataforma.cli.plataforma copia --destino /var/backups/hacienda
+uv run python -m asistente.plataforma.cli.plataforma copia --base doctrina --destino /var/backups/hacienda
 ```
 
 - Usa la API de copia de SQLite (consistente aunque haya escrituras), comprueba la copia con
@@ -542,11 +542,11 @@ uv run python -m hacienda_gpt.cli.plataforma copia --base doctrina --destino /va
 
 ```bash
 systemctl stop hacienda-worker hacienda-api
-uv run python -m hacienda_gpt.cli.plataforma descifrar-copia /var/backups/hacienda/decision_state-20261116T031700Z.sqlite3.fernet /tmp/restaurada.sqlite3
+uv run python -m asistente.plataforma.cli.plataforma descifrar-copia /var/backups/hacienda/decision_state-20261116T031700Z.sqlite3.fernet /tmp/restaurada.sqlite3
 sqlite3 /tmp/restaurada.sqlite3 'PRAGMA integrity_check'
 mv data/decision_state.sqlite3 data/decision_state.sqlite3.antes && rm -f data/decision_state.sqlite3-wal data/decision_state.sqlite3-shm
 install -m 600 -o hacienda /tmp/restaurada.sqlite3 data/decision_state.sqlite3 && shred -u /tmp/restaurada.sqlite3
-uv run python -m hacienda_gpt.cli.plataforma migrar --estado      # la versión del código puede pedir migraciones
+uv run python -m asistente.plataforma.cli.plataforma migrar --estado      # la versión del código puede pedir migraciones
 systemctl start hacienda-api hacienda-worker
 ```
 
@@ -558,9 +558,9 @@ Prueba la restauración de vez en cuando: una copia que nunca se ha restaurado n
 
 | Clave | Cómo rotarla |
 |---|---|
-| `CORREO_CLAVE_CIFRADO` | Admite varias claves separadas por comas (la primera cifra, todas descifran). 1) `python -m hacienda_gpt.modulos.correo nueva-clave`; 2) pon `CORREO_CLAVE_CIFRADO=<nueva>,<antigua>` y reinicia api y worker; 3) `python -m hacienda_gpt.modulos.correo rotar-clave` (vuelve a cifrar cada *refresh token* con la nueva); 4) quita la antigua y reinicia. Si la clave se ha filtrado: además, revoca las conexiones (los usuarios vuelven a conectar Gmail). |
-| `PLATAFORMA_CLAVE_COPIAS` | Igual: `nueva-clave`; `PLATAFORMA_CLAVE_COPIAS=<nueva>,<antigua>`; `python -m hacienda_gpt.cli.plataforma recifrar-copias /var/backups/hacienda/*.fernet`; quita la antigua cuando no quede ninguna copia cifrada con ella (también las de fuera de la máquina). |
-| Sesiones de usuario | No hay un secreto de servidor que rotar: cada sesión es un token aleatorio del que solo se guarda el SHA-256, y caduca a las `AUTH_SESSION_TTL_HOURS`. Para cerrar **todas** las sesiones (sospecha de robo, cambio de política): `python -m hacienda_gpt.cli.plataforma revocar-sesiones`. |
+| `CORREO_CLAVE_CIFRADO` | Admite varias claves separadas por comas (la primera cifra, todas descifran). 1) `python -m asistente.capacidades.correo nueva-clave`; 2) pon `CORREO_CLAVE_CIFRADO=<nueva>,<antigua>` y reinicia api y worker; 3) `python -m asistente.capacidades.correo rotar-clave` (vuelve a cifrar cada *refresh token* con la nueva); 4) quita la antigua y reinicia. Si la clave se ha filtrado: además, revoca las conexiones (los usuarios vuelven a conectar Gmail). |
+| `PLATAFORMA_CLAVE_COPIAS` | Igual: `nueva-clave`; `PLATAFORMA_CLAVE_COPIAS=<nueva>,<antigua>`; `python -m asistente.plataforma.cli.plataforma recifrar-copias /var/backups/hacienda/*.fernet`; quita la antigua cuando no quede ninguna copia cifrada con ella (también las de fuera de la máquina). |
+| Sesiones de usuario | No hay un secreto de servidor que rotar: cada sesión es un token aleatorio del que solo se guarda el SHA-256, y caduca a las `AUTH_SESSION_TTL_HOURS`. Para cerrar **todas** las sesiones (sospecha de robo, cambio de política): `python -m asistente.plataforma.cli.plataforma revocar-sesiones`. |
 | `HACIENDA_API_KEY`, `HACIENDA_OPERATOR_KEY` | Admiten una sola clave: cambia el valor en el entorno y en quien la envía (el proxy o el operador) a la vez, y reinicia la API (unos segundos de 401 para quien use la antigua). |
 | `PUSH_VAPID_*` | Cambiar la clave invalida las suscripciones existentes: cada dispositivo debe volver a activar los avisos. Hazlo solo si la clave se ha filtrado. |
 | `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `LUZ_ESIOS_TOKEN`, `NOTIFY_SMTP_PASSWORD`, `NOTIFY_WEBHOOK_URL`, `CORREO_GOOGLE_CLIENT_SECRET` | Crea la nueva en el proveedor, cámbiala en el entorno, reinicia api y worker, y revoca la antigua en el proveedor. |
@@ -576,11 +576,11 @@ servicio (`chmod 640`, `root:hacienda`).
 |---|---|---|
 | La API responde | `GET /health` (sin clave ni límite) | Balanceador, `healthcheck` de compose, monitor externo. |
 | La API y su base | `GET /plataforma/salud` (clave de operador con cuentas) | Migraciones pendientes, workers vivos, última ejecución de cada tarea programada. |
-| El worker late | `python -m hacienda_gpt.cli.plataforma salud --exigir-worker` (código 1 si no hay un worker con latido reciente o hay migraciones pendientes) | `healthcheck` del contenedor del worker, monitor. |
-| El bus de eventos | `GET /eventos/salud` (operador) o `python -m hacienda_gpt.cli.eventos estado` | Atraso, cola de errores, temporizadores. |
+| El worker late | `python -m asistente.plataforma.cli.plataforma salud --exigir-worker` (código 1 si no hay un worker con latido reciente o hay migraciones pendientes) | `healthcheck` del contenedor del worker, monitor. |
+| El bus de eventos | `GET /eventos/salud` (operador) o `python -m asistente.plataforma.cli.eventos estado` | Atraso, cola de errores, temporizadores. |
 | Las tareas corrieron | `ops doctor` (tarea `doctor` del worker) y `HEALTHCHECK_URL` | Avisa si una tarea no ha corrido o ha fallado ([operacion.md](operacion.md)). |
 | Métricas | `GET /metrics` (Prometheus) | Peticiones, errores, latencias. |
-| Esquema | `python -m hacienda_gpt.cli.plataforma migrar --estado` | Versión de cada propietario. |
+| Esquema | `python -m asistente.plataforma.cli.plataforma migrar --estado` | Versión de cada propietario. |
 
 El `healthcheck` de `docker-compose.yml` usa `/health` para la API y `salud --exigir-worker` para el
 worker.
@@ -602,7 +602,7 @@ install -d -o hacienda -m 700 /srv/hacienda-asesor/data /var/backups/hacienda
 install -d /etc/hacienda && install -m 640 -g hacienda docs/despliegue/entorno.ejemplo /etc/hacienda/entorno
 # Unidades
 cp docs/despliegue/systemd/* /etc/systemd/system/ && systemctl daemon-reload
-sudo -u hacienda .venv/bin/python -m hacienda_gpt.cli.plataforma migrar
+sudo -u hacienda .venv/bin/python -m asistente.plataforma.cli.plataforma migrar
 systemctl enable --now hacienda-api hacienda-worker hacienda-copia.timer
 # Proxy: docs/despliegue/nginx.conf o Caddyfile
 ```
@@ -615,19 +615,33 @@ el worker con `PLATAFORMA_TRABAJOS=ninguno`).
 ```bash
 cp docs/despliegue/entorno.ejemplo docs/despliegue/.env && chmod 600 docs/despliegue/.env   # y rellénalo
 docker compose -f docs/despliegue/docker-compose.yml --env-file docs/despliegue/.env up -d --build
-docker compose -f docs/despliegue/docker-compose.yml exec worker python -m hacienda_gpt.cli.plataforma salud
+docker compose -f docs/despliegue/docker-compose.yml exec worker python -m asistente.plataforma.cli.plataforma salud
 ```
 
 - `api` y `worker` usan la misma imagen y el mismo volumen `datos` (la base SQLite): deben correr en la
   **misma máquina** y sobre un disco local; nunca un volumen de red (NFS, SMB), que rompe los bloqueos de
   SQLite.
-- Las copias: `docker compose … exec worker python -m hacienda_gpt.cli.plataforma copia --destino
+- Las copias: `docker compose … exec worker python -m asistente.plataforma.cli.plataforma copia --destino
   /srv/hacienda-asesor/data/copias` y sácalas del volumen; o monta un volumen de copias.
 - Los datos legales del repositorio que actualizan `hipoteca-indices` y `params-autopilot` se escriben
   dentro del contenedor y se pierden al reconstruir la imagen: en un despliegue con Docker esas
   actualizaciones se suben al repositorio por los *workflows* de GitHub (ver [operacion.md](operacion.md)).
 - El agente con navegador necesita Chromium en la imagen de la API (`playwright install --with-deps
   chromium`) y, en modo `ventana`, una pantalla: en un servidor, usa solo el modo `sesion`.
+
+### Actualizar desde `hacienda_gpt` (paquete renombrado a `asistente`)
+
+- Las unidades de systemd, el `Dockerfile` y `docker-compose.yml` de `docs/despliegue/` ya usan
+  `asistente.plataforma.…`: vuelve a copiarlos (`cp docs/despliegue/systemd/* /etc/systemd/system/ &&
+  systemctl daemon-reload`) y `ReadWritePaths` apunta ahora a `asistente/ambitos/hipoteca/data`.
+- Las líneas de cron y los scripts con `python -m hacienda_gpt.…` siguen funcionando durante una versión (el
+  paquete de compatibilidad `hacienda_gpt` las redirige y avisa en stderr con la ruta nueva); cámbialas antes
+  de la siguiente.
+- Nada de lo guardado cambia: ni las bases de datos (las sumas de las migraciones ya aplicadas son las mismas),
+  ni los nombres de los ficheros legales en el registro de lecturas y en el estado de la recodificación
+  (`modulos/<ámbito>/data/…`), ni los consumidores del bus. Una variante promovida en
+  `hacienda_gpt/evaluacion/variante_activa.json` se sigue leyendo mientras no exista la nueva
+  (`asistente/nucleo/evaluacion/variante_activa.json`).
 
 ---
 
@@ -646,7 +660,7 @@ La interfaz (`frontend/dist`) es una aplicación instalable: `manifest.webmanife
 - **Avisos en el móvil (Web Push)**: genera el par de claves una vez y guárdalas como secreto:
 
   ```bash
-  uv run python -m hacienda_gpt.push.vapid
+  uv run python -m asistente.plataforma.push.vapid
   # PUSH_VAPID_PRIVATE_KEY=…  (secreto)   PUSH_VAPID_PUBLIC_KEY=…   PUSH_VAPID_SUBJECT=mailto:…
   ```
 
@@ -660,5 +674,5 @@ La interfaz (`frontend/dist`) es una aplicación instalable: `manifest.webmanife
   («Hay una tarea programada con problemas…»); con cuentas no hay dispositivo del operador y el canal `push`
   cuenta como error de envío del informe (los demás canales siguen funcionando).
 - **Pendiente**: el envío inmediato de los avisos urgentes al escribirse en la bandeja
-  (`hacienda_gpt.push.envio.avisar_al_escribir`) está escrito y probado, pero falta conectarlo en
+  (`asistente.plataforma.push.envio.avisar_al_escribir`) está escrito y probado, pero falta conectarlo en
   `NotificationStore.add`; mientras tanto salen con la siguiente ejecución de `ops deliver`.

@@ -13,7 +13,8 @@ Scanned PDFs and photos have no text to check against, so the model reads the pa
 changes: the document is read TWICE, independently, and only the facts on which both readings agree are
 proposed — flagged as read from an image, for the user to check against the paper.
 
-(Moved from ``tax/documentos.py``, which stays an alias of this module.)
+(Moved from ``tax/documentos.py``; the old path ``hacienda_gpt.tax.documentos`` is an alias of this module in
+the compatibility package ``hacienda_gpt``.)
 """
 
 from __future__ import annotations
@@ -24,7 +25,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from hacienda_gpt.capacidades.documentos.lectura import (
+from asistente.ambitos.fiscal.profile import ACTIVIDAD_FACT_FIELDS, PROFILE_FACT_TYPES
+from asistente.capacidades.documentos.lectura import (
     MAX_DOCUMENT_BYTES,
     MAX_PAGES,
     MAX_SCAN_PAGES,
@@ -35,10 +37,9 @@ from hacienda_gpt.capacidades.documentos.lectura import (
     normalizar_pasaje,
     tipo_de_imagen,
 )
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE, _coerce_value
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_documentos import observar_lectura, palabras_permitidas
-from hacienda_gpt.tax.profile import ACTIVIDAD_FACT_FIELDS, PROFILE_FACT_TYPES
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_documentos import observar_lectura, palabras_permitidas
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE, _coerce_value
 
 logger = logging.getLogger(__name__)
 
@@ -255,8 +256,8 @@ def _transcripcion(raw: dict[str, Any]) -> str:
 
 def _leer(provider: Any, *, filename: str, data: bytes) -> dict[str, Any]:
     """The readings of the ``documentos`` capability, asked for by the tax domain (``pedir``)."""
-    from hacienda_gpt.capacidades.contrato import ContextoPeticion, pedir
-    from hacienda_gpt.capacidades.documentos import contenido
+    from asistente.capacidades.contrato import ContextoPeticion, pedir
+    from asistente.capacidades.documentos import contenido
 
     resultado = pedir(
         "documentos",

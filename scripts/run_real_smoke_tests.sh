@@ -16,9 +16,9 @@ run_step() {
   return 0
 }
 
-run_step "Python compile check" python -m compileall hacienda_gpt
-run_step "CLI import check: crawler" python -m hacienda_gpt.cli.crawler --help
-run_step "CLI import check: processor" python -m hacienda_gpt.cli.processor --help
+run_step "Python compile check" python -m compileall asistente
+run_step "CLI import check: crawler" python -m asistente.plataforma.cli.crawler --help
+run_step "CLI import check: processor" python -m asistente.plataforma.cli.processor --help
 run_step "Live source reachability (AEAT)" python - <<'PY'
 import urllib.request
 urls=[
@@ -31,5 +31,5 @@ for u in urls:
     with urllib.request.urlopen(u, timeout=20) as r:
         print(f'{u} -> {r.status} {r.getheader("content-type")}')
 PY
-run_step "Evaluator smoke test" python -m hacienda_gpt.cli.eval --output /tmp/eval_results.json
+run_step "Evaluator smoke test" python -m asistente.plataforma.cli.eval --output /tmp/eval_results.json
 [ -f /tmp/eval_results.json ] && cat /tmp/eval_results.json

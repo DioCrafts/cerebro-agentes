@@ -6,16 +6,16 @@ A **prompt version** is an id ``<rol>@<version>`` for one of the three prompts a
 * ``modulos`` — the addendum listing the household specialists (``MODULES_ADDENDUM``, a format template);
 * ``especialista`` — a module specialist's system prompt (``SPECIALIST_SYSTEM_PROMPT``, a format template).
 
-The **integrated** versions are the texts in :mod:`hacienda_gpt.agent.prompts`, pinned by their SHA-256 in
+The **integrated** versions are the texts in :mod:`asistente.nucleo.agent.prompts`, pinned by their SHA-256 in
 ``prompts/registro.json`` (the last entry of each role is the current one). Editing a prompt there without
 registering a new version makes ``tests/evaluacion`` fail, so a prompt change cannot slip in unnoticed: it is
 registered with the evaluation report that backs it, or with a written reason when it could not be evaluated
-(``python -m hacienda_gpt.cli.evaluacion prompts registrar``). Other versions are text files in
-``hacienda_gpt/evaluacion/prompts/<rol>@<version>.txt`` (or embedded in a variant's ``textos``).
+(``python -m asistente.plataforma.cli.evaluacion prompts registrar``). Other versions are text files in
+``asistente/nucleo/evaluacion/prompts/<rol>@<version>.txt`` (or embedded in a variant's ``textos``).
 
 A **variant** names a version per role plus, optionally, a provider/model/effort. The **active** variant
 is read from ``EVALUACION_VARIANTE_ACTIVA_PATH`` (default: ``variante_activa.json`` next to this file),
-written only by ``python -m hacienda_gpt.cli.evaluacion promote`` after the candidate beat the baseline.
+written only by ``python -m asistente.plataforma.cli.evaluacion promote`` after the candidate beat the baseline.
 Without that file — today — the active variant is :data:`VARIANTE_BASE`: the integrated prompts and the
 provider/model from settings, i.e. exactly the behaviour before this registry existed. A missing, broken
 or unreadable active file never breaks the agent: it falls back to the base variant and logs an error.
@@ -39,8 +39,8 @@ from typing import Any, Literal, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent import prompts as _prompts
+from asistente.nucleo.agent import prompts as _prompts
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,9 @@ ROLES: tuple[Rol, ...] = get_args(Rol)
 PAQUETE = Path(__file__).resolve().parent
 PROMPTS_DIR = PAQUETE / "prompts"
 ACTIVA_POR_DEFECTO = PAQUETE / "variante_activa.json"
+# Where ``promote`` wrote it before the package moved (``hacienda_gpt/evaluacion``): an installation that promoted a
+# variant keeps it after updating (the file is not in the repository, so the move did not take it along).
+ACTIVA_HISTORICA = PAQUETE.parents[2] / "hacienda_gpt" / "evaluacion" / "variante_activa.json"
 _VERSION_RE = re.compile(r"^(agente|modulos|especialista)@[A-Za-z0-9_.-]{1,64}$")
 
 
@@ -64,7 +67,7 @@ _ATRIBUTOS: dict[Rol, str] = {
 @dataclass(frozen=True)
 class PromptIntegrado:
     version: str
-    atributo: str  # name in hacienda_gpt.agent.prompts
+    atributo: str  # name in asistente.nucleo.agent.prompts
     huella: str  # SHA-256 of the text the version id stands for
 
 
@@ -110,10 +113,10 @@ def comprobar_integrados() -> list[str]:
         actual = huella(texto_integrado(rol))
         if actual != integrado.huella:
             problemas.append(
-                f"{integrado.atributo} (hacienda_gpt/agent/prompts.py) ha cambiado y sigue registrado como "
+                f"{integrado.atributo} (asistente/nucleo/agent/prompts.py) ha cambiado y sigue registrado como "
                 f"«{integrado.version}». Un cambio de prompt es una versión nueva: evalúalo (`python -m "
-                "hacienda_gpt.cli.evaluacion promote` con una variante que lleve el texto nuevo) y regístralo con "
-                f"`python -m hacienda_gpt.cli.evaluacion prompts registrar --rol {rol} --informe <informe>` "
+                "asistente.plataforma.cli.evaluacion promote` con una variante que lleve el texto nuevo) y regístralo con "
+                f"`python -m asistente.plataforma.cli.evaluacion prompts registrar --rol {rol} --informe <informe>` "
                 '(o, si no se ha podido evaluar, `prompts sincronizar --motivo "<motivo>"`, que registra todos los '
                 "que han cambiado y deja el motivo escrito en el registro)."
             )
@@ -199,7 +202,7 @@ class Variante(BaseModel):
 VARIANTE_BASE = Variante(
     id="base",
     descripcion=(
-        "Prompts de hacienda_gpt/agent/prompts.py y el proveedor y modelo de la configuración "
+        "Prompts de asistente/nucleo/agent/prompts.py y el proveedor y modelo de la configuración "
         "(LLM_PROVIDER, ANTHROPIC_MODEL…): el comportamiento de siempre."
     ),
 )
@@ -307,7 +310,11 @@ class VarianteActiva(BaseModel):
 
 def ruta_activa() -> Path:
     configurada = str(getattr(settings, "EVALUACION_VARIANTE_ACTIVA_PATH", "") or "").strip()
-    return Path(configurada) if configurada else ACTIVA_POR_DEFECTO
+    if configurada:
+        return Path(configurada)
+    if not ACTIVA_POR_DEFECTO.exists() and ACTIVA_HISTORICA.exists():
+        return ACTIVA_HISTORICA
+    return ACTIVA_POR_DEFECTO
 
 
 _cache_lock = threading.Lock()
@@ -341,7 +348,7 @@ def variante_activa() -> Variante:
 def escribir_activa(
     variante: Variante, *, frente_a: str | None, resumen: dict[str, Any] | None, ruta: Path | None = None
 ) -> Path:
-    """Write the active variant (self-contained). Only :mod:`hacienda_gpt.evaluacion.gate` calls this."""
+    """Write the active variant (self-contained). Only :mod:`asistente.nucleo.evaluacion.gate` calls this."""
     destino = ruta or ruta_activa()
     activa = VarianteActiva(
         variante=autocontenida(variante),

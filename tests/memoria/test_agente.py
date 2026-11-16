@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.memoria.almacen import tabla_existe
-from hacienda_gpt.memoria.servicio import decisiones_del_caso, registrar
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.memoria.almacen import tabla_existe
+from asistente.nucleo.memoria.servicio import decisiones_del_caso, registrar
 from tests.agent.fakes import FakeSearcher, corpus, text_turn, tool_turn, verdict
 from tests.modulos_nucleo.fakes import Llamadas, agua, instalar, seguros
 from tests.modulos_nucleo.test_especialistas import RecordingProvider
@@ -142,7 +142,7 @@ def test_the_agent_gets_the_decisions_in_its_context_and_the_rule_in_its_prompt(
 
 
 def test_without_a_case_there_are_no_decision_tools_and_nothing_is_created(tmp_path, monkeypatch) -> None:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     path = str(tmp_path / "nada.sqlite3")
     monkeypatch.setattr(settings, "DECISION_STATE_DB_PATH", path)

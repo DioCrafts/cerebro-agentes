@@ -10,15 +10,15 @@
 See ``docs/capacidades/investigacion.md``.
 """
 
-from hacienda_gpt.capacidades.investigacion.capacidad import (
+from asistente.capacidades.investigacion.capacidad import (
     CAPACIDAD,
     borrar_usuario,
     configurar,
     exportar_usuario,
     investigador_por_defecto,
 )
-from hacienda_gpt.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
-from hacienda_gpt.capacidades.investigacion.servicio import Investigador
+from asistente.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
+from asistente.capacidades.investigacion.servicio import Investigador
 
 __all__ = [
     "CAPACIDAD",

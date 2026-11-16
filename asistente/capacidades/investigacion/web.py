@@ -27,10 +27,10 @@ from datetime import UTC, datetime
 import logging
 from typing import Any, Protocol
 
-from hacienda_gpt.agent.providers.anthropic_provider import usage_from_response
-from hacienda_gpt.agent.providers.base import ProviderError, Usage, token_count
-from hacienda_gpt.capacidades.investigacion.dominios import host_de, permitido
-from hacienda_gpt.conocimiento.texto import texto_de_html
+from asistente.capacidades.investigacion.dominios import host_de, permitido
+from asistente.conocimiento.texto import texto_de_html
+from asistente.nucleo.agent.providers.anthropic_provider import usage_from_response
+from asistente.nucleo.agent.providers.base import ProviderError, Usage, token_count
 
 logger = logging.getLogger(__name__)
 

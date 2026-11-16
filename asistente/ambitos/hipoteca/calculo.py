@@ -23,8 +23,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_CEILING, ROUND_HALF_UP, Decimal
 
-from hacienda_gpt.modulos.hipoteca.indices import INDICES, Dato, SerieIndices
-from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo
+from asistente.ambitos.hipoteca.indices import INDICES, Dato, SerieIndices
+from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo
 
 CENT = Decimal("0.01")
 ZERO = Decimal(0)

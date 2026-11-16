@@ -1,6 +1,6 @@
-from hacienda_gpt.decision.fact_extractor import RegexFactExtractor
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.ui import app
+from asistente.nucleo.decision.fact_extractor import RegexFactExtractor
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.plataforma.ui import app
 
 
 class FakeStore:

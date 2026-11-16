@@ -2,7 +2,7 @@
 
 Every figure (fee caps, periods, dates) is read from the consolidated text on boe.es and stored with the
 literal sentence it comes from and how the figure is spelled there, so :func:`comprobar_evidencias`
-(the shared checker of :mod:`hacienda_gpt.conocimiento`) can re-check it mechanically: every figure is inside its
+(the shared checker of :mod:`asistente.conocimiento`) can re-check it mechanically: every figure is inside its
 quote and means the stored value, and (given the law texts) every quote is verbatim in its law. No figure lives in
 the arithmetic. The file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification and the reading dates
 cover it.
@@ -20,7 +20,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.conocimiento import (
     FRONTERA_CIFRA,
     FicheroLegal,
     GrupoLegal,
@@ -29,7 +29,7 @@ from hacienda_gpt.conocimiento import (
     fuente_de,
     hojas,
 )
-from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
+from asistente.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA_DIR = Path(__file__).resolve().parent / "data"
 NORMATIVA_PATH = DATA_DIR / "normativa.json"
@@ -264,7 +264,7 @@ FICHEROS_LEGALES = (
 def comprobar_evidencias(normativa: Normativa, textos: dict[str, str] | None = None) -> list[str]:
     """Problems found re-reading the data against its quotes (and, with ``textos``, the quotes against the
     law texts: BOE id -> plain text). Empty list = consistent. The checker is the shared one of
-    :mod:`hacienda_gpt.conocimiento`."""
+    :mod:`asistente.conocimiento`."""
     return FICHEROS_LEGALES[0].comprobar(normativa, textos)
 
 
@@ -274,7 +274,7 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:  # pragma: no cover - maintenance
-    """``python -m hacienda_gpt.modulos.hipoteca.normativa <dir con BOE-A-*.html descargados>``."""
+    """``python -m asistente.ambitos.hipoteca.normativa <dir con BOE-A-*.html descargados>``."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
         print(main.__doc__)

@@ -3,7 +3,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from hacienda_gpt.cli.promote_snapshot import cli
+from asistente.plataforma.cli.promote_snapshot import cli
 
 
 def test_promote_snapshot_updates_current_symlink(tmp_path: Path) -> None:

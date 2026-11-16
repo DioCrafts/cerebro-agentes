@@ -24,10 +24,10 @@ from decimal import Decimal, InvalidOperation
 import re
 from typing import Any
 
-from hacienda_gpt.capacidades.investigacion.dominios import host_de
-from hacienda_gpt.capacidades.investigacion.fuentes import FuenteRecuperada, plano, sospechosa
-from hacienda_gpt.capacidades.investigacion.modelo import Afirmacion, Cita, Confianza, Conflicto
-from hacienda_gpt.conocimiento.texto import aparece, comprimido
+from asistente.capacidades.investigacion.dominios import host_de
+from asistente.capacidades.investigacion.fuentes import FuenteRecuperada, plano, sospechosa
+from asistente.capacidades.investigacion.modelo import Afirmacion, Cita, Confianza, Conflicto
+from asistente.conocimiento.texto import aparece, comprimido
 
 MIN_CITA = 12
 MAX_CITA = 600

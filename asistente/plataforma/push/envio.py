@@ -6,15 +6,15 @@ What leaves the server — the privacy guarantee of this module:
   sentence («Tienes un aviso urgente: abre la app») and a link into the app. Never the notice's title, body,
   amounts, dates, case id or anything typed by the user. The push service (Google, Mozilla, Apple…) and
   anybody looking at the lock screen learn only that there is a notice.
-* It is encrypted end to end for the device (RFC 8291, :mod:`hacienda_gpt.push.cifrado`) and signed with the
-  operator's VAPID key (RFC 8292, :mod:`hacienda_gpt.push.vapid`).
+* It is encrypted end to end for the device (RFC 8291, :mod:`asistente.plataforma.push.cifrado`) and signed with the
+  operator's VAPID key (RFC 8292, :mod:`asistente.plataforma.push.vapid`).
 * It goes only to owners who opted in (``push_consentimientos``) and only to the devices they subscribed.
 * Requests go only to the push services' hosts (:func:`validar_endpoint`: https, a known push service, no
   redirects), so a subscription cannot turn the server into a proxy towards the internal network.
 
 Two ways out:
 
-* The ``push`` channel of :mod:`hacienda_gpt.proactive.entrega` (``ops deliver``): notices of severity
+* The ``push`` channel of :mod:`asistente.nucleo.proactive.entrega` (``ops deliver``): notices of severity
   ``urgente`` and ``aviso`` (``info`` stays in the app), created after the owner's opt-in, once per notice.
 * :func:`avisar_al_escribir` — for an URGENT notice right when it is written to the inbox, recorded as delivered
   on ``push`` so ``ops deliver`` does not send it again.
@@ -34,11 +34,16 @@ from urllib.error import HTTPError
 from urllib.parse import urlsplit
 import urllib.request
 
-from hacienda_gpt import settings
-from hacienda_gpt.proactive.store import Notification
-from hacienda_gpt.push.almacen import OPERADOR, PushStore, Suscripcion
-from hacienda_gpt.push.cifrado import b64url_decode, cifrar
-from hacienda_gpt.push.vapid import ClavesVapid, ConfiguracionVapidError, cabecera_autorizacion, claves_desde_entorno
+from asistente.nucleo.proactive.store import Notification
+from asistente.plataforma import settings
+from asistente.plataforma.push.almacen import OPERADOR, PushStore, Suscripcion
+from asistente.plataforma.push.cifrado import b64url_decode, cifrar
+from asistente.plataforma.push.vapid import (
+    ClavesVapid,
+    ConfiguracionVapidError,
+    cabecera_autorizacion,
+    claves_desde_entorno,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -222,7 +227,7 @@ def propietario_de(case_id: str, db_path: str, *, cuentas: Any | None = None) ->
         return OPERADOR
     if cuentas is not None:
         return cast(str | None, cuentas.owner_of(case_id))
-    from hacienda_gpt.auth.store import AuthStore
+    from asistente.plataforma.auth.store import AuthStore
 
     propias = AuthStore(db_path)
     try:
@@ -236,7 +241,7 @@ class SinDestinatarioError(RuntimeError):
 
 
 class PushCanal:
-    """The ``push`` channel of :func:`hacienda_gpt.proactive.entrega.entregar_pendientes`.
+    """The ``push`` channel of :func:`asistente.nucleo.proactive.entrega.entregar_pendientes`.
 
     Unlike the webhook and e-mail channels (one operator destination), it delivers each notice to the devices
     of the owner of its case, and applies its own consent check (:meth:`permitido`) instead of the e-mail one.
@@ -258,7 +263,7 @@ class PushCanal:
             self._db_path = db_path
             self._store = PushStore(db_path)
             if settings.AUTH_MODE == "required":
-                from hacienda_gpt.auth.store import AuthStore
+                from asistente.plataforma.auth.store import AuthStore
 
                 self._cuentas = AuthStore(db_path)
         return self.permitido
@@ -368,7 +373,7 @@ def avisar_al_escribir(
 
     def trabajo() -> None:
         try:
-            from hacienda_gpt.proactive.entrega import EntregaStore
+            from asistente.nucleo.proactive.entrega import EntregaStore
 
             canal = PushCanal(claves, transporte=transporte)
             if not canal.preparar(db_path)(notification):

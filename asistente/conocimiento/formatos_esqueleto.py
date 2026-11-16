@@ -19,7 +19,7 @@ CENDOJ page is a SKELETON, built here:
 
 A name, a party, an address or a sentence of the reasoning cannot survive the
 filter unless it is itself one of those generic words. Same rule as the user
-documents' skeletons (:mod:`hacienda_gpt.ops.formatos_documentos`): an
+documents' skeletons (:mod:`asistente.conocimiento.formatos_documentos`): an
 allow-list, never a block-list.
 """
 

@@ -16,7 +16,7 @@
 
 ### Qué hace
 
-Reusar trabajo previo cuando se relanza `python -m hacienda_gpt.cli.processor`
+Reusar trabajo previo cuando se relanza `python -m asistente.plataforma.cli.processor`
 sobre un `content-dir` cuyo contenido se solapa con un índice ya existente.
 
 Concretamente, para cada archivo en `content-dir`:
@@ -196,7 +196,7 @@ lock_file.unlink(missing_ok=True)
 
 ### Fase 1 — Manifest módulo
 
-**Archivo nuevo**: `hacienda_gpt/processor/manifest.py`
+**Archivo nuevo**: `asistente/conocimiento/processor/manifest.py`
 
 ```python
 class ManifestFileEntry(BaseModel):
@@ -257,7 +257,7 @@ def diff_files_against_manifest(current_files, manifest, content_dir):
 
 ### Fase 2 — Chunk ID estable
 
-**Archivo a modificar**: `hacienda_gpt/processor/document_loader.py`
+**Archivo a modificar**: `asistente/conocimiento/processor/document_loader.py`
 
 Cambios:
 1. `docling_chunk_metadata()` recibe `source_file` y `chunk_index`, devuelve
@@ -281,7 +281,7 @@ def _process_one_file(file_path: str) -> tuple[str, list[Document]]:
 
 ### Fase 3 — Diff-aware load_chunks
 
-**Archivo a modificar**: `hacienda_gpt/processor/document_loader.py`
+**Archivo a modificar**: `asistente/conocimiento/processor/document_loader.py`
 
 Nueva señal de entrada: `incremental: bool` (default True si manifest existe).
 
@@ -360,7 +360,7 @@ def process_documents(self) -> None:
 
 ### Fase 5 — CLI flags
 
-**Archivo a modificar**: `hacienda_gpt/cli/processor.py`
+**Archivo a modificar**: `asistente/plataforma/cli/processor.py`
 
 ```python
 @click.option(
@@ -449,7 +449,7 @@ Cuando se mergee la feature:
 2. **A partir de ahí**: manifest creado, runs incrementales rápidos.
 
 Para evitar el primer reindex de 12h al merger:
-- Implementar un comando auxiliar `python -m hacienda_gpt.cli.bootstrap_manifest`
+- Implementar un comando auxiliar `python -m asistente.plataforma.cli.bootstrap_manifest`
   que escanea el `output-dir` existente, calcula los `chunk_ids` desde FAISS
   metadata y construye un manifest desde cero.
 - Solo funciona si los chunks actuales tienen `source_file` en metadata (hay
@@ -497,7 +497,7 @@ La feature está terminada cuando:
 - [ ] Test E2E manual con 20 archivos sintéticos demuestra los 4 escenarios
       de la sección 4.3.
 - [ ] Suite completa de tests del repo sigue pasando (220+ tests actuales).
-- [ ] `python -m hacienda_gpt.cli.processor --help` documenta `--incremental`/`--full`.
+- [ ] `python -m asistente.plataforma.cli.processor --help` documenta `--incremental`/`--full`.
 - [ ] README actualizado con sección "Incremental indexing" explicando el flag.
 - [ ] Crash a mitad de un run incremental + relanzar → continúa sin corrupción
       del FAISS.

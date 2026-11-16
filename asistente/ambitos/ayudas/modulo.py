@@ -19,15 +19,15 @@ import json
 import os
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.ayudas import almacen as almacen_mod
-from hacienda_gpt.modulos.ayudas.convocatorias import TEMAS, Convocatoria, Encaje, encaje
-from hacienda_gpt.modulos.ayudas.hogar import PRESTACIONES, Hogar, entero, hogar_del_perfil
-from hacienda_gpt.modulos.ayudas.parametros import PrestacionesParams, ejercicio_para, load_prestaciones
-from hacienda_gpt.modulos.ayudas.prestaciones import ORDEN_ESTADOS, Evaluacion, eur, evaluar_todas, fecha
-from hacienda_gpt.modulos.ayudas.revision import actualizar_convocatorias
-from hacienda_gpt.modulos.contrato import (
+from asistente.ambitos.ayudas import almacen as almacen_mod
+from asistente.ambitos.ayudas.convocatorias import TEMAS, Convocatoria, Encaje, encaje
+from asistente.ambitos.ayudas.hogar import PRESTACIONES, Hogar, entero, hogar_del_perfil
+from asistente.ambitos.ayudas.parametros import PrestacionesParams, ejercicio_para, load_prestaciones
+from asistente.ambitos.ayudas.prestaciones import ORDEN_ESTADOS, Evaluacion, eur, evaluar_todas, fecha
+from asistente.ambitos.ayudas.revision import actualizar_convocatorias
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import (
     AvisoModulo,
     ContextoModulo,
     FuenteModulo,
@@ -36,7 +36,7 @@ from hacienda_gpt.modulos.contrato import (
     ModuloBase,
     ResultadoHerramienta,
 )
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
 
 CLAVE = "ayudas"
 ETIQUETAS_ESTADO = {
@@ -557,7 +557,7 @@ def revision_automatica() -> bool:
 
 def _tarea_diaria(hoy: date) -> Any:
     """The package's entry point, looked up at call time (as the v1 core did)."""
-    import hacienda_gpt.modulos.ayudas as paquete
+    import asistente.ambitos.ayudas as paquete
 
     return paquete.actualizar_convocatorias(hoy)
 
@@ -566,7 +566,7 @@ class ModuloAyudas(ModuloBase):
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
-        from hacienda_gpt.modulos.ayudas.parametros import FICHEROS_LEGALES
+        from asistente.ambitos.ayudas.parametros import FICHEROS_LEGALES
 
         return Ganchos(
             # Eligibility reads the household (children, disability, region, income…): every shared fact.

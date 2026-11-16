@@ -7,9 +7,9 @@ from dataclasses import dataclass, field
 import logging
 from typing import Any
 
-from hacienda_gpt.doctrine.citas import RANGO, Documento, extract_citations, identify_document
-from hacienda_gpt.doctrine.grafo import Arista, DoctrineGraph
-from hacienda_gpt.doctrine.relaciones import Lectura, leer_heuristica, leer_llm
+from asistente.conocimiento.doctrine.citas import RANGO, Documento, extract_citations, identify_document
+from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.doctrine.relaciones import Lectura, leer_heuristica, leer_llm
 
 logger = logging.getLogger(__name__)
 

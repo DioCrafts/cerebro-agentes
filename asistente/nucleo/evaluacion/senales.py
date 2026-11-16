@@ -11,7 +11,7 @@ nothing is kept after the case is erased:
 * ``repregunta`` — the user asked (almost) the same thing again right after, or opened with a correction.
 
 They label a user's feedback and are aggregated (counts only, no content) by
-``python -m hacienda_gpt.cli.evaluacion senales``. They are hints for the operator, never test cases:
+``python -m asistente.plataforma.cli.evaluacion senales``. They are hints for the operator, never test cases:
 storing a case for evaluation always needs the user's explicit opt-in.
 """
 

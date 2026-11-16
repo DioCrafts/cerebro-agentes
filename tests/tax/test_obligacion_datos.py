@@ -15,21 +15,21 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.modulos.fiscal import MODULO
-from hacienda_gpt.modulos.fiscal.especificaciones import CALCULATE_TOOL, OBLIGACION_TOOL
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.obligacion import _PREGUNTAS, CITAS, obligado_a_declarar
-from hacienda_gpt.tax.params import DATA_DIR, load_params
-from hacienda_gpt.tax.profile import PROFILE_FACT_TYPES, build_input
-from hacienda_gpt.tax.recodificacion.adaptadores import CIFRAS
-from hacienda_gpt.tax.recodificacion.nucleo import Objetivo
-from hacienda_gpt.tax.simulador import simular
-from hacienda_gpt.tax.verificacion import comprobaciones, huella_de_grupo, verificar
+from asistente.ambitos.fiscal import MODULO
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.obligacion import _PREGUNTAS, CITAS, obligado_a_declarar
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, load_params
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.especificaciones import CALCULATE_TOOL, OBLIGACION_TOOL
+from asistente.ambitos.fiscal.profile import PROFILE_FACT_TYPES, build_input
+from asistente.conocimiento.recodificacion.adaptadores import CIFRAS
+from asistente.conocimiento.recodificacion.nucleo import Objetivo
+from asistente.conocimiento.verificacion import comprobaciones, huella_de_grupo, verificar
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE
+from asistente.nucleo.decision.schemas import CaseState, Fact
 
 D = Decimal
 EXTRACTOS = Path(__file__).resolve().parents[1] / "fixtures" / "boe_obligacion"

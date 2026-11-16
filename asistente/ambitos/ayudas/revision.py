@@ -18,9 +18,9 @@ import urllib.request
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.ayudas import almacen as almacen_mod
-from hacienda_gpt.modulos.ayudas import bdns
-from hacienda_gpt.modulos.ayudas.convocatorias import Convocatoria, Plazo, Senal, analizar, candidatas
+from asistente.ambitos.ayudas import almacen as almacen_mod
+from asistente.ambitos.ayudas import bdns
+from asistente.ambitos.ayudas.convocatorias import Convocatoria, Plazo, Senal, analizar, candidatas
 
 SUMARIO_URL = "https://www.boe.es/datosabiertos/api/boe/sumario/{dia}"
 XML_URL = "https://www.boe.es/diario_boe/xml.php?id={id}"

@@ -4,8 +4,8 @@ from datetime import date
 import json
 from pathlib import Path
 
-from hacienda_gpt.decision.rules import DecisionRule, RuleSet, RuleSourceRef
-from hacienda_gpt.governance.drift import (
+from asistente.nucleo.decision.rules import DecisionRule, RuleSet, RuleSourceRef
+from asistente.plataforma.governance.drift import (
     DriftDetector,
     DriftSeverity,
     DriftStatus,

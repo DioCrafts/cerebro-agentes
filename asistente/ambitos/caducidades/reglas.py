@@ -3,7 +3,7 @@
 Every figure (years of validity, ITV frequencies, warranty and withdrawal periods…) is read from the
 consolidated text on boe.es and stored with the literal sentence it comes from (``evidencia``) and how each
 number is spelled there (``cifras``). :func:`comprobar_evidencias` re-checks the data mechanically with the
-shared checker of :mod:`hacienda_gpt.conocimiento`: each figure is spelled in one of its group's quotes and means
+shared checker of :mod:`asistente.conocimiento`: each figure is spelled in one of its group's quotes and means
 the stored value, and — given the law texts — each quote is verbatim in its law. Nothing here is recited from
 memory. The file is declared in ``FICHEROS_LEGALES``: the weekly BOE verification, the reading dates and the
 agentic re-encoding loop (with test cases run through this module's calculator) cover it.
@@ -21,7 +21,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.conocimiento import (
     FRONTERA_PALABRA,
     CitaLegal,
     FicheroLegal,
@@ -32,7 +32,7 @@ from hacienda_gpt.conocimiento import (
     fuente_de,
     hojas,
 )
-from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
+from asistente.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA_PATH = Path(__file__).resolve().parent / "data" / "reglas.json"
 
@@ -314,8 +314,8 @@ def grupos_legales(reglas: Reglas) -> list[GrupoLegal]:
 
 
 def _familia() -> Any:
-    """The rules in the agentic re-encoding loop (:mod:`hacienda_gpt.conocimiento.recodificacion`)."""
-    from hacienda_gpt.conocimiento.casos_caducidades import familia_caducidades
+    """The rules in the agentic re-encoding loop (:mod:`asistente.conocimiento.recodificacion.de_modulos`)."""
+    from asistente.conocimiento.casos_caducidades import familia_caducidades
 
     return familia_caducidades()
 
@@ -341,7 +341,7 @@ def comprobar_evidencias(reglas: Reglas, textos: dict[str, str] | None = None) -
 
     ``textos``: BOE id -> plain text of the consolidated page (or of extracts of the quoted articles).
     An empty list means the data is consistent with the text it claims to come from. The checker is the shared
-    one of :mod:`hacienda_gpt.conocimiento`.
+    one of :mod:`asistente.conocimiento`.
     """
     return FICHEROS_LEGALES[0].comprobar(reglas, textos)
 
@@ -352,10 +352,10 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.modulos.caducidades.reglas <dir with BOE-A-*.html|txt>``."""
+    """``python -m asistente.ambitos.caducidades.reglas <dir with BOE-A-*.html|txt>``."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
-        print("uso: python -m hacienda_gpt.modulos.caducidades.reglas <directorio con BOE-A-*.html>")
+        print("uso: python -m asistente.ambitos.caducidades.reglas <directorio con BOE-A-*.html>")
         return 2
     problemas = comprobar_evidencias(cargar_reglas(), textos_de_directorio(Path(args[0])))
     for problema in problemas:

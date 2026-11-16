@@ -1,6 +1,6 @@
 name: evaluacion
 
-# Continuous evaluation of the central assistant and its modules (hacienda_gpt/evaluacion, README
+# Continuous evaluation of the central assistant and its modules (asistente/nucleo/evaluacion, README
 # «Evaluación continua»).
 #
 # * deterministico — every PR, no model, no key: the suite's schema, every expected figure recomputed by the
@@ -34,10 +34,10 @@ jobs:
           enable-cache: true
       - run: uv sync
       - name: Suite y registro de prompts (sin modelo)
-        run: uv run python -m hacienda_gpt.cli.evaluacion validar
+        run: uv run python -m asistente.plataforma.cli.evaluacion validar
       - name: Guiones de referencia (sin modelo)
         run: |
-          uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion \
+          uv run python -m asistente.plataforma.cli.evaluacion run --reproduccion \
             --out reports/evaluacion/reproduccion.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always()
@@ -74,7 +74,7 @@ jobs:
       - name: Suite completa con el modelo (variante activa)
         if: steps.clave.outputs.hay == 'true'
         run: |
-          uv run python -m hacienda_gpt.cli.evaluacion run --yes --sin-corpus --exigir-criticas \
+          uv run python -m asistente.plataforma.cli.evaluacion run --yes --sin-corpus --exigir-criticas \
             --presupuesto-usd "${{ vars.EVALUACION_PRESUPUESTO_USD || '5' }}" \
             --out reports/evaluacion/modelo.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

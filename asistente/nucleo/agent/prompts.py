@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from hacienda_gpt.memoria.prompt import MEMORIA_ADDENDUM
+from asistente.nucleo.memoria.prompt import MEMORIA_ADDENDUM
 
 AGENT_SYSTEM_PROMPT = """\
 Eres un asesor fiscal para contribuyentes en España. Trabajas para una sola persona: quien te escribe, que quiere \
@@ -125,7 +125,7 @@ corrija uno, guárdalo con `registrar_hechos` (solo lo que haya dicho él de for
 tuya). `evaluar_obligaciones` ejecuta el catálogo de reglas sobre el expediente; ese catálogo es todavía parcial, \
 así que la ausencia de una obligación en su resultado no significa que no exista.
 """
-# The user's remembered decisions (hacienda_gpt/memoria/prompt.py): never re-propose what they rejected.
+# The user's remembered decisions (asistente/nucleo/memoria/prompt.py): never re-propose what they rejected.
 CASE_TOOLS_ADDENDUM += MEMORIA_ADDENDUM
 
 # Appended only when ``planificar_hogar`` is offered (a case and household modules on: agent/tools.py), so the
@@ -318,7 +318,7 @@ TEAM_BRIEFING_HEADER = (
 
 
 # --------------------------------------------------------------------------- #
-# Household assistant: module specialists (hacienda_gpt/agent/especialistas.py)
+# Household assistant: module specialists (asistente/nucleo/agent/especialistas.py)
 # --------------------------------------------------------------------------- #
 
 MODULES_ADDENDUM = """

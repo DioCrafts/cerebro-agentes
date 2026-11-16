@@ -24,7 +24,7 @@ from typing import Any
 import xml.etree.ElementTree as ET
 import zipfile
 
-from hacienda_gpt.modulos.suscripciones.lectura import (
+from asistente.ambitos.suscripciones.lectura import (
     EPOCA_EXCEL,
     decodificar,
     leer_fecha,
@@ -33,8 +33,8 @@ from hacienda_gpt.modulos.suscripciones.lectura import (
     separador_decimal,
     sin_acentos,
 )
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Movimiento
-from hacienda_gpt.utils.xml_seguro import XmlInseguroError, rechazar_dtd
+from asistente.ambitos.suscripciones.modelos import Extracto, ImportacionError, Movimiento
+from asistente.plataforma.utils.xml_seguro import XmlInseguroError, rechazar_dtd
 
 DATA = Path(__file__).parent / "data" / "bancos.json"
 Celda = str | Decimal | date | None

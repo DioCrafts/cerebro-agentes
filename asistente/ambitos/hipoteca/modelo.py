@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from hacienda_gpt.modulos.hipoteca.indices import INDICES
+from asistente.ambitos.hipoteca.indices import INDICES
 
 
 def _decimal(value: Any) -> Any:

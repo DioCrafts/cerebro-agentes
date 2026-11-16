@@ -1,4 +1,4 @@
-"""``hacienda_gpt.push`` (``PushStore``): Web Push subscriptions and the users' opt-in.
+"""``asistente.plataforma.push`` (``PushStore``): Web Push subscriptions and the users' opt-in.
 
 Baseline copied byte for byte from ``push/almacen.py``. The trigger erases a user's rows when the account
 is deleted (``users`` belongs to ``auth``, hence the dependency).
@@ -6,7 +6,7 @@ is deleted (``users`` belongs to ``auth``, hence the dependency).
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 PUSH_SUSCRIPCIONES = """
                 CREATE TABLE IF NOT EXISTS push_suscripciones (
@@ -39,7 +39,7 @@ DISPARADOR_BORRADO = """
 
 PROPIETARIO = Propietario(
     nombre="push",
-    paquete="hacienda_gpt.push",
+    paquete="asistente.plataforma.push",
     descripcion="Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario.",
     tablas=("push_suscripciones", "push_consentimientos"),
     depende_de=("auth",),

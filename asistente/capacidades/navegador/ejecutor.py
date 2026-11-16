@@ -40,8 +40,7 @@ import threading
 import time
 from typing import Any, Literal, Protocol
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.navegador.guion import (
+from asistente.capacidades.navegador.guion import (
     Guion,
     Paso,
     PasoDescargar,
@@ -53,8 +52,8 @@ from hacienda_gpt.capacidades.navegador.guion import (
     PasoSeleccionar,
     renderizar,
 )
-from hacienda_gpt.capacidades.navegador.reparacion import Reparador, puerta
-from hacienda_gpt.capacidades.navegador.seguridad import (
+from asistente.capacidades.navegador.reparacion import Reparador, puerta
+from asistente.capacidades.navegador.seguridad import (
     JS_ELEMENTO,
     JS_ESQUELETO,
     PoliticaRed,
@@ -65,6 +64,7 @@ from hacienda_gpt.capacidades.navegador.seguridad import (
     problemas_pulsable,
     redactar_esqueleto,
 )
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

@@ -9,8 +9,8 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.modulos.suscripciones.importadores import bytes_de_entrada, detectar_formato, importar
-from hacienda_gpt.modulos.suscripciones.lectura import (
+from asistente.ambitos.suscripciones.importadores import bytes_de_entrada, detectar_formato, importar
+from asistente.ambitos.suscripciones.lectura import (
     decodificar,
     enmascarar_cuenta,
     leer_fecha,
@@ -18,7 +18,7 @@ from hacienda_gpt.modulos.suscripciones.lectura import (
     orden_fechas,
     separador_decimal,
 )
-from hacienda_gpt.modulos.suscripciones.modelos import ImportacionError
+from asistente.ambitos.suscripciones.modelos import ImportacionError
 from tests.modulos.suscripciones.sintetico import FIXTURES, movimientos, norma43
 
 FORMATOS = {

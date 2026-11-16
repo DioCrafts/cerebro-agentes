@@ -22,8 +22,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.doctrine.citas import RANGO, Documento
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.conocimiento.doctrine.citas import RANGO, Documento
+from asistente.plataforma.migraciones import asegurar_esquema
 
 Relacion = Literal["cita", "confirma", "matiza", "supera", "contradice"]
 RELACIONES: tuple[str, ...] = ("cita", "confirma", "matiza", "supera", "contradice")
@@ -117,7 +117,7 @@ class DoctrineGraph:
         self._conn = sqlite3.connect(self._path, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
-            asegurar_esquema(self._conn, "doctrina")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(self._conn, "doctrina")  # migrations (asistente/plataforma)
             self._conn.executescript(_SCHEMA)
 
     def close(self) -> None:

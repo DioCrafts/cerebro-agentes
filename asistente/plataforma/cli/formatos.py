@@ -1,9 +1,9 @@
-"""Format drift commands, mounted as ``ops formatos …`` (see ``hacienda_gpt/cli/ops.py``).
+"""Format drift commands, mounted as ``ops formatos …`` (see ``asistente/plataforma/cli/ops.py``).
 
 Meant for cron, after the jobs that read the sources::
 
     # Estado de cada formato y, si hay modelo configurado, diagnóstico de los que fallan.
-    30 9 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops formatos check --diagnose \
+    30 9 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops formatos check --diagnose \
                     >> logs/ops.log 2>&1
 
 See ``docs/operacion.md`` and ``docs/formatos_inventario.md``.
@@ -21,10 +21,10 @@ import urllib.request
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos import FormatoError
-from hacienda_gpt.ops.vigia import vigilado
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos import FormatoError
+from asistente.plataforma import settings
+from asistente.plataforma.ops.vigia import vigilado
 
 logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ def _hoy() -> date:
 
 
 def _canales() -> list[Any]:
-    from hacienda_gpt.proactive.entrega import ConfiguracionCanalError, canales_configurados
+    from asistente.nucleo.proactive.entrega import ConfiguracionCanalError, canales_configurados
 
     try:
         return list(canales_configurados())
@@ -64,8 +64,8 @@ def _avisar(asunto: str, lineas: list[str]) -> list[str]:
 
 def _proveedores() -> tuple[Any, Any]:
     """Diagnosis and reflection providers, both metered against the daily budget."""
-    from hacienda_gpt.agent.providers import create_provider
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma.ops.consumo import medir
 
     analista = medir(create_provider(model=settings.FORMAT_MODEL or None), "formatos")
     if settings.FORMAT_REVIEWER_MODEL and settings.FORMAT_REVIEWER_MODEL != settings.FORMAT_MODEL:
@@ -97,7 +97,7 @@ def avisos_de_datos_propios(hoy: date | None = None) -> list[str]:
     hoy = hoy or datetime.now(UTC).date()
     avisos: list[str] = []
     try:
-        from hacienda_gpt.ops.consumo import cargar_precios
+        from asistente.plataforma.ops.consumo import cargar_precios
 
         precios = cargar_precios()
         consultado = date.fromisoformat(str(precios.consultado_el))
@@ -127,7 +127,7 @@ def avisos_de_datos_propios(hoy: date | None = None) -> list[str]:
 def _diagnosticar(
     fuentes: list[str] | None, *, force: bool, auto_apply: bool | None, max_iter: int | None, dry_run: bool
 ) -> dict[str, Any]:
-    from hacienda_gpt.ops import formatos_agente
+    from asistente.conocimiento import formatos_agente
 
     pendientes = fuentes or formatos_agente.pendientes_de_diagnostico(forzar=force)
     if dry_run or not pendientes:
@@ -167,7 +167,7 @@ def check(diagnose: bool, notify: bool, fail_on_problem: bool) -> None:
     """
     with vigilado("formatos"):
         # The calendar data is checked here: it is ours, it needs no network and it ages by the day.
-        from hacienda_gpt.ops.formatos_calendario import observar_calendario
+        from asistente.conocimiento.formatos_calendario import observar_calendario
 
         observar_calendario(_hoy())
         estados = formatos.resumen()
@@ -217,9 +217,9 @@ def sondear(hoy: date, descargar: Any = _descargar) -> list[str]:
     Returns the errors met (network, HTTP). What was read is recorded by the
     parsers themselves, exactly as in a scheduled run.
     """
-    from hacienda_gpt.ops.formatos_boe import ReglasMetadatos, entrada_metadatos
-    from hacienda_gpt.proactive.impacto import articulos_modificados
-    from hacienda_gpt.proactive.novedades import SECCION_GENERAL, items_del_sumario, leer_analisis
+    from asistente.conocimiento.formatos_boe import ReglasMetadatos, entrada_metadatos
+    from asistente.nucleo.proactive.impacto import articulos_modificados
+    from asistente.nucleo.proactive.novedades import SECCION_GENERAL, items_del_sumario, leer_analisis
 
     errores: list[str] = []
 
@@ -319,7 +319,7 @@ def probe(fail_on_problem: bool) -> None:
     corren las tareas diarias (GitHub Actions) o para comprobar un cambio de
     spec. Solo necesita acceso a www.boe.es.
     """
-    from hacienda_gpt.ops.formatos_calendario import sondear_calendario
+    from asistente.conocimiento.formatos_calendario import sondear_calendario
 
     if not settings.FORMAT_WATCH:
         raise click.ClickException("FORMAT_WATCH está desactivado: la sonda no registraría nada.")

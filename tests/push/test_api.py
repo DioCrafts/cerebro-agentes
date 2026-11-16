@@ -14,21 +14,21 @@ from cryptography.hazmat.primitives.asymmetric import ec
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_case_store, get_notification_store
-from hacienda_gpt.api.routers import push as push_router
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive import entrega
-from hacienda_gpt.proactive.entrega import ConfiguracionCanalError, EntregaStore, entregar_pendientes
-from hacienda_gpt.proactive.store import Notification, NotificationStore
-from hacienda_gpt.push import envio
-from hacienda_gpt.push.almacen import OPERADOR, PushStore
-from hacienda_gpt.push.cifrado import b64url_encode, descifrar, publica_cruda
-from hacienda_gpt.push.envio import (
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive import entrega
+from asistente.nucleo.proactive.entrega import ConfiguracionCanalError, EntregaStore, entregar_pendientes
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_case_store, get_notification_store
+from asistente.plataforma.api.routers import push as push_router
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
+from asistente.plataforma.push import envio
+from asistente.plataforma.push.almacen import OPERADOR, PushStore
+from asistente.plataforma.push.cifrado import b64url_encode, descifrar, publica_cruda
+from asistente.plataforma.push.envio import (
     TEXTO_AVISO,
     TEXTO_OPERADOR,
     TEXTO_PRUEBA,
@@ -39,7 +39,7 @@ from hacienda_gpt.push.envio import (
     avisar_al_escribir,
     validar_endpoint,
 )
-from hacienda_gpt.push.vapid import claves_desde_entorno, generar_claves, verificar_jwt
+from asistente.plataforma.push.vapid import claves_desde_entorno, generar_claves, verificar_jwt
 
 PASSWORD = "una-clave-larga-1"
 CONSENTS = {"tratamiento_datos": True, "envio_documentos_a_proveedor_llm": False, "avisos_por_correo": False}

@@ -1,1 +1,1 @@
-"""Routers mounted on the main FastAPI app (``hacienda_gpt.api.api``)."""
+"""Routers mounted on the main FastAPI app (``asistente.plataforma.api.api``)."""

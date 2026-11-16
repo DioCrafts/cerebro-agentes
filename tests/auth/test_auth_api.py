@@ -8,13 +8,13 @@ import sqlite3
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.api.api import app, get_agent, get_document_provider
-from hacienda_gpt.auth.deps import CONSENT_DOCUMENTS_DETAIL
-from hacienda_gpt.auth.store import CONSENT_TEXT_VERSION
-from hacienda_gpt.proactive.entrega import EntregaStore
-from hacienda_gpt.proactive.store import Notification
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.proactive.entrega import EntregaStore
+from asistente.nucleo.proactive.store import Notification
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_document_provider
+from asistente.plataforma.auth.deps import CONSENT_DOCUMENTS_DETAIL
+from asistente.plataforma.auth.store import CONSENT_TEXT_VERSION
 from .conftest import CONSENTS, PASSWORD, Env
 
 
@@ -227,7 +227,7 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         ("post", "/agent/stream", {"query": "¿Qué plazo tengo?", "case_id": case_id}),
         ("post", "/simulate", {"case_id": case_id}),
         ("post", "/optimize", {"case_id": case_id}),
-        # The user's decisions (hacienda_gpt/api/routers/memoria.py).
+        # The user's decisions (asistente/plataforma/api/routers/memoria.py).
         ("get", f"/cases/{case_id}/decisiones", None),
         ("post", f"/cases/{case_id}/decisiones", {"ambito": "fiscal:donativo", "razon": "No quiero donar"}),
         ("put", f"/cases/{case_id}/decisiones/{{decision_id}}", {"razon": "Otra razón"}),
@@ -348,7 +348,7 @@ def test_endpoints_without_a_case_still_need_a_session(env: Env, no_model) -> No
 
 
 def test_proactive_jobs_run_without_a_session(env: Env) -> None:
-    from hacienda_gpt.proactive.jobs import ejecutar_para_caso, hoy_en_espana
+    from asistente.nucleo.proactive.jobs import ejecutar_para_caso, hoy_en_espana
 
     ana = env.register("ana@example.com")
     case_id = env.new_case(ana)

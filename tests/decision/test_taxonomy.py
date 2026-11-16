@@ -1,4 +1,4 @@
-from hacienda_gpt.decision.taxonomy import (
+from asistente.nucleo.decision.taxonomy import (
     INTENT_TAXONOMY,
     SupportedIntent,
     blocking_facts_for_intent,

@@ -34,10 +34,10 @@ import threading
 from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.migraciones import asegurar_esquema
 
 if TYPE_CHECKING:
-    from hacienda_gpt.capacidades.navegador.tareas import Tarea
+    from asistente.capacidades.navegador.tareas import Tarea
 
 logger = logging.getLogger(__name__)
 
@@ -164,8 +164,8 @@ class AlmacenTareas:
     @staticmethod
     def a_tarea(fila: sqlite3.Row) -> Tarea:
         """A task as another process sees it: everything but the screenshot, the summary and the session."""
-        from hacienda_gpt.capacidades.navegador.guion import GuionError, guion_activo, validar_parametros
-        from hacienda_gpt.capacidades.navegador.tareas import EventoTarea, Tarea
+        from asistente.capacidades.navegador.guion import GuionError, guion_activo, validar_parametros
+        from asistente.capacidades.navegador.tareas import EventoTarea, Tarea
 
         datos = json.loads(fila["payload_json"])
         parametros: dict[str, Any] = {}

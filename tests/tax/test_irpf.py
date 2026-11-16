@@ -1,13 +1,13 @@
 """IRPF calculator tests. Expected figures are worked by hand from the scales
 and amounts in arts. 19, 20, 57-60, 63, 66, 76, 84 and DA 61 LIRPF, as loaded
-in ``hacienda_gpt/tax/data/irpf_2026.json``."""
+in ``asistente/ambitos/fiscal/data/irpf_2026.json``."""
 
 from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_disponibles, load_params
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles, load_params
 
 D = Decimal
 

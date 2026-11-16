@@ -57,7 +57,7 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.processor.strategies.base import IngestStrategy
+from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -118,7 +118,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
         from lxml import etree
         from lxml import html as lxml_html
 
-        from hacienda_gpt.processor.strategies.default import (
+        from asistente.conocimiento.processor.strategies.default import (
             _stable_chunk_id_for,
             docling_parse_files,
         )
@@ -160,7 +160,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
                 file_path,
                 exc,
             )
-            from hacienda_gpt.processor.strategies.default import parse_with_default
+            from asistente.conocimiento.processor.strategies.default import parse_with_default
 
             return parse_with_default(file_path)
 
@@ -169,7 +169,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
                 "BOE split: no <div class='bloque'> found in %s — " "falling back to default Docling path.",
                 file_path,
             )
-            from hacienda_gpt.processor.strategies.default import parse_with_default
+            from asistente.conocimiento.processor.strategies.default import parse_with_default
 
             return parse_with_default(file_path)
 

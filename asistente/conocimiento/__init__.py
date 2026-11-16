@@ -2,22 +2,22 @@
 
 One library for every legal figure the assistant uses, whatever module it belongs to:
 
-* :mod:`~hacienda_gpt.conocimiento.texto` — how a law's page is read and normalised (one normalisation for all);
-* :mod:`~hacienda_gpt.conocimiento.modelo` — the common shape of a group of legal data (figures, literal quotes,
+* :mod:`~asistente.conocimiento.texto` — how a law's page is read and normalised (one normalisation for all);
+* :mod:`~asistente.conocimiento.modelo` — the common shape of a group of legal data (figures, literal quotes,
   source, how each figure is spelled);
-* :mod:`~hacienda_gpt.conocimiento.comprobacion` — the one checker: quotes verbatim in the law (in the version they
+* :mod:`~asistente.conocimiento.comprobacion` — the one checker: quotes verbatim in the law (in the version they
   were read from), every figure inside its quote;
-* :mod:`~hacienda_gpt.conocimiento.registro` — where each module declares its legal data files, so the weekly BOE
+* :mod:`~asistente.conocimiento.registro` — where each module declares its legal data files, so the weekly BOE
   verification, the reading dates (and their automatic pull request) and the re-encoding loop cover them;
-* :mod:`~hacienda_gpt.conocimiento.recodificacion` — module groups in the agentic re-encoding loop.
+* :mod:`~asistente.conocimiento.recodificacion.de_modulos` — module groups in the agentic re-encoding loop.
 
-The tax parameters keep their own loaders and the loop (``hacienda_gpt.tax.verificacion``,
-``hacienda_gpt.tax.recodificacion``), which delegate their text handling and literal-quote checks to this package.
+The tax parameters keep their own loaders and the loop (``asistente.conocimiento.verificacion``,
+``asistente.conocimiento.recodificacion``), which delegate their text handling and literal-quote checks to this package.
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.conocimiento.comprobacion import (
+from asistente.conocimiento.comprobacion import (
     MIN_CITA,
     SIN_TEXTO,
     Comprobacion,
@@ -29,7 +29,7 @@ from hacienda_gpt.conocimiento.comprobacion import (
     es_literal,
     verificar,
 )
-from hacienda_gpt.conocimiento.modelo import (
+from asistente.conocimiento.modelo import (
     FRONTERA_CIFRA,
     FRONTERA_LIBRE,
     FRONTERA_MIXTA,
@@ -42,7 +42,7 @@ from hacienda_gpt.conocimiento.modelo import (
     fuente_de,
     hojas,
 )
-from hacienda_gpt.conocimiento.registro import (
+from asistente.conocimiento.registro import (
     FicheroLegal,
     Recodificable,
     fichero_legal,
@@ -52,7 +52,7 @@ from hacienda_gpt.conocimiento.registro import (
     verificar_fichero,
     verificar_modulos,
 )
-from hacienda_gpt.conocimiento.texto import (
+from asistente.conocimiento.texto import (
     VERSION_DIARIO,
     TextoDe,
     comprimido,

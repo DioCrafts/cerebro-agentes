@@ -7,11 +7,11 @@ from typing import Any
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.agent.agent import AgentMode, TeamAgent
-from hacienda_gpt.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolResult, ToolSpec
-from hacienda_gpt.agent.team import detectar_tributos
-from hacienda_gpt.doctrine.citas import Documento
-from hacienda_gpt.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.doctrine.citas import Documento
+from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.nucleo.agent.agent import AgentMode, TeamAgent
+from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolResult, ToolSpec
+from asistente.nucleo.agent.team import detectar_tributos
 from .fakes import FakeSearcher, verdict
 
 LAW = Document(
@@ -338,7 +338,7 @@ def test_modes_never_and_always() -> None:
 
 @pytest.mark.parametrize("parallel", [True, False])
 def test_researchers_share_one_ledger_without_id_collisions(monkeypatch, parallel: bool) -> None:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     monkeypatch.setattr(settings, "SUBAGENTS_PARALLEL", parallel)
     provider = RoutedProvider(

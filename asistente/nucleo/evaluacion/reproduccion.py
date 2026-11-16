@@ -19,8 +19,8 @@ from collections.abc import Sequence
 import re
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ModelTurn, ProviderError, TextCallback, ToolCall, ToolResult, ToolSpec
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion, PasoGuion
+from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, TextCallback, ToolCall, ToolResult, ToolSpec
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, PasoGuion
 
 _FRAGMENTO_RE = re.compile(r"\[(F\d+)\]")
 _MARCADOR_RE = re.compile(r"\{(cifra|fragmento):([A-Za-z0-9_]+)\}")

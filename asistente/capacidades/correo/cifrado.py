@@ -3,7 +3,7 @@
 The plaintext is a small JSON document that also names the case and the user the token belongs to: a
 ciphertext copied to another row (another case, another account) fails to open. ``CORREO_CLAVE_CIFRADO``
 may hold several comma-separated keys (MultiFernet): the first encrypts, all decrypt, so the operator can
-rotate keys (``python -m hacienda_gpt.capacidades.correo rotar-clave``). Tokens are never logged.
+rotate keys (``python -m asistente.capacidades.correo rotar-clave``). Tokens are never logged.
 """
 
 from __future__ import annotations
@@ -13,7 +13,7 @@ from typing import Any
 
 from cryptography.fernet import Fernet, InvalidToken, MultiFernet
 
-from hacienda_gpt.capacidades.correo.config import configuracion
+from asistente.capacidades.correo.config import configuracion
 
 
 class CifradoNoDisponibleError(RuntimeError):

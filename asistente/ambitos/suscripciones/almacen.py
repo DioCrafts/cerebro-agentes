@@ -15,7 +15,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt.modulos.suscripciones.modelos import ServicioGuardado, ServiciosGuardados
+from asistente.ambitos.suscripciones.modelos import ServicioGuardado, ServiciosGuardados
 
 NOMBRE_HECHO = "suscripciones_servicios"
 

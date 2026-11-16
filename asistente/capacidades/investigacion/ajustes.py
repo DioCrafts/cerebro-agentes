@@ -1,6 +1,6 @@
 """Operator settings of the research capability, read on every call (tests change them on the fly).
 
-Every value is read from ``hacienda_gpt.settings`` when the attribute exists there, else from the environment,
+Every value is read from ``asistente.plataforma.settings`` when the attribute exists there, else from the environment,
 else the default below — so the capability works before (or without) its block in ``settings.py``.
 
 * ``INVESTIGACION_WEB`` (false) — the open web through the model provider's server-side web search. Off by
@@ -23,9 +23,9 @@ from decimal import Decimal, InvalidOperation
 import os
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.investigacion.dominios import OFICIALES_POR_DEFECTO, normalizar_lista_dominios
-from hacienda_gpt.capacidades.investigacion.modelo import Profundidad
+from asistente.capacidades.investigacion.dominios import OFICIALES_POR_DEFECTO, normalizar_lista_dominios
+from asistente.capacidades.investigacion.modelo import Profundidad
+from asistente.plataforma import settings
 
 # The web search fee is not a token price: it is not in ops/data/precios_llm.json. Value and source as read
 # in Anthropic's documentation (claude-api reference, cached 2026-11-03: «web searches at $10 per 1,000»).

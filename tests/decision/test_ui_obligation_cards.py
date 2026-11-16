@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.schemas import CaseState, EvidenceRef, EvidenceSourceType, ObligationCandidate, RiskLevel
-from hacienda_gpt.ui.app import _build_obligation_cards
+from asistente.nucleo.decision.schemas import CaseState, EvidenceRef, EvidenceSourceType, ObligationCandidate, RiskLevel
+from asistente.plataforma.ui.app import _build_obligation_cards
 
 
 def test_build_obligation_cards_includes_confidence_sources_and_missing() -> None:

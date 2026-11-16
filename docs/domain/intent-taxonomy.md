@@ -88,6 +88,6 @@ Ejemplos de lenguaje natural:
 - "Tengo un problema con Hacienda pero no sé explicarlo bien."
 
 ## Notas de implementación
-- El catálogo fuente está en `hacienda_gpt/decision/taxonomy.py`.
+- El catálogo fuente está en `asistente/nucleo/decision/taxonomy.py`.
 - La capa `interpreter` debe mapear cada turno a una intent y generar preguntas mínimas para cubrir facts bloqueantes.
 - En caso de conflicto entre input del usuario y facts previos, debe priorizarse la trazabilidad (registrar incertidumbre y pedir confirmación).

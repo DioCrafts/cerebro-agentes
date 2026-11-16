@@ -9,9 +9,9 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.evaluacion import suite as s
-from hacienda_gpt.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numero, valor_de_cifra
-from hacienda_gpt.evaluacion.modelos import (
+from asistente.nucleo.evaluacion import suite as s
+from asistente.nucleo.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numero, valor_de_cifra
+from asistente.nucleo.evaluacion.modelos import (
     CalculoEsperado,
     CasoEvaluacion,
     Ejecucion,
@@ -20,8 +20,8 @@ from hacienda_gpt.evaluacion.modelos import (
     LlamadaRegistrada,
     PasoGuion,
 )
-from hacienda_gpt.evaluacion.runner import Entorno, evaluar, proveedor_reproduccion
-from hacienda_gpt.ops.consumo import ConsumoStore
+from asistente.nucleo.evaluacion.runner import Entorno, evaluar, proveedor_reproduccion
+from asistente.plataforma.ops.consumo import ConsumoStore
 
 
 @pytest.fixture(scope="module")
@@ -72,7 +72,7 @@ def test_the_whole_suite_replays_without_a_model(casos: list[CasoEvaluacion], tm
 
 
 def _variante():  # type: ignore[no-untyped-def]
-    from hacienda_gpt.evaluacion.variantes import VARIANTE_BASE
+    from asistente.nucleo.evaluacion.variantes import VARIANTE_BASE
 
     return VARIANTE_BASE
 
@@ -143,7 +143,7 @@ def test_a_recipe_that_cannot_compute_is_an_error_not_a_pass() -> None:
     with pytest.raises(CalculoError, match="desconocida"):
         calcular_cifra(CalculoEsperado(herramienta="no_existe", patron=r"(?P<cifra>x)"), None)
     with pytest.raises(CalculoError, match="actúa fuera"):
-        from hacienda_gpt.evaluacion.modulo_prueba import MODULO_PRUEBA
+        from asistente.nucleo.evaluacion.modulo_prueba import MODULO_PRUEBA
 
         calcular_cifra(
             CalculoEsperado(herramienta="prueba_actua_dar_de_baja", patron=r"(?P<cifra>x)"),

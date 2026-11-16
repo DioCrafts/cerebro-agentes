@@ -17,12 +17,12 @@ from xml.etree import ElementTree
 
 import parsel
 
-from hacienda_gpt.crawler.boletin_autonomico import RegionalBoletinSpec, _first_text
-from hacienda_gpt.crawler.teac import _first_match, _normalise_sentido, _normalise_vinculante
-from hacienda_gpt.proactive.impacto import MAX_NOTA, MAX_TEXTO, ArticuloModificado, _lineas
-from hacienda_gpt.proactive.novedades import SECCION_GENERAL, SECCIONES_POR_TITULO, Analisis, ItemSumario, NormaModificada
-from hacienda_gpt.tax.fuentes import norma_de_parametros
-from hacienda_gpt.tax.vigencia_normas import EstadoNorma
+from asistente.conocimiento.crawler.boletin_autonomico import RegionalBoletinSpec, _first_text
+from asistente.conocimiento.crawler.teac import _first_match, _normalise_sentido, _normalise_vinculante
+from asistente.nucleo.proactive.impacto import MAX_NOTA, MAX_TEXTO, ArticuloModificado, _lineas
+from asistente.nucleo.proactive.novedades import SECCION_GENERAL, SECCIONES_POR_TITULO, Analisis, ItemSumario, NormaModificada
+from asistente.conocimiento.fuentes import norma_de_parametros
+from asistente.conocimiento.vigencia_normas import EstadoNorma
 
 
 def items_del_sumario(payload: Mapping[str, Any], fecha: date) -> list[ItemSumario]:
@@ -343,7 +343,7 @@ def parse_listing(spec: RegionalBoletinSpec, html: str) -> list[dict[str, Any]]:
 
 
 # --------------------------------------------------------------------------- #
-# CENDOJ document (hacienda_gpt/crawler/cendoj.py before the ``cendoj_documento`` spec).
+# CENDOJ document (asistente/conocimiento/crawler/cendoj.py before the ``cendoj_documento`` spec).
 # Names prefixed with ``_cendoj`` only to coexist with the copies above.
 # --------------------------------------------------------------------------- #
 
@@ -485,7 +485,7 @@ def _cendoj_first_match(pattern: re.Pattern[str], text: str) -> str | None:
 
 
 # --------------------------------------------------------------------------- #
-# AEAT sede: links the web crawler followed (hacienda_gpt/crawler/crawlers.py before the ``aeat_sede`` spec).
+# AEAT sede: links the web crawler followed (asistente/conocimiento/crawler/crawlers.py before the ``aeat_sede`` spec).
 # --------------------------------------------------------------------------- #
 
 _AEAT_ALLOWED_PATHS = [
@@ -516,7 +516,7 @@ def aeat_links_followed(url: str, html: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
-# TEAC listing (hacienda_gpt/cli/teac_seed.py before the ``teac_listado`` spec).
+# TEAC listing (asistente/plataforma/cli/teac_seed.py before the ``teac_listado`` spec).
 # --------------------------------------------------------------------------- #
 
 _TEAC_CRITERIO_LINK_RE = re.compile(r"""href=['"](criterio\.aspx\?id=([^'"&]+))[^'"]*['"]""", re.IGNORECASE)
@@ -529,7 +529,7 @@ def teac_ids_de_pagina(text: str) -> list[str]:
 
 
 # --------------------------------------------------------------------------- #
-# DGT search results and document (hacienda_gpt/cli/dgt_seed.py before the ``dgt_*`` specs).
+# DGT search results and document (asistente/plataforma/cli/dgt_seed.py before the ``dgt_*`` specs).
 # --------------------------------------------------------------------------- #
 
 _DGT_DOC_ID_RE = re.compile(r'id="doc_(\d+)"')

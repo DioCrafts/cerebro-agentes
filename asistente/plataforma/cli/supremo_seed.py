@@ -9,7 +9,7 @@ authorisation, so the tool only works on:
   by one with a hard cap (``--max-downloads``) and a pause between requests.
 
 Links found inside the fetched pages are never followed. Each document is
-analysed with :mod:`hacienda_gpt.doctrine.supremo`; only tax rulings of
+analysed with :mod:`asistente.conocimiento.doctrine.supremo`; only tax rulings of
 Sala Tercera, Sección Segunda with enough priority are kept, as
 ``<slug>.html`` plus a ``<slug>.json`` sidecar that the indexer merges into
 every chunk. A manifest records what was kept, what was discarded and why.
@@ -31,14 +31,14 @@ from urllib.parse import urlsplit
 import click
 import requests
 
-from hacienda_gpt.crawler.cendoj import observar_documento
-from hacienda_gpt.doctrine.supremo import (
+from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.cendoj import observar_documento
+from asistente.conocimiento.doctrine.supremo import (
     analizar_documento,
     es_casacion_nueva,
     es_objetivo_prioritario,
     sidecar_metadata,
 )
-from hacienda_gpt.ops import formatos
 
 logger = logging.getLogger(__name__)
 

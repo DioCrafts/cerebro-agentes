@@ -1,6 +1,6 @@
 """The modules' tax proposals in the chat: a context block for the central agent and the ``aceptar_propuesta`` tool.
 
-A bridge (:mod:`hacienda_gpt.modulos.puentes`) proposes a value for a tax fact the case lacks («tu hipoteca dice
+A bridge (:mod:`asistente.nucleo.modulos.puentes`) proposes a value for a tax fact the case lacks («tu hipoteca dice
 que este año pagaste X»). Until now only the «Módulos» panel showed it. Here the central agent sees the pending
 ones in its first user message (like the decision memory's block) and offers them when they matter to the
 question, or once per conversation:
@@ -40,14 +40,14 @@ import logging
 import re
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.agent.tools import ExtraTool, ToolOutcome
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, normalizar_texto
-from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.puentes import PUENTES, PropuestaHecho, ambito_de, eur, fuente_de, propuestas_para
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.agent.tools import ExtraTool, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, normalizar_texto
+from asistente.nucleo.modulos.contrato import Modulo
+from asistente.nucleo.modulos.puentes import PUENTES, PropuestaHecho, ambito_de, eur, fuente_de, propuestas_para
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ palabras): no se le volverá a ofrecer. Si quiere otra cifra, regístrala con `r
 
 def _propone_al_fiscal(modulo: Modulo) -> bool:
     """The module declares a bridge to the tax module (``Ganchos.puentes``, contract v2; v1 through the adapter)."""
-    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.ganchos import ganchos_de
 
     return any(p.destino == "fiscal" for p in ganchos_de(modulo).puentes)
 
@@ -261,7 +261,7 @@ class PropuestasChat:
         return None
 
     def _decisiones(self) -> list[Any] | None:
-        from hacienda_gpt.memoria.servicio import decisiones_del_caso
+        from asistente.nucleo.memoria.servicio import decisiones_del_caso
 
         try:
             return decisiones_del_caso(settings.DECISION_STATE_DB_PATH, self._case.case_id)
@@ -361,7 +361,7 @@ class PropuestasChat:
         )
 
     def _guardar(self, case: CaseState, hecho: Fact) -> None:
-        from hacienda_gpt.decision.interpreter import _merge_facts
+        from asistente.nucleo.decision.interpreter import _merge_facts
 
         hechos = _merge_facts([hecho], case)
         conocidos = {f.name for f in hechos}

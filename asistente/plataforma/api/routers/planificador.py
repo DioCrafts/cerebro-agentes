@@ -2,7 +2,7 @@
 
 Same access rules as ``/optimize``: API key, session when accounts are on, and ownership of the case (404 for
 someone else's case, like one that does not exist). With ``case_id`` the case's facts are the household's
-figures and its decisions in force (``hacienda_gpt.memoria``) are restrictions the request cannot lift; the
+figures and its decisions in force (``asistente.nucleo.memoria``) are restrictions the request cannot lift; the
 mortgage and aid data are used only when the user has those modules switched on. Nothing is stored:
 the plan is computed and returned. Body-validation errors and bad data come back as a 422 with one Spanish
 sentence in ``detail``.
@@ -16,17 +16,17 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from hacienda_gpt.api.routers.autonomos import _RutaConErroresEnEspanol
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.decision.schemas import parse_fiscal_year
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria.planificador import planificar_con_memoria
-from hacienda_gpt.modulos.preferencias import modulos_activos_para, modulos_activos_para_caso
-from hacienda_gpt.planificador.modelos import EntradaPlan, PlanHogar
-from hacienda_gpt.proactive.jobs import hoy_en_espana
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.nucleo.decision.schemas import parse_fiscal_year
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria.planificador import planificar_con_memoria
+from asistente.nucleo.modulos.preferencias import modulos_activos_para, modulos_activos_para_caso
+from asistente.nucleo.planificador.modelos import EntradaPlan, PlanHogar
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.plataforma.api.routers.autonomos import _RutaConErroresEnEspanol
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 
 
 class PlanificarRequest(EntradaPlan):
@@ -62,7 +62,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
             if ano is not None:
                 entrada = entrada.model_copy(update={"ejercicio": ano})
         try:
-            # With a case, the user's decisions in force are restrictions too (hacienda_gpt/memoria/planificador.py).
+            # With a case, the user's decisions in force are restrictions too (asistente/nucleo/memoria/planificador.py).
             return planificar_con_memoria(
                 entrada,
                 case_id=payload.case_id,

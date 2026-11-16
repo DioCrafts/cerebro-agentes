@@ -1,7 +1,7 @@
 """Declarative browser scripts ("guiones"): what the agent may do on a site, as versioned data.
 
 A script is NOT code. It is a JSON document shaped like the format specs of the format watch
-(:mod:`hacienda_gpt.ops.formatos`: ``fuente``, ``version``, ``descripcion``, ``origen``, ``reglas``) whose
+(:mod:`asistente.conocimiento.formatos`: ``fuente``, ``version``, ``descripcion``, ``origen``, ``reglas``) whose
 ``reglas`` validate against :class:`Guion`. The bundled scripts live in ``guiones/``; a reviewed repair
 (a new selector after a site changed) is written to ``FORMAT_DIR/specs/<fuente>.json`` with a higher version
 and wins over the bundled one, exactly like a format spec.
@@ -35,7 +35,7 @@ from urllib.parse import urlsplit
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -126,7 +126,7 @@ class Parametro(_M):
     @classmethod
     def _patron(cls, v: str | None) -> str | None:
         if v is not None:
-            from hacienda_gpt.ops.formatos import patron_seguro
+            from asistente.conocimiento.formatos import patron_seguro
 
             patron_seguro(v)
         return v
@@ -366,7 +366,7 @@ class Guion(_M):
         """The script without its selectors: step ids, actions, fields, labels and texts, in order.
 
         A repair may change selectors and nothing else, so a candidate is accepted only if its ``forma`` is
-        identical to the one in force (see :func:`hacienda_gpt.capacidades.navegador.vigilancia.ensayar_guion`).
+        identical to the one in force (see :func:`asistente.capacidades.navegador.vigilancia.ensayar_guion`).
         """
         out: list[dict[str, Any]] = []
         for paso in self.pasos:

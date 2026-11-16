@@ -8,11 +8,11 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.contrato import ContextoModulo
-from hacienda_gpt.modulos.suscripciones import MODULO
-from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO
-from hacienda_gpt.modulos.suscripciones.avisos import dias_aviso
-from hacienda_gpt.modulos.suscripciones.modelos import ServicioGuardado, ServiciosGuardados
+from asistente.ambitos.suscripciones import MODULO
+from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO
+from asistente.ambitos.suscripciones.avisos import dias_aviso
+from asistente.ambitos.suscripciones.modelos import ServicioGuardado, ServiciosGuardados
+from asistente.nucleo.modulos.contrato import ContextoModulo
 
 
 def _servicio(**cambios: Any) -> ServicioGuardado:

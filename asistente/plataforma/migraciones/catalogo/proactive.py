@@ -1,4 +1,4 @@
-"""``hacienda_gpt.proactive``: notifications (``NotificationStore``) and their deliveries (``EntregaStore``).
+"""``asistente.nucleo.proactive``: notifications (``NotificationStore``) and their deliveries (``EntregaStore``).
 
 Two owners because the stores are separate: the deliveries table exists only where something delivers.
 Baseline copied byte for byte from ``proactive/store.py`` and ``proactive/entrega.py``.
@@ -6,7 +6,7 @@ Baseline copied byte for byte from ``proactive/store.py`` and ``proactive/entreg
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 NOTIFICATIONS = """
                 CREATE TABLE IF NOT EXISTS notifications (
@@ -31,7 +31,7 @@ NOTIFICATION_DELIVERIES = """
 
 PROPIETARIO = Propietario(
     nombre="proactive",
-    paquete="hacienda_gpt.proactive",
+    paquete="asistente.nucleo.proactive",
     descripcion="Avisos de cada caso (bandeja), únicos por (case_id, key).",
     tablas=("notifications",),
     otros_objetos=("idx_notifications_case",),
@@ -49,7 +49,7 @@ PROPIETARIO = Propietario(
 
 PROPIETARIO_ENTREGAS = Propietario(
     nombre="proactive_entrega",
-    paquete="hacienda_gpt.proactive",
+    paquete="asistente.nucleo.proactive",
     descripcion="Qué aviso se entregó por qué canal (webhook, correo).",
     tablas=("notification_deliveries",),
     depende_de=("proactive",),

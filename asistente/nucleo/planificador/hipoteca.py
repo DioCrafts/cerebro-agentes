@@ -27,12 +27,12 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from hacienda_gpt.modulos.hipoteca.calculo import Cuadro, Supuestos, calcular_cuadro, cuotas_necesarias, euros
-from hacienda_gpt.modulos.hipoteca.comisiones import Comision, comision_maxima
-from hacienda_gpt.modulos.hipoteca.deduccion import base_deducible, pagos_del_ano
-from hacienda_gpt.modulos.hipoteca.indices import SerieIndices, cargar_serie
-from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo
-from hacienda_gpt.modulos.hipoteca.normativa import Normativa, cargar_normativa
+from asistente.ambitos.hipoteca.calculo import Cuadro, Supuestos, calcular_cuadro, cuotas_necesarias, euros
+from asistente.ambitos.hipoteca.comisiones import Comision, comision_maxima
+from asistente.ambitos.hipoteca.deduccion import base_deducible, pagos_del_ano
+from asistente.ambitos.hipoteca.indices import SerieIndices, cargar_serie
+from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo
+from asistente.ambitos.hipoteca.normativa import Normativa, cargar_normativa
 
 ZERO = Decimal(0)
 ONE = Decimal(1)

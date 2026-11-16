@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 import json
 from typing import Any
 
-from hacienda_gpt.tax.profile import DatosInvalidosError, normalizar_datos_conyuge, normalizar_descendientes
+from asistente.ambitos.fiscal.profile import DatosInvalidosError, normalizar_datos_conyuge, normalizar_descendientes
 
 # Identifiers of the stable benefits (family A), also the values of ``ayudas_ya_solicitadas``.
 PRESTACIONES: dict[str, str] = {

@@ -1,4 +1,4 @@
-"""«No me interesa» for a category or a sender, through the shared decision memory (``hacienda_gpt/memoria``).
+"""«No me interesa» for a category or a sender, through the shared decision memory (``asistente/nucleo/memoria``).
 
 Ámbitos of this module:
 
@@ -19,9 +19,9 @@ from datetime import date
 import logging
 from typing import Literal
 
-from hacienda_gpt.capacidades.correo.almacen import Elemento
-from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, Decision, cubre, evaluar
-from hacienda_gpt.memoria.servicio import decisiones_del_caso, registrar
+from asistente.capacidades.correo.almacen import Elemento
+from asistente.nucleo.memoria.modelo import BLOQUEAN_AVISOS, Decision, cubre, evaluar
+from asistente.nucleo.memoria.servicio import decisiones_del_caso, registrar
 
 logger = logging.getLogger(__name__)
 

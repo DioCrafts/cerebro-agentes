@@ -10,12 +10,12 @@ import base64
 import binascii
 from typing import Literal
 
-from hacienda_gpt.modulos.suscripciones.camt import es_camt, leer_camt
-from hacienda_gpt.modulos.suscripciones.lectura import TAMANO_MAXIMO, decodificar
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError
-from hacienda_gpt.modulos.suscripciones.norma43 import es_norma43, leer_norma43
-from hacienda_gpt.modulos.suscripciones.ofx import codificacion_declarada, es_ofx, leer_ofx
-from hacienda_gpt.modulos.suscripciones.tablas import filas_csv, filas_xlsx, tabla_a_extracto
+from asistente.ambitos.suscripciones.camt import es_camt, leer_camt
+from asistente.ambitos.suscripciones.lectura import TAMANO_MAXIMO, decodificar
+from asistente.ambitos.suscripciones.modelos import Extracto, ImportacionError
+from asistente.ambitos.suscripciones.norma43 import es_norma43, leer_norma43
+from asistente.ambitos.suscripciones.ofx import codificacion_declarada, es_ofx, leer_ofx
+from asistente.ambitos.suscripciones.tablas import filas_csv, filas_xlsx, tabla_a_extracto
 
 Formato = Literal["auto", "norma43", "csv", "xlsx", "ofx", "qfx", "camt053"]
 FORMATOS: tuple[str, ...] = Formato.__args__  # type: ignore[attr-defined]

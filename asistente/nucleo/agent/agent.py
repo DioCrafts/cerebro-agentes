@@ -17,20 +17,20 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.especialistas import Coordinador
-from hacienda_gpt.agent.evidence import EvidenceLedger, Fragment, extract_cited_ids
-from hacienda_gpt.agent.procedencia import mensajes_del_usuario
-from hacienda_gpt.agent.prompts import (
+from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.especialistas import Coordinador
+from asistente.nucleo.agent.evidence import EvidenceLedger, Fragment, extract_cited_ids
+from asistente.nucleo.agent.procedencia import mensajes_del_usuario
+from asistente.nucleo.agent.prompts import (
     CASE_TOOLS_ADDENDUM,
     CRITIC_REVISION_MESSAGE,
     FORCE_ANSWER_MESSAGE,
     PLANIFICADOR_ADDENDUM,
 )
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError, ToolResult
-from hacienda_gpt.agent.search import CorpusSearcher
-from hacienda_gpt.agent.team import (
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError, ToolResult
+from asistente.nucleo.agent.search import CorpusSearcher
+from asistente.nucleo.agent.team import (
     RESEARCH_TOOLS,
     LockedSearcher,
     Plan,
@@ -44,17 +44,17 @@ from hacienda_gpt.agent.team import (
     render_briefing,
     team_mode,
 )
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.agent.verifier import ClaimCheck, ResponseType, Verdict, VerificationReport, Verifier
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.doctrine.grafo import DoctrineGraph
-from hacienda_gpt.evaluacion.variantes import argumentos_proveedor, prompt_activo
-from hacienda_gpt.memoria.agente import MemoriaAgente
-from hacienda_gpt.modulos.acciones import AccionPendiente
-from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.propuestas_chat import PropuestasChat
-from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
-from hacienda_gpt.tareas.herramientas import TareasAgente
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.agent.verifier import ClaimCheck, ResponseType, Verdict, VerificationReport, Verifier
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.evaluacion.variantes import argumentos_proveedor, prompt_activo
+from asistente.nucleo.memoria.agente import MemoriaAgente
+from asistente.nucleo.modulos.acciones import AccionPendiente
+from asistente.nucleo.modulos.contrato import Modulo
+from asistente.nucleo.modulos.propuestas_chat import PropuestasChat
+from asistente.nucleo.planificador.agente import PLANIFICAR_TOOL
+from asistente.nucleo.tareas.herramientas import TareasAgente
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -229,9 +229,9 @@ class TaxAgent:
         """Answer ``query``. Raises :class:`ProviderError` if the agent model fails.
 
         ``modulos`` are the household modules switched on for this user: every one without direct tools adds
-        a ``consultar_<clave>`` specialist tool (see :mod:`hacienda_gpt.agent.especialistas`). The tools of the
+        a ``consultar_<clave>`` specialist tool (see :mod:`asistente.nucleo.agent.especialistas`). The tools of the
         modules flagged ``herramientas_directas`` (the tax module) are always the toolbox's own, offered right
-        after the corpus search (see :class:`~hacienda_gpt.agent.tools.Toolbox`). Without other modules the
+        after the corpus search (see :class:`~asistente.nucleo.agent.tools.Toolbox`). Without other modules the
         advisor runs exactly as it always has.
 
         Team mode passes three extras: a ``ledger`` already holding the
@@ -255,14 +255,14 @@ class TaxAgent:
 
         ledger = ledger if ledger is not None else EvidenceLedger()
         especialistas = Coordinador.para(self._provider, ledger, modulos, emit)
-        # The user's remembered decisions (hacienda_gpt/memoria): two tools and a context block, only with a case.
+        # The user's remembered decisions (asistente/nucleo/memoria): two tools and a context block, only with a case.
         memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
         # Tax facts the household modules propose (modulos/puentes.py): a context block and `aceptar_propuesta`.
         propuestas = PropuestasChat.para(case, modulos, query=query, chat_history=chat_history)
-        # Long-running tasks (hacienda_gpt/tareas): tools and a paragraph, with a case and household modules or tasks.
+        # Long-running tasks (asistente/nucleo/tareas): tools and a paragraph, with a case and household modules or tasks.
         tareas = TareasAgente.para(case, query=query, chat_history=chat_history, modulos=modulos or ())
         # Research with sources (capacidades/investigacion): the `investigar` tool, only with INVESTIGACION_AGENTE.
-        from hacienda_gpt.capacidades.investigacion.herramienta import InvestigacionAgente
+        from asistente.capacidades.investigacion.herramienta import InvestigacionAgente
 
         investigacion = InvestigacionAgente.para(self._provider, case, query=query, chat_history=chat_history)
         toolbox = Toolbox(
@@ -285,12 +285,12 @@ class TaxAgent:
             memoria.vincular(toolbox)
         if propuestas is not None:
             propuestas.vincular(toolbox)
-        # The active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.AGENT_SYSTEM_PROMPT.
+        # The active prompt variant (asistente/nucleo/evaluacion/variantes.py); by default prompts.AGENT_SYSTEM_PROMPT.
         system = prompt_activo("agente") + (CASE_TOOLS_ADDENDUM if case is not None else "")
         if especialistas is not None:
             especialistas.vincular(toolbox)
             system += especialistas.addendum()
-        if tareas is not None:  # the long-running tasks' paragraph (hacienda_gpt/tareas/prompt.py)
+        if tareas is not None:  # the long-running tasks' paragraph (asistente/nucleo/tareas/prompt.py)
             system += tareas.addendum()
         if investigacion is not None:
             system += investigacion.addendum()
@@ -693,9 +693,9 @@ class TeamAgent(TaxAgent):
 
 def build_agent() -> TaxAgent:
     """Wire the production agent from settings (provider, FAISS searcher, verifier)."""
-    from hacienda_gpt.agent.providers import create_provider
-    from hacienda_gpt.agent.search import FaissCorpusSearcher
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.nucleo.agent.search import FaissCorpusSearcher
+    from asistente.plataforma.ops.consumo import medir
 
     # Every call is recorded and checked against the configured budgets.
     # The active variant may name another provider/model ({} by default: settings decide, as always).

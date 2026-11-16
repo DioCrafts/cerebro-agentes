@@ -1,7 +1,8 @@
 """Discovery and validation of the household modules (see ``contrato.py``).
 
-Every package ``hacienda_gpt.modulos.<clave>`` whose ``__init__`` exposes ``MODULO`` is found with
-:mod:`pkgutil`, imported and checked against the contract. A module that fails to import or breaks a rule
+Every package ``asistente.ambitos.<clave>`` whose ``__init__`` exposes ``MODULO`` is found with
+:mod:`pkgutil`, imported and checked against the contract; so is the chat front of a capability
+(``asistente.capacidades.<clave>`` exposing ``MODULO``: the mail and the browser). A module that fails to import or breaks a rule
 is logged and left out: one broken module never takes the app down, and the others keep working.
 
 Rules checked here (the core relies on them everywhere else):
@@ -34,9 +35,8 @@ import re
 import threading
 from typing import Any, get_args
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.contrato import (
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import (
     Efecto,
     FuenteModulo,
     HechoModulo,
@@ -44,14 +44,17 @@ from hacienda_gpt.modulos.contrato import (
     Modulo,
     TipoHecho,
 )
-from hacienda_gpt.modulos.ganchos import Ganchos, PuenteAmbito, es_v2, ganchos_de
+from asistente.nucleo.modulos.ganchos import Ganchos, PuenteAmbito, es_v2, ganchos_de
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
 # The tax module's key: kept for callers; the core no longer tells it apart by key (``Ganchos.obligatorio``,
 # ``GanchosAgente.directas``, ``GanchosBandeja``).
 FISCAL = "fiscal"
-PAQUETE = "hacienda_gpt.modulos"
+PAQUETE = "asistente.ambitos"
+# Capabilities whose package also exposes a ``MODULO`` (their chat front: specialist, notices, switch).
+PAQUETE_CAPACIDADES = "asistente.capacidades"
 _CLAVE_RE = re.compile(r"^[a-z][a-z0-9_]{1,30}$")
 _NOMBRE_RE = re.compile(r"^[a-z][a-z0-9_]{1,80}$")
 _EFECTOS = frozenset(get_args(Efecto))
@@ -59,21 +62,21 @@ _TIPOS = frozenset(get_args(TipoHecho))
 # Notification kinds and key prefixes the core already uses: a module named like them would be ambiguous.
 CLAVES_RESERVADAS = frozenset(
     {"plazo", "fin_de_ejercicio", "cambio_normativo", "resumen_semanal", "modulo", "nucleo", "contrato", "registro"}
-    # The long-running tasks use ``modulo:tareas`` notices and the bus timer «tareas» (hacienda_gpt/tareas).
+    # The long-running tasks use ``modulo:tareas`` notices and the bus timer «tareas» (asistente/nucleo/tareas).
     | {"tareas"}
 )
 
 
 def obligatorios(modulos: Iterable[Modulo]) -> frozenset[str]:
     """Keys of the modules that are always on (declared ``Ganchos.obligatorio``: the tax module)."""
-    from hacienda_gpt.modulos.ganchos import obligatorio
+    from asistente.nucleo.modulos.ganchos import obligatorio
 
     return frozenset(m.clave for m in modulos if obligatorio(m))
 
 
 def hechos_compartidos() -> frozenset[str]:
     """Facts the core defines (the tax profile vocabulary): modules read them and never redefine them."""
-    from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
+    from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE
 
     return frozenset(EXPECTED_FACT_TYPE)
 
@@ -276,7 +279,7 @@ def problemas_de_ganchos(modulo: Modulo, ganchos: Ganchos) -> list[str]:
 
 def _es_obligatorio(modulo: Any) -> bool:
     try:
-        from hacienda_gpt.modulos.ganchos import obligatorio
+        from asistente.nucleo.modulos.ganchos import obligatorio
 
         return obligatorio(modulo)
     except Exception:  # validated (and refused) later
@@ -323,8 +326,20 @@ def construir_registro(candidatos: Iterable[tuple[str, Any]], *, errores: Mappin
     return registro
 
 
-def descubrir(paquete: str = PAQUETE) -> tuple[list[tuple[str, Any]], dict[str, str]]:
-    """Import every sub-package of ``paquete`` that exposes ``MODULO``. Import errors are returned, not raised."""
+def descubrir(paquete: str | None = None) -> tuple[list[tuple[str, Any]], dict[str, str]]:
+    """Import every sub-package of ``paquete`` that exposes ``MODULO``. Import errors are returned, not raised.
+
+    By default, the domains (:data:`PAQUETE`, where every package must expose ``MODULO``) and the capabilities'
+    chat fronts (:data:`PAQUETE_CAPACIDADES`, where only some do: the others are not modules).
+    """
+    if paquete is not None:
+        return _descubrir_en(paquete, todos=True)
+    encontrados, errores = _descubrir_en(PAQUETE, todos=True)
+    frentes, errores_frentes = _descubrir_en(PAQUETE_CAPACIDADES, todos=False)
+    return encontrados + frentes, {**errores, **errores_frentes}
+
+
+def _descubrir_en(paquete: str, *, todos: bool) -> tuple[list[tuple[str, Any]], dict[str, str]]:
     base = importlib.import_module(paquete)
     encontrados: list[tuple[str, Any]] = []
     errores: dict[str, str] = {}
@@ -339,6 +354,8 @@ def descubrir(paquete: str = PAQUETE) -> tuple[list[tuple[str, Any]], dict[str, 
             logger.exception("Module package %s failed to import", nombre)
             continue
         modulo = getattr(paquete_modulo, "MODULO", None)
+        if modulo is None and not todos:
+            continue  # a capability without a chat front
         if modulo is None:
             errores[info.name] = "el paquete no expone MODULO"
             logger.error("Module package %s exposes no MODULO", nombre)

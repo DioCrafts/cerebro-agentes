@@ -7,7 +7,7 @@ data, so the stores can call the engine without import cycles.
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.catalogo import (
+from asistente.plataforma.migraciones.catalogo import (
     acciones,
     auth,
     consumo,
@@ -23,7 +23,7 @@ from hacienda_gpt.plataforma.migraciones.catalogo import (
     push,
     tareas,
 )
-from hacienda_gpt.plataforma.migraciones.motor import Propietario
+from asistente.plataforma.migraciones.motor import Propietario
 
 PROPIETARIOS: tuple[Propietario, ...] = (
     decision.PROPIETARIO,

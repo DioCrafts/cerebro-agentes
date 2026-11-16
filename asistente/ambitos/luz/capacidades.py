@@ -15,9 +15,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.capacidades.desde_ambito import pedir_desde_herramienta
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.capacidades.desde_ambito import pedir_desde_herramienta
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 AMBITO = "luz"
 HECHO_CUPS = "luz_cups"

@@ -15,8 +15,8 @@ EnvironmentFile=/etc/hacienda/entorno
 Environment=TZ=Europe/Madrid
 # El worker reparte los eventos; la API solo los escribe.
 Environment=EVENTOS_DESPACHO_EN_API=false
-ExecStartPre=/srv/hacienda-asesor/.venv/bin/python -m hacienda_gpt.cli.plataforma migrar
-ExecStart=/srv/hacienda-asesor/.venv/bin/uvicorn hacienda_gpt.api.api:app \
+ExecStartPre=/srv/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.plataforma migrar
+ExecStart=/srv/hacienda-asesor/.venv/bin/uvicorn asistente.plataforma.api.api:app \
     --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1
 Restart=on-failure
 RestartSec=5

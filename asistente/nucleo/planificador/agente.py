@@ -12,13 +12,13 @@ from decimal import Decimal
 import logging
 from typing import Any
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.decision.schemas import CaseState, parse_fiscal_year
-from hacienda_gpt.planificador.modelos import PALANCAS, PlanHogar
-from hacienda_gpt.proactive.jobs import hoy_en_espana
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.decision.schemas import CaseState, parse_fiscal_year
+from asistente.nucleo.planificador.modelos import PALANCAS, PlanHogar
+from asistente.nucleo.proactive.jobs import hoy_en_espana
 
 logger = logging.getLogger(__name__)
 
@@ -163,10 +163,10 @@ def texto_plan(plan: PlanHogar) -> str:
 def _modulos_activos(case: CaseState | None) -> Collection[str]:
     try:
         if case is not None:
-            from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+            from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 
             return {m.clave for m in modulos_activos_para_caso(case.case_id)}
-        from hacienda_gpt.modulos.preferencias import modulos_activos_para
+        from asistente.nucleo.modulos.preferencias import modulos_activos_para
 
         return {m.clave for m in modulos_activos_para(None, None)}
     except Exception:  # the plan still runs with the tax module alone
@@ -187,9 +187,9 @@ def planificar_para_agente(
         if ano is not None:
             datos["ejercicio"] = ano
     facts = {fact.name: fact.value for fact in case.facts} if case is not None else {}
-    # With a case, the user's decisions in force are restrictions too (hacienda_gpt/memoria/planificador.py:
+    # With a case, the user's decisions in force are restrictions too (asistente/nucleo/memoria/planificador.py:
     # they always hold; the user lifts one by changing the decision, never through a figure of this call).
-    from hacienda_gpt.memoria.planificador import planificar_con_memoria
+    from asistente.nucleo.memoria.planificador import planificar_con_memoria
 
     try:
         plan = planificar_con_memoria(

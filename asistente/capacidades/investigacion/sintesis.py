@@ -1,7 +1,7 @@
 """Step 3 of a research: the model writes claims with literal quotes; the gate (``puerta.py``) keeps the true ones.
 
 Purpose ``investigacion:sintetizar`` (medium tier). The sources go to the model as untrusted data (each one
-between the marks of :func:`hacienda_gpt.capacidades.contrato.envolver_no_confiable`: injection bait redacted,
+between the marks of :func:`asistente.capacidades.contrato.envolver_no_confiable`: injection bait redacted,
 angle brackets neutralised), after a header written by the app (id, kind, official or not). The model has no
 tools: it can only return the JSON below. A quote that the redaction changed can no longer match the source,
 so an injected sentence can never be quoted into the report.
@@ -12,8 +12,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import envolver_no_confiable
-from hacienda_gpt.capacidades.investigacion.fuentes import FuenteRecuperada, neutralizar
+from asistente.capacidades.contrato import envolver_no_confiable
+from asistente.capacidades.investigacion.fuentes import FuenteRecuperada, neutralizar
 
 PROPOSITO = "investigacion:sintetizar"
 

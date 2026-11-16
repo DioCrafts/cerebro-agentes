@@ -12,8 +12,8 @@ from typing import Annotated
 
 from fastapi import Depends, Header, HTTPException
 
-from hacienda_gpt import settings
-from hacienda_gpt.auth.store import AuthStore, User
+from asistente.plataforma import settings
+from asistente.plataforma.auth.store import AuthStore, User
 
 CONSENT_DOCUMENTS_DETAIL = (
     "Para analizar un documento hay que enviar su contenido al proveedor del modelo de lenguaje, "

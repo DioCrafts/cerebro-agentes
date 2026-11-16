@@ -1,4 +1,4 @@
-"""``hacienda_gpt.tareas`` (``TareaStore``): long-running tasks, their append-only history and their signals.
+"""``asistente.nucleo.tareas`` (``TareaStore``): long-running tasks, their append-only history and their signals.
 
 Baseline copied byte for byte from ``tareas/almacen.py`` (``_DDL``, ``_DISPARADOR``). The erasure trigger hangs
 on ``case_states``, so (as the store always did) version 2 waits until that table exists.
@@ -6,7 +6,7 @@ on ``case_states``, so (as the store always did) version 2 waits until that tabl
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 DDL = (
     """
@@ -64,7 +64,7 @@ DISPARADOR = """
 
 PROPIETARIO = Propietario(
     nombre="tareas",
-    paquete="hacienda_gpt.tareas",
+    paquete="asistente.nucleo.tareas",
     descripcion="Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus.",
     tablas=("tareas", "tareas_historial", "tareas_senales"),
     otros_objetos=(

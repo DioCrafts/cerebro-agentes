@@ -23,8 +23,8 @@ from decimal import Decimal
 import logging
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import Usage
-from hacienda_gpt.capacidades.investigacion.modelo import Coste
+from asistente.capacidades.investigacion.modelo import Coste
+from asistente.nucleo.agent.providers.base import Usage
 
 logger = logging.getLogger(__name__)
 
@@ -88,7 +88,7 @@ Coster = Callable[[Usage], Decimal | None]
 
 
 def coste_por_defecto(usage: Usage) -> Decimal | None:
-    from hacienda_gpt.ops.consumo import calcular_coste
+    from asistente.plataforma.ops.consumo import calcular_coste
 
     return calcular_coste(usage)
 

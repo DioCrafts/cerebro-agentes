@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.crawler.boletin_autonomico import (
+from asistente.conocimiento.crawler.boletin_autonomico import (
     BOCM_MADRID,
     BUNDLED_SPECS,
     parse_listing,

@@ -42,12 +42,12 @@ services:
 
   worker:
     <<: *backend
-    command: ["python", "-m", "hacienda_gpt.cli.plataforma", "worker"]
+    command: ["python", "-m", "asistente.plataforma.cli.plataforma", "worker"]
     depends_on:
       api:
         condition: service_started
     healthcheck:
-      test: ["CMD", "python", "-m", "hacienda_gpt.cli.plataforma", "salud", "--exigir-worker"]
+      test: ["CMD", "python", "-m", "asistente.plataforma.cli.plataforma", "salud", "--exigir-worker"]
       interval: 60s
       timeout: 30s
       retries: 3

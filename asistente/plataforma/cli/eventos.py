@@ -2,13 +2,13 @@
 
 Run one worker (or several: deliveries are leased, so they never run twice) next to the API::
 
-    uv run python -m hacienda_gpt.cli.eventos worker
+    uv run python -m asistente.plataforma.cli.eventos worker
 
 The API already dispatches in-process after each change; the worker also picks up what other processes
 emit (``boe-novedades``, the mortgage index update) and fires the scheduled wake-ups. Without any worker
 the daily ``proactive run-daily`` still produces every notice, once a day (cron fallback)::
 
-    */5 * * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.eventos worker --una-vez \
+    */5 * * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.eventos worker --una-vez \
                     >> logs/eventos.log 2>&1
 
 See docs/operacion.md.
@@ -27,8 +27,8 @@ from typing import Any
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.eventos.bus import Bus, consumidores_del_trabajador
+from asistente.nucleo.eventos.bus import Bus, consumidores_del_trabajador
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

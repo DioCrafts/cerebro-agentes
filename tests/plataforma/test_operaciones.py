@@ -8,11 +8,11 @@ import stat
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.cli.plataforma import cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.plataforma.operaciones import (
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma import settings
+from asistente.plataforma.auth.store import AuthStore
+from asistente.plataforma.cli.plataforma import cli
+from asistente.plataforma.operaciones import (
     SUFIJO_CIFRADO,
     CopiaError,
     copiar,

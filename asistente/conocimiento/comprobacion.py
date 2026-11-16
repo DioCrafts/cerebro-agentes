@@ -1,11 +1,11 @@
 """The one checker of legal data: quotes verbatim in the law, every figure inside its quote, the right version.
 
-Two entry points share the same primitives (:func:`cita_en_texto` over :func:`~hacienda_gpt.conocimiento.texto.
+Two entry points share the same primitives (:func:`cita_en_texto` over :func:`~asistente.conocimiento.texto.
 comprimido`):
 
 * :func:`verificar` runs :class:`Comprobacion` objects — one per group and law — against the pages ``texto_de``
   returns: the weekly re-verification (``params-verify``) of the tax parameters and of every module's groups;
-* :func:`comprobar_grupos` checks :class:`~hacienda_gpt.conocimiento.modelo.GrupoLegal` objects: each figure is
+* :func:`comprobar_grupos` checks :class:`~asistente.conocimiento.modelo.GrupoLegal` objects: each figure is
   spelled in one of its group's passages and that spelling means the stored value (offline), and — given the law
   texts — each passage is verbatim in the version of the law it was read from.
 
@@ -23,8 +23,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento.modelo import GrupoLegal, Ortografia
-from hacienda_gpt.conocimiento.texto import TextoDe, aparece, comprimido, juntas, texto_plano
+from asistente.conocimiento.modelo import GrupoLegal, Ortografia
+from asistente.conocimiento.texto import TextoDe, aparece, comprimido, juntas, texto_plano
 
 Tipo = Literal["cita", "tabla", "cifras"]
 # A quote shorter than this (ignoring whitespace) proves nothing: "300" is in every law.
@@ -84,7 +84,7 @@ def verificar(checks: Iterable[Comprobacion], texto_de: TextoDe) -> list[Resulta
             plano = texto_plano(pagina) if pagina else ""
             if pagina and check.version is None:
                 # Format watch (never raises): a page read as empty looks like "every figure is gone".
-                from hacienda_gpt.ops import formatos
+                from asistente.conocimiento import formatos
 
                 formatos.observar("boe_consolidado_html", pagina, contexto=check.boe_id)
             textos[clave] = (plano, comprimido(plano)) if plano else None

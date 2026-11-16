@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import date
 import decimal
 
-from hacienda_gpt.modulos.hipoteca.comisiones import comision_maxima, tramo_en
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.modulos.hipoteca.normativa import cargar_normativa
+from asistente.ambitos.hipoteca.comisiones import comision_maxima, tramo_en
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.ambitos.hipoteca.normativa import cargar_normativa
 
 D = decimal.Decimal
 

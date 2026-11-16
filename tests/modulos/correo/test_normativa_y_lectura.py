@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from hacienda_gpt.modulos.correo import dominios, extraccion
-from hacienda_gpt.modulos.correo.mime import MAX_BYTES_PARTE, html_a_texto, leer_mensaje
-from hacienda_gpt.modulos.correo.normativa import Normativa, cargar, comprobar
-from hacienda_gpt.tax.autonomos_params import textos_de_directorio
+from asistente.ambitos.fiscal.calculo.autonomos_params import textos_de_directorio
+from asistente.capacidades.correo import dominios, extraccion
+from asistente.capacidades.correo.mime import MAX_BYTES_PARTE, html_a_texto, leer_mensaje
+from asistente.capacidades.correo.normativa import Normativa, cargar, comprobar
 from tests.modulos.correo import corpus
 from tests.modulos.correo.conftest import FIXTURES
 from tests.modulos.correo.falso import b64, correo

@@ -6,10 +6,10 @@ import json
 
 import pytest
 
-from hacienda_gpt.navegador.ejecutor import filtrar_sesion
-from hacienda_gpt.navegador.guion import guion_activo
-from hacienda_gpt.navegador.reparacion import ReparadorLLM, describir_paso, puerta
-from hacienda_gpt.navegador.seguridad import (
+from asistente.capacidades.navegador.ejecutor import filtrar_sesion
+from asistente.capacidades.navegador.guion import guion_activo
+from asistente.capacidades.navegador.reparacion import ReparadorLLM, describir_paso, puerta
+from asistente.capacidades.navegador.seguridad import (
     PoliticaError,
     PoliticaRed,
     comprobar_descarga,

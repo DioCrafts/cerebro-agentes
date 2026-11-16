@@ -1,6 +1,6 @@
-// Client for the long-running tasks (hacienda_gpt/api/routers/tareas.py): goals of several steps over several days.
+// Client for the long-running tasks (asistente/plataforma/api/routers/tareas.py): goals of several steps over several days.
 //
-// Shapes mirror hacienda_gpt/tareas/modelo.py (Tarea, Paso) and servicio.resumen. A pending ACTION is never
+// Shapes mirror asistente/nucleo/tareas/modelo.py (Tarea, Paso) and servicio.resumen. A pending ACTION is never
 // confirmed here: it goes through POST /acciones/{id}/confirmar (apiModulos.ts), its own button.
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 

@@ -1,8 +1,8 @@
 from fastapi.testclient import TestClient
 
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.api.api import app, get_agent
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.plataforma.api.api import app, get_agent
 from .fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 
 client = TestClient(app)

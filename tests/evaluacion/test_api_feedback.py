@@ -8,17 +8,17 @@ from dataclasses import dataclass
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.api.api import app, get_agent, get_case_store, get_notification_store
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.schemas import Fact, FactValueType
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.evaluacion.captura import CONSENTIMIENTO_VERSION, FeedbackStore
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.decision.schemas import Fact, FactValueType
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.evaluacion.captura import CONSENTIMIENTO_VERSION, FeedbackStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_case_store, get_notification_store
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 
 PASSWORD = "una-clave-larga-1"

@@ -25,10 +25,10 @@ from typing import Any, Literal
 
 from pydantic import ValidationError
 
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.almacen import almacen, tabla_existe
-from hacienda_gpt.memoria.ambitos import ambito_de_accion, ambito_de_aviso, etiqueta
-from hacienda_gpt.memoria.modelo import (
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.almacen import almacen, tabla_existe
+from asistente.nucleo.memoria.ambitos import ambito_de_accion, ambito_de_aviso, etiqueta
+from asistente.nucleo.memoria.modelo import (
     BLOQUEAN_AVISOS,
     FACTOR_MEJORA_POR_DEFECTO,
     Boton,

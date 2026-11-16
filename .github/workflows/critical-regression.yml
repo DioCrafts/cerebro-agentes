@@ -29,7 +29,7 @@ jobs:
         # path can achieve. No OPENAI_API_KEY here, so DECISION_EXTRACTOR=regex
         # is implicit; obligation recall (LLM-only) is reported, not gated.
         run: |
-          uv run python -m hacienda_gpt.cli.check_critical_regressions \
+          uv run python -m asistente.plataforma.cli.check_critical_regressions \
             --dataset eval_data/critical_cases/tramite_year_critical_cases.jsonl \
             --min-intent-accuracy 0.80 \
             --min-fact-f1 0.75 \

@@ -33,7 +33,7 @@ import scrapy
 from scrapy.http import Response
 from scrapy.spidermiddlewares.httperror import HttpError
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 BOE_BASE_URL = "https://www.boe.es/biblioteca_juridica/codigos"
 

@@ -1,4 +1,4 @@
-// Client for the household modules (hacienda_gpt/api/routers/modulos.py): which modules exist and
+// Client for the household modules (asistente/plataforma/api/routers/modulos.py): which modules exist and
 // which are on for this user, the pending actions the specialists prepared, and running a module's
 // tool or document reader from the UI.
 //
@@ -196,7 +196,7 @@ export function getPropuestas(caseId: string, signal?: AbortSignal): Promise<Pro
   );
 }
 
-// Capabilities (hacienda_gpt/api/routers/capacidades.py): means any module can use (mail, browser, documents,
+// Capabilities (asistente/plataforma/api/routers/capacidades.py): means any module can use (mail, browser, documents,
 // research), shown apart from the modules with the user's consent.
 
 export interface OperacionCapacidadInfo {

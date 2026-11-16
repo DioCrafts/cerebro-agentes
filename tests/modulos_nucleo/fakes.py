@@ -6,9 +6,10 @@ from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.modulos.contrato import (
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.modulos.contrato import (
     AvisoModulo,
     ContextoModulo,
     FuenteModulo,
@@ -17,7 +18,6 @@ from hacienda_gpt.modulos.contrato import (
     ModuloBase,
     ResultadoHerramienta,
 )
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
 
 
 def spec(nombre: str, descripcion: str = "Calcula algo del hogar. Devuelve cifras.") -> ToolSpec:

@@ -6,7 +6,7 @@ suite re-runs that tool on the pseudonymised snapshot, so when a parameter is re
 expectation follows the law instead of freezing an old number (the old one is kept as ``registrada`` only
 to report the drift).
 
-Tax tools run through the agent's own :class:`~hacienda_gpt.agent.tools.Toolbox`; module tools through the
+Tax tools run through the agent's own :class:`~asistente.nucleo.agent.tools.Toolbox`; module tools through the
 module's ``ejecutar`` with the same :class:`ContextoModulo` a specialist gives them. A tool that acts outside
 the app (``efecto="actua"``) is never executed here.
 """
@@ -22,15 +22,15 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.search import SearchFilters
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.evaluacion.modelos import CalculoEsperado, Expediente
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo
-from hacienda_gpt.modulos.perfil import perfil_de, tipo_esperado
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.search import SearchFilters
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.evaluacion.modelos import CalculoEsperado, Expediente
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo
+from asistente.nucleo.modulos.perfil import perfil_de, tipo_esperado
+from asistente.nucleo.proactive.jobs import hoy_en_espana
 
 
 class CalculoError(ValueError):
@@ -97,7 +97,7 @@ def herramientas_fiscales() -> frozenset[str]:
 
 
 def _herramienta_de_modulo(nombre: str, extra: Sequence[Modulo]) -> HerramientaModulo | None:
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     for modulo in extra:
         for herramienta in modulo.herramientas:

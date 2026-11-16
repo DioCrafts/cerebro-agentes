@@ -7,21 +7,21 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.capacidades.investigacion import capacidad
-from hacienda_gpt.capacidades.investigacion.almacen import AlmacenInvestigacion
-from hacienda_gpt.capacidades.investigacion.herramienta import (
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.capacidades.investigacion import capacidad
+from asistente.capacidades.investigacion.almacen import AlmacenInvestigacion
+from asistente.capacidades.investigacion.herramienta import (
     INVESTIGAR_TOOL,
     InvestigacionAgente,
     dato_privado_en,
     herramienta_investigar,
     valores_privados,
 )
-from hacienda_gpt.capacidades.investigacion.servicio import Investigador
-from hacienda_gpt.capacidades.investigacion.tareas import CapacidadInvestigacionTareas
-from hacienda_gpt.capacidades.peticion import APERTURA, CIERRE
-from hacienda_gpt.capacidades.registro import problemas_de
-from hacienda_gpt.tareas.capacidades import ContextoCapacidad
+from asistente.capacidades.investigacion.servicio import Investigador
+from asistente.capacidades.investigacion.tareas import CapacidadInvestigacionTareas
+from asistente.capacidades.peticion import APERTURA, CIERRE
+from asistente.capacidades.registro import problemas_de
+from asistente.nucleo.tareas.capacidades import ContextoCapacidad
 from tests.proactive import make_case
 from .conftest import PLAN, SINTESIS_BUENA, FakeProvider
 
@@ -97,7 +97,7 @@ def test_the_tool_runs_through_the_contract(configurada: Investigador) -> None:
 
 
 def test_the_agent_gets_the_tool_only_when_the_operator_turns_it_on(monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     assert InvestigacionAgente.para(None, None, query="hola") is None
     monkeypatch.setattr(settings, "INVESTIGACION_AGENTE", True)
@@ -148,7 +148,7 @@ def test_export_and_erasure_of_a_user(configurada: Investigador, almacen: Almace
 
 
 def test_the_rows_of_a_deleted_account_are_purged(tmp_path: Any, almacen: AlmacenInvestigacion) -> None:
-    from hacienda_gpt.auth.store import AuthStore
+    from asistente.plataforma.auth.store import AuthStore
 
     casos = str(tmp_path / "casos.sqlite3")
     auth = AuthStore(casos)
@@ -166,10 +166,10 @@ def test_the_rows_of_a_deleted_account_are_purged(tmp_path: Any, almacen: Almace
 def test_the_central_agent_offers_and_runs_the_tool_only_when_switched_on(
     configurada: Investigador, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from hacienda_gpt import settings
-    from hacienda_gpt.agent.agent import TaxAgent
-    from hacienda_gpt.agent.providers.base import ProviderError
-    from hacienda_gpt.agent.verifier import Verifier
+    from asistente.nucleo.agent.agent import TaxAgent
+    from asistente.nucleo.agent.providers.base import ProviderError
+    from asistente.nucleo.agent.verifier import Verifier
+    from asistente.plataforma import settings
     from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn
 
     def verificador() -> Verifier:

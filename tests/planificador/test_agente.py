@@ -8,13 +8,13 @@ import json
 
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall, ToolSpec
-from hacienda_gpt.agent.tools import Toolbox, ToolOutcome
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.planificador import agente
-from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall, ToolSpec
+from asistente.nucleo.agent.tools import Toolbox, ToolOutcome
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.planificador import agente
+from asistente.nucleo.planificador.agente import PLANIFICAR_TOOL
 from .test_planificador import FAMILIA, HIPOTECA_FIJA
 
 HOY = date(2026, 11, 16)

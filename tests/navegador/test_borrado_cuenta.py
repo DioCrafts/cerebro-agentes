@@ -5,8 +5,8 @@ from __future__ import annotations
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.navegador import vigilancia
+from asistente.capacidades.navegador import vigilancia
+from asistente.plataforma import settings
 from tests.auth import conftest as cuentas
 from tests.auth.conftest import PASSWORD, Env
 
@@ -46,8 +46,8 @@ def test_a_wrong_password_erases_nothing(env: Env, tmp_path, monkeypatch: pytest
 def test_the_parameters_of_a_prepared_browser_task_are_in_the_export(env: Env, monkeypatch: pytest.MonkeyPatch) -> None:
     from datetime import date
 
-    from hacienda_gpt.capacidades.navegador import persistencia
-    from hacienda_gpt.navegador.tareas import GestorTareas
+    from asistente.capacidades.navegador import persistencia
+    from asistente.capacidades.navegador.tareas import GestorTareas
     from tests.navegador.test_ejecutor import PARAMS_DATADIS
 
     monkeypatch.setattr(settings, "MODULOS_ACTIVOS_POR_DEFECTO", "todos")

@@ -39,13 +39,12 @@ import sqlite3
 from types import SimpleNamespace
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.eventos.tipos import CORREO_CLASIFICADO, FECHA_UMBRAL, Evento
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
-from hacienda_gpt.tareas.almacen import ConflictoDeVersionError, TareaStore, crear_tablas
-from hacienda_gpt.tareas.capacidades import Capacidad, ContextoCapacidad, capacidades_por_defecto
-from hacienda_gpt.tareas.modelo import (
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.eventos.tipos import CORREO_CLASIFICADO, FECHA_UMBRAL, Evento
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
+from asistente.nucleo.tareas.almacen import ConflictoDeVersionError, TareaStore, crear_tablas
+from asistente.nucleo.tareas.capacidades import Capacidad, ContextoCapacidad, capacidades_por_defecto
+from asistente.nucleo.tareas.modelo import (
     EN_MARCHA,
     EVENTOS_DE_ESPERA,
     PASO_CERRADO,
@@ -57,6 +56,7 @@ from hacienda_gpt.tareas.modelo import (
     Tarea,
     ahora,
 )
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -180,9 +180,9 @@ class ConsumidorTareas:
 def consultor_por_defecto(modulo: Modulo, pregunta: str, case: CaseState) -> tuple[str, tuple[str, ...]]:
     """Ask the module's specialist (the same bounded sub-agent as in the chat). Read-only: what it would write
     or act is dropped (a task acts only through its own ``accion`` steps)."""
-    from hacienda_gpt.agent.especialistas import Coordinador
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.especialistas import Coordinador
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.providers import create_provider
 
     ledger = EvidenceLedger()
     coordinador = Coordinador.para(create_provider(), ledger, [modulo], lambda *_a, **_k: None)
@@ -259,7 +259,7 @@ class Motor:
     def hoy(self) -> date:
         if self._hoy is not None:
             return self._hoy()
-        from hacienda_gpt.proactive.jobs import hoy_en_espana
+        from asistente.nucleo.proactive.jobs import hoy_en_espana
 
         return hoy_en_espana()
 
@@ -269,45 +269,45 @@ class Motor:
     def registro(self) -> Any:
         if self._reg is not None:
             return self._reg
-        from hacienda_gpt.modulos.registro import registro
+        from asistente.nucleo.modulos.registro import registro
 
         return registro()
 
     def modulos_de(self, case_id: str) -> Sequence[Modulo]:
         if self._modulos_de is not None:
             return self._modulos_de(case_id)
-        from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+        from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 
         if settings.AUTH_MODE == "required" and self._auth is None:
-            from hacienda_gpt.auth.store import AuthStore
+            from asistente.plataforma.auth.store import AuthStore
 
             self._auth = AuthStore(self.db_path)
         return modulos_activos_para_caso(case_id, self._auth)
 
     def casos(self) -> Any:
         if self._casos is None:
-            from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+            from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 
             self._casos = SQLiteCaseStateStore(self.db_path)
         return self._casos
 
     def avisos(self) -> Any:
         if self._avisos is None:
-            from hacienda_gpt.proactive.store import NotificationStore
+            from asistente.nucleo.proactive.store import NotificationStore
 
             self._avisos = NotificationStore(self.db_path)
         return self._avisos
 
     def acciones(self) -> Any:
         if self._acciones is None:
-            from hacienda_gpt.modulos.acciones import AccionStore
+            from asistente.nucleo.modulos.acciones import AccionStore
 
             self._acciones = AccionStore(self.db_path)
         return self._acciones
 
     def bus(self) -> Any:
         if self._bus is None:
-            from hacienda_gpt.eventos.bus import Bus
+            from asistente.nucleo.eventos.bus import Bus
 
             self._bus = Bus(
                 self.db_path,
@@ -474,7 +474,7 @@ class Motor:
         if herramienta.efecto == "actua":  # never run an acting tool as a calculation
             self._fallo(tarea, paso, pasada, "Esta herramienta actúa: no se ejecuta como cálculo.", definitivo=True)
             return True
-        from hacienda_gpt.modulos.perfil import perfil_de
+        from asistente.nucleo.modulos.perfil import perfil_de
 
         contexto = ContextoModulo(perfil=perfil_de(case), hoy=self.hoy(), case_id=case.case_id, registrar=None)
         resultado = herramienta.ejecutar(dict(paso.argumentos), contexto)
@@ -497,7 +497,7 @@ class Motor:
         return True
 
     def _accion(self, tarea: Tarea, paso: Paso, modulo: Modulo, herramienta: Any, pasada: _Pasada) -> bool:
-        from hacienda_gpt.modulos.acciones import AccionPendiente, describir
+        from asistente.nucleo.modulos.acciones import AccionPendiente, describir
 
         acciones = self.acciones()
         accion_id = id_accion(tarea, paso)
@@ -529,7 +529,7 @@ class Motor:
     def _capacidad(
         self, tarea: Tarea, paso: Paso, case: CaseState, modulos: dict[str, Modulo], pasada: _Pasada
     ) -> bool:
-        from hacienda_gpt.modulos.perfil import perfil_de
+        from asistente.nucleo.modulos.perfil import perfil_de
 
         capacidad = self.capacidades.get(paso.capacidad or "")
         if capacidad is None or (paso.operacion or "") not in capacidad.operaciones:
@@ -593,7 +593,7 @@ class Motor:
         return True
 
     def _fecha_de_calendario(self, espera: Espera, case: CaseState, hoy: date) -> tuple[date | None, str]:
-        from hacienda_gpt.tax.calendario import proximos_vencimientos
+        from asistente.ambitos.fiscal.calculo.calendario import proximos_vencimientos
 
         hechos = {f.name: f.value for f in case.facts}
         for vencimiento in proximos_vencimientos(hechos, hoy=hoy, dias=730):
@@ -730,7 +730,7 @@ class Motor:
         vence: date | None = None,
     ) -> str:
         """A notice in the user's inbox, keyed by task and step (a repeat writes nothing). Returns its key."""
-        from hacienda_gpt.proactive.store import Notification
+        from asistente.nucleo.proactive.store import Notification
 
         clave = clave_aviso(tarea, paso, sufijo)
         try:
@@ -808,7 +808,7 @@ class Motor:
 
 
 def servicio_tareas(contexto: Any) -> None:
-    """The platform worker's loop (``hacienda_gpt.plataforma``): one :meth:`Motor.ciclo` every
+    """The platform worker's loop (``asistente.plataforma``): one :meth:`Motor.ciclo` every
     ``TAREAS_INTERVALO_SEGUNDOS`` (60) until ``contexto.parar`` is set. Specialist consultations run here."""
     motor = Motor(contexto.db_path, trabajador=f"{contexto.nombre_proceso}-tareas")
     pausa = max(1.0, _numero("TAREAS_INTERVALO_SEGUNDOS", 60))

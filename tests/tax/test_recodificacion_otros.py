@@ -17,13 +17,17 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.tax import actividad, patrimonio, sociedades, sucesiones
-from hacienda_gpt.tax.autonomos_params import AutonomosParams
-from hacienda_gpt.tax.autonomos_params import comprobar_evidencias as comprobar_autonomos
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.patrimonio_params import PatrimonioParams
-from hacienda_gpt.tax.patrimonio_params import comprobar_evidencias as comprobar_patrimonio
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.fiscal.calculo import actividad, patrimonio, sociedades, sucesiones
+from asistente.ambitos.fiscal.calculo.autonomos_params import AutonomosParams
+from asistente.ambitos.fiscal.calculo.autonomos_params import comprobar_evidencias as comprobar_autonomos
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.ambitos.fiscal.calculo.patrimonio_params import PatrimonioParams
+from asistente.ambitos.fiscal.calculo.patrimonio_params import comprobar_evidencias as comprobar_patrimonio
+from asistente.ambitos.fiscal.calculo.sociedades_params import SociedadesParams
+from asistente.ambitos.fiscal.calculo.sociedades_params import comprobar_evidencias as comprobar_sociedades
+from asistente.ambitos.fiscal.calculo.sucesiones_params import ISDParams
+from asistente.ambitos.fiscal.calculo.sucesiones_params import comprobar_evidencias as comprobar_isd
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     ControlFallidoError,
     Propuesta,
@@ -33,12 +37,8 @@ from hacienda_gpt.tax.recodificacion import (
     pendientes_de_confirmar,
     recodificar,
 )
-from hacienda_gpt.tax.recodificacion import adaptadores_otros as otros
-from hacienda_gpt.tax.recodificacion.control import campos_numericos
-from hacienda_gpt.tax.sociedades_params import SociedadesParams
-from hacienda_gpt.tax.sociedades_params import comprobar_evidencias as comprobar_sociedades
-from hacienda_gpt.tax.sucesiones_params import ISDParams
-from hacienda_gpt.tax.sucesiones_params import comprobar_evidencias as comprobar_isd
+from asistente.conocimiento.recodificacion import adaptadores_otros as otros
+from asistente.conocimiento.recodificacion.control import campos_numericos
 
 D = Decimal
 LEY = "BOE-T-2020-9"

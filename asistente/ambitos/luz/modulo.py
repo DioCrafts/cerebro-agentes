@@ -10,20 +10,11 @@ import os
 import re
 from typing import Any
 
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.contrato import (
-    AvisoModulo,
-    ContextoModulo,
-    FuenteModulo,
-    HechoModulo,
-    HerramientaModulo,
-)
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
-from hacienda_gpt.modulos.luz.analisis import comparar
-from hacienda_gpt.modulos.luz.consumo import cargar_consumo, validar_consumo, zona_valida
-from hacienda_gpt.modulos.luz.datos import DatoNoDisponibleError, cargar_regulados
-from hacienda_gpt.modulos.luz.factura import Contrato, FacturaError, euros, fmt
-from hacienda_gpt.modulos.luz.herramientas import (
+from asistente.ambitos.luz.analisis import comparar
+from asistente.ambitos.luz.consumo import cargar_consumo, validar_consumo, zona_valida
+from asistente.ambitos.luz.datos import DatoNoDisponibleError, cargar_regulados
+from asistente.ambitos.luz.factura import Contrato, FacturaError, euros, fmt
+from asistente.ambitos.luz.herramientas import (
     HECHO_CONSUMO,
     HECHO_CUPS,
     HECHO_OFERTAS,
@@ -33,7 +24,16 @@ from hacienda_gpt.modulos.luz.herramientas import (
     HECHO_ZONA,
     herramientas,
 )
-from hacienda_gpt.modulos.luz.ofertas import cargar_oferta, cargar_ofertas, validar_oferta, validar_ofertas
+from asistente.ambitos.luz.ofertas import cargar_oferta, cargar_ofertas, validar_oferta, validar_ofertas
+from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import (
+    AvisoModulo,
+    ContextoModulo,
+    FuenteModulo,
+    HechoModulo,
+    HerramientaModulo,
+)
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
 
 UMBRAL_ENV = "LUZ_UMBRAL_AHORRO_EUR"
 UMBRAL_DEFECTO = Decimal(50)
@@ -138,7 +138,7 @@ class ModuloLuz:
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
-        from hacienda_gpt.modulos.luz.datos import FICHEROS_LEGALES
+        from asistente.ambitos.luz.datos import FICHEROS_LEGALES
 
         return Ganchos(
             eventos=GanchosEventos(

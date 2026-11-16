@@ -4,9 +4,8 @@ import sqlite3
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.proactive import entrega
-from hacienda_gpt.proactive.entrega import (
+from asistente.nucleo.proactive import entrega
+from asistente.nucleo.proactive.entrega import (
     ConfiguracionCanalError,
     EntregaStore,
     SmtpCanal,
@@ -15,7 +14,8 @@ from hacienda_gpt.proactive.entrega import (
     entregar_pendientes,
     texto_plano,
 )
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma import settings
 
 AHORA = datetime(2026, 11, 12, 8, 0, tzinfo=UTC)
 
@@ -325,8 +325,8 @@ def test_delivery_can_be_restricted_to_consenting_owners(tmp_path) -> None:
     """With accounts on, notices of users who did not agree stay in the app (and stay pending)."""
     from datetime import UTC, datetime
 
-    from hacienda_gpt.proactive.entrega import EntregaStore, entregar_pendientes
-    from hacienda_gpt.proactive.store import Notification, NotificationStore
+    from asistente.nucleo.proactive.entrega import EntregaStore, entregar_pendientes
+    from asistente.nucleo.proactive.store import Notification, NotificationStore
 
     db = str(tmp_path / "n.db")
     notifications = NotificationStore(db)

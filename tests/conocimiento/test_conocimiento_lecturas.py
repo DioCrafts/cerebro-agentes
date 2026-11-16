@@ -14,12 +14,12 @@ from pathlib import Path
 import shutil
 from typing import Any
 
-from hacienda_gpt.conocimiento import fichero_legal, lecturas_de_modulos
-from hacienda_gpt.conocimiento.lecturas import anotar_en_texto, ficheros_de_modulos
-from hacienda_gpt.conocimiento.registro import en_directorio
-from hacienda_gpt.modulos import fuentes as fuentes_modulos
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion.procedencia import cambios_de_lectura, refrescar_lo_que_se_pueda
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento import fichero_legal, lecturas_de_modulos
+from asistente.conocimiento.lecturas import anotar_en_texto, ficheros_de_modulos
+from asistente.conocimiento.recodificacion.procedencia import cambios_de_lectura, refrescar_lo_que_se_pueda
+from asistente.conocimiento.registro import en_directorio
+from asistente.nucleo.modulos import fuentes as fuentes_modulos
 
 LEY = "BOE-T-2015-1"
 HOY = date(2026, 11, 25)

@@ -1,8 +1,8 @@
-"""``python -m hacienda_gpt.tareas`` — the task worker (cron or a long-running process) and a status view.
+"""``python -m asistente.nucleo.tareas`` — the task worker (cron or a long-running process) and a status view.
 
-    uv run python -m hacienda_gpt.tareas ciclo            # one pass: timers, events, every task in progress
-    uv run python -m hacienda_gpt.tareas worker           # the same, every --intervalo seconds
-    uv run python -m hacienda_gpt.tareas estado           # counts by state (no personal data)
+    uv run python -m asistente.nucleo.tareas ciclo            # one pass: timers, events, every task in progress
+    uv run python -m asistente.nucleo.tareas worker           # the same, every --intervalo seconds
+    uv run python -m asistente.nucleo.tareas estado           # counts by state (no personal data)
 
 The worker is the only place where ``consulta`` steps run (they need a language model); the API and the chat
 advance everything else at once.
@@ -17,9 +17,9 @@ import time
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.tareas.almacen import tabla_existe
-from hacienda_gpt.tareas.motor import Motor
+from asistente.nucleo.tareas.almacen import tabla_existe
+from asistente.nucleo.tareas.motor import Motor
+from asistente.plataforma import settings
 
 _DB = click.option("--db-path", default=None, help="Base de datos de casos (por defecto, DECISION_STATE_DB_PATH).")
 

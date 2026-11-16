@@ -42,9 +42,8 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.providers.base import (
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.providers.base import (
     Attachment,
     Conversation,
     LLMProvider,
@@ -55,7 +54,8 @@ from hacienda_gpt.agent.providers.base import (
     ToolSpec,
     Usage,
 )
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
 
@@ -313,7 +313,7 @@ class ConsumoStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.execute("PRAGMA journal_mode=WAL;")
-            asegurar_esquema(self._conn, "consumo")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(self._conn, "consumo")  # migrations (asistente/plataforma)
             # Token columns are NULL when the API reported no usage; cost_usd is
             # NULL whenever the cost is unknown. cost_usd is an operational
             # estimate (REAL so SQLite can add it up), not an accounting figure.
@@ -712,7 +712,7 @@ class MeteredProvider:
     (a counter that never resets would end up blocking every call).
 
     Routing: the purpose picks the model through the routing table
-    (:mod:`hacienda_gpt.agent.enrutado`); with no routing setting it is the
+    (:mod:`asistente.nucleo.agent.enrutado`); with no routing setting it is the
     wrapped provider's own model, as before. ``complete_json`` retries an output
     that fails its validation once on the next tier, when that tier is another model.
     """

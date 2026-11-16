@@ -14,21 +14,21 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_agent, get_case_store, get_notification_store
-from hacienda_gpt.api.routers import eventos as eventos_router
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.cli import ops as ops_module
-from hacienda_gpt.cli.eventos import cli as eventos_cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import despacho, productores
-from hacienda_gpt.eventos.bus import Bus
-from hacienda_gpt.eventos.esquema import TABLAS
-from hacienda_gpt.eventos.tipos import MODULO_ACTIVADO
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import despacho, productores
+from asistente.nucleo.eventos.bus import Bus
+from asistente.nucleo.eventos.esquema import TABLAS
+from asistente.nucleo.eventos.tipos import MODULO_ACTIVADO
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_case_store, get_notification_store
+from asistente.plataforma.api.routers import eventos as eventos_router
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
+from asistente.plataforma.cli import ops as ops_module
+from asistente.plataforma.cli.eventos import cli as eventos_cli
 from tests.proactive import SALARIED, make_case
 from .ayudas import HOY, Llamadas, agua, aviso, contador, crear_bus, instalar, seguros
 

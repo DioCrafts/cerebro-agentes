@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.audit import build_recommendation_audit_event
-from hacienda_gpt.decision.interpreter import Intent, InterpretationResult
-from hacienda_gpt.decision.rules_engine import RulesEngineResult, RuleTrace
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.audit import build_recommendation_audit_event
+from asistente.nucleo.decision.interpreter import Intent, InterpretationResult
+from asistente.nucleo.decision.rules_engine import RulesEngineResult, RuleTrace
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 
 
 def test_audit_event_contains_required_trace_fields() -> None:

@@ -27,9 +27,9 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from hacienda_gpt.capacidades.correo.almacen import CampoGuardado, Elemento, OrigenPropuesta, Propuesta
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
+from asistente.capacidades.correo.almacen import CampoGuardado, Elemento, OrigenPropuesta, Propuesta
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
 
 # Kinds of data the mail proposes; the destination is whichever domain declares it in ``Ganchos.entradas``.
 ENTRADA_COMPRA = "compra"
@@ -63,8 +63,8 @@ def _evidencias(elemento: Elemento, *nombres: str) -> list[CampoGuardado]:
 
 def destino_de(tipo: str) -> tuple[str, str, str] | None:
     """(domain key, "herramienta"|"hecho", name) of the registered domain that accepts ``tipo``, or None."""
-    from hacienda_gpt.modulos.ganchos import destino_de_entrada
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.ganchos import destino_de_entrada
+    from asistente.nucleo.modulos.registro import registro
 
     encontrado = destino_de_entrada(tipo, list(registro().modulos.values()))
     if encontrado is None:

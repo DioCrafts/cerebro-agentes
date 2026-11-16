@@ -6,7 +6,7 @@ import os
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.decision.schemas import ActionItem, CaseState, ObligationCandidate, RiskLevel, parse_fiscal_year
+from asistente.nucleo.decision.schemas import ActionItem, CaseState, ObligationCandidate, RiskLevel, parse_fiscal_year
 
 
 def _env_float(name: str, default: float) -> float:

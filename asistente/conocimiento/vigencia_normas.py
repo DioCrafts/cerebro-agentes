@@ -20,9 +20,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt import settings
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasDocumentoXml, extraer_documento_xml
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_boe import ReglasDocumentoXml, extraer_documento_xml
+from asistente.plataforma import settings
 
 Estado = Literal["pendiente", "convalidada", "derogada"]
 

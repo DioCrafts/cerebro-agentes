@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from hacienda_gpt.decision.interpreter import QuestionPrompt
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.decision.taxonomy import SupportedIntent, blocking_facts_for_intent
+from asistente.nucleo.decision.interpreter import QuestionPrompt
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.decision.taxonomy import SupportedIntent, blocking_facts_for_intent
 
 
 @dataclass(frozen=True)

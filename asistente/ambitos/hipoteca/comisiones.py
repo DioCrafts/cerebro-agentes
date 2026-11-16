@@ -20,9 +20,9 @@ from datetime import date
 from decimal import Decimal
 from typing import Literal
 
-from hacienda_gpt.modulos.hipoteca.calculo import euros, fmt_pct, sumar_meses
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.modulos.hipoteca.normativa import Normativa
+from asistente.ambitos.hipoteca.calculo import euros, fmt_pct, sumar_meses
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.ambitos.hipoteca.normativa import Normativa
 
 ZERO = Decimal(0)
 Operacion = Literal["amortizacion", "cambio_a_fijo", "subrogacion"]

@@ -12,7 +12,7 @@ from functools import lru_cache
 from typing import Literal
 from zoneinfo import ZoneInfo
 
-from hacienda_gpt.modulos.luz.datos import DatoNoDisponibleError, HorasPeriodo, Periodo3, cargar_regulados
+from asistente.ambitos.luz.datos import DatoNoDisponibleError, HorasPeriodo, Periodo3, cargar_regulados
 
 Zona = Literal["peninsula", "baleares", "canarias", "ceuta", "melilla"]
 ZONAS: tuple[Zona, ...] = ("peninsula", "baleares", "canarias", "ceuta", "melilla")

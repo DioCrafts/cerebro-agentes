@@ -11,7 +11,7 @@ from datetime import date
 from functools import lru_cache
 from typing import Any
 
-from hacienda_gpt.tax.params import FuentePrincipal, ejercicios_disponibles, load_params
+from asistente.ambitos.fiscal.calculo.params import FuentePrincipal, ejercicios_disponibles, load_params
 
 
 @dataclass(frozen=True)
@@ -73,10 +73,19 @@ def normas_de_parametros() -> tuple[NormaParametros, ...]:
 
 
 def _OTRAS_FAMILIAS() -> list[tuple[Any, Any]]:  # noqa: N802 - reads as a constant, built lazily to avoid import cycles
-    from hacienda_gpt.tax.autonomos_params import ejercicios_autonomos_disponibles, load_autonomos_params
-    from hacienda_gpt.tax.patrimonio_params import ejercicios_patrimonio_disponibles, load_patrimonio_params
-    from hacienda_gpt.tax.sociedades_params import ejercicios_sociedades_disponibles, load_sociedades_params
-    from hacienda_gpt.tax.sucesiones_params import ejercicios_isd_disponibles, load_isd_params
+    from asistente.ambitos.fiscal.calculo.autonomos_params import (
+        ejercicios_autonomos_disponibles,
+        load_autonomos_params,
+    )
+    from asistente.ambitos.fiscal.calculo.patrimonio_params import (
+        ejercicios_patrimonio_disponibles,
+        load_patrimonio_params,
+    )
+    from asistente.ambitos.fiscal.calculo.sociedades_params import (
+        ejercicios_sociedades_disponibles,
+        load_sociedades_params,
+    )
+    from asistente.ambitos.fiscal.calculo.sucesiones_params import ejercicios_isd_disponibles, load_isd_params
 
     return [
         (load_autonomos_params, ejercicios_autonomos_disponibles),

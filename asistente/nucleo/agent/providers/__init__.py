@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import (
+from asistente.nucleo.agent.providers.base import (
     Attachment,
     Conversation,
     EstadoLote,
@@ -16,6 +15,7 @@ from hacienda_gpt.agent.providers.base import (
     ToolResult,
     ToolSpec,
 )
+from asistente.plataforma import settings
 
 __all__ = [
     "Attachment",
@@ -42,12 +42,12 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
 
     ``effort`` overrides the thinking depth for Claude; other backends ignore it.
     Which model serves each PURPOSE is decided later, by the metering wrapper and
-    the routing table (``hacienda_gpt/agent/enrutado.py``); with no routing setting
+    the routing table (``asistente/nucleo/agent/enrutado.py``); with no routing setting
     it is this model everywhere.
     """
     choice = (name or settings.LLM_PROVIDER).strip().lower()
     if choice in ("anthropic", "claude"):
-        from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
+        from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
 
         return AnthropicProvider(
             model=model or settings.ANTHROPIC_MODEL,
@@ -56,11 +56,11 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
             cache_ttl=getattr(settings, "LLM_CACHE_TTL", "5m") or "5m",
         )
     if choice == "openai":
-        from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
+        from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
         return OpenAIProvider(model=model or settings.OPENAI_AGENT_MODEL)
     if choice == "local":
-        from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
+        from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
         if not (model or settings.LOCAL_LLM_MODEL):
             raise ValueError("LLM_PROVIDER=local requiere LOCAL_LLM_MODEL (p. ej. 'qwen3:14b').")

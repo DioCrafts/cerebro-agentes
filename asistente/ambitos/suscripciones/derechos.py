@@ -2,9 +2,9 @@
 
 Each right carries literal quotes of the consolidated law (``evidencia``) and the figures read from them
 (``valores``, with the literal spelling in ``cifras``). :func:`comprobar` re-reads the data with the shared
-checker of :mod:`hacienda_gpt.conocimiento`: every figure must be spelled in one of its quotes and mean the stored
+checker of :mod:`asistente.conocimiento`: every figure must be spelled in one of its quotes and mean the stored
 value, and, given the law texts, every quote must appear verbatim in its law. The file is declared in
-``FICHEROS_LEGALES``: the weekly BOE verification and the reading dates cover it. ``python -m hacienda_gpt.modulos.suscripciones.derechos <dir>`` runs the check
+``FICHEROS_LEGALES``: the weekly BOE verification and the reading dates cover it. ``python -m asistente.ambitos.suscripciones.derechos <dir>`` runs the check
 against freshly downloaded pages (``<BOE-ID>.html`` or ``.txt``).
 """
 
@@ -18,7 +18,8 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.ambitos.fiscal.calculo.params import Fuente, FuentePrincipal
+from asistente.conocimiento import (
     FRONTERA_PALABRA,
     FicheroLegal,
     GrupoLegal,
@@ -26,8 +27,7 @@ from hacienda_gpt.conocimiento import (
     citas_de_evidencia,
     fuente_de,
 )
-from hacienda_gpt.conocimiento import textos_de_directorio as _textos_de_directorio
-from hacienda_gpt.tax.params import Fuente, FuentePrincipal
+from asistente.conocimiento import textos_de_directorio as _textos_de_directorio
 
 DATA = Path(__file__).parent / "data" / "derechos_consumidor.json"
 
@@ -153,14 +153,14 @@ FICHEROS_LEGALES = (
 
 def comprobar(datos: DerechosConsumidor, textos: dict[str, str] | None = None) -> list[str]:
     """Problems found re-reading the data against its quotes (and against the laws, given ``textos``), with the
-    shared checker of :mod:`hacienda_gpt.conocimiento`."""
+    shared checker of :mod:`asistente.conocimiento`."""
     return FICHEROS_LEGALES[0].comprobar(datos, textos)
 
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
-        print("uso: python -m hacienda_gpt.modulos.suscripciones.derechos <directorio con BOE-A-*.html|txt>")
+        print("uso: python -m asistente.ambitos.suscripciones.derechos <directorio con BOE-A-*.html|txt>")
         return 2
     problemas = comprobar(cargar(), _textos_de_directorio(Path(args[0]), "BOE-A-*"))
     for problema in problemas:

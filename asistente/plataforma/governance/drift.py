@@ -20,7 +20,7 @@ from typing import Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.decision.rules import DecisionRule, RuleSet, RuleSourceRef
+from asistente.nucleo.decision.rules import DecisionRule, RuleSet, RuleSourceRef
 
 
 class DriftStatus(str, Enum):

@@ -8,8 +8,8 @@ from typing import TypedDict
 import click
 from langchain_core.messages import AIMessage, HumanMessage
 
-from hacienda_gpt.llm.chain import create_openai_chain
-from hacienda_gpt.utils import get_openai_api_key
+from asistente.conocimiento.llm.chain import create_openai_chain
+from asistente.plataforma.utils import get_openai_api_key
 
 
 class GoldenItem(TypedDict):

@@ -23,10 +23,10 @@ from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
-from hacienda_gpt.modulos.luz.consumo import Lectura
-from hacienda_gpt.modulos.luz.datos import PERIODOS, Regulados, cargar_regulados
-from hacienda_gpt.modulos.luz.ofertas import Oferta
-from hacienda_gpt.modulos.luz.periodos import Zona, periodo_energia
+from asistente.ambitos.luz.consumo import Lectura
+from asistente.ambitos.luz.datos import PERIODOS, Regulados, cargar_regulados
+from asistente.ambitos.luz.ofertas import Oferta
+from asistente.ambitos.luz.periodos import Zona, periodo_energia
 
 CENT = Decimal("0.01")
 CERO = Decimal(0)

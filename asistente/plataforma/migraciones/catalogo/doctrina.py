@@ -1,4 +1,4 @@
-"""``hacienda_gpt.doctrine`` (``DoctrineGraph``): the doctrine graph, in ITS OWN file (``DOCTRINE_GRAPH_PATH``).
+"""``asistente.conocimiento.doctrine`` (``DoctrineGraph``): the doctrine graph, in ITS OWN file (``DOCTRINE_GRAPH_PATH``).
 
 Public data only (rulings, consultas and their relations); rebuilt by ``cli.doctrine_graph build``.
 Baseline copied byte for byte from ``doctrine/grafo.py`` (``_SCHEMA``, one statement each).
@@ -6,7 +6,7 @@ Baseline copied byte for byte from ``doctrine/grafo.py`` (``_SCHEMA``, one state
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import BASE_DOCTRINA, Migracion, Propietario
+from asistente.plataforma.migraciones.motor import BASE_DOCTRINA, Migracion, Propietario
 
 DDL = (
     """CREATE TABLE IF NOT EXISTS nodos (
@@ -24,7 +24,7 @@ DDL = (
 
 PROPIETARIO = Propietario(
     nombre="doctrina",
-    paquete="hacienda_gpt.doctrine",
+    paquete="asistente.conocimiento.doctrine",
     base=BASE_DOCTRINA,
     descripcion="Grafo de doctrina: documentos, alias y relaciones (datos públicos).",
     tablas=("nodos", "alias", "aristas"),

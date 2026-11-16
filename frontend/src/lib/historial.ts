@@ -1,6 +1,6 @@
 // The conversation the web app sends with each question (docs/seguridad.md, S-15). The whole history is re-sent
 // on every step of the agent, so it is what multiplies the cost of one question. The server trims it with the
-// same rule (API_MAX_HISTORY_MESSAGES / API_MAX_HISTORY_CHARS in hacienda_gpt/api/security.py); trimming here
+// same rule (API_MAX_HISTORY_MESSAGES / API_MAX_HISTORY_CHARS in asistente/plataforma/api/security.py); trimming here
 // too keeps the request small.
 
 export const MAX_HISTORY_MESSAGES = 40;

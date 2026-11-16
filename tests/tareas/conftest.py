@@ -10,16 +10,16 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import despacho, productores
-from hacienda_gpt.memoria import reloj as reloj_memoria
-from hacienda_gpt.memoria.almacen import olvidar_almacenes
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ModuloBase, ResultadoHerramienta
-from hacienda_gpt.tareas.capacidades import CapacidadInvestigacion, capacidades_por_defecto
-from hacienda_gpt.tareas.motor import Configuracion, Motor
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import despacho, productores
+from asistente.nucleo.memoria import reloj as reloj_memoria
+from asistente.nucleo.memoria.almacen import olvidar_almacenes
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ModuloBase, ResultadoHerramienta
+from asistente.nucleo.tareas.capacidades import CapacidadInvestigacion, capacidades_por_defecto
+from asistente.nucleo.tareas.motor import Configuracion, Motor
+from asistente.plataforma import settings
 from tests.proactive import make_case
 
 HOY = date(2026, 11, 16)

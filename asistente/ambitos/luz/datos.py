@@ -1,8 +1,8 @@
 """Regulated figures of a Spanish household electricity bill (2.0TD), loaded from versioned JSON.
 
 Every figure was read on www.boe.es and is stored with the literal sentence (or table row) it comes from,
-like ``hacienda_gpt/tax/autonomos_params.py``. :func:`comprobar_evidencias` re-checks the data with the shared
-checker of :mod:`hacienda_gpt.conocimiento` (the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
+like ``asistente/ambitos/fiscal/calculo/autonomos_params.py``. :func:`comprobar_evidencias` re-checks the data with the shared
+checker of :mod:`asistente.conocimiento` (the file is declared in ``FICHEROS_LEGALES``, so the weekly BOE
 verification and the reading dates cover it): each figure is spelled in one of its quotes and, given the law texts,
 each quote is verbatim in its law.
 
@@ -23,7 +23,8 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.ambitos.fiscal.calculo.autonomos_params import cifra_a_decimal
+from asistente.conocimiento import (
     FRONTERA_CIFRA,
     VERSION_DIARIO,
     CitaLegal,
@@ -34,8 +35,7 @@ from hacienda_gpt.conocimiento import (
     fuente_de,
     hojas,
 )
-from hacienda_gpt.conocimiento import textos_de_directorio as textos_de_directorio_comun
-from hacienda_gpt.tax.autonomos_params import cifra_a_decimal
+from asistente.conocimiento import textos_de_directorio as textos_de_directorio_comun
 
 DATA = Path(__file__).resolve().parent / "data" / "regulados.json"
 Periodo3 = Literal["p1", "p2", "p3"]
@@ -220,7 +220,7 @@ def cargar_regulados() -> Regulados:
     return Regulados.model_validate(json.loads(DATA.read_text(encoding="utf-8")))
 
 
-# --- Self-check against the law (the shared checker of hacienda_gpt.conocimiento) ----------------------
+# --- Self-check against the law (the shared checker of asistente.conocimiento) ----------------------
 
 _NO_CIFRAS = ("fuente", "evidencia", "desde", "hasta", "estado", "condicion")
 ORTOGRAFIA = Ortografia(leer_cifra=cifra_a_decimal, frontera=FRONTERA_CIFRA)
@@ -356,7 +356,7 @@ def comprobar_evidencias(datos: Regulados, textos: dict[str, str] | None = None)
     """Problems found re-reading the data against its quotes (and, with ``textos``, against the law).
 
     ``textos`` maps BOE id -> plain text of the page (or an extract with the quoted paragraphs). The checks are
-    the shared ones of :mod:`hacienda_gpt.conocimiento` plus this module's own (period table, holidays).
+    the shared ones of :mod:`asistente.conocimiento` plus this module's own (period table, holidays).
     """
     return FICHEROS_LEGALES[0].comprobar(datos, textos)
 
@@ -367,10 +367,10 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.modulos.luz.datos <dir with BOE-*.html>``: re-check against the law."""
+    """``python -m asistente.ambitos.luz.datos <dir with BOE-*.html>``: re-check against the law."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 1:
-        print("uso: python -m hacienda_gpt.modulos.luz.datos <directorio con BOE-*.html>")
+        print("uso: python -m asistente.ambitos.luz.datos <directorio con BOE-*.html>")
         return 2
     problemas = comprobar_evidencias(cargar_regulados(), textos_de_directorio(Path(args[0])))
     for problema in problemas:

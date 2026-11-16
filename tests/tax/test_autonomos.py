@@ -1,6 +1,6 @@
 """Self-employed calculators (estimación directa simplificada, modelo 130,
 modelo 303). Expected figures are worked by hand in the comments from the
-parameters in ``hacienda_gpt/tax/data/autonomos_2026.json``, which are in turn
+parameters in ``asistente/ambitos/fiscal/data/autonomos_2026.json``, which are in turn
 re-read here against literal extracts of the consolidated laws."""
 
 from decimal import Decimal
@@ -9,8 +9,12 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.tax.actividad import ActividadInput, calcular_rendimiento_actividad, tipo_retencion_profesional
-from hacienda_gpt.tax.autonomos_params import (
+from asistente.ambitos.fiscal.calculo.actividad import (
+    ActividadInput,
+    calcular_rendimiento_actividad,
+    tipo_retencion_profesional,
+)
+from asistente.ambitos.fiscal.calculo.autonomos_params import (
     AutonomosParams,
     cifra_a_decimal,
     comprobar_evidencias,
@@ -19,10 +23,10 @@ from hacienda_gpt.tax.autonomos_params import (
     texto_de_html,
     textos_de_directorio,
 )
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.iva import Modelo303Input, calcular_modelo_303
-from hacienda_gpt.tax.pagos_fraccionados import Modelo130Input, calcular_modelo_130
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.iva import Modelo303Input, calcular_modelo_303
+from asistente.ambitos.fiscal.calculo.pagos_fraccionados import Modelo130Input, calcular_modelo_130
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
 
 D = Decimal
 EXTRACTOS = Path(__file__).resolve().parents[1] / "fixtures" / "boe_autonomos"

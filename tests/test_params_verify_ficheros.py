@@ -5,7 +5,7 @@ from __future__ import annotations
 import click
 import pytest
 
-from hacienda_gpt.cli.proactive import _ficheros_pedidos
+from asistente.plataforma.cli.proactive import _ficheros_pedidos
 
 
 def test_repeated_and_comma_separated_names_are_the_same_request() -> None:

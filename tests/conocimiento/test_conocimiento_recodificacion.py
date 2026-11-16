@@ -18,10 +18,9 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.conocimiento import recodificacion as rec
-from hacienda_gpt.conocimiento.casos_caducidades import evaluar
-from hacienda_gpt.modulos.caducidades.reglas import DATA_PATH, Reglas, cargar_reglas
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.caducidades.reglas import DATA_PATH, Reglas, cargar_reglas
+from asistente.conocimiento.casos_caducidades import evaluar
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     ControlFallidoError,
     adaptador_de,
@@ -30,8 +29,9 @@ from hacienda_gpt.tax.recodificacion import (
     pendientes_de_confirmar,
     recodificar,
 )
-from hacienda_gpt.tax.recodificacion.adaptadores import objetivos_de_verificacion as objetivos_de_todo
-from hacienda_gpt.tax.recodificacion.nucleo import SIN_EJERCICIO, ejercicios_en
+from asistente.conocimiento.recodificacion import de_modulos as rec
+from asistente.conocimiento.recodificacion.adaptadores import objetivos_de_verificacion as objetivos_de_todo
+from asistente.conocimiento.recodificacion.nucleo import SIN_EJERCICIO, ejercicios_en
 
 LEY = "BOE-T-2020-9"
 HOY = date(2026, 11, 20)

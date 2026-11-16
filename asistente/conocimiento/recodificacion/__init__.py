@@ -1,15 +1,15 @@
 """Agentic re-encoding of legal parameters: a model proposes data, deterministic checks decide.
 
-See :mod:`hacienda_gpt.tax.recodificacion.nucleo` for the loop and its guarantees,
-:mod:`~hacienda_gpt.tax.recodificacion.control` for the deterministic gate and
-:mod:`~hacienda_gpt.tax.recodificacion.adaptadores` for the kinds of parameter group it maintains.
+See :mod:`asistente.conocimiento.recodificacion.nucleo` for the loop and its guarantees,
+:mod:`~asistente.conocimiento.recodificacion.control` for the deterministic gate and
+:mod:`~asistente.conocimiento.recodificacion.adaptadores` for the kinds of parameter group it maintains.
 """
 
 from __future__ import annotations
 
 import importlib
 
-from hacienda_gpt.tax.recodificacion.adaptadores import (
+from asistente.conocimiento.recodificacion.adaptadores import (
     Hallazgo,
     control_de_lo_publicado,
     objetivo_de_ruta,
@@ -19,8 +19,8 @@ from hacienda_gpt.tax.recodificacion.adaptadores import (
     objetivos_de_verificacion,
     todos_los_objetivos,
 )
-from hacienda_gpt.tax.recodificacion.control import Control
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.conocimiento.recodificacion.control import Control
+from asistente.conocimiento.recodificacion.nucleo import (
     Adaptador,
     AlmacenPropuestas,
     ControlFallidoError,
@@ -47,9 +47,9 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
 try:
     # The adapters of the other parameter files (self-employed, companies, wealth, inheritance) register themselves
     # on import. The module is optional: without it only the IRPF file is maintained.
-    importlib.import_module("hacienda_gpt.tax.recodificacion.adaptadores_otros")
+    importlib.import_module("asistente.conocimiento.recodificacion.adaptadores_otros")
 except ModuleNotFoundError as exc:  # pragma: no cover - depends on what is installed
-    if exc.name != "hacienda_gpt.tax.recodificacion.adaptadores_otros":
+    if exc.name != "asistente.conocimiento.recodificacion.adaptadores_otros":
         raise
 
 __all__ = [

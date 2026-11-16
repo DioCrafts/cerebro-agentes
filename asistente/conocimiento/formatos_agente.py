@@ -1,6 +1,6 @@
 """Agentic diagnosis of a format that stopped being understood.
 
-When the deterministic watch (:mod:`hacienda_gpt.ops.formatos`) marks a source
+When the deterministic watch (:mod:`asistente.conocimiento.formatos`) marks a source
 as degraded or broken, :func:`diagnosticar` asks a model to explain what
 changed and to propose an adaptation — as DATA: a new version of the source's
 extraction spec, never code. The loop is built so that a wrong answer costs a
@@ -39,11 +39,11 @@ from pathlib import Path
 import re
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos import Ensayo, FormatoError, Fuente, Muestra, Propuesta
-from hacienda_gpt.ops.formatos_documentos import leer_esqueletos, plano
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos import Ensayo, FormatoError, Fuente, Muestra, Propuesta
+from asistente.conocimiento.formatos_documentos import leer_esqueletos, plano
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -472,7 +472,7 @@ def diagnosticar_documentos(
     report with the counters. The text sent to the model is built from the
     skeletons and field names only — there is no path from a document to it.
     """
-    from hacienda_gpt.tax.documentos import DOCUMENT_FACTS, ReglasDocumentos
+    from asistente.ambitos.fiscal.documentos import DOCUMENT_FACTS, ReglasDocumentos
 
     fuente = formatos.fuente_de(clave)
     revisor = revisor if revisor is not None else provider

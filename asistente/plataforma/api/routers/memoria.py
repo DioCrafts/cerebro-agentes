@@ -25,14 +25,12 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access, require_case_access
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.almacen import tabla_existe
-from hacienda_gpt.memoria.ambitos import CATALOGO, ambito_de_palanca
-from hacienda_gpt.memoria.modelo import Condicion, Propuesta, TipoDecision, evaluar
-from hacienda_gpt.memoria.servicio import (
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.almacen import tabla_existe
+from asistente.nucleo.memoria.ambitos import CATALOGO, ambito_de_palanca
+from asistente.nucleo.memoria.modelo import Condicion, Propuesta, TipoDecision, evaluar
+from asistente.nucleo.memoria.servicio import (
     DecisionInvalidaError,
     Resultado,
     borrar,
@@ -42,7 +40,9 @@ from hacienda_gpt.memoria.servicio import (
     editar,
     registrar,
 )
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_case_access
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ def build_router(
         hoy = reloj.hoy()
         if resultado.plan_retirado:
             try:
-                from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
+                from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
 
                 plan_fin_de_ejercicio(case, hoy=hoy, store=notifications)
                 plan = True
@@ -154,7 +154,7 @@ def build_router(
                 logger.exception("Could not rebuild the year-end plan of case %s", case.case_id)
         if resultado.resumen_retirado:
             try:
-                from hacienda_gpt.proactive.bandeja import resumen_semanal
+                from asistente.nucleo.proactive.bandeja import resumen_semanal
 
                 resumen = bool(resumen_semanal(case, hoy=hoy, store=notifications, acciones=acciones))
             except Exception:
@@ -174,7 +174,7 @@ def build_router(
         hoy = reloj.hoy()
         hechos = {f.name: f.value for f in case.facts}
         decisiones = decisiones_del_caso(cases.db_path, case_id)
-        from hacienda_gpt.memoria.almacen import almacen
+        from asistente.nucleo.memoria.almacen import almacen
 
         historial = almacen(cases.db_path).historial(case_id) if tabla_existe(cases.db_path) else []
         return DecisionesResponse(

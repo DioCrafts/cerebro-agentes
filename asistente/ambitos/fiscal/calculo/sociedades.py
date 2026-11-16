@@ -29,9 +29,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.actividad import ZERO, Traza, _round
-from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFInput, IRPFResult, Linea, calcular_irpf
-from hacienda_gpt.modulos.fiscal.calculo.sociedades_params import SociedadesParams, load_sociedades_params
+from asistente.ambitos.fiscal.calculo.actividad import ZERO, Traza, _round
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, Linea, calcular_irpf
+from asistente.ambitos.fiscal.calculo.sociedades_params import SociedadesParams, load_sociedades_params
 
 Regimen = Literal["general", "entidad_patrimonial", "nueva_creacion", "microempresa", "reducida_dimension"]
 

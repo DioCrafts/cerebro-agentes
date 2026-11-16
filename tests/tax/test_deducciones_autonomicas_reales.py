@@ -4,9 +4,9 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.tax.beneficios import evaluar_beneficios
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import load_params
+from asistente.ambitos.fiscal.calculo.beneficios import evaluar_beneficios
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import load_params
 
 D = Decimal
 PREFIX = "Deducción autonómica: "

@@ -140,7 +140,7 @@ Documenta en `docs/engineering/dev-workflow.md`.
 
 # FASE 1 — Modelo de dominio y estado del caso
 
-## Tarea 1.1 — Introducir módulo `hacienda_gpt/decision/schemas.py`
+## Tarea 1.1 — Introducir módulo `asistente/nucleo/decision/schemas.py`
 ### Prompt Claude Code
 ```text
 Implementa modelos Pydantic robustos para:
@@ -172,7 +172,7 @@ Implementa capa de persistencia para CaseState con interfaz abstracta:
 - list_cases(user_id)
 - append_audit_event(case_id, event)
 
-Crea implementación inicial SQLite en `hacienda_gpt/decision/state_store_sqlite.py`.
+Crea implementación inicial SQLite en `asistente/nucleo/decision/state_store_sqlite.py`.
 Mantén posibilidad de futura migración a Postgres.
 
 Añade tests de integración para operaciones CRUD y concurrencia básica.
@@ -201,7 +201,7 @@ Añade tests donde sea viable y documentación de uso.
 ## Tarea 2.1 — Crear extractor de intención y hechos
 ### Prompt Claude Code
 ```text
-Implementa `hacienda_gpt/decision/interpreter.py` con función principal:
+Implementa `asistente/nucleo/decision/interpreter.py` con función principal:
 `interpret_turn(user_input, chat_history, current_case_state) -> InterpretationResult`
 
 Debe:
@@ -221,7 +221,7 @@ Añade tests con casos variados en español coloquial.
 ## Tarea 2.2 — Catálogo de intents y taxonomía de hechos
 ### Prompt Claude Code
 ```text
-Crea catálogo explícito en `hacienda_gpt/decision/taxonomy.py`:
+Crea catálogo explícito en `asistente/nucleo/decision/taxonomy.py`:
 - intents soportadas
 - facts requeridos por intención
 - facts críticos bloqueantes
@@ -237,7 +237,7 @@ Añade `docs/domain/intent-taxonomy.md` con ejemplos reales de lenguaje natural.
 Crea dataset inicial de evaluación en `eval_data/intent_fact_extraction.jsonl`.
 Incluye al menos 100 casos sintéticos realistas.
 
-Implementa script `hacienda_gpt/cli/eval_interpreter.py` que calcule:
+Implementa script `asistente/plataforma/cli/eval_interpreter.py` que calcule:
 - intent accuracy
 - fact precision/recall/F1
 - missing-fact detection recall
@@ -272,7 +272,7 @@ Incluye parser y validador de reglas con tests.
 ## Tarea 3.2 — Evaluador de reglas
 ### Prompt Claude Code
 ```text
-Implementa `hacienda_gpt/decision/rules_engine.py`.
+Implementa `asistente/nucleo/decision/rules_engine.py`.
 
 Entrada: CaseState + facts recientes.
 Salida:
@@ -343,7 +343,7 @@ Documenta estrategia y añade tests de seguridad con ejemplos de inyección.
 ## Tarea 5.1 — Función objetivo configurable
 ### Prompt Claude Code
 ```text
-Implementa `hacienda_gpt/decision/planner.py` con scoring multicriterio:
+Implementa `asistente/nucleo/decision/planner.py` con scoring multicriterio:
 - riesgo sancionador
 - urgencia/plazo
 - esfuerzo usuario
@@ -376,7 +376,7 @@ Añade tests end-to-end de planificación.
 ## Tarea 6.1 — Plantilla de respuesta estructurada
 ### Prompt Claude Code
 ```text
-Implementa compositor de respuesta final en `hacienda_gpt/decision/explainer.py`.
+Implementa compositor de respuesta final en `asistente/nucleo/decision/explainer.py`.
 Formato obligatorio:
 1) Hechos detectados
 2) Incertidumbres

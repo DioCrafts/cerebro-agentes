@@ -5,16 +5,16 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from hacienda_gpt.decision.schemas import CaseStatus
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import emitir_novedades, productores
-from hacienda_gpt.eventos.manejadores import DIAS_AVISO_PLAZO, proxima_revision_fiscal
-from hacienda_gpt.eventos.tipos import CAMBIO_NORMATIVO
-from hacienda_gpt.proactive.impacto import CambioNormativo
-from hacienda_gpt.proactive.jobs import ejecutar_para_todos, facts_de
-from hacienda_gpt.proactive.novedades import Novedad, notificar_novedad
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.calendario import proximos_vencimientos
+from asistente.ambitos.fiscal.calculo.calendario import proximos_vencimientos
+from asistente.nucleo.decision.schemas import CaseStatus
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import emitir_novedades, productores
+from asistente.nucleo.eventos.manejadores import DIAS_AVISO_PLAZO, proxima_revision_fiscal
+from asistente.nucleo.eventos.tipos import CAMBIO_NORMATIVO
+from asistente.nucleo.proactive.impacto import CambioNormativo
+from asistente.nucleo.proactive.jobs import ejecutar_para_todos, facts_de
+from asistente.nucleo.proactive.novedades import Novedad, notificar_novedad
+from asistente.nucleo.proactive.store import NotificationStore
 from tests.proactive import SALARIED, make_case
 from .ayudas import FISCAL, HOY, Llamadas, agua, aviso, crear_bus, instalar
 

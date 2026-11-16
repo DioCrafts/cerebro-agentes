@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.crawler.crawlers import AgenciaTributariaPDFCrawler
+from asistente.conocimiento.crawler.crawlers import AgenciaTributariaPDFCrawler
 
 
 class _FakeResponse:

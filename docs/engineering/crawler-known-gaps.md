@@ -8,7 +8,7 @@ acción concreta para resolverlo.
 
 ## CENDOJ — el ROJ no es navegable por URL
 
-**Archivo:** `hacienda_gpt/crawler/cendoj.py`
+**Archivo:** `asistente/conocimiento/crawler/cendoj.py`
 
 **Contexto.** El portal del CGPJ (`poderjudicial.es/search`) expone cada
 documento detrás de un hash interno (`openDocument/<hash>/<date>`) — el
@@ -42,7 +42,7 @@ fallen los runs.
 
 ## BOE-CCAA — 11 IDs de Código pendientes de verificación
 
-**Archivo:** `hacienda_gpt/crawler/boe_consolidado.py`
+**Archivo:** `asistente/conocimiento/crawler/boe_consolidado.py`
 
 **Contexto.** El BOE publica Códigos Electrónicos consolidados por CCAA con
 URLs de la forma `codigo.php?id=<N>&modo=2`. Cuatro IDs están verificados
@@ -81,7 +81,7 @@ propios boletines (BOPV, BON) y se ingiere por la vía de `boletin_autonomico`.
 
 ## Boletines autonómicos — XPaths piloto sin contraste contra HTML real
 
-**Archivo:** `hacienda_gpt/crawler/boletin_autonomico.py`
+**Archivo:** `asistente/conocimiento/crawler/boletin_autonomico.py`
 
 **Contexto.** Hay tres specs piloto bundled (`BOCM_MADRID`, `BOJA_ANDALUCIA`,
 `DOGC_CATALUNA`). Los XPaths (`item_xpath`, `title_xpath`, `date_xpath`,

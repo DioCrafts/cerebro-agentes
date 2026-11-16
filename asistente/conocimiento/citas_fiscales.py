@@ -1,10 +1,10 @@
 """Passages of tax law the tax module keeps in its code, declared for the shared legal-data library.
 
 The tax parameter FILES (``irpf_<year>.json`` and the others) have their own verification in
-``hacienda_gpt.tax.verificacion`` and ``params-verify`` already covers them. What lives in code is declared here,
+``asistente.conocimiento.verificacion`` and ``params-verify`` already covers them. What lives in code is declared here,
 read through public names only: the passages the filing-obligation answer quotes (``CITAS`` of
-``hacienda_gpt.tax.obligacion``, some stitched with "[…]") and those the optimiser shows
-(``TEXTOS_LEGALES`` of ``hacienda_gpt.tax.optimizador``). They carry no figure of their own (the figures they print
+``asistente.ambitos.fiscal.calculo.obligacion``, some stitched with "[…]") and those the optimiser shows
+(``TEXTOS_LEGALES`` of ``asistente.ambitos.fiscal.calculo.optimizador``). They carry no figure of their own (the figures they print
 are the parameter files', checked there) and no reading date: they are checked verbatim against today's BOE every
 week. When the tax module owns its declarations, this file moves into it.
 """
@@ -13,9 +13,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from hacienda_gpt.conocimiento.comprobacion import partes_de
-from hacienda_gpt.conocimiento.modelo import CitaLegal, GrupoLegal, Ortografia
-from hacienda_gpt.conocimiento.registro import FicheroLegal
+from asistente.conocimiento.comprobacion import partes_de
+from asistente.conocimiento.modelo import CitaLegal, GrupoLegal, Ortografia
+from asistente.conocimiento.registro import FicheroLegal
 
 
 def _pasajes(nombre: str) -> Any:
@@ -56,7 +56,7 @@ FICHEROS_LEGALES = (
         modulo="fiscal",
         titulo="Fiscal: pasajes de la obligación de declarar",
         ruta=None,
-        cargar=lambda _raw: _pasajes("hacienda_gpt.tax.obligacion.CITAS"),
+        cargar=lambda _raw: _pasajes("asistente.ambitos.fiscal.calculo.obligacion.CITAS"),
         grupos=_grupos,
         ortografia=_SIN_CIFRAS,
         solo_persona=_MOTIVO,
@@ -66,7 +66,7 @@ FICHEROS_LEGALES = (
         modulo="fiscal",
         titulo="Fiscal: pasajes que muestra el optimizador",
         ruta=None,
-        cargar=lambda _raw: _pasajes("hacienda_gpt.tax.optimizador.TEXTOS_LEGALES"),
+        cargar=lambda _raw: _pasajes("asistente.ambitos.fiscal.calculo.optimizador.TEXTOS_LEGALES"),
         grupos=_grupos,
         ortografia=_SIN_CIFRAS,
         solo_persona=_MOTIVO,

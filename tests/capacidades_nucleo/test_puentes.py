@@ -10,9 +10,9 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades import peticion
-from hacienda_gpt.modulos.contrato import ContextoModulo
+from asistente.capacidades import peticion
+from asistente.nucleo.modulos.contrato import ContextoModulo
+from asistente.plataforma import settings
 
 HOY = date(2026, 11, 16)
 
@@ -52,7 +52,7 @@ TIQUE = "SUPERMERCADO EJEMPLO\nFecha: 03/11/2026\nAspiradora modelo X\nTOTAL 129
 
 
 def test_reading_a_ticket_asks_the_documents_capability(pedidos: list[Any]) -> None:
-    from hacienda_gpt.modulos.caducidades.ticket import leer_ticket
+    from asistente.ambitos.caducidades.ticket import leer_ticket
 
     lector = Lector(
         {
@@ -72,7 +72,7 @@ def test_reading_a_ticket_asks_the_documents_capability(pedidos: list[Any]) -> N
 
 
 def test_a_scanned_ticket_is_read_twice_and_only_agreement_survives(pedidos: list[Any]) -> None:
-    from hacienda_gpt.modulos.caducidades.ticket import leer_ticket
+    from asistente.ambitos.caducidades.ticket import leer_ticket
 
     lecturas = iter(
         [
@@ -99,7 +99,7 @@ def test_a_scanned_ticket_is_read_twice_and_only_agreement_survives(pedidos: lis
 
 
 def test_tax_documents_are_read_by_the_capability_for_the_fiscal_domain(pedidos: list[Any]) -> None:
-    from hacienda_gpt.tax.documentos import analizar_documento
+    from asistente.ambitos.fiscal.documentos import analizar_documento
 
     texto = "CERTIFICADO DE RETENCIONES\nRetribuciones dinerarias: 30.000,00 euros\nEjercicio 2025\n" * 2
     lector = Lector(
@@ -126,7 +126,7 @@ def _ctx(perfil: dict[str, Any] | None = None) -> ContextoModulo:
 
 
 def test_luz_asks_the_browser_for_its_consumption(pedidos: list[Any], monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt.modulos.luz.capacidades import descargar_consumo
+    from asistente.ambitos.luz.capacidades import descargar_consumo
 
     monkeypatch.setattr(settings, "AUTH_MODE", "off")
     monkeypatch.setattr(settings, "MODULOS_ACTIVOS_POR_DEFECTO", "")
@@ -140,7 +140,7 @@ def test_luz_asks_the_browser_for_its_consumption(pedidos: list[Any], monkeypatc
 
 
 def test_the_browser_operation_may_only_be_asked_by_luz_or_the_core() -> None:
-    from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+    from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
 
     with pytest.raises(PeticionDenegada) as exc:
         pedir("navegador", "preparar_descarga_consumo", {}, ContextoPeticion(ambito="hipoteca", hoy=HOY))
@@ -148,8 +148,8 @@ def test_the_browser_operation_may_only_be_asked_by_luz_or_the_core() -> None:
 
 
 def _guardar_correo(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt.capacidades.correo import almacen
-    from hacienda_gpt.capacidades.correo.almacen import CampoGuardado, Elemento
+    from asistente.capacidades.correo import almacen
+    from asistente.capacidades.correo.almacen import CampoGuardado, Elemento
 
     monkeypatch.setattr(settings, "DECISION_STATE_DB_PATH", str(tmp_path / "state.sqlite3"))
     ahora = datetime(2026, 11, 10, tzinfo=UTC)
@@ -186,7 +186,7 @@ def _guardar_correo(tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
 def test_luz_asks_the_mail_for_one_senders_bills(
     pedidos: list[Any], tmp_path: Any, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    from hacienda_gpt.modulos.luz.capacidades import facturas_del_correo
+    from asistente.ambitos.luz.capacidades import facturas_del_correo
 
     _guardar_correo(tmp_path, monkeypatch)
     monkeypatch.setattr(settings, "AUTH_MODE", "off")
@@ -203,7 +203,7 @@ def test_luz_asks_the_mail_for_one_senders_bills(
 
 
 def test_suscripciones_asks_the_mail_too(pedidos: list[Any], tmp_path: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt.modulos.suscripciones.capacidades import cargos_del_correo
+    from asistente.ambitos.suscripciones.capacidades import cargos_del_correo
 
     _guardar_correo(tmp_path, monkeypatch)
     monkeypatch.setattr(settings, "AUTH_MODE", "off")
@@ -213,9 +213,9 @@ def test_suscripciones_asks_the_mail_too(pedidos: list[Any], tmp_path: Any, monk
 
 
 def test_the_mail_proposes_to_whichever_domain_declares_the_data() -> None:
-    from hacienda_gpt.capacidades.correo import propuestas
-    from hacienda_gpt.capacidades.correo.almacen import CampoGuardado, Elemento
-    from hacienda_gpt.modulos import registro as registro_modulos
+    from asistente.capacidades.correo import propuestas
+    from asistente.capacidades.correo.almacen import CampoGuardado, Elemento
+    from asistente.nucleo.modulos import registro as registro_modulos
     from tests.modulos_nucleo.fakes import Llamadas, agua
 
     compra = Elemento(
@@ -236,8 +236,8 @@ def test_the_mail_proposes_to_whichever_domain_declares_the_data() -> None:
 
 
 def test_a_task_step_uses_the_registered_capability_through_pedir(pedidos: list[Any]) -> None:
-    from hacienda_gpt.decision.schemas import CaseState
-    from hacienda_gpt.tareas.capacidades import CapacidadCorreo, CapacidadDocumentos, ContextoCapacidad
+    from asistente.nucleo.decision.schemas import CaseState
+    from asistente.nucleo.tareas.capacidades import CapacidadCorreo, CapacidadDocumentos, ContextoCapacidad
 
     ahora = datetime(2026, 11, 12, tzinfo=UTC)
     caso = CaseState(

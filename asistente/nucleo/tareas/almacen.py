@@ -27,8 +27,8 @@ import sqlite3
 from threading import RLock
 from typing import Any
 
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
-from hacienda_gpt.tareas.modelo import EN_MARCHA, EntradaHistorial, Tarea, ahora
+from asistente.nucleo.tareas.modelo import EN_MARCHA, EntradaHistorial, Tarea, ahora
+from asistente.plataforma.migraciones import asegurar_esquema
 
 TABLAS = ("tareas", "tareas_historial", "tareas_senales")
 
@@ -94,7 +94,7 @@ class ConflictoDeVersionError(RuntimeError):
 
 def crear_tablas(conn: sqlite3.Connection) -> None:
     """Create the tables (idempotent; safe inside an open transaction) and, if possible, the erasure trigger."""
-    asegurar_esquema(conn, "tareas")  # migrations (hacienda_gpt/plataforma/migraciones/catalogo/tareas.py)
+    asegurar_esquema(conn, "tareas")  # migrations (asistente/plataforma/migraciones/catalogo/tareas.py)
     for sentencia in _DDL:
         conn.execute(sentencia)
     crear_disparador(conn)

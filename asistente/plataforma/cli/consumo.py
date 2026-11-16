@@ -1,6 +1,6 @@
 """LLM spend report::
 
-    uv run python -m hacienda_gpt.cli.consumo resumen --dias 7
+    uv run python -m asistente.plataforma.cli.consumo resumen --dias 7
 
 See ``docs/operacion.md``.
 """
@@ -12,8 +12,8 @@ import json
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.ops.consumo import ConsumoStore, hoy_madrid
+from asistente.plataforma import settings
+from asistente.plataforma.ops.consumo import ConsumoStore, hoy_madrid
 
 
 @click.group()

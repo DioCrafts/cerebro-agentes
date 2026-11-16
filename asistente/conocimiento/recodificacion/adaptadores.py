@@ -13,7 +13,7 @@
 Nothing in an IRPF file is left without an adapter (``tests/tax/test_recodificacion_irpf.py``
 checks it against the model). The adapters of the other parameter files live in
 ``adaptadores_otros``. Adding a kind means writing an
-:class:`~hacienda_gpt.tax.recodificacion.nucleo.Adaptador` and registering it;
+:class:`~asistente.conocimiento.recodificacion.nucleo.Adaptador` and registering it;
 the loop, the proposals and the commands do not change.
 """
 
@@ -32,8 +32,8 @@ from typing import Any, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt.tax import params as params_mod
-from hacienda_gpt.tax.params import (
+from asistente.ambitos.fiscal.calculo import params as params_mod
+from asistente.ambitos.fiscal.calculo.params import (
     CAMPOS_EJERCICIO,
     CAMPOS_GASTO,
     CAMPOS_PERIODO,
@@ -62,8 +62,8 @@ from hacienda_gpt.tax.params import (
     TributacionConjunta,
     ViviendaTransitoria,
 )
-from hacienda_gpt.tax.recodificacion import prompts
-from hacienda_gpt.tax.recodificacion.control import (
+from asistente.conocimiento.recodificacion import prompts
+from asistente.conocimiento.recodificacion.control import (
     CENT,
     Control,
     Reglas,
@@ -76,7 +76,7 @@ from hacienda_gpt.tax.recodificacion.control import (
     numeros_de_texto_sin_respaldo,
     ruta_de_etiqueta,
 )
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.conocimiento.recodificacion.nucleo import (
     Adaptador,
     Desglose,
     Objetivo,
@@ -90,7 +90,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     leer_ruta,
     registrar,
 )
-from hacienda_gpt.tax.verificacion import (
+from asistente.conocimiento.verificacion import (
     Resultado,
     TextoDe,
     _cifras_de,
@@ -255,7 +255,7 @@ class DeduccionesAutonomicas(Adaptador):
 
     def campos_de_caso(self) -> list[str]:
         """Inputs of the calculator a test taxpayer may carry."""
-        from hacienda_gpt.tax.irpf import IRPFInput
+        from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
 
         permitidos = (
             _PERSONALES | CAMPOS_UNIDAD | CAMPOS_GASTO | CAMPOS_REQUISITO | CAMPOS_PERIODO | CAMPOS_REPARTO
@@ -263,7 +263,7 @@ class DeduccionesAutonomicas(Adaptador):
         return sorted(permitidos & set(IRPFInput.model_fields))
 
     def guia_casos(self, objetivo: Objetivo) -> str:
-        from hacienda_gpt.tax.irpf import Descendiente
+        from asistente.ambitos.fiscal.calculo.irpf import Descendiente
 
         return (
             "`datos_json` of a case is a JSON object serialised as a string:\n"
@@ -367,8 +367,8 @@ class DeduccionesAutonomicas(Adaptador):
         return {k: copy.deepcopy(v) for k, v in anterior.items() if k != "recodificada_el"}
 
     def evaluar_caso(self, modelo: BaseModel, datos: Any, objetivo: Objetivo) -> tuple[Decimal, str | None]:
-        from hacienda_gpt.tax import autonomicas
-        from hacienda_gpt.tax.irpf import IRPFInput
+        from asistente.ambitos.fiscal.calculo import autonomicas
+        from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
 
         assert isinstance(modelo, DeduccionCalculable)
         if not isinstance(datos, dict) or not isinstance(datos.get("contribuyente"), dict):
@@ -922,7 +922,7 @@ class GrupoDeCifras(_CitasDeParametros):
         return GUIA_CIFRAS + ajenos
 
     def campos_de_caso(self) -> list[str]:
-        from hacienda_gpt.tax.irpf import IRPFInput
+        from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
 
         return sorted(set(IRPFInput.model_fields) - {"ejercicio"})
 
@@ -1038,7 +1038,7 @@ class GrupoDeCifras(_CitasDeParametros):
         return {k: copy.deepcopy(v) for k, v in anterior.items() if k != "fuente" and k not in self.cifras.ajenos}
 
     def evaluar_caso(self, modelo: BaseModel, datos: Any, objetivo: Objetivo) -> tuple[Decimal, str | None]:
-        from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
+        from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
 
         if self.cifras.evaluador is not None:
             if not isinstance(datos, dict):
@@ -1245,7 +1245,7 @@ GUIA_CASOS_REPARTO = (
 
 def _caso_de_reparto(modelo: BaseModel, datos: dict[str, Any]) -> tuple[Decimal, str | None]:
     """A reviewer's case for the State/regional split, run through the calculator's own function."""
-    from hacienda_gpt.tax.irpf import repartir_deducciones_estatales
+    from asistente.ambitos.fiscal.calculo.irpf import repartir_deducciones_estatales
 
     assert isinstance(modelo, RepartoDeducciones)
     deducciones = _decimal(datos.get("deducciones_generales"), nombre="deducciones_generales", defecto=None)
@@ -1262,7 +1262,7 @@ def _caso_de_reparto(modelo: BaseModel, datos: dict[str, Any]) -> tuple[Decimal,
 GUIA_CASOS_OBLIGACION = (
     '`datos_json` of a case: {"ejercicio": <tax year>, "contribuyente": {<inputs of the IRPF calculator>}}. The '
     "program decides with the proposed figures whether that taxpayer must file the return (art. 96 LIRPF, "
-    'hacienda_gpt/tax/obligacion.py) and compares the answer with `importe_esperado`: "1" when THE LAW obliges '
+    'asistente/ambitos/fiscal/calculo/obligacion.py) and compares the answer with `importe_esperado`: "1" when THE LAW obliges '
     'them to file, "0" when it does not. A case the program cannot decide is not run, so give every fact the rule '
     "needs (a false boolean is a fact; an absent one is unknown).\n"
     "- Inputs (annual euros, omit what is zero): rendimiento_trabajo_bruto (gross work income), "
@@ -1279,8 +1279,8 @@ GUIA_CASOS_OBLIGACION = (
 
 def _caso_de_obligacion(modelo: BaseModel, datos: dict[str, Any]) -> tuple[Decimal, str | None]:
     """A reviewer's case for the limits of the obligation to file, run through ``obligado_a_declarar``."""
-    from hacienda_gpt.tax.irpf import IRPFInput
-    from hacienda_gpt.tax.obligacion import obligado_a_declarar
+    from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+    from asistente.ambitos.fiscal.calculo.obligacion import obligado_a_declarar
 
     assert isinstance(modelo, ObligacionDeclarar)
     contribuyente = datos.get("contribuyente")
@@ -1642,7 +1642,7 @@ def _de_adaptadores_genericos(
     tipos: Sequence[str] | None,
 ) -> Hallazgo:
     """Failing groups of adapters that describe themselves (``grupos``/``objetivo``) and have no module-level finder."""
-    from hacienda_gpt.tax.verificacion import _comprimido
+    from asistente.conocimiento.verificacion import _comprimido
 
     hallazgo = Hallazgo()
     for adaptador in adaptadores_registrados():
@@ -2040,7 +2040,11 @@ def control_de_lo_publicado(
     the texts the user reads). With it, the quotes must also be literal, each in one piece, in the articles the loop
     would read — on the version of the law the year's quotes were taken from.
     """
-    from hacienda_gpt.tax.recodificacion.control import articulos_que_contienen, citas_no_literales, extraer_articulos
+    from asistente.conocimiento.recodificacion.control import (
+        articulos_que_contienen,
+        citas_no_literales,
+        extraer_articulos,
+    )
 
     evidencia = _json(data_dir / EVIDENCIA_DEDUCCIONES)
     fallidas: list[dict[str, Any]] = []

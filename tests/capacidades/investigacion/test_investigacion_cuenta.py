@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.investigacion import capacidad
+from asistente.capacidades.investigacion import capacidad
+from asistente.plataforma import settings
 from tests.auth.conftest import PASSWORD, Env, env, fast_scrypt  # noqa: F401
 
 

@@ -17,6 +17,8 @@ WORKDIR /srv/hacienda-asesor
 # Primero solo las dependencias (capa que se reutiliza mientras uv.lock no cambie).
 COPY pyproject.toml uv.lock ./
 RUN uv sync --frozen --no-dev --no-install-project
+COPY asistente ./asistente
+# The compatibility package (old module paths, one release): cron lines and scripts still naming hacienda_gpt.
 COPY hacienda_gpt ./hacienda_gpt
 COPY rules ./rules
 COPY README.md ./
@@ -32,5 +34,5 @@ VOLUME ["/srv/hacienda-asesor/data"]
 EXPOSE 8000
 # Proceso «api». El proxy inverso quita el prefijo /api y pasa X-Forwarded-*; uvicorn los cree porque solo
 # el proxy llega al puerto 8000 (red interna de compose, sin «ports»). Un solo proceso: ver «Procesos».
-CMD ["uvicorn", "hacienda_gpt.api.api:app", "--host", "0.0.0.0", "--port", "8000", \
+CMD ["uvicorn", "asistente.plataforma.api.api:app", "--host", "0.0.0.0", "--port", "8000", \
      "--proxy-headers", "--forwarded-allow-ips", "*"]

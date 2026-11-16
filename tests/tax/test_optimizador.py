@@ -15,15 +15,9 @@ import sys
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.api.api import app
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.modulos.fiscal.especificaciones import OPTIMIZE_TOOL
-from hacienda_gpt.tax.conjunta import _conjunta
-from hacienda_gpt.tax.irpf import Descendiente, IRPFInput, calcular_irpf
-from hacienda_gpt.tax.optimizador import (
+from asistente.ambitos.fiscal.calculo.conjunta import _conjunta
+from asistente.ambitos.fiscal.calculo.irpf import Descendiente, IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.optimizador import (
     MAX_EVALUACIONES,
     TEXTOS_LEGALES,
     PlanOptimo,
@@ -32,8 +26,14 @@ from hacienda_gpt.tax.optimizador import (
     optimizar,
     optimizar_desde_hechos,
 )
-from hacienda_gpt.tax.params import load_params
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.especificaciones import OPTIMIZE_TOOL
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.plataforma.api.api import app
 
 D = Decimal
 P = load_params(2026)
@@ -389,8 +389,8 @@ def test_two_runs_give_the_same_plan() -> None:
 def test_the_plan_does_not_depend_on_the_hash_seed() -> None:
     script = (
         "from datetime import date; from decimal import Decimal as D; import hashlib;"
-        "from hacienda_gpt.tax.irpf import IRPFInput;"
-        "from hacienda_gpt.tax.optimizador import optimizar, Restricciones, PosicionLatente;"
+        "from asistente.ambitos.fiscal.calculo.irpf import IRPFInput;"
+        "from asistente.ambitos.fiscal.calculo.optimizador import optimizar, Restricciones, PosicionLatente;"
         "a = IRPFInput(ejercicio=2026, comunidad_autonoma='Cataluña', rendimiento_trabajo_bruto=D(48000),"
         " cotizaciones_seguridad_social=D(3048), ganancias_patrimoniales=D(1500));"
         "b = IRPFInput(ejercicio=2026, comunidad_autonoma='Cataluña', rendimiento_trabajo_bruto=D(12000));"
@@ -555,7 +555,7 @@ def _case(**facts) -> CaseState:
 
 
 def test_the_tool_reads_the_case_and_registers_citable_fragments(monkeypatch) -> None:
-    import hacienda_gpt.modulos.fiscal.herramientas as herramientas
+    import asistente.ambitos.fiscal.herramientas as herramientas
 
     monkeypatch.setattr(herramientas, "hoy_en_espana", lambda: NOV)
     ledger = EvidenceLedger()

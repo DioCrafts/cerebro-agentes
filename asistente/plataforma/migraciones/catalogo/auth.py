@@ -1,11 +1,11 @@
-"""``hacienda_gpt.auth`` (``AuthStore``): accounts, sessions, consents, case ownership, module choices.
+"""``asistente.plataforma.auth`` (``AuthStore``): accounts, sessions, consents, case ownership, module choices.
 
 Baseline copied byte for byte from ``auth/store.py`` (SQLite keeps the statement text).
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 USERS = """
                     CREATE TABLE IF NOT EXISTS users (
@@ -52,7 +52,7 @@ USER_MODULE_CHOICES = """
 
 PROPIETARIO = Propietario(
     nombre="auth",
-    paquete="hacienda_gpt.auth",
+    paquete="asistente.plataforma.auth",
     descripcion="Cuentas, sesiones (hash del token), consentimientos, dueño de cada caso y módulos elegidos.",
     tablas=("users", "auth_sessions", "user_consents", "case_owners", "user_module_choices"),
     otros_objetos=(

@@ -15,11 +15,11 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from hacienda_gpt.api.security import require_operator
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import despacho, productores
-from hacienda_gpt.eventos.bus import metricas_de
-from hacienda_gpt.eventos.salud import estado, problemas
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import despacho, productores
+from asistente.nucleo.eventos.bus import metricas_de
+from asistente.nucleo.eventos.salud import estado, problemas
+from asistente.plataforma.api.security import require_operator
 
 logger = logging.getLogger(__name__)
 

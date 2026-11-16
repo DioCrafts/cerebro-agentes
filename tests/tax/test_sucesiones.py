@@ -1,5 +1,5 @@
 """Impuesto sobre Sucesiones y Donaciones. Expected figures are worked by hand in
-the comments from ``hacienda_gpt/tax/data/isd_2026.json``, whose figures are in
+the comments from ``asistente/ambitos/fiscal/data/isd_2026.json``, whose figures are in
 turn re-read here against literal extracts of the consolidated laws."""
 
 from datetime import date
@@ -10,9 +10,14 @@ from pathlib import Path
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.sucesiones import BeneficiarioISD, calcular_isd, calcular_isd_varios, grupo_de_parentesco
-from hacienda_gpt.tax.sucesiones_params import (
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.sucesiones import (
+    BeneficiarioISD,
+    calcular_isd,
+    calcular_isd_varios,
+    grupo_de_parentesco,
+)
+from asistente.ambitos.fiscal.calculo.sucesiones_params import (
     ISDParams,
     NormativaAutonomicaISD,
     comprobar_evidencias,
@@ -913,7 +918,7 @@ def test_main_home_percentage_by_the_value_of_the_property_asturias_and_galicia(
 
 
 def test_the_new_schema_fields_reject_incoherent_data() -> None:
-    from hacienda_gpt.tax.sucesiones_params import Equiparacion, ReduccionVivienda, TramoReduccion
+    from asistente.ambitos.fiscal.calculo.sucesiones_params import Equiparacion, ReduccionVivienda, TramoReduccion
 
     with pytest.raises(ValidationError, match="importe o porcentaje_base"):
         TramoReduccion()

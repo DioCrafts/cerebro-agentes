@@ -1,11 +1,11 @@
-# Investigar con fuentes (`hacienda_gpt/capacidades/investigacion`)
+# Investigar con fuentes (`asistente/capacidades/investigacion`)
 
 A capability that answers questions the app's structured data does not cover — «¿qué documentos necesito para
 renovar el pasaporte?», «¿qué dice la DGT sobre deducir el gimnasio?», «compara seguros de hogar», «¿cuándo empieza
 la campaña de la renta 2026?» — with a report in which **every claim carries a literal quote of a retrieved
 source**, checked by code.
 
-It is a capability under the capability contract (`hacienda_gpt/capacidades/contrato.py`): any domain, the central
+It is a capability under the capability contract (`asistente/capacidades/contrato.py`): any domain, the central
 agent, a long-running task and the API reach it through `pedir("investigacion", "investigar", …)`. It has **one
 operation, read-only** (`efecto="lectura"`): it never writes, sends or acts on anything.
 

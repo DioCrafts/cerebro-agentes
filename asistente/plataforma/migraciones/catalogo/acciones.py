@@ -1,11 +1,11 @@
-"""``hacienda_gpt.modulos.acciones`` (``AccionStore``): actions waiting for the user's confirmation.
+"""``asistente.nucleo.modulos.acciones`` (``AccionStore``): actions waiting for the user's confirmation.
 
 Baseline copied byte for byte from ``modulos/acciones.py``.
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 ACCIONES_PENDIENTES = """
                     CREATE TABLE IF NOT EXISTS acciones_pendientes (
@@ -19,7 +19,7 @@ ACCIONES_PENDIENTES = """
 
 PROPIETARIO = Propietario(
     nombre="acciones",
-    paquete="hacienda_gpt.modulos",
+    paquete="asistente.nucleo.modulos",
     descripcion="Acciones de los módulos pendientes de confirmación del usuario.",
     tablas=("acciones_pendientes",),
     otros_objetos=("idx_acciones_case",),

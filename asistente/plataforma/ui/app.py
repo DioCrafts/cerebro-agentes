@@ -4,7 +4,7 @@ Presentation only. The RAG chain, the grounding gate, the decision
 engine and the API client are untouched — every refactor in this file
 maps backend-provided fields (the ``AnswerEnvelope``, the
 ``CaseState.obligation_candidates``) onto the bespoke components defined
-in ``hacienda_gpt/ui/assets/style.css``:
+in ``asistente/plataforma/ui/assets/style.css``:
 
 * trust-strip  — colour-coded grounding verdict pinned above every reply.
 * source cards — one card per citation, always visible (no expander).
@@ -12,9 +12,9 @@ in ``hacienda_gpt/ui/assets/style.css``:
   missing fact framed as a question.
 * chips        — sidebar topic scope + suggested-question shortcuts.
 
-Identity tokens live in ``hacienda_gpt/ui/assets/style.css`` and
+Identity tokens live in ``asistente/plataforma/ui/assets/style.css`` and
 ``.streamlit/config.toml``. The brand monogram is served locally from
-``hacienda_gpt/ui/assets/logo.svg`` — no hot-link to any tax-authority
+``asistente/plataforma/ui/assets/logo.svg`` — no hot-link to any tax-authority
 asset.
 """
 
@@ -30,15 +30,15 @@ from langchain_core.messages import AIMessage, HumanMessage
 import requests
 import streamlit as st
 
-from hacienda_gpt.decision.fact_extractor import FactExtractor, default_fact_extractor
-from hacienda_gpt.decision.schemas import CaseState, RiskLevel
-from hacienda_gpt.decision.state_store import CaseVersionConflictError
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.decision.turn_service import TurnOutcome, process_turn
-from hacienda_gpt.llm.chain import answer_with_grounding, create_openai_chain
-from hacienda_gpt.llm.grounding import AnswerEnvelope, AnswerMode, Citation
-from hacienda_gpt.settings import API_BASE_URL, DECISION_DEBUG_MODE, DECISION_STATE_DB_PATH, UI_USE_API
-from hacienda_gpt.utils import MissingOpenAIAPIKeyError, configure_logging, get_openai_api_key
+from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
+from asistente.conocimiento.llm.grounding import AnswerEnvelope, AnswerMode, Citation
+from asistente.nucleo.decision.fact_extractor import FactExtractor, default_fact_extractor
+from asistente.nucleo.decision.schemas import CaseState, RiskLevel
+from asistente.nucleo.decision.state_store import CaseVersionConflictError
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.decision.turn_service import TurnOutcome, process_turn
+from asistente.plataforma.settings import API_BASE_URL, DECISION_DEBUG_MODE, DECISION_STATE_DB_PATH, UI_USE_API
+from asistente.plataforma.utils import MissingOpenAIAPIKeyError, configure_logging, get_openai_api_key
 
 _ASSETS = Path(__file__).parent / "assets"
 

@@ -65,25 +65,63 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
     return wrapper
 
 
-from hacienda_gpt.agent.agent import AgentResult, TaxAgent
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
-from hacienda_gpt.api.observability import ApiMetrics, observability_middleware
-from hacienda_gpt.api.routers import auth as auth_router
-from hacienda_gpt.api.routers import autonomos as autonomos_router
-from hacienda_gpt.api.routers import capacidades as capacidades_router
-from hacienda_gpt.api.routers import consumo as consumo_router
-from hacienda_gpt.api.routers import correo as correo_router
-from hacienda_gpt.api.routers import evaluacion as evaluacion_router
-from hacienda_gpt.api.routers import eventos as eventos_router
-from hacienda_gpt.api.routers import investigacion as investigacion_router
-from hacienda_gpt.api.routers import memoria as memoria_router
-from hacienda_gpt.api.routers import modulos as modulos_router
-from hacienda_gpt.api.routers import navegador as navegador_router
-from hacienda_gpt.api.routers import planificador as planificador_router
-from hacienda_gpt.api.routers import plataforma as plataforma_router
-from hacienda_gpt.api.routers import push as push_router
-from hacienda_gpt.api.routers import tareas as tareas_router
-from hacienda_gpt.api.security import (
+from asistente.ambitos.fiscal.calculo.calendario import Vencimiento, aviso_festivos, proximos_vencimientos
+from asistente.ambitos.fiscal.calculo.optimizador import PlanOptimo, Restricciones, detalle_a_texto
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles
+from asistente.ambitos.fiscal.calculo.simulador import Simulacion, simular
+from asistente.ambitos.fiscal.documentos import (
+    AnalisisDocumento,
+    DocumentoNoLegibleError,
+    analizar_documento,
+    decode_upload,
+)
+from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES, DatosInvalidosError
+from asistente.conocimiento.llm.grounding import AnswerEnvelope
+from asistente.nucleo.agent.agent import AgentResult, TaxAgent
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
+from asistente.nucleo.decision.audit import build_recommendation_audit_event
+from asistente.nucleo.decision.fact_extractor import (
+    EXPECTED_FACT_TYPE,
+    FactExtractor,
+    OpenAIExtractionError,
+    _coerce_value,
+    default_fact_extractor,
+)
+from asistente.nucleo.decision.planner import Planner
+from asistente.nucleo.decision.rules_engine import evaluate_rules
+from asistente.nucleo.decision.schemas import (
+    CaseState,
+    Fact,
+    MissingFact,
+    ObligationCandidate,
+    parse_fiscal_year,
+)
+from asistente.nucleo.decision.state_store import CaseVersionConflictError
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.decision.turn_service import process_turn
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
+from asistente.nucleo.modulos.perfil import TIPO_DE_HECHO, HechoInvalidoError, hecho_de_modulo, normalizar_valor
+from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
+from asistente.nucleo.proactive.bandeja import avisos_de_modulos, kind_de
+from asistente.nucleo.proactive.jobs import ejecutar_bandejas_propias, hoy_en_espana
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma.api.observability import ApiMetrics, observability_middleware
+from asistente.plataforma.api.routers import auth as auth_router
+from asistente.plataforma.api.routers import autonomos as autonomos_router
+from asistente.plataforma.api.routers import capacidades as capacidades_router
+from asistente.plataforma.api.routers import consumo as consumo_router
+from asistente.plataforma.api.routers import correo as correo_router
+from asistente.plataforma.api.routers import evaluacion as evaluacion_router
+from asistente.plataforma.api.routers import eventos as eventos_router
+from asistente.plataforma.api.routers import investigacion as investigacion_router
+from asistente.plataforma.api.routers import memoria as memoria_router
+from asistente.plataforma.api.routers import modulos as modulos_router
+from asistente.plataforma.api.routers import navegador as navegador_router
+from asistente.plataforma.api.routers import planificador as planificador_router
+from asistente.plataforma.api.routers import plataforma as plataforma_router
+from asistente.plataforma.api.routers import push as push_router
+from asistente.plataforma.api.routers import tareas as tareas_router
+from asistente.plataforma.api.security import (
     BodySizeLimitMiddleware,
     RateLimiter,
     comprobar_pregunta,
@@ -94,48 +132,15 @@ from hacienda_gpt.api.security import (
     require_qa_legado,
     security_headers_middleware,
 )
-from hacienda_gpt.auth.deps import (
+from asistente.plataforma.auth.deps import (
     CaseAccess,
     get_case_access,
     require_case_access,
     require_document_consent,
     require_session,
 )
-from hacienda_gpt.decision.audit import build_recommendation_audit_event
-from hacienda_gpt.decision.fact_extractor import (
-    EXPECTED_FACT_TYPE,
-    FactExtractor,
-    OpenAIExtractionError,
-    _coerce_value,
-    default_fact_extractor,
-)
-from hacienda_gpt.decision.planner import Planner
-from hacienda_gpt.decision.rules_engine import evaluate_rules
-from hacienda_gpt.decision.schemas import (
-    CaseState,
-    Fact,
-    MissingFact,
-    ObligationCandidate,
-    parse_fiscal_year,
-)
-from hacienda_gpt.decision.state_store import CaseVersionConflictError
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.decision.turn_service import process_turn
-from hacienda_gpt.llm.grounding import AnswerEnvelope
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
-from hacienda_gpt.modulos.perfil import TIPO_DE_HECHO, HechoInvalidoError, hecho_de_modulo, normalizar_valor
-from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
-from hacienda_gpt.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
-from hacienda_gpt.proactive.bandeja import avisos_de_modulos, kind_de
-from hacienda_gpt.proactive.jobs import ejecutar_bandejas_propias, hoy_en_espana
-from hacienda_gpt.proactive.store import Notification, NotificationStore
-from hacienda_gpt.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
-from hacienda_gpt.tax.calendario import Vencimiento, aviso_festivos, proximos_vencimientos
-from hacienda_gpt.tax.documentos import AnalisisDocumento, DocumentoNoLegibleError, analizar_documento, decode_upload
-from hacienda_gpt.tax.optimizador import PlanOptimo, Restricciones, detalle_a_texto
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_disponibles
-from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES, DatosInvalidosError
-from hacienda_gpt.tax.simulador import Simulacion, simular
+from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
+from asistente.plataforma.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
 
 _logger = logging.getLogger(__name__)
 
@@ -449,8 +454,8 @@ def _build_qa_chain():
     re-loaded the model into memory each time. The cache makes the first
     request pay the cost and the rest reuse the warm chain.
     """
-    from hacienda_gpt.llm.chain import create_openai_chain
-    from hacienda_gpt.utils import get_openai_api_key
+    from asistente.conocimiento.llm.chain import create_openai_chain
+    from asistente.plataforma.utils import get_openai_api_key
 
     return create_openai_chain(openai_api_key=get_openai_api_key())
 
@@ -480,7 +485,7 @@ def get_qa_chain():
     dependencies=[Depends(require_qa_legado), Depends(require_api_key), Depends(require_session)],
 )
 def post_qa(payload: QARequest, chain=Depends(get_qa_chain)) -> AnswerEnvelope:
-    from hacienda_gpt.llm.chain import answer_with_grounding
+    from asistente.conocimiento.llm.chain import answer_with_grounding
 
     comprobar_pregunta(payload.query)
     try:
@@ -521,7 +526,7 @@ class AgentResponse(AgentResult):
 @_thread_safe_singleton
 def _build_agent() -> TaxAgent:
     """Build the agent once (loads the embedder + FAISS index, like the QA chain)."""
-    from hacienda_gpt.agent.agent import build_agent
+    from asistente.nucleo.agent.agent import build_agent
 
     return build_agent()
 
@@ -562,12 +567,12 @@ def _modulos_del_turno(case_id: str | None, access: CaseAccess) -> dict[str, Any
 
     Empty otherwise, so the agent is called exactly as before the modules existed.
     """
-    from hacienda_gpt.modulos.ganchos import tiene_especialista
+    from asistente.nucleo.modulos.ganchos import tiene_especialista
 
     if case_id is not None:
         modulos = modulos_activos_para_caso(case_id, access.store)
     else:
-        from hacienda_gpt.modulos.preferencias import modulos_activos_para
+        from asistente.nucleo.modulos.preferencias import modulos_activos_para
 
         modulos = modulos_activos_para(access.user.id if access.user is not None else None, access.store)
     return {"modulos": modulos} if any(tiene_especialista(m) for m in modulos) else {}
@@ -1004,8 +1009,8 @@ def post_optimize(
     if year is None:
         year = (parse_fiscal_year(case.tax_period) if case is not None else None) or max(ejercicios_disponibles())
     try:
-        # With a case, the user's rejections and restrictions in force are constraints (hacienda_gpt/memoria).
-        from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+        # With a case, the user's rejections and restrictions in force are constraints (asistente/nucleo/memoria).
+        from asistente.nucleo.memoria.optimizador import optimizar_con_memoria
 
         return optimizar_con_memoria(
             case_id=case.case_id if case is not None else None,
@@ -1068,8 +1073,8 @@ class DocumentRequest(BaseModel):
 
 @_thread_safe_singleton
 def _build_document_provider() -> LLMProvider:
-    from hacienda_gpt import settings
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma import settings
 
     # Locating labelled figures in a document is a constrained task: low effort.
     return medir(create_provider(effort=settings.DECISION_EXTRACTOR_EFFORT), "documentos")
@@ -1202,7 +1207,7 @@ def post_case_proactive_run(
     hoy = hoy_en_espana()
     # The modules that write their own notifications (the tax jobs), through the module contract.
     created = ejecutar_bandejas_propias(case, hoy=hoy, store=notifications)
-    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
+    from asistente.nucleo.modulos.ganchos import escribe_su_bandeja
 
     otros = [m for m in modulos_activos_para_caso(case_id, access.store) if not escribe_su_bandeja(m)]
     if otros:
@@ -1230,7 +1235,7 @@ def export_case_audit(
 
 
 # --- routers ---
-# Routers live in hacienda_gpt/api/routers/. Include them here, after every
+# Routers live in asistente/plataforma/api/routers/. Include them here, after every
 # store provider above is defined, and pass those providers in (instead of
 # importing them from this module in the router) so there is no circular import
 # and ``app.dependency_overrides`` keeps working inside the router.

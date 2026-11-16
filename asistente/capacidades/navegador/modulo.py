@@ -20,17 +20,17 @@ from collections.abc import Mapping
 from datetime import date, timedelta
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.capacidades.navegador.guion import enmascarar_valor
-from hacienda_gpt.capacidades.navegador.tareas import CLAVE_MODULO, HERRAMIENTA_PRESENTAR, TareaError, gestor
-from hacienda_gpt.modulos.contrato import (
+from asistente.capacidades.navegador.guion import enmascarar_valor
+from asistente.capacidades.navegador.tareas import CLAVE_MODULO, HERRAMIENTA_PRESENTAR, TareaError, gestor
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import (
     ContextoModulo,
     FuenteModulo,
     HerramientaModulo,
     ModuloBase,
     ResultadoHerramienta,
 )
+from asistente.plataforma import settings
 
 DIAS_POR_DEFECTO = 60
 HECHO_CUPS_LUZ = "luz_cups"

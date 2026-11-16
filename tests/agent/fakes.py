@@ -6,8 +6,8 @@ from typing import Any
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.agent.providers.base import ModelTurn, ToolCall, ToolResult, ToolSpec
-from hacienda_gpt.agent.search import SearchFilters, build_filter_predicate
+from asistente.nucleo.agent.providers.base import ModelTurn, ToolCall, ToolResult, ToolSpec
+from asistente.nucleo.agent.search import SearchFilters, build_filter_predicate
 
 
 def tool_turn(*calls: tuple[str, dict[str, Any]]) -> ModelTurn:

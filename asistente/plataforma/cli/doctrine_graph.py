@@ -1,17 +1,17 @@
 """Build and inspect the doctrine graph.
 
 # Build (or update) the graph from the indexed corpus — free, no LLM:
-uv run python -m hacienda_gpt.cli.doctrine_graph build
+uv run python -m asistente.plataforma.cli.doctrine_graph build
 
 # Re-read the citations that matter with the LLM (asks before spending):
-uv run python -m hacienda_gpt.cli.doctrine_graph build --llm --max-llm-calls 500
+uv run python -m asistente.plataforma.cli.doctrine_graph build --llm --max-llm-calls 500
 
 # What the graph holds, and which Supreme Court rulings the corpus cites but lacks:
-uv run python -m hacienda_gpt.cli.doctrine_graph stats
-uv run python -m hacienda_gpt.cli.doctrine_graph wanted --limit 50 --out reports/sentencias_a_conseguir.json
+uv run python -m asistente.plataforma.cli.doctrine_graph stats
+uv run python -m asistente.plataforma.cli.doctrine_graph wanted --limit 50 --out reports/sentencias_a_conseguir.json
 
 # Validity of one document:
-uv run python -m hacienda_gpt.cli.doctrine_graph status "V1234-19"
+uv run python -m asistente.plataforma.cli.doctrine_graph status "V1234-19"
 """
 
 from __future__ import annotations
@@ -23,10 +23,10 @@ from typing import Any
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.doctrine.citas import extract_citations
-from hacienda_gpt.doctrine.construccion import build_graph
-from hacienda_gpt.doctrine.grafo import DoctrineGraph
+from asistente.conocimiento.doctrine.citas import extract_citations
+from asistente.conocimiento.doctrine.construccion import build_graph
+from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.plataforma import settings
 
 
 def load_corpus_chunks(index_path: str) -> list[Any]:
@@ -38,7 +38,9 @@ def load_corpus_chunks(index_path: str) -> list[Any]:
         )
     path = Path(index_path) / "index.pkl"
     if not path.exists():
-        raise click.ClickException(f"No existe {path}. Construye antes el índice con hacienda_gpt.cli.processor.")
+        raise click.ClickException(
+            f"No existe {path}. Construye antes el índice con asistente.plataforma.cli.processor."
+        )
     with path.open("rb") as handle:
         docstore, _ = pickle.load(handle)  # noqa: S301 - gated by FAISS_TRUSTED_INDEX above
     return list(docstore._dict.values())
@@ -63,7 +65,7 @@ def build(index_path: str, graph_path: str, llm: bool, max_llm_calls: int, yes: 
     chunks = load_corpus_chunks(index_path)
     provider = None
     if llm:
-        from hacienda_gpt.agent.providers import create_provider
+        from asistente.nucleo.agent.providers import create_provider
 
         provider = create_provider(effort=settings.DECISION_EXTRACTOR_EFFORT)
         if not yes:

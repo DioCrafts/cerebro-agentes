@@ -1,4 +1,4 @@
-// «Tareas»: the long-running tasks (hacienda_gpt/tareas). Pending actions go through the shell's handler.
+// «Tareas»: the long-running tasks (asistente/nucleo/tareas). Pending actions go through the shell's handler.
 
 import { TareasPanel } from "../components/TareasPanel";
 import type { PropsPanel } from "./tipos";

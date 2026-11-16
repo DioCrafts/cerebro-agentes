@@ -34,15 +34,15 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt.tax.params import DATA_DIR, IRPFParams
-from hacienda_gpt.tax.recodificacion.control import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, IRPFParams
+from asistente.conocimiento.recodificacion.control import (
     _sin_acentos,
     articulos_que_contienen,
     clave_de_cabecera,
     extraer_articulos,
     partir_base,
 )
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.conocimiento.recodificacion.nucleo import (
     Adaptador,
     AlmacenPropuestas,
     Objetivo,
@@ -54,7 +54,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     adaptadores_registrados,
     leer_ruta,
 )
-from hacienda_gpt.tax.verificacion import Resultado, TextoDe, comprobaciones, texto_plano, url_de, verificar
+from asistente.conocimiento.verificacion import Resultado, TextoDe, comprobaciones, texto_plano, url_de, verificar
 
 logger = logging.getLogger(__name__)
 
@@ -172,9 +172,9 @@ def ficheros_de_parametros(data_dir: Path = DATA_DIR) -> list[Path]:
 
 def ficheros_con_lecturas(data_dir: Path = DATA_DIR, modulos: Sequence[Any] | None = None) -> list[tuple[str, Path]]:
     """(name, path) of every file whose law readings this module records: the tax parameter files of ``data_dir``
-    and the modules' legal data files (``hacienda_gpt.conocimiento``; only for the package's own data directory,
+    and the modules' legal data files (``asistente.conocimiento``; only for the package's own data directory,
     unless ``modulos`` names them)."""
-    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos
+    from asistente.conocimiento.lecturas import ficheros_de_modulos
 
     de_modulos = [(f.nombre, f.ruta) for f in ficheros_de_modulos(data_dir, modulos) if f.ruta is not None]
     return [(p.name, p) for p in ficheros_de_parametros(data_dir)] + de_modulos
@@ -216,7 +216,7 @@ def grupos_de_los_bloques(
     boe_id: str, pagina: str | None, bloques: Iterable[str], *, data_dir: Path = DATA_DIR
 ) -> list[tuple[Objetivo, list[str]]]:
     """Every group, in any parameter file, read from one of ``bloques`` of the law ``boe_id``, with those blocks."""
-    from hacienda_gpt.tax.recodificacion.adaptadores import todos_los_objetivos
+    from asistente.conocimiento.recodificacion.adaptadores import todos_los_objetivos
 
     buscados = set(bloques)
     if not buscados:
@@ -256,7 +256,7 @@ def _json(path: Path) -> Any:
 
 
 def _ley_de(adaptador: Adaptador, ruta: list[str], ficheros: dict[int, dict[str, Any]], data_dir: Path) -> str:
-    from hacienda_gpt.tax.recodificacion.adaptadores import construir_objetivo
+    from asistente.conocimiento.recodificacion.adaptadores import construir_objetivo
 
     try:
         return construir_objetivo(adaptador, ruta, ficheros, data_dir=data_dir, origen="procedencia").boe_id
@@ -267,7 +267,7 @@ def _ley_de(adaptador: Adaptador, ruta: list[str], ficheros: dict[int, dict[str,
 
 
 def _historico(adaptador: Adaptador, fuente: dict[str, Any]) -> bool:
-    from hacienda_gpt.tax.recodificacion.adaptadores import _HISTORICA, GrupoDeCifras
+    from asistente.conocimiento.recodificacion.adaptadores import _HISTORICA, GrupoDeCifras
 
     return (
         bool(fuente.get("version_historica"))
@@ -283,9 +283,9 @@ def fuera_del_bucle(boe_id: str, bloques: Iterable[str], *, data_dir: Path = DAT
     Groups read from a superseded wording are left out: they are pinned to that wording, and re-reading one is the
     operator's call (``--version``).
     """
-    from hacienda_gpt.tax.recodificacion.adaptadores import _DEL_IRPF, FICHERO_IRPF, GrupoDeCifras
-    from hacienda_gpt.tax.recodificacion.control import articulos_de_referencia
-    from hacienda_gpt.tax.recodificacion.nucleo import ejercicios_en
+    from asistente.conocimiento.recodificacion.adaptadores import _DEL_IRPF, FICHERO_IRPF, GrupoDeCifras
+    from asistente.conocimiento.recodificacion.control import articulos_de_referencia
+    from asistente.conocimiento.recodificacion.nucleo import ejercicios_en
 
     buscados = set(bloques)
     fuera: list[str] = []
@@ -314,14 +314,14 @@ def fuera_del_bucle(boe_id: str, bloques: Iterable[str], *, data_dir: Path = DAT
 def _sin_cuadrar(texto_de: TextoDe, data_dir: Path, modulos: Sequence[Any] | None = None) -> dict[str, list[str]]:
     """Per law: failing checks of every parameter file (and of every module's legal data), and IRPF groups flagged
     as not verified that nothing checks."""
-    from hacienda_gpt.tax.recodificacion.adaptadores import (
+    from asistente.conocimiento.recodificacion.adaptadores import (
         _DEL_IRPF,
         EVIDENCIA_DEDUCCIONES,
         EVIDENCIA_PARAMETROS,
         FICHERO_IRPF,
         _otros_modulos,
     )
-    from hacienda_gpt.tax.recodificacion.nucleo import ejercicios_en
+    from asistente.conocimiento.recodificacion.nucleo import ejercicios_en
 
     motivos: dict[str, list[str]] = {}
 
@@ -364,8 +364,8 @@ def _sin_cuadrar(texto_de: TextoDe, data_dir: Path, modulos: Sequence[Any] | Non
         if callable(verificar_ficheros):
             for fichero, resultados in verificar_ficheros(texto_de, data_dir=data_dir).items():
                 anotar(fichero, resultados)
-    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos
-    from hacienda_gpt.conocimiento.registro import verificar_fichero
+    from asistente.conocimiento.lecturas import ficheros_de_modulos
+    from asistente.conocimiento.registro import verificar_fichero
 
     for legal in ficheros_de_modulos(data_dir, modulos):
         anotar(legal.nombre, verificar_fichero(legal, texto_de))
@@ -386,7 +386,7 @@ def lecturas(
     or, given ``fecha_boe(boe_id)`` (the BOE's metadata, what ``params-check`` compares), when that date is. The
     blocks changed are those whose wording was published after that reading. Returns the states and the pages.
     """
-    from hacienda_gpt.proactive.impacto import articulos_modificados
+    from asistente.nucleo.proactive.impacto import articulos_modificados
 
     fuentes = fuentes_de_los_parametros(data_dir, modulos)
     estados: dict[str, EstadoDeLey] = {}
@@ -454,7 +454,7 @@ def diagnosticar(
     ``modulos``: the modules' legal data files to cover (default: every declared one, for the package's own data
     directory only — see :func:`ficheros_con_lecturas`).
     """
-    from hacienda_gpt.conocimiento.lecturas import ficheros_de_modulos, grupos_en_bloques
+    from asistente.conocimiento.lecturas import ficheros_de_modulos, grupos_en_bloques
 
     estados, paginas = lecturas(texto_de, data_dir=data_dir, fecha_boe=fecha_boe, modulos=modulos)
     pendientes = [e for e in estados.values() if e.desactualizada]
@@ -542,7 +542,7 @@ def refrescar(
     cambios: dict[Path, tuple[dict[str, Any], int]] = {}
     sin_registro: list[str] = []
     norma = boe_id
-    from hacienda_gpt.conocimiento.lecturas import anotar_en_texto, ficheros_de_modulos
+    from asistente.conocimiento.lecturas import anotar_en_texto, ficheros_de_modulos
 
     legales = {f.ruta: f for f in ficheros_de_modulos(data_dir, modulos) if f.ruta is not None}
     textuales: dict[Path, str] = {}
@@ -629,7 +629,7 @@ def refrescar(
         tmp.replace(path)
         legales[path].limpiar()
     if cambios:
-        from hacienda_gpt.tax import fuentes
+        from asistente.conocimiento import fuentes
 
         _limpiar_caches()
         fuentes.normas_de_parametros.cache_clear()

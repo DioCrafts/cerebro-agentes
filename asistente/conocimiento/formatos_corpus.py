@@ -1,6 +1,6 @@
 """Format watch for the corpus conversion (Docling), and for the BOE's autonomic codes in particular.
 
-The ingest (:mod:`hacienda_gpt.processor.document_loader`) records each file in
+The ingest (:mod:`asistente.conocimiento.processor.document_loader`) records each file in
 its manifest with however many chunks Docling produced, zero included: a PDF
 that downloaded fine but has no text layer, or whose layout Docling no longer
 understands, is indexed as "nothing" and nobody is told. :class:`RecuentoCorpus`
@@ -104,7 +104,7 @@ class RecuentoCorpus:
     def informar(self, contexto: str = "") -> None:
         """Report the run (one observation per source). Never raises; does nothing for an empty run."""
         try:
-            from hacienda_gpt.ops import formatos
+            from asistente.conocimiento import formatos
 
             if self.ficheros:
                 formatos.observar(

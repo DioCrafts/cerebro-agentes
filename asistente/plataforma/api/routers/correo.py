@@ -29,20 +29,20 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria.servicio import DecisionInvalidaError
-from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.correo import HECHO_VENTANA, almacen, cifrado, decisiones, oauth, propuestas
-from hacienda_gpt.modulos.correo import resumen as resumenes
-from hacienda_gpt.modulos.correo.clasificacion import CATEGORIAS
-from hacienda_gpt.modulos.correo.config import SCOPES_FASE_1, configuracion
-from hacienda_gpt.modulos.correo.http import CorreoError
-from hacienda_gpt.modulos.correo.sincronizacion import sincronizar
-from hacienda_gpt.modulos.perfil import perfil_de, registrar_hechos_de_modulo
-from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.capacidades.correo import HECHO_VENTANA, almacen, cifrado, decisiones, oauth, propuestas
+from asistente.capacidades.correo import resumen as resumenes
+from asistente.capacidades.correo.clasificacion import CATEGORIAS
+from asistente.capacidades.correo.config import SCOPES_FASE_1, configuracion
+from asistente.capacidades.correo.http import CorreoError
+from asistente.capacidades.correo.sincronizacion import sincronizar
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria.servicio import DecisionInvalidaError
+from asistente.nucleo.modulos.contrato import Modulo
+from asistente.nucleo.modulos.perfil import perfil_de, registrar_hechos_de_modulo
+from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 
 logger = logging.getLogger(__name__)
 

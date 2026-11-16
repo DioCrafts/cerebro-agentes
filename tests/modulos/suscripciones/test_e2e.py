@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.suscripciones import MODULO
-from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO
+from asistente.ambitos.suscripciones import MODULO
+from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 from tests.modulos.suscripciones.sintetico import FIXTURES
 
 

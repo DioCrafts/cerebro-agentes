@@ -31,7 +31,7 @@ from typing import Any
 from urllib.parse import urlsplit
 import urllib.request
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

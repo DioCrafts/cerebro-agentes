@@ -24,15 +24,14 @@ import time
 from typing import Any, Literal
 from uuid import uuid4
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.agent import AgentResult, TeamAgent
-from hacienda_gpt.agent.providers.base import LLMProvider
-from hacienda_gpt.agent.search import CorpusSearcher
-from hacienda_gpt.agent.verifier import Verifier
-from hacienda_gpt.evals.agent_eval import ExcludingSearcher
-from hacienda_gpt.evaluacion.cifras import SinCorpus, caso_desde_expediente
-from hacienda_gpt.evaluacion.juez import juzgar
-from hacienda_gpt.evaluacion.modelos import (
+from asistente.nucleo.agent.agent import AgentResult, TeamAgent
+from asistente.nucleo.agent.providers.base import LLMProvider
+from asistente.nucleo.agent.search import CorpusSearcher
+from asistente.nucleo.agent.verifier import Verifier
+from asistente.nucleo.evals.agent_eval import ExcludingSearcher
+from asistente.nucleo.evaluacion.cifras import SinCorpus, caso_desde_expediente
+from asistente.nucleo.evaluacion.juez import juzgar
+from asistente.nucleo.evaluacion.modelos import (
     CasoEvaluacion,
     CitaRegistrada,
     Comparacion,
@@ -45,10 +44,11 @@ from hacienda_gpt.evaluacion.modelos import (
     ResumenInforme,
     VeredictoJuez,
 )
-from hacienda_gpt.evaluacion.reproduccion import ProveedorReproduccion
-from hacienda_gpt.evaluacion.suite import CifrasEsperadas, cifras_esperadas, comprobar, modulos_de
-from hacienda_gpt.evaluacion.variantes import Variante, argumentos_proveedor, usar_variante
-from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider, Presupuesto, contexto_consumo, hoy_madrid
+from asistente.nucleo.evaluacion.reproduccion import ProveedorReproduccion
+from asistente.nucleo.evaluacion.suite import CifrasEsperadas, cifras_esperadas, comprobar, modulos_de
+from asistente.nucleo.evaluacion.variantes import Variante, argumentos_proveedor, usar_variante
+from asistente.plataforma import settings
+from asistente.plataforma.ops.consumo import ConsumoStore, MeteredProvider, Presupuesto, contexto_consumo, hoy_madrid
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ FabricaProveedor = Callable[[Variante, CasoEvaluacion, dict[str, str]], LLMProvi
 
 def proveedor_real(variante: Variante, _caso: CasoEvaluacion, _cifras: dict[str, str]) -> LLMProvider:
     """The provider the variant names (settings for whatever it leaves unset)."""
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.providers import create_provider
 
     return create_provider(**argumentos_proveedor(variante))
 
@@ -71,7 +71,7 @@ def proveedor_reproduccion(_variante: Variante, caso: CasoEvaluacion, cifras: di
 def buscador_por_defecto() -> tuple[CorpusSearcher, str | None]:
     """The production FAISS searcher, or an empty one (with a warning) when there is no index."""
     try:
-        from hacienda_gpt.agent.search import FaissCorpusSearcher
+        from asistente.nucleo.agent.search import FaissCorpusSearcher
 
         return FaissCorpusSearcher.from_settings(), None
     except Exception as exc:  # no index on this machine: calculator and module cases still run
@@ -97,7 +97,7 @@ class Entorno:
 
 # Purposes of the calls of a run. The agent under test is metered with the SAME purposes as in production
 # ("agente", "verificador"; the specialists add "especialista:<clave>"), so the routing table
-# (hacienda_gpt/agent/enrutado.py) picks the same model per purpose as the deployed assistant would; the case
+# (asistente/nucleo/agent/enrutado.py) picks the same model per purpose as the deployed assistant would; the case
 # id of every record is "eval:<run>:<case>:<repetition>", which keeps evaluation spend apart in /usage.
 PROPOSITO_AGENTE = "agente"
 PROPOSITO_VERIFICADOR = "verificador"
@@ -324,7 +324,7 @@ def evaluar(
     if incompleto:
         avisos.append("Presupuesto agotado: el informe está incompleto y no sirve para promover una variante.")
     nombre_proveedor, modelo = _identidad(variante, entorno)
-    from hacienda_gpt.evaluacion.variantes import ROLES, huella, texto_prompt
+    from asistente.nucleo.evaluacion.variantes import ROLES, huella, texto_prompt
 
     return InformeEvaluacion(
         variante=variante.id,

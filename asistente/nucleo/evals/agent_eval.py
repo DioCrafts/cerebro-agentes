@@ -32,8 +32,8 @@ from typing import Any
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import LLMProvider
-from hacienda_gpt.agent.search import CorpusSearcher, SearchFilters
+from asistente.nucleo.agent.providers.base import LLMProvider
+from asistente.nucleo.agent.search import CorpusSearcher, SearchFilters
 
 _CONSULTA_ID_RE = re.compile(r"\b([VN]\d{4}-\d{2})\b")
 _SKIP_TAGS = frozenset({"script", "style", "head"})

@@ -1,13 +1,13 @@
 """The contract of a CAPABILITY: something any domain can use (mail, browser, documents, research).
 
-A domain (``ámbito``: fiscal, luz, caducidades…; see ``hacienda_gpt/modulos/contrato.py``) owns data,
+A domain (``ámbito``: fiscal, luz, caducidades…; see ``asistente/nucleo/modulos/contrato.py``) owns data,
 calculators and notices about one area of the household. A capability owns a MEANS: reading the user's mail,
 driving a browser on an official website, reading an uploaded document, searching with sources. Domains never
 import each other's or a capability's internals: they ask through :func:`pedir`::
 
     resultado = pedir("documentos", "leer_campos", {...}, ContextoPeticion(ambito="caducidades", hoy=hoy))
 
-A capability is a package ``hacienda_gpt.capacidades.<clave>`` whose ``__init__`` exposes ``CAPACIDAD``, an
+A capability is a package ``asistente.capacidades.<clave>`` whose ``__init__`` exposes ``CAPACIDAD``, an
 object satisfying :class:`Capacidad`. Each operation declares:
 
 * its input and output as JSON Schema objects (checked by :func:`pedir` on every call, both ways);
@@ -123,7 +123,7 @@ class ResultadoCapacidad:
     * ``propuesta`` — the operation's effect is ``prepara``: nothing may be applied without the user's confirmation.
 
     ``datos`` defaults to empty so a task-facing result (``resumen``, ``estado``, ``aviso``, ``borrador``,
-    ``es_error``) can be built alone; the tasks engine reads those fields (``hacienda_gpt/tareas``).
+    ``es_error``) can be built alone; the tasks engine reads those fields (``asistente/nucleo/tareas``).
     """
 
     datos: Mapping[str, Any] = field(default_factory=dict)
@@ -133,7 +133,7 @@ class ResultadoCapacidad:
     texto_para_modelo: str = ""
     no_confiable: bool = False
     propuesta: bool = False
-    # For long-running tasks (hacienda_gpt/tareas): the step is done, or waits for the user; a draft the user
+    # For long-running tasks (asistente/nucleo/tareas): the step is done, or waits for the user; a draft the user
     # reviews (never sent); a notice for the user (title, body), created once per step; a failure to retry.
     estado: Literal["hecho", "esperando_usuario"] = "hecho"
     borrador: str | None = None
@@ -203,7 +203,7 @@ class CapacidadBase:
 
 
 # The invocation API lives in ``peticion.py`` (it needs the registry); re-exported here so a domain imports one
-# file: ``from hacienda_gpt.capacidades.contrato import ContextoPeticion, pedir``.
+# file: ``from asistente.capacidades.contrato import ContextoPeticion, pedir``.
 def pedir(
     capacidad: str,
     operacion: str,
@@ -212,14 +212,14 @@ def pedir(
     **opciones: Any,
 ) -> ResultadoCapacidad:
     """Ask capability ``capacidad`` to run ``operacion`` with ``args`` (see :func:`peticion.pedir`)."""
-    from hacienda_gpt.capacidades.peticion import pedir as _pedir
+    from asistente.capacidades.peticion import pedir as _pedir
 
     return _pedir(capacidad, operacion, args, contexto, **opciones)
 
 
 def envolver_no_confiable(origen: str, texto: str) -> str:
     """``texto`` (third-party content) between untrusted-data marks, inert (see :func:`peticion.envolver`)."""
-    from hacienda_gpt.capacidades.peticion import envolver
+    from asistente.capacidades.peticion import envolver
 
     return envolver(origen, texto)
 

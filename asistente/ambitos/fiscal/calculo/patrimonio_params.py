@@ -25,8 +25,8 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.autonomos_params import Evidencia, _compacto, _Model, texto_de_html
-from hacienda_gpt.modulos.fiscal.calculo.params import (
+from asistente.ambitos.fiscal.calculo.autonomos_params import Evidencia, _compacto, _Model, texto_de_html
+from asistente.ambitos.fiscal.calculo.params import (
     DATA_DIR,
     EjercicioNoDisponibleError,
     Escala,
@@ -374,11 +374,11 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.modulos.fiscal.calculo.patrimonio_params <ejercicio> <dir with the BOE pages>``."""
+    """``python -m asistente.ambitos.fiscal.calculo.patrimonio_params <ejercicio> <dir with the BOE pages>``."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 2:
         print(
-            "uso: python -m hacienda_gpt.modulos.fiscal.calculo.patrimonio_params <ejercicio> <directorio con <ID>.html>"
+            "uso: python -m asistente.ambitos.fiscal.calculo.patrimonio_params <ejercicio> <directorio con <ID>.html>"
         )
         return 2
     params = load_patrimonio_params(int(args[0]))

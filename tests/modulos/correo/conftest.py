@@ -8,8 +8,8 @@ from pathlib import Path
 from cryptography.fernet import Fernet
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.modulos.correo import http, oauth
+from asistente.capacidades.correo import http, oauth
+from asistente.plataforma import settings
 from tests.modulos.correo.falso import GoogleFalso
 
 CLAVE = Fernet.generate_key().decode()

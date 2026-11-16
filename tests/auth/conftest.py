@@ -6,14 +6,14 @@ from dataclasses import dataclass
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_case_store, get_notification_store
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_case_store, get_notification_store
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
 
 PASSWORD = "una-clave-larga-1"
 CONSENTS = {"tratamiento_datos": True, "envio_documentos_a_proveedor_llm": False, "avisos_por_correo": False}

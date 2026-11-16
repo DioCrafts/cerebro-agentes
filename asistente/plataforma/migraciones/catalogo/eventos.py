@@ -1,11 +1,11 @@
-"""``hacienda_gpt.eventos``: the event bus (outbox, cursors, deliveries, timers, worker heartbeats).
+"""``asistente.nucleo.eventos``: the event bus (outbox, cursors, deliveries, timers, worker heartbeats).
 
 Baseline copied byte for byte from ``eventos/esquema.py`` (``DDL``).
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 DDL = (
     """
@@ -75,7 +75,7 @@ DDL = (
 
 PROPIETARIO = Propietario(
     nombre="eventos",
-    paquete="hacienda_gpt.eventos",
+    paquete="asistente.nucleo.eventos",
     descripcion="Bus de eventos: bandeja de salida, cursores, entregas con reintentos, temporizadores, latidos.",
     tablas=("eventos", "eventos_cursores", "eventos_entregas", "eventos_temporizadores", "eventos_trabajadores"),
     otros_objetos=("idx_eventos_case", "idx_entregas_estado", "idx_entregas_case", "idx_temporizadores_fecha"),

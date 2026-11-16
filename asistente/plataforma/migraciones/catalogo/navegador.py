@@ -1,4 +1,4 @@
-"""``hacienda_gpt.navegador`` (``navegador/persistencia.py``): browser tasks, shared by every process.
+"""``asistente.capacidades.navegador`` (``navegador/persistencia.py``): browser tasks, shared by every process.
 
 * ``navegador_tareas`` — one row per task: its state, steps and messages, which process runs it and that
   process's heartbeat, and the stop / close requests from other processes. The parameters the user typed
@@ -12,7 +12,7 @@ Both go with the case (trigger on ``case_states``, deferred until that table exi
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 TAREAS = """CREATE TABLE IF NOT EXISTS navegador_tareas (
     id TEXT PRIMARY KEY,
@@ -45,7 +45,7 @@ END"""
 
 PROPIETARIO = Propietario(
     nombre="navegador",
-    paquete="hacienda_gpt.navegador",
+    paquete="asistente.capacidades.navegador",
     descripcion="Tareas del agente con navegador y arranques por usuario (límite de 24 h).",
     tablas=("navegador_tareas", "navegador_inicios"),
     otros_objetos=("idx_navegador_tareas_case", "idx_navegador_inicios", "navegador_borrar_con_caso"),

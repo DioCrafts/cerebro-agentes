@@ -1,9 +1,9 @@
 import json
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.schemas import CaseState, MissingFact, RiskLevel
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.schemas import CaseState, MissingFact, RiskLevel
 from .fakes import FakeSearcher, corpus
 
 

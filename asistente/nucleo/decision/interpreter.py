@@ -5,12 +5,12 @@ from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.decision.fact_extractor import (
+from asistente.nucleo.decision.fact_extractor import (
     FactExtractor,
     RegexFactExtractor,
 )
-from hacienda_gpt.decision.schemas import CaseState, Fact, MissingFact, RiskLevel
-from hacienda_gpt.decision.taxonomy import SupportedIntent, blocking_facts_for_intent, required_facts_for_intent
+from asistente.nucleo.decision.schemas import CaseState, Fact, MissingFact, RiskLevel
+from asistente.nucleo.decision.taxonomy import SupportedIntent, blocking_facts_for_intent, required_facts_for_intent
 
 
 class Intent(str, Enum):

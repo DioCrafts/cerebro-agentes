@@ -9,13 +9,13 @@ import formatos_util as util
 import legacy_parsers as legacy
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import boe_watch
-from hacienda_gpt.crawler import boletin_autonomico, teac
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasConsolidado, ReglasMetadatos, ReglasSumario
-from hacienda_gpt.proactive import impacto, novedades
-from hacienda_gpt.tax import documentos, vigencia_normas
+from asistente.ambitos.fiscal import documentos
+from asistente.conocimiento import formatos, vigencia_normas
+from asistente.conocimiento.crawler import boletin_autonomico, teac
+from asistente.conocimiento.formatos_boe import ReglasConsolidado, ReglasMetadatos, ReglasSumario
+from asistente.nucleo.proactive import impacto, novedades
+from asistente.plataforma import settings
+from asistente.plataforma.cli import boe_watch
 
 XML_REAL = "boe_documento_BOE-A-2023-26452.xml"
 HTML_REAL = "boe_consolidado_BOE-A-2006-20764_recorte.html"
@@ -191,7 +191,7 @@ def test_an_applied_spec_changes_what_the_parser_reads_and_a_broken_one_is_ignor
     ruta = tmp_path / "specs" / "boe_metadatos.json"
     ruta.parent.mkdir(parents=True)
 
-    from hacienda_gpt.ops.formatos_boe import entrada_metadatos
+    from asistente.conocimiento.formatos_boe import entrada_metadatos
 
     assert "fecha_actualizacion" not in entrada_metadatos(reglas, payload)
 

@@ -1,7 +1,7 @@
 """Which model serves each PURPOSE of a model call (routing by tier), and escalation.
 
 Every model call of the app is made through a metering wrapper with a purpose
-(:func:`hacienda_gpt.ops.consumo.medir` / ``con_proposito``): ``agente``,
+(:func:`asistente.plataforma.ops.consumo.medir` / ``con_proposito``): ``agente``,
 ``verificador``, ``especialista:<clave>``, ``documentos``, ``recodificacion``…
 This module maps each purpose to a TIER — ``pequeno`` (classify, route,
 extract), ``mediano`` (module specialists, researchers, readers) or ``grande``
@@ -37,7 +37,7 @@ import os
 import re
 from typing import Any, Literal
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

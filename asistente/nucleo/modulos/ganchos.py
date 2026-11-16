@@ -44,12 +44,12 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import TYPE_CHECKING, Any, Literal
 
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
 
 if TYPE_CHECKING:
-    from hacienda_gpt.decision.schemas import CaseState
-    from hacienda_gpt.modulos.puentes import PropuestaHecho
-    from hacienda_gpt.proactive.store import NotificationStore
+    from asistente.nucleo.decision.schemas import CaseState
+    from asistente.nucleo.modulos.puentes import PropuestaHecho
+    from asistente.nucleo.proactive.store import NotificationStore
 
 TODOS: Literal["*"] = "*"
 
@@ -149,14 +149,14 @@ def _tarea_diaria_v1(modulo: Any) -> Callable[[date], Any] | None:
     import importlib
 
     try:
-        paquete = importlib.import_module(f"hacienda_gpt.modulos.{modulo.clave}")
+        paquete = importlib.import_module(f"asistente.ambitos.{modulo.clave}")
     except Exception:
         return None
     return _invocable(getattr(paquete, nombre, None))
 
 
 def _puentes_v1(modulo: Any) -> tuple[PuenteAmbito, ...]:
-    from hacienda_gpt.modulos.puentes import PUENTES
+    from asistente.nucleo.modulos.puentes import PUENTES
 
     puente = PUENTES.get(str(getattr(modulo, "clave", "")))
     return (PuenteAmbito(destino="fiscal", proponer=puente),) if puente is not None else ()
@@ -164,7 +164,7 @@ def _puentes_v1(modulo: Any) -> tuple[PuenteAmbito, ...]:
 
 def _ley_v1(evento: Any, case: CaseState, *, hoy: date, store: NotificationStore) -> int | None:
     """What the v1 core did for ANY module with its own inbox runner: notify new tax law to the case."""
-    from hacienda_gpt.modulos.fiscal.modulo import al_evento_en_bandeja
+    from asistente.ambitos.fiscal.modulo import al_evento_en_bandeja
 
     return al_evento_en_bandeja(evento, case, hoy=hoy, store=store)
 
@@ -265,7 +265,7 @@ def proxima_revision_de_caso(modulo: Any, case: CaseState, *, hoy: date) -> date
     propia = ganchos.eventos.proxima_revision
     if propia is None:
         return None
-    from hacienda_gpt.modulos.perfil import perfil_de
+    from asistente.nucleo.modulos.perfil import perfil_de
 
     valor = propia(ContextoModulo(perfil=perfil_de(case), hoy=hoy, case_id=case.case_id))
     return valor if isinstance(valor, date) and valor > hoy else None

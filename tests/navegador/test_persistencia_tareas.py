@@ -17,13 +17,13 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.navegador import persistencia, tareas
-from hacienda_gpt.navegador.persistencia import MENSAJE_HUERFANA
-from hacienda_gpt.navegador.tareas import GestorTareas, Servicios, Tarea, TareaError
+from asistente.capacidades.navegador import persistencia, tareas
+from asistente.capacidades.navegador.persistencia import MENSAJE_HUERFANA
+from asistente.capacidades.navegador.tareas import GestorTareas, Servicios, Tarea, TareaError
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.plataforma import settings
 from tests.navegador.simulacion import Sitios
 from tests.navegador.test_ejecutor import PARAMS_DATADIS
 from tests.proactive import make_case

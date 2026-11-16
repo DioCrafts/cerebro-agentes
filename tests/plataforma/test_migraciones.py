@@ -11,18 +11,20 @@ import threading
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.cli.plataforma import cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.doctrine.grafo import DoctrineGraph
-from hacienda_gpt.evaluacion.captura import FeedbackStore
-from hacienda_gpt.eventos.bus import Bus
-from hacienda_gpt.memoria.almacen import DecisionStore
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.modulos.correo import almacen as correo
-from hacienda_gpt.ops.consumo import ConsumoStore
-from hacienda_gpt.plataforma.migraciones import (
+from asistente.capacidades.correo import almacen as correo
+from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.evaluacion.captura import FeedbackStore
+from asistente.nucleo.eventos.bus import Bus
+from asistente.nucleo.memoria.almacen import DecisionStore
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.nucleo.proactive.entrega import EntregaStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.nucleo.tareas.almacen import TareaStore
+from asistente.plataforma import settings
+from asistente.plataforma.auth.store import AuthStore
+from asistente.plataforma.cli.plataforma import cli
+from asistente.plataforma.migraciones import (
     BASE_DOCTRINA,
     TABLA_REGISTRO,
     Migracion,
@@ -36,10 +38,8 @@ from hacienda_gpt.plataforma.migraciones import (
     registrar,
     volcado,
 )
-from hacienda_gpt.proactive.entrega import EntregaStore
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.push.almacen import PushStore
-from hacienda_gpt.tareas.almacen import TareaStore
+from asistente.plataforma.ops.consumo import ConsumoStore
+from asistente.plataforma.push.almacen import PushStore
 from tests.proactive import make_case
 
 # Owners that did not exist before the migrations (new tables, not part of the «old code» comparison).
@@ -317,7 +317,7 @@ def test_the_deployment_inventory_lists_every_owner_of_the_catalogue() -> None:
     """docs/despliegue.md §2.1 is the operator's inventory: same owners, packages, tables, objects and versions."""
     from pathlib import Path
 
-    from hacienda_gpt.plataforma.migraciones.catalogo import PROPIETARIOS
+    from asistente.plataforma.migraciones.catalogo import PROPIETARIOS
 
     texto = (Path(__file__).resolve().parents[2] / "docs" / "despliegue.md").read_text(encoding="utf-8")
     seccion = texto.split("### 2.1 Inventario de tablas", 1)[1].split("###", 1)[0]

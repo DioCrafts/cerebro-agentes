@@ -15,8 +15,8 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.ayudas.hogar import PRESTACIONES, Hogar
-from hacienda_gpt.modulos.ayudas.parametros import Grupo, PrestacionesParams
+from asistente.ambitos.ayudas.hogar import PRESTACIONES, Hogar
+from asistente.ambitos.ayudas.parametros import Grupo, PrestacionesParams
 
 Estado = Literal["cumple", "probable", "automatica", "proximamente", "ya_solicitada", "faltan_datos", "no_cumple"]
 # States worth telling the user about (and notifying).

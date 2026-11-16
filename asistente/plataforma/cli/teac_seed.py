@@ -1,6 +1,6 @@
 """Fetch TEAC (DYCTEA) criterios into the local RAG corpus.
 
-The original `TEACCrawler` in `hacienda_gpt.crawler.teac` iterates over integer
+The original `TEACCrawler` in `asistente.conocimiento.crawler.teac` iterates over integer
 IDs (``criterio.aspx?id=N`` for N in a range), but real DYCTEA criterio IDs
 are compound strings like ``54/00218/2024/00/0/1``. As a result the scrapy
 spider produced zero items in practice. This CLI replaces it with a small
@@ -29,8 +29,8 @@ import urllib.request
 import click
 from pydantic import BaseModel, ConfigDict, field_validator
 
-from hacienda_gpt.crawler.teac import observar_criterio, parse_teac_criterio
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.teac import observar_criterio, parse_teac_criterio
 
 logger = logging.getLogger(__name__)
 

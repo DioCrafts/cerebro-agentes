@@ -4,7 +4,7 @@ The general `boe-ccaa` crawler downloads the CCAA codes; this CLI is a thin
 companion for the long tail of *individual* legislative acts that we want
 indexed by ID — e.g. the Modelo 720 trio (Ley 7/2012, RD 1558/2012, Orden
 HAP/72/2013). Maintainers add new IDs to ``rules/boe_seed_catalog.json`` and
-re-run ``uv run python -m hacienda_gpt.cli.boe_seed`` to refresh the
+re-run ``uv run python -m asistente.plataforma.cli.boe_seed`` to refresh the
 local snapshot.
 
 We deliberately go through ``https://www.boe.es/buscar/act.php?id=<ID>``
@@ -24,14 +24,14 @@ import urllib.request
 
 import click
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 logger = logging.getLogger(__name__)
 
 
 _BOE_CONSOLIDATED_URL = "https://www.boe.es/buscar/act.php?id={id}"
 # Resource-relative default so the CLI can be run from anywhere, and so the
-# catalog never collides with `hacienda_gpt.decision.rules.load_rules_from_directory`
+# catalog never collides with `asistente.nucleo.decision.rules.load_rules_from_directory`
 # which globs every JSON in the top-level ``rules/`` folder.
 _DEFAULT_CATALOG = Path(__file__).resolve().parent / "boe_seed_catalog.json"
 _DEFAULT_OUTPUT = Path("./data/html")

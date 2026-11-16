@@ -34,23 +34,23 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CONSENT_DOCUMENTS_DETAIL, CaseAccess, get_case_access, require_session
-from hacienda_gpt.capacidades.documentos.lectura import DocumentoNoLegibleError, decode_upload
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import emitir_cambio_modulo
-from hacienda_gpt.memoria.almacen import almacen, tabla_existe
-from hacienda_gpt.memoria.servicio import desde_accion
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore, describir
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
-from hacienda_gpt.modulos.ganchos import directas_de, ganchos_de, obligatorio
-from hacienda_gpt.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
-from hacienda_gpt.modulos.preferencias import EstadoModulo, estado_para_usuario, modulos_activos_para_caso
-from hacienda_gpt.modulos.registro import registro
-from hacienda_gpt.proactive.bandeja import kind_de
-from hacienda_gpt.proactive.jobs import hoy_en_espana
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.capacidades.documentos.lectura import DocumentoNoLegibleError, decode_upload
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import emitir_cambio_modulo
+from asistente.nucleo.memoria.almacen import almacen, tabla_existe
+from asistente.nucleo.memoria.servicio import desde_accion
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore, describir
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
+from asistente.nucleo.modulos.ganchos import directas_de, ganchos_de, obligatorio
+from asistente.nucleo.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
+from asistente.nucleo.modulos.preferencias import EstadoModulo, estado_para_usuario, modulos_activos_para_caso
+from asistente.nucleo.modulos.registro import registro
+from asistente.nucleo.proactive.bandeja import kind_de
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CONSENT_DOCUMENTS_DETAIL, CaseAccess, get_case_access, require_session
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +237,7 @@ def _herramienta_de_documento(modulo: Modulo) -> str | None:
 def _capacidad_de(modulo: Modulo) -> str | None:
     """The capability whose chat front this module is (same key), or None for a domain."""
     try:
-        from hacienda_gpt.capacidades.registro import registro as registro_capacidades
+        from asistente.capacidades.registro import registro as registro_capacidades
 
         return modulo.clave if modulo.clave in registro_capacidades() else None
     except Exception:  # the capability registry never breaks the module list
@@ -305,7 +305,7 @@ def build_router(
                 acciones.rechazar_pendientes_de(case_id, clave)
                 if nombres:
                     _borrar_hechos(cases, case_id, clave, nombres)
-                    # The user's decisions about the module are its data too (hacienda_gpt/memoria).
+                    # The user's decisions about the module are its data too (asistente/nucleo/memoria).
                     if tabla_existe(cases.db_path):
                         almacen(cases.db_path).delete_where(case_id, modulo=clave)
                 # What the module keeps outside the facts (``Ganchos.borrar_datos_de_caso``, modulos/ganchos.py).
@@ -332,7 +332,7 @@ def build_router(
         through ``PUT /cases/{id}/facts/{nombre}``."""
         from dataclasses import asdict
 
-        from hacienda_gpt.modulos.puentes import propuestas_para
+        from asistente.nucleo.modulos.puentes import propuestas_para
 
         access.check(case_id)
         case = cases.get_case(case_id)
@@ -410,7 +410,7 @@ def build_router(
             resultado=texto,
             es_error=es_error,
         )
-        if not es_error:  # remembered as done (hacienda_gpt/memoria; never raises)
+        if not es_error:  # remembered as done (asistente/nucleo/memoria; never raises)
             desde_accion(
                 cases.db_path,
                 case_id=accion.case_id,
@@ -444,7 +444,7 @@ def build_router(
         rechazada = acciones.transicion(accion_id, desde="pendiente", hacia="rechazada")
         if rechazada is None:
             raise HTTPException(status_code=409, detail="Esta acción ya se decidió.")
-        # Remembered, so the specialist does not propose it again (hacienda_gpt/memoria; never raises).
+        # Remembered, so the specialist does not propose it again (asistente/nucleo/memoria; never raises).
         desde_accion(
             cases.db_path,
             case_id=accion.case_id,
@@ -575,7 +575,7 @@ def build_router(
         lector = documentos.leer if documentos is not None else None
         if lector is None:
             raise HTTPException(status_code=404, detail="Este módulo no lee documentos.")
-        from hacienda_gpt.ops.consumo import PresupuestoAgotadoError, contexto_consumo
+        from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo
 
         try:
             data = decode_upload(payload.content_base64)

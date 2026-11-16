@@ -13,8 +13,8 @@ from datetime import date
 import html
 import re
 
-from hacienda_gpt.modulos.suscripciones.lectura import enmascarar_cuenta, leer_importe
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
+from asistente.ambitos.suscripciones.lectura import enmascarar_cuenta, leer_importe
+from asistente.ambitos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
 
 _MEDIO_POR_TIPO: dict[str, Medio] = {
     "DIRECTDEBIT": "adeudo",

@@ -6,11 +6,11 @@ from datetime import timedelta
 import sqlite3
 import threading
 
-from hacienda_gpt.decision.schemas import CaseStatus
-from hacienda_gpt.eventos import productores
-from hacienda_gpt.eventos.bus import HECHO, MUERTO, OMITIDO, PENDIENTE, Bus
-from hacienda_gpt.eventos.salud import estado, problemas
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.decision.schemas import CaseStatus
+from asistente.nucleo.eventos import productores
+from asistente.nucleo.eventos.bus import HECHO, MUERTO, OMITIDO, PENDIENTE, Bus
+from asistente.nucleo.eventos.salud import estado, problemas
+from asistente.nucleo.eventos.tipos import (
     FECHA_UMBRAL,
     INDICE_PUBLICADO,
     MODULO_ACTIVADO,
@@ -338,8 +338,8 @@ def test_purge_forgets_old_finished_work_only(tmp_path) -> None:
 def test_a_tasks_cursor_left_behind_no_longer_blocks_the_purge(tmp_path) -> None:
     """The tasks worker ran once (its ``tareas`` cursor exists) and then never again: the event worker runs the
     tasks' consumer too, so the cursor keeps up and the purge still forgets old events."""
-    from hacienda_gpt.eventos.bus import consumidores_del_trabajador
-    from hacienda_gpt.tareas.motor import ConsumidorTareas
+    from asistente.nucleo.eventos.bus import consumidores_del_trabajador
+    from asistente.nucleo.tareas.motor import ConsumidorTareas
 
     db = str(tmp_path / "bus.sqlite3")
     reloj = Reloj()
@@ -361,8 +361,8 @@ def test_a_tasks_cursor_left_behind_no_longer_blocks_the_purge(tmp_path) -> None
 
 
 def test_every_event_worker_runs_the_tasks_consumer(tmp_path, monkeypatch) -> None:
-    from hacienda_gpt.cli import eventos as cli_eventos
-    from hacienda_gpt.plataforma import trabajos
+    from asistente.plataforma import trabajos
+    from asistente.plataforma.cli import eventos as cli_eventos
 
     db = str(tmp_path / "bus.sqlite3")
     assert [c.nombre for c in cli_eventos._bus(db).consumidores] == ["modulos", "tareas"]

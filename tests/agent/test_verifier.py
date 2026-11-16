@@ -1,6 +1,6 @@
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.agent.verifier import ResponseType, Verdict, Verifier
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.verifier import ResponseType, Verdict, Verifier
 from .fakes import ScriptedProvider, corpus
 
 

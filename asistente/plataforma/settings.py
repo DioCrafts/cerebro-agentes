@@ -151,12 +151,12 @@ DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")
 # Validation / repeal status of the decree-laws some parameters depend on (written by `proactive normas-check`).
 NORM_STATUS_PATH = os.environ.get("NORM_STATUS_PATH", "./data/_estado_normas.json")
-# Decision rules live at the repo root (sibling of the hacienda_gpt package).
+# Decision rules live at the repo root (sibling of the asistente package).
 # Resolve to an ABSOLUTE path so the engine loads them regardless of the process
 # working directory (uvicorn/Streamlit may start elsewhere). A relative "rules"
 # silently found nothing from any other CWD — and RuleSet(min_length=1) then
 # raised — stalling every turn. Overridable via the RULES_DIR env var.
-RULES_DIR = os.environ.get("RULES_DIR", str(Path(__file__).resolve().parent.parent / "rules"))
+RULES_DIR = os.environ.get("RULES_DIR", str(Path(__file__).resolve().parents[2] / "rules"))
 UI_USE_API = _env_bool("UI_USE_API", default=False)
 API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
 
@@ -177,7 +177,7 @@ API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "0"))
 # over-filter and can starve the grounding gate, making it abstain even when
 # retrieval is good. The defaults below are lowered to bias toward recall.
 # Calibrate empirically per corpus/embedder with:
-#   uv run python -m hacienda_gpt.cli.benchmark_retrieval
+#   uv run python -m asistente.plataforma.cli.benchmark_retrieval
 # and override via env when you have measured numbers.
 RETRIEVAL_DECISION_THRESHOLD = float(os.environ.get("RETRIEVAL_DECISION_THRESHOLD", "0.45"))
 RETRIEVAL_EXPLAIN_THRESHOLD = float(os.environ.get("RETRIEVAL_EXPLAIN_THRESHOLD", "0.35"))
@@ -215,7 +215,7 @@ DECISION_EXTRACTOR_EFFORT = os.environ.get("DECISION_EXTRACTOR_EFFORT", "low")
 DECISION_EXTRACTOR_MODEL = os.environ.get("DECISION_EXTRACTOR_MODEL", "")
 
 # --- Doctrine graph ----------------------------------------------------------
-# SQLite file built by `python -m hacienda_gpt.cli.doctrine_graph build`. When it
+# SQLite file built by `python -m asistente.plataforma.cli.doctrine_graph build`. When it
 # exists the agent annotates every retrieved ruling/consulta with its validity
 # (current, qualified, superseded, disputed); when it does not, nothing changes.
 DOCTRINE_GRAPH_PATH = os.environ.get("DOCTRINE_GRAPH_PATH", "./data/doctrine_graph.sqlite3")
@@ -235,7 +235,7 @@ SUBAGENTS_PARALLEL = _env_bool("SUBAGENTS_PARALLEL", default=True)
 # --- Notification delivery outside the app ----------------------------------
 # All optional; an empty value keeps that channel off. There are no user
 # accounts yet, so everything goes to ONE owner/operator destination (see
-# hacienda_gpt/proactive/entrega.py). Secrets (the webhook URL, the SMTP
+# asistente/nucleo/proactive/entrega.py). Secrets (the webhook URL, the SMTP
 # password) must come from the environment, never from code.
 NOTIFY_WEBHOOK_URL = os.environ.get("NOTIFY_WEBHOOK_URL", "")
 # json : POST {"title": ..., "text": ...} (Slack-compatible and generic webhooks).
@@ -251,7 +251,7 @@ NOTIFY_SMTP_STARTTLS = _env_bool("NOTIFY_SMTP_STARTTLS", default=True)
 NOTIFY_EMAIL_FROM = os.environ.get("NOTIFY_EMAIL_FROM", "")
 NOTIFY_EMAIL_TO = os.environ.get("NOTIFY_EMAIL_TO", "")
 
-# --- Automatic re-encoding of legal parameters (hacienda_gpt/tax/recodificacion) ---
+# --- Automatic re-encoding of legal parameters (asistente/conocimiento/recodificacion) ---
 # When a group of parameters stops matching the text of its law, a model re-reads
 # the law and PROPOSES new data; deterministic checks and an independent reviewer
 # decide whether the proposal stands. Proposals are JSON files under this directory.
@@ -273,7 +273,7 @@ RECODE_REVIEWER_MODEL = os.environ.get("RECODE_REVIEWER_MODEL", "")
 # when it finishes, as ``--autopilot`` does. Off by default.
 RECODE_AUTOPILOT = _env_bool("RECODE_AUTOPILOT", default=False)
 
-# --- Scheduled-job watchdog (hacienda_gpt/ops/vigia.py) ---------------------
+# --- Scheduled-job watchdog (asistente/plataforma/ops/vigia.py) ---------------------
 # JSON file with the last run / last success / last error of every scheduled job.
 JOBS_STATE_PATH = os.environ.get("JOBS_STATE_PATH", "./data/_jobs_state.json")
 # Dead-man's-switch URL (healthchecks.io convention) pinged after every watched
@@ -282,7 +282,7 @@ JOBS_STATE_PATH = os.environ.get("JOBS_STATE_PATH", "./data/_jobs_state.json")
 # takes precedence and is read when the job finishes.
 HEALTHCHECK_URL = os.environ.get("HEALTHCHECK_URL", "")
 
-# --- Format drift watch (hacienda_gpt/ops/formatos.py) -----------------------
+# --- Format drift watch (asistente/conocimiento/formatos.py) -----------------------
 # Record, on every real read, whether each external format (BOE JSON/XML/HTML,
 # crawler listings, user documents) is still understood. Deterministic, no LLM.
 FORMAT_WATCH = _env_bool("FORMAT_WATCH", default=True)
@@ -307,7 +307,7 @@ FORMAT_REVIEWER_MODEL = os.environ.get("FORMAT_REVIEWER_MODEL", "")
 # drift. Off by default: nothing derived from a user document is stored.
 FORMAT_DOCUMENT_SKELETONS = _env_bool("FORMAT_DOCUMENT_SKELETONS", default=False)
 
-# --- User accounts and privacy (hacienda_gpt/auth) --------------------------
+# --- User accounts and privacy (asistente/plataforma/auth) --------------------------
 # off      : no accounts; anyone holding a case id can read that case (the
 #            historical behaviour — only acceptable on a single-user machine).
 # required : every case-scoped endpoint needs a session (Authorization: Bearer)
@@ -329,9 +329,9 @@ AUTH_LOGIN_WINDOW_SECONDS = int(os.environ.get("AUTH_LOGIN_WINDOW_SECONDS", "900
 # Empty: the app shows its built-in technical summary, which is NOT a legal notice.
 PRIVACY_NOTICE_URL = os.environ.get("PRIVACY_NOTICE_URL", "")
 
-# --- LLM spend: measurement and limits (hacienda_gpt/ops/consumo.py) ---------
+# --- LLM spend: measurement and limits (asistente/plataforma/ops/consumo.py) ---------
 # All optional; empty = no limit. The USD limits are per calendar day in
-# Europe/Madrid and rely on the price table (hacienda_gpt/ops/data/precios_llm.json):
+# Europe/Madrid and rely on the price table (asistente/plataforma/ops/data/precios_llm.json):
 # calls to a model without a known price are recorded with no cost and do not
 # count towards them. Read when the agent is built; an invalid value is refused.
 LLM_DAILY_BUDGET_USD = os.environ.get("LLM_DAILY_BUDGET_USD", "")
@@ -342,7 +342,7 @@ LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "")
 # Replacement price table (same format as the bundled one), for when prices change.
 LLM_PRICES_PATH = os.environ.get("LLM_PRICES_PATH", "")
 
-# --- LLM routing by purpose, prompt caching, batches (hacienda_gpt/agent/enrutado.py) ---
+# --- LLM routing by purpose, prompt caching, batches (asistente/nucleo/agent/enrutado.py) ---
 # Every model call has a purpose (agente, verificador, especialista:<clave>, recodificacion…)
 # mapped to a tier (pequeno | mediano | grande). All empty = the historical behaviour: the
 # provider's model for every purpose. "recomendado" = the documented profile (docs/operacion.md).
@@ -370,9 +370,9 @@ LLM_BATCH_POLL_SECONDS = float(os.environ.get("LLM_BATCH_POLL_SECONDS", "60"))
 # Give up waiting (the state is kept: the next run resumes the same batch).
 LLM_BATCH_MAX_WAIT_HOURS = float(os.environ.get("LLM_BATCH_MAX_WAIT_HOURS", "24"))
 
-# --- Household modules (hacienda_gpt/modulos) ---------------------------------
-# Every package ``hacienda_gpt.modulos.<clave>`` exposing ``MODULO`` is discovered at
-# start-up (see hacienda_gpt/modulos/registro.py). Comma-separated keys listed here
+# --- Household modules (asistente/ambitos) ---------------------------------
+# Every package ``asistente.ambitos.<clave>`` exposing ``MODULO`` is discovered at
+# start-up (see asistente/nucleo/modulos/registro.py). Comma-separated keys listed here
 # are switched off for everyone (their tools, notices and facts are not offered).
 MODULOS_DESACTIVADOS = os.environ.get("MODULOS_DESACTIVADOS", "")
 # Modules active for an account that has not chosen yet, and for every case when
@@ -386,9 +386,9 @@ ESPECIALISTA_MAX_STEPS = int(os.environ.get("ESPECIALISTA_MAX_STEPS", "4"))
 # (a module's law updated after that date is listed for re-reading).
 MODULOS_FUENTES_STATE_PATH = os.environ.get("MODULOS_FUENTES_STATE_PATH", "./data/_modulos_fuentes_state.json")
 
-# --- Event bus (hacienda_gpt/eventos) -------------------------------------------
+# --- Event bus (asistente/nucleo/eventos) -------------------------------------------
 # Profile changes, new BOE norms, new mortgage indices, statement imports and module switches write an
-# event to the cases' database; the API (in-process) and ``python -m hacienda_gpt.cli.eventos worker`` wake
+# event to the cases' database; the API (in-process) and ``python -m asistente.plataforma.cli.eventos worker`` wake
 # only the modules concerned. ``proactive run-daily`` stays as the safety net. false: no event is written.
 EVENTOS_ACTIVOS = _env_bool("EVENTOS_ACTIVOS", True)
 # The API drains the bus right after each change (a background thread). false: only the worker does.
@@ -403,7 +403,7 @@ EVENTOS_ARRIENDO_SEGUNDOS = float(os.environ.get("EVENTOS_ARRIENDO_SEGUNDOS", "3
 # ``ops doctor`` reports the bus when work has been waiting longer than this (0: never).
 EVENTOS_ATRASO_MAX_MINUTOS = float(os.environ.get("EVENTOS_ATRASO_MAX_MINUTOS", "30"))
 
-# --- Browser agent (hacienda_gpt/navegador) -----------------------------------
+# --- Browser agent (asistente/capacidades/navegador) -----------------------------------
 # Kill switch: false (default) = no browser is ever started and every task endpoint answers 503.
 NAVEGADOR_ACTIVO = _env_bool("NAVEGADOR_ACTIVO", default=False)
 # How the user logs in: "ventana" (a headed Chromium on the machine running the service, for a
@@ -421,17 +421,17 @@ NAVEGADOR_REPARAR_SELECTORES = _env_bool("NAVEGADOR_REPARAR_SELECTORES", default
 # Tests and demos only: JSON {real origin: LOCAL origin} pointing the scripts at local mock sites.
 NAVEGADOR_ORIGENES_SUSTITUTOS = os.environ.get("NAVEGADOR_ORIGENES_SUSTITUTOS", "")
 
-# --- Continuous evaluation (hacienda_gpt/evaluacion) ---------------------------
-# The ACTIVE prompt/model variant, written only by `python -m hacienda_gpt.cli.evaluacion promote`.
-# Empty = hacienda_gpt/evaluacion/variante_activa.json; without that file the agent runs as always.
+# --- Continuous evaluation (asistente/nucleo/evaluacion) ---------------------------
+# The ACTIVE prompt/model variant, written only by `python -m asistente.plataforma.cli.evaluacion promote`.
+# Empty = asistente/nucleo/evaluacion/variante_activa.json; without that file the agent runs as always.
 EVALUACION_VARIANTE_ACTIVA_PATH = os.environ.get("EVALUACION_VARIANTE_ACTIVA_PATH", "")
 
-# --- Platform: migrations and processes (hacienda_gpt/plataforma, docs/despliegue.md) ---
+# --- Platform: migrations and processes (asistente/plataforma, docs/despliegue.md) ---
 # Stores bring their tables up to date (schema_migrations) when they open a connection, and the API migrates
 # the cases' database at start-up. false: the stores create their tables as they did before the migrations.
 MIGRACIONES_AUTOMATICAS = _env_bool("MIGRACIONES_AUTOMATICAS", default=True)
 # The API process drains the event bus itself (with EVENTOS_DESPACHO_EN_PROCESO). false: only the worker
-# (`python -m hacienda_gpt.cli.plataforma worker`) dispatches; the API just writes the events.
+# (`python -m asistente.plataforma.cli.plataforma worker`) dispatches; the API just writes the events.
 EVENTOS_DESPACHO_EN_API = _env_bool("EVENTOS_DESPACHO_EN_API", default=True)
 # Scheduled jobs the worker runs: empty = the default set; "ninguno" = none; or comma-separated names.
 PLATAFORMA_TRABAJOS = os.environ.get("PLATAFORMA_TRABAJOS", "")
@@ -444,7 +444,7 @@ PLATAFORMA_LATIDO_SEGUNDOS = float(os.environ.get("PLATAFORMA_LATIDO_SEGUNDOS", 
 # Extra modules (comma-separated) whose ``registrar_en_plataforma(registro)`` adds services or jobs to the worker.
 PLATAFORMA_EXTENSIONES = os.environ.get("PLATAFORMA_EXTENSIONES", "")
 
-# --- Research with sources (hacienda_gpt/capacidades/investigacion, docs/capacidades/investigacion.md) ---
+# --- Research with sources (asistente/capacidades/investigacion, docs/capacidades/investigacion.md) ---
 # The open web through the model provider's server-side search: off by default; each user must also consent.
 INVESTIGACION_WEB = _env_bool("INVESTIGACION_WEB", default=False)
 # Allow-list for «official sites only» (comma-separated hosts; empty = the built-in official list) and block-list.

@@ -11,12 +11,12 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from typing import Any, Literal
 
-from hacienda_gpt.capacidades.correo.almacen import Elemento, Propuesta
-from hacienda_gpt.capacidades.correo.clasificacion import ETIQUETAS
-from hacienda_gpt.capacidades.correo.decisiones import suprimido
-from hacienda_gpt.capacidades.correo.propuestas import NOMBRES_DESTINO, eur, fecha_es
-from hacienda_gpt.capacidades.correo.seguridad import citar, envolver
-from hacienda_gpt.memoria.modelo import Decision
+from asistente.capacidades.correo.almacen import Elemento, Propuesta
+from asistente.capacidades.correo.clasificacion import ETIQUETAS
+from asistente.capacidades.correo.decisiones import suprimido
+from asistente.capacidades.correo.propuestas import NOMBRES_DESTINO, eur, fecha_es
+from asistente.capacidades.correo.seguridad import citar, envolver
+from asistente.nucleo.memoria.modelo import Decision
 
 Periodo = Literal["hoy", "semana"]
 SECCIONES: tuple[tuple[str, str], ...] = (

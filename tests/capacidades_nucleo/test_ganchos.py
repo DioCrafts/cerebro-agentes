@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import UTC, date, datetime
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
-from hacienda_gpt.modulos.ganchos import (
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
+from asistente.nucleo.modulos.ganchos import (
     Ganchos,
     GanchosAgente,
     GanchosBandeja,
@@ -22,7 +22,7 @@ from hacienda_gpt.modulos.ganchos import (
     proxima_revision_de_caso,
     tiene_especialista,
 )
-from hacienda_gpt.modulos.registro import construir_registro, problemas_de
+from asistente.nucleo.modulos.registro import construir_registro, problemas_de
 from tests.modulos_nucleo.fakes import Llamadas, ModuloFalso, agua
 
 HOY = date(2026, 11, 16)
@@ -36,7 +36,7 @@ def _caso(case_id: str = "c1") -> CaseState:
 
 
 def _evento() -> Any:
-    from hacienda_gpt.eventos.tipos import Evento
+    from asistente.nucleo.eventos.tipos import Evento
 
     return Evento(
         id=1, uid="e1", tipo="perfil.cambiado", case_id="c1", payload={}, created_at=datetime(2026, 11, 16, tzinfo=UTC)
@@ -161,8 +161,8 @@ def test_nothing_is_told_apart_by_key_any_domain_can_be_the_base() -> None:
     assert obligatorio(base) and escribe_su_bandeja(base) and not tiene_especialista(base)
     assert proxima_revision_de_caso(base, _caso(), hoy=HOY) == date(2026, 12, 24)
 
-    from hacienda_gpt.eventos.manejadores import despertar_modulo
-    from hacienda_gpt.proactive.store import NotificationStore
+    from asistente.nucleo.eventos.manejadores import despertar_modulo
+    from asistente.nucleo.proactive.store import NotificationStore
 
     store = NotificationStore(":memory:")
     resultado = despertar_modulo(base, _evento(), _caso(), hoy=HOY, store=store)
@@ -174,9 +174,9 @@ def test_v2_event_hooks_drive_the_handler() -> None:
         return [AvisoModulo(clave="v2", titulo="Desde v2", cuerpo="b", proxima_revision=date(2026, 11, 30))]
 
     modulo = _v2(eventos=GanchosEventos(tipos=("perfil.cambiado",), al_evento=al_evento))
-    from hacienda_gpt.eventos.manejadores import despertar_modulo
-    from hacienda_gpt.eventos.rutas import hechos_que_lee, suscripciones_de
-    from hacienda_gpt.proactive.store import NotificationStore
+    from asistente.nucleo.eventos.manejadores import despertar_modulo
+    from asistente.nucleo.eventos.rutas import hechos_que_lee, suscripciones_de
+    from asistente.nucleo.proactive.store import NotificationStore
 
     store = NotificationStore(":memory:")
     resultado = despertar_modulo(modulo, _evento(), _caso(), hoy=HOY, store=store)
@@ -189,7 +189,7 @@ def test_v2_event_hooks_drive_the_handler() -> None:
 
 
 def test_every_current_domain_is_v2_and_declares_its_integrations() -> None:
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     reg = registro()
     for clave in ("fiscal", "luz", "caducidades", "ayudas", "suscripciones", "hipoteca"):

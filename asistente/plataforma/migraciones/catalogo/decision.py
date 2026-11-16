@@ -1,4 +1,4 @@
-"""``hacienda_gpt.decision`` (``SQLiteCaseStateStore``): the cases and their audit trail.
+"""``asistente.nucleo.decision`` (``SQLiteCaseStateStore``): the cases and their audit trail.
 
 Baseline copied byte for byte from ``decision/state_store_sqlite.py`` — SQLite keeps the text of each
 ``CREATE`` statement, indentation included, so the text is part of the schema. Version 1 also adds the
@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 CASE_STATES = """
                 CREATE TABLE IF NOT EXISTS case_states (
@@ -42,7 +42,7 @@ def _version_si_falta(conn: sqlite3.Connection) -> None:
 
 PROPIETARIO = Propietario(
     nombre="decision",
-    paquete="hacienda_gpt.decision",
+    paquete="asistente.nucleo.decision",
     descripcion="Expedientes (estado del caso en JSON) y su registro de auditoría.",
     tablas=("case_states", "audit_events"),
     otros_objetos=("idx_case_states_user", "idx_case_states_updated", "idx_audit_case_time"),

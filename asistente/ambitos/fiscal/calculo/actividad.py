@@ -24,9 +24,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.autonomos_params import AutonomosParams, load_autonomos_params
-from hacienda_gpt.modulos.fiscal.calculo.irpf import Linea
-from hacienda_gpt.modulos.fiscal.calculo.params import Fuente
+from asistente.ambitos.fiscal.calculo.autonomos_params import AutonomosParams, load_autonomos_params
+from asistente.ambitos.fiscal.calculo.irpf import Linea
+from asistente.ambitos.fiscal.calculo.params import Fuente
 
 CENT = Decimal("0.01")
 ZERO = Decimal(0)

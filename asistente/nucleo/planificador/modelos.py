@@ -1,4 +1,4 @@
-"""Input and output of the household planner (see :mod:`hacienda_gpt.planificador.motor`).
+"""Input and output of the household planner (see :mod:`asistente.nucleo.planificador.motor`).
 
 Money is ``Decimal`` (euros); every model forbids unknown fields. The planner's own words for the user
 are Spanish; field names follow the rest of the project (Spanish, snake case).
@@ -12,7 +12,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.tax.optimizador import PlanOptimo, TextoLegal
+from asistente.ambitos.fiscal.calculo.optimizador import PlanOptimo, TextoLegal
 
 ZERO = Decimal(0)
 
@@ -48,7 +48,7 @@ class RestriccionesPlan(_Modelo):
     """Decisions the user has taken (or the memory of past decisions brings in): levers excluded, modalities
     excluded and caps. The planner never proposes an excluded lever and lists it with its reason.
 
-    This is the hook for ``hacienda_gpt.memoria`` (rejected levers): its adapter fills this object; the planner
+    This is the hook for ``asistente.nucleo.memoria`` (rejected levers): its adapter fills this object; the planner
     does not import that package.
     """
 

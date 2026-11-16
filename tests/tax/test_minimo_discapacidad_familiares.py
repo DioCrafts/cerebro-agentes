@@ -23,14 +23,14 @@ from typing import Any
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.tax.beneficios import evaluar_beneficios
-from hacienda_gpt.tax.conjunta import _conjunta, comparar_tributacion, hijos_comunes
-from hacienda_gpt.tax.irpf import IRPFInput, IRPFResult, calcular_irpf
-from hacienda_gpt.tax.params import DATA_DIR, Minimos, load_params
-from hacienda_gpt.tax.profile import build_input
-from hacienda_gpt.tax.recodificacion.adaptadores import CIFRAS, NO_SON_GRUPOS_DE_COMUNIDAD
-from hacienda_gpt.tax.recodificacion.nucleo import Objetivo
-from hacienda_gpt.tax.verificacion import comprobaciones
+from asistente.ambitos.fiscal.calculo.beneficios import evaluar_beneficios
+from asistente.ambitos.fiscal.calculo.conjunta import _conjunta, comparar_tributacion, hijos_comunes
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, Minimos, load_params
+from asistente.ambitos.fiscal.profile import build_input
+from asistente.conocimiento.recodificacion.adaptadores import CIFRAS, NO_SON_GRUPOS_DE_COMUNIDAD
+from asistente.conocimiento.recodificacion.nucleo import Objetivo
+from asistente.conocimiento.verificacion import comprobaciones
 
 D = Decimal
 

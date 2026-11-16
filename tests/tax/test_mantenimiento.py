@@ -10,13 +10,13 @@ from pathlib import Path
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.tax import vigencia_normas
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import DATA_DIR, IRPFParams, load_params
-from hacienda_gpt.tax.rollover import preparar_ejercicio
-from hacienda_gpt.tax.verificacion import Comprobacion, _formas, comprobaciones, texto_plano, verificar
-from hacienda_gpt.tax.vigencia_normas import EstadoNorma, estado_de, estado_desde_xml, guardar_estados
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, IRPFParams, load_params
+from asistente.conocimiento import vigencia_normas
+from asistente.conocimiento.rollover import preparar_ejercicio
+from asistente.conocimiento.verificacion import Comprobacion, _formas, comprobaciones, texto_plano, verificar
+from asistente.conocimiento.vigencia_normas import EstadoNorma, estado_de, estado_desde_xml, guardar_estados
+from asistente.plataforma.cli import proactive as cli_module
 
 D = Decimal
 RDL = "BOE-A-2026-20823"
@@ -241,8 +241,8 @@ def test_rollover_carries_the_quotes_of_the_minimums_to_the_next_year(tmp_path: 
     """Groups checked by literal quote keep that check in the new year's file (bound by sha256_valor)."""
     import shutil
 
-    from hacienda_gpt.tax.rollover import heredar_citas
-    from hacienda_gpt.tax.verificacion import comprobaciones as checks_de
+    from asistente.conocimiento.rollover import heredar_citas
+    from asistente.conocimiento.verificacion import comprobaciones as checks_de
 
     shutil.copy(DATA_DIR / "evidencia_parametros.json", tmp_path / "evidencia_parametros.json")
     data = json.loads((DATA_DIR / "irpf_2026.json").read_text(encoding="utf-8"))

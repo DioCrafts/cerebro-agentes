@@ -12,8 +12,8 @@ from __future__ import annotations
 
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import LLMProvider
-from hacienda_gpt.evaluacion.modelos import Rubrica, VeredictoJuez
+from asistente.nucleo.agent.providers.base import LLMProvider
+from asistente.nucleo.evaluacion.modelos import Rubrica, VeredictoJuez
 
 # A quote shorter than this proves nothing (a "sí" is in almost any answer).
 MIN_CITA = 12

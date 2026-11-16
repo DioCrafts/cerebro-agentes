@@ -11,13 +11,13 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.capacidades.correo import almacen, decisiones
-from hacienda_gpt.capacidades.correo import resumen as resumenes
-from hacienda_gpt.capacidades.correo.clasificacion import CATEGORIAS, ETIQUETAS
-from hacienda_gpt.capacidades.correo.dominios import normalizar
-from hacienda_gpt.capacidades.correo.seguridad import envolver
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.capacidades.correo import almacen, decisiones
+from asistente.capacidades.correo import resumen as resumenes
+from asistente.capacidades.correo.clasificacion import CATEGORIAS, ETIQUETAS
+from asistente.capacidades.correo.dominios import normalizar
+from asistente.capacidades.correo.seguridad import envolver
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 MAX_RESULTADOS = 50
 _SIN_CONEXION = (

@@ -1,4 +1,4 @@
-"""``hacienda_gpt.memoria`` (``DecisionStore``): the user's decisions and their history.
+"""``asistente.nucleo.memoria`` (``DecisionStore``): the user's decisions and their history.
 
 Baseline copied byte for byte from ``memoria/almacen.py``. The erasure trigger hangs on ``case_states``,
 so (as the store always did) it waits until that table exists: version 2 is deferred until then.
@@ -6,7 +6,7 @@ so (as the store always did) it waits until that table exists: version 2 is defe
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 DECISIONES = """
         CREATE TABLE IF NOT EXISTS decisiones (
@@ -38,7 +38,7 @@ DISPARADOR = """
 
 PROPIETARIO = Propietario(
     nombre="memoria",
-    paquete="hacienda_gpt.memoria",
+    paquete="asistente.nucleo.memoria",
     descripcion="Decisiones del usuario sobre propuestas y su historial (redactado al borrar).",
     tablas=("decisiones", "decisiones_historial"),
     otros_objetos=("idx_decisiones_case", "idx_decisiones_historial_case", "decisiones_borrar_con_caso"),

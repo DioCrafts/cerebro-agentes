@@ -20,8 +20,8 @@ from click.testing import CliRunner
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.cli import processor as cli_module
-from hacienda_gpt.processor.document_loader import DocumentProcessor, _shard_files
+from asistente.conocimiento.processor.document_loader import DocumentProcessor, _shard_files
+from asistente.plataforma.cli import processor as cli_module
 
 
 class _NoOpEmbeddings:
@@ -78,7 +78,7 @@ def test_process_one_file_uses_per_worker_chunker(monkeypatch: pytest.MonkeyPatc
     is loaded on every file — that's the original sequential bottleneck
     reappearing inside each pool task.
     """
-    from hacienda_gpt.processor import document_loader as dl
+    from asistente.conocimiento.processor import document_loader as dl
 
     sentinel_chunker = object()
     monkeypatch.setattr(dl, "_WORKER_CHUNKER", sentinel_chunker)
@@ -121,7 +121,7 @@ def test_init_worker_configures_logging(monkeypatch: pytest.MonkeyPatch) -> None
     so both Docling seams are stubbed: the real tokenizer would try to load the
     embedder from disk or from the HuggingFace Hub.
     """
-    from hacienda_gpt.processor import document_loader as dl
+    from asistente.conocimiento.processor import document_loader as dl
 
     calls: dict = {"configure_logging": 0, "chunker_built": 0, "tokenizer_built": 0}
 
@@ -148,14 +148,14 @@ def test_init_worker_configures_logging(monkeypatch: pytest.MonkeyPatch) -> None
         type("M", (), {"HuggingFaceTokenizer": _FakeTokenizer}),
     )
     monkeypatch.setattr(
-        __import__("hacienda_gpt.utils", fromlist=["configure_logging"]),
+        __import__("asistente.plataforma.utils", fromlist=["configure_logging"]),
         "configure_logging",
         fake_configure_logging,
     )
     monkeypatch.setattr(dl, "_WORKER_CHUNKER", None)
-    # The function imports `from hacienda_gpt import settings`; replace at the
+    # The function imports `from asistente import settings`; replace at the
     # package level so the worker picks our stub.
-    monkeypatch.setattr("hacienda_gpt.settings.EMBEDDING_MODEL", "stub/embedder", raising=False)
+    monkeypatch.setattr("asistente.plataforma.settings.EMBEDDING_MODEL", "stub/embedder", raising=False)
 
     dl._init_worker(512)
     assert calls["configure_logging"] == 1
@@ -183,7 +183,7 @@ def test_load_chunks_num_workers_1_uses_sequential_path(monkeypatch: pytest.Monk
     proc = _processor(num_workers=1)
     monkeypatch.setattr(proc, "discover_files", lambda: ["/tmp/a.html", "/tmp/b.html"])
 
-    from hacienda_gpt.processor import document_loader as dl
+    from asistente.conocimiento.processor import document_loader as dl
 
     process_calls: list[str] = []
 
@@ -241,7 +241,7 @@ def test_load_chunks_single_file_skips_pool_even_with_workers(monkeypatch: pytes
     proc = _processor(num_workers=8)
     monkeypatch.setattr(proc, "discover_files", lambda: ["/tmp/only.html"])
 
-    from hacienda_gpt.processor import document_loader as dl
+    from asistente.conocimiento.processor import document_loader as dl
 
     process_calls: list[str] = []
 

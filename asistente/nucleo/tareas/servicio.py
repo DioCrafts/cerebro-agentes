@@ -1,12 +1,12 @@
 """What the user (through the API or the chat) can do with a task. Every change is checked here.
 
-* propose from a template or from a plan (the gate, :mod:`~hacienda_gpt.tareas.validacion`): the task is stored
+* propose from a template or from a plan (the gate, :mod:`~asistente.nucleo.tareas.validacion`): the task is stored
   as ``propuesta`` and NOTHING runs until the user accepts it (:func:`aceptar`);
 * confirm a step that waits for the user (with an optional date: the day of the appointment), skip one, retry a
   failed one; a pending ACTION is never confirmed here: only its own button runs it
   (``POST /acciones/{id}/confirmar``);
 * pause, resume, cancel. Cancelling rejects the task's pending actions (they can never run), removes its
-  notices, and, when the user gives a reason, records it in the decision memory (``hacienda_gpt.memoria``) on
+  notices, and, when the user gives a reason, records it in the decision memory (``asistente.nucleo.memoria``) on
   the template's ámbito, so the assistant does not propose it again while that decision is in force.
 
 Each change is saved over the version it read (a concurrent engine pass makes it retry) and leaves a line in the
@@ -20,11 +20,11 @@ from datetime import date
 import logging
 from typing import Any, Literal
 
-from hacienda_gpt.tareas.almacen import ConflictoDeVersionError, TareaStore
-from hacienda_gpt.tareas.modelo import EN_MARCHA, PASO_FINAL, TERMINALES, Paso, Resultado, Tarea, ahora
-from hacienda_gpt.tareas.motor import PREFIJO_AVISO, Motor
-from hacienda_gpt.tareas.plantillas import instanciar
-from hacienda_gpt.tareas.validacion import validar_plan
+from asistente.nucleo.tareas.almacen import ConflictoDeVersionError, TareaStore
+from asistente.nucleo.tareas.modelo import EN_MARCHA, PASO_FINAL, TERMINALES, Paso, Resultado, Tarea, ahora
+from asistente.nucleo.tareas.motor import PREFIJO_AVISO, Motor
+from asistente.nucleo.tareas.plantillas import instanciar
+from asistente.nucleo.tareas.validacion import validar_plan
 
 logger = logging.getLogger(__name__)
 
@@ -103,7 +103,7 @@ def proponer_plan(
     capacidades: Any = None,
 ) -> tuple[Tarea, list[str]]:
     """A custom plan (a model wrote it): through the gate, stored as a proposal the user must accept."""
-    from hacienda_gpt.tareas.validacion import PlanInvalidoError, _problemas_de_texto
+    from asistente.nucleo.tareas.validacion import PlanInvalidoError, _problemas_de_texto
 
     problemas = _problemas_de_texto("titulo", titulo)
     if problemas:
@@ -301,7 +301,7 @@ def cancelar(
 
 
 def _decision(motor: Motor, tarea: Tarea, *, motivo: str, fuente: Fuente, user_id: str | None) -> Tarea:
-    from hacienda_gpt.memoria.servicio import DecisionInvalidaError, registrar
+    from asistente.nucleo.memoria.servicio import DecisionInvalidaError, registrar
 
     ambito = tarea.ambito_decision or f"tareas:{tarea.plantilla or 'personalizada'}"
     try:

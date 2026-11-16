@@ -2,14 +2,14 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE, KNOWN_FACT_NAMES
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.tax.beneficios import evaluar_beneficios
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.profile import PROFILE_FACT_TYPES, DatosInvalidosError, build_input
+from asistente.ambitos.fiscal.calculo.beneficios import evaluar_beneficios
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.profile import PROFILE_FACT_TYPES, DatosInvalidosError, build_input
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE, KNOWN_FACT_NAMES
+from asistente.nucleo.decision.schemas import CaseState, Fact
 
 D = Decimal
 
@@ -206,5 +206,5 @@ def test_tax_package_imports_standalone() -> None:
     import subprocess
     import sys
 
-    code = "import hacienda_gpt.tax.simulador, hacienda_gpt.tax.documentos, hacienda_gpt.tax.calendario"
+    code = "import asistente.ambitos.fiscal.calculo.simulador, asistente.ambitos.fiscal.documentos, asistente.ambitos.fiscal.calculo.calendario"
     assert subprocess.run([sys.executable, "-c", code], capture_output=True).returncode == 0

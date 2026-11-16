@@ -1,6 +1,6 @@
 """The sources the format watch knows: what each parser assumes, stated as checks.
 
-One :class:`~hacienda_gpt.ops.formatos.Fuente` per external format, with:
+One :class:`~asistente.conocimiento.formatos.Fuente` per external format, with:
 
 * its expectations in plain Spanish (they go to the operator and to the
   diagnosis agent);
@@ -8,7 +8,7 @@ One :class:`~hacienda_gpt.ops.formatos.Fuente` per external format, with:
 * how to trim a payload into a sample that still parses;
 * how to replay the extraction on a sample with a given set of rules.
 
-Imported lazily by :mod:`hacienda_gpt.ops.formatos` (the parsers import that
+Imported lazily by :mod:`asistente.conocimiento.formatos` (the parsers import that
 module, and this one imports the parsers). A group of sources whose parser
 cannot be imported (the crawlers need scrapy) is skipped, not fatal.
 """
@@ -24,7 +24,7 @@ import re
 from typing import Any
 from xml.etree import ElementTree
 
-from hacienda_gpt.ops.formatos import (
+from asistente.conocimiento.formatos import (
     MAX_MUESTRA_CHARS,
     Ensayo,
     Fallo,
@@ -34,7 +34,7 @@ from hacienda_gpt.ops.formatos import (
     registrar,
     spec_activa,
 )
-from hacienda_gpt.ops.formatos_boe import (
+from asistente.conocimiento.formatos_boe import (
     ReglasConsolidado,
     ReglasDocumentoXml,
     ReglasMetadatos,
@@ -43,8 +43,8 @@ from hacienda_gpt.ops.formatos_boe import (
     extraer_metadatos,
     valor_en,
 )
-from hacienda_gpt.ops.formatos_documentos import CLASES, OTROS
-from hacienda_gpt.ops.formatos_esqueleto import esqueleto_html, lista_permitida
+from asistente.conocimiento.formatos_documentos import CLASES, OTROS
+from asistente.conocimiento.formatos_esqueleto import esqueleto_html, lista_permitida
 
 logger = logging.getLogger(__name__)
 
@@ -128,8 +128,8 @@ def _canarios_dias(datos: Any, muestra: str, contexto: str, reglas: Any) -> Lect
 
 
 def _registrar_boe() -> None:
-    from hacienda_gpt.proactive.impacto import bloques_consolidado
-    from hacienda_gpt.proactive.novedades import extraer_items
+    from asistente.nucleo.proactive.impacto import bloques_consolidado
+    from asistente.nucleo.proactive.novedades import extraer_items
 
     registrar(
         Fuente(
@@ -148,7 +148,7 @@ def _registrar_boe() -> None:
             canarios=_canarios_sumario,
             recortar=_recortar_json,
             caidas=(("items", 0.8),),
-            codigo="hacienda_gpt/proactive/novedades.py (items_del_sumario), hacienda_gpt/ops/formatos_boe.py",
+            codigo="asistente/nucleo/proactive/novedades.py (items_del_sumario), asistente/conocimiento/formatos_boe.py",
         )
     )
     registrar(
@@ -161,7 +161,7 @@ def _registrar_boe() -> None:
             ),
             canarios=_canarios_dias,
             guarda_muestras=False,
-            codigo="hacienda_gpt/cli/proactive.py (_sumario, _get), hacienda_gpt/proactive/novedades.py (revisar)",
+            codigo="asistente/plataforma/cli/proactive.py (_sumario, _get), asistente/nucleo/proactive/novedades.py (revisar)",
         )
     )
     registrar(
@@ -184,8 +184,8 @@ def _registrar_boe() -> None:
             canarios=_canarios_documento_xml,
             recortar=_recortar_xml,
             codigo=(
-                "hacienda_gpt/proactive/novedades.py (leer_analisis), hacienda_gpt/tax/vigencia_normas.py "
-                "(estado_desde_xml), hacienda_gpt/ops/formatos_boe.py"
+                "asistente/nucleo/proactive/novedades.py (leer_analisis), asistente/conocimiento/vigencia_normas.py "
+                "(estado_desde_xml), asistente/conocimiento/formatos_boe.py"
             ),
         )
     )
@@ -200,7 +200,7 @@ def _registrar_boe() -> None:
             reglas=ReglasMetadatos,
             extraer=extraer_metadatos,
             canarios=_canarios_metadatos,
-            codigo="hacienda_gpt/cli/boe_watch.py (_fetch_metadata), hacienda_gpt/ops/formatos_boe.py",
+            codigo="asistente/plataforma/cli/boe_watch.py (_fetch_metadata), asistente/conocimiento/formatos_boe.py",
         )
     )
     registrar(
@@ -220,8 +220,8 @@ def _registrar_boe() -> None:
             canarios=_canarios_consolidado,
             recortar=_recortar_consolidado,
             codigo=(
-                "hacienda_gpt/proactive/impacto.py (bloques_consolidado, _lineas); el texto plano que usa "
-                "hacienda_gpt/tax/verificacion.py no depende de estas reglas"
+                "asistente/nucleo/proactive/impacto.py (bloques_consolidado, _lineas); el texto plano que usa "
+                "asistente/conocimiento/verificacion.py no depende de estas reglas"
             ),
         )
     )
@@ -428,7 +428,7 @@ MIN_TEXTO_DGT = 300
 
 
 def _extraer_documento_dgt(reglas: Any, html: str) -> dict[str, Any]:
-    from hacienda_gpt.cli.dgt_seed import numero_de_documento
+    from asistente.plataforma.cli.dgt_seed import numero_de_documento
 
     visible = " ".join(re.sub(r"<[^>]+>", " ", _SCRIPTS.sub("", html)).split())
     return {"numero": numero_de_documento(reglas, html), "caracteres": len(visible)}
@@ -457,7 +457,7 @@ def _canarios_documento_dgt(datos: Any, muestra: str, contexto: str, reglas: Any
 
 
 def _registrar_dgt() -> None:
-    from hacienda_gpt.cli.dgt_seed import ReglasBusquedaDgt, ReglasDocumentoDgt, extraer_busqueda
+    from asistente.plataforma.cli.dgt_seed import ReglasBusquedaDgt, ReglasDocumentoDgt, extraer_busqueda
 
     registrar(
         Fuente(
@@ -471,7 +471,7 @@ def _registrar_dgt() -> None:
             reglas=ReglasBusquedaDgt,
             extraer=extraer_busqueda,
             canarios=_canarios_dgt,
-            codigo="hacienda_gpt/cli/dgt_seed.py (_search_month, extraer_busqueda)",
+            codigo="asistente/plataforma/cli/dgt_seed.py (_search_month, extraer_busqueda)",
         )
     )
     registrar(
@@ -485,7 +485,7 @@ def _registrar_dgt() -> None:
             reglas=ReglasDocumentoDgt,
             extraer=_extraer_documento_dgt,
             canarios=_canarios_documento_dgt,
-            codigo="hacienda_gpt/cli/dgt_seed.py (_fetch_document, _parse_doc_num, numero_de_documento)",
+            codigo="asistente/plataforma/cli/dgt_seed.py (_fetch_document, _parse_doc_num, numero_de_documento)",
         )
     )
 
@@ -531,7 +531,7 @@ def _canarios_boe_seed(datos: Any, muestra: str, contexto: str, reglas: Any) -> 
 
 
 def _registrar_seeds() -> None:
-    from hacienda_gpt.cli.teac_seed import ReglasListadoTeac, ids_de_pagina
+    from asistente.plataforma.cli.teac_seed import ReglasListadoTeac, ids_de_pagina
 
     registrar(
         Fuente(
@@ -545,7 +545,7 @@ def _registrar_seeds() -> None:
             reglas=ReglasListadoTeac,
             extraer=ids_de_pagina,
             canarios=_canarios_teac_listado,
-            codigo="hacienda_gpt/cli/teac_seed.py (collect_criterio_ids, ids_de_pagina)",
+            codigo="asistente/plataforma/cli/teac_seed.py (collect_criterio_ids, ids_de_pagina)",
         )
     )
 
@@ -562,14 +562,14 @@ def _registrar_boe_seed() -> None:
             ),
             canarios=_canarios_boe_seed,
             extraer=_extraer_boe_seed,
-            codigo="hacienda_gpt/cli/boe_seed.py (fetch_document)",
+            codigo="asistente/plataforma/cli/boe_seed.py (fetch_document)",
         )
     )
 
 
 def _registrar_rastreadores() -> None:
-    from hacienda_gpt.crawler.boletin_autonomico import BUNDLED_SPECS, ReglasBoletin, parse_listing
-    from hacienda_gpt.crawler.teac import ReglasTeac, extraer_criterio
+    from asistente.conocimiento.crawler.boletin_autonomico import BUNDLED_SPECS, ReglasBoletin, parse_listing
+    from asistente.conocimiento.crawler.teac import ReglasTeac, extraer_criterio
 
     for spec in BUNDLED_SPECS.values():
 
@@ -591,7 +591,7 @@ def _registrar_rastreadores() -> None:
                 reglas=ReglasBoletin,
                 extraer=extraer,
                 canarios=_canarios_boletin,
-                codigo="hacienda_gpt/crawler/boletin_autonomico.py (parse_listing)",
+                codigo="asistente/conocimiento/crawler/boletin_autonomico.py (parse_listing)",
             )
         )
     registrar(
@@ -607,7 +607,7 @@ def _registrar_rastreadores() -> None:
             reglas=ReglasTeac,
             extraer=extraer_criterio,
             canarios=_canarios_teac,
-            codigo="hacienda_gpt/crawler/teac.py (extraer_criterio, _extract_field)",
+            codigo="asistente/conocimiento/crawler/teac.py (extraer_criterio, _extract_field)",
         )
     )
 
@@ -664,7 +664,7 @@ def forma_documento(reglas: Any, html: str) -> dict[str, Any]:
     with the same shapes in the known-good skeleton and satisfies the canaries on the new one. Free text
     (the reporting judge) counts only as present or absent.
     """
-    from hacienda_gpt.crawler.cendoj import MIN_PALABRAS_DOCUMENTO, extraer_documento
+    from asistente.conocimiento.crawler.cendoj import MIN_PALABRAS_DOCUMENTO, extraer_documento
 
     campos = extraer_documento(reglas, html)
     return {
@@ -741,7 +741,7 @@ def _canarios_supremo(datos: Any, muestra: str, contexto: str, reglas: Any) -> L
 
 
 def _registrar_cendoj() -> None:
-    from hacienda_gpt.crawler.cendoj import ReglasCendoj
+    from asistente.conocimiento.crawler.cendoj import ReglasCendoj
 
     registrar(
         Fuente(
@@ -763,7 +763,7 @@ def _registrar_cendoj() -> None:
             extraer=forma_documento,
             canarios=_canarios_cendoj,
             recortar=esqueleto_cendoj,
-            codigo="hacienda_gpt/crawler/cendoj.py (extraer_documento, parse_cendoj_document)",
+            codigo="asistente/conocimiento/crawler/cendoj.py (extraer_documento, parse_cendoj_document)",
         )
     )
     registrar(
@@ -778,8 +778,8 @@ def _registrar_cendoj() -> None:
             ),
             canarios=_canarios_supremo,
             guarda_muestras=False,
-            codigo="hacienda_gpt/doctrine/supremo.py (expresiones de cabecera, _detect_seccion, _detect_tipo_recurso, "
-            "_extract_doctrina), hacienda_gpt/cli/supremo_seed.py",
+            codigo="asistente/conocimiento/doctrine/supremo.py (expresiones de cabecera, _detect_seccion, _detect_tipo_recurso, "
+            "_extract_doctrina), asistente/plataforma/cli/supremo_seed.py",
         )
     )
 
@@ -854,7 +854,7 @@ def _canarios_aeat_pdf(datos: Any, muestra: str, contexto: str, reglas: Any) -> 
 
 
 def _registrar_aeat() -> None:
-    from hacienda_gpt.crawler.crawlers import ReglasSedeAeat, extraer_enlaces
+    from asistente.conocimiento.crawler.crawlers import ReglasSedeAeat, extraer_enlaces
 
     registrar(
         Fuente(
@@ -870,7 +870,7 @@ def _registrar_aeat() -> None:
             extraer=extraer_enlaces,
             canarios=_canarios_aeat_sede,
             recortar=_recortar_html,
-            codigo="hacienda_gpt/crawler/crawlers.py (AgenciaTributariaWebCrawler.urls, extraer_enlaces)",
+            codigo="asistente/conocimiento/crawler/crawlers.py (AgenciaTributariaWebCrawler.urls, extraer_enlaces)",
         )
     )
     registrar(
@@ -884,7 +884,7 @@ def _registrar_aeat() -> None:
             canarios=_canarios_aeat_rastreo,
             caidas=(("paginas", 0.5),),
             guarda_muestras=False,
-            codigo="hacienda_gpt/crawler/crawlers.py (AgenciaTributariaWebCrawler.urls)",
+            codigo="asistente/conocimiento/crawler/crawlers.py (AgenciaTributariaWebCrawler.urls)",
         )
     )
     registrar(
@@ -898,7 +898,7 @@ def _registrar_aeat() -> None:
             canarios=_canarios_aeat_pdf,
             caidas=(("guardados", 0.5),),
             guarda_muestras=False,
-            codigo="hacienda_gpt/crawler/crawlers.py (AgenciaTributariaPDFCrawler.parse_pdf)",
+            codigo="asistente/conocimiento/crawler/crawlers.py (AgenciaTributariaPDFCrawler.parse_pdf)",
         )
     )
 
@@ -951,7 +951,7 @@ def _canarios_ccaa_pdf(datos: Any, muestra: str, contexto: str, reglas: Any) -> 
 
 
 def _canarios_ccaa_texto(codigos: Any, muestra: str, contexto: str, reglas: Any) -> Lectura:
-    from hacienda_gpt.ops.formatos_corpus import rendimiento
+    from asistente.conocimiento.formatos_corpus import rendimiento
 
     codigos = [c for c in codigos if isinstance(c, dict)] if isinstance(codigos, list) else []
     fallos: list[Fallo] = []
@@ -1005,7 +1005,7 @@ def _registrar_ccaa() -> None:
                 "El nombre de fichero de cada código del catálogo sigue siendo válido.",
             ),
             canarios=_canarios_ccaa_pdf,
-            codigo="hacienda_gpt/crawler/boe_consolidado.py (DEFAULT_CCAA_CODES, parse_pdf)",
+            codigo="asistente/conocimiento/crawler/boe_consolidado.py (DEFAULT_CCAA_CODES, parse_pdf)",
         )
     )
     registrar(
@@ -1019,7 +1019,7 @@ def _registrar_ccaa() -> None:
             ),
             canarios=_canarios_ccaa_texto,
             caidas=(("caracteres_por_kb", 0.5),),
-            codigo="hacienda_gpt/processor/document_loader.py (Docling), hacienda_gpt/ops/formatos_corpus.py",
+            codigo="asistente/conocimiento/processor/document_loader.py (Docling), asistente/conocimiento/formatos_corpus.py",
         )
     )
     registrar(
@@ -1033,13 +1033,13 @@ def _registrar_ccaa() -> None:
             canarios=_canarios_corpus,
             caidas=(("fragmentos_por_fichero", 0.5),),
             guarda_muestras=False,
-            codigo="hacienda_gpt/processor/document_loader.py (process_documents, _process_one_file)",
+            codigo="asistente/conocimiento/processor/document_loader.py (process_documents, _process_one_file)",
         )
     )
 
 
 def _registrar_calendario() -> None:
-    from hacienda_gpt.ops.formatos_calendario import registrar_fuentes
+    from asistente.conocimiento.formatos_calendario import registrar_fuentes
 
     registrar_fuentes()
 
@@ -1074,7 +1074,7 @@ def _canarios_documento_usuario(datos: Any, muestra: str, contexto: str, reglas:
 
 
 def _registrar_documentos() -> None:
-    from hacienda_gpt.tax.documentos import ReglasDocumentos
+    from asistente.ambitos.fiscal.documentos import ReglasDocumentos
 
     for clase in (*CLASES, OTROS):
         registrar(
@@ -1088,7 +1088,7 @@ def _registrar_documentos() -> None:
                 canarios=_canarios_documento_usuario,
                 politica="tasa",
                 guarda_muestras=False,
-                codigo="hacienda_gpt/tax/documentos.py (SYSTEM_PROMPT, _hechos_validos)",
+                codigo="asistente/ambitos/fiscal/documentos.py (SYSTEM_PROMPT, _hechos_validos)",
             )
         )
 
@@ -1119,7 +1119,7 @@ def _registrar_documentos() -> None:
             guarda_muestras=False,
             ensayo=ensayo,
             auto_aplicable=False,
-            codigo="hacienda_gpt/tax/documentos.py (anexo_vocabulario)",
+            codigo="asistente/ambitos/fiscal/documentos.py (anexo_vocabulario)",
         )
     )
 

@@ -2,8 +2,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from hacienda_gpt.capacidades import registro as registro_capacidades
-from hacienda_gpt.modulos import registro as registro_modulos
+from asistente.capacidades import registro as registro_capacidades
+from asistente.nucleo.modulos import registro as registro_modulos
 
 
 @pytest.fixture(autouse=True)

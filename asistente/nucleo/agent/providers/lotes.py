@@ -41,8 +41,8 @@ from typing import Any, Protocol
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.providers.base import (
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.providers.base import (
     Attachment,
     EstadoLote,
     ProveedorDeLotes,
@@ -134,7 +134,7 @@ class _Estado(BaseModel):
 
 
 class Contable(Protocol):
-    """What the driver needs from the metering wrapper (:class:`~hacienda_gpt.ops.consumo.MeteredProvider`)."""
+    """What the driver needs from the metering wrapper (:class:`~asistente.plataforma.ops.consumo.MeteredProvider`)."""
 
     def comprobar_presupuesto(self) -> None: ...
 
@@ -331,7 +331,7 @@ class ProveedorEnLote:
     """Stands in for a provider during batch rounds (``complete_json`` only).
 
     ``real`` is the provider the synchronous run would use — normally a
-    :class:`~hacienda_gpt.ops.consumo.MeteredProvider`, whose routing (model,
+    :class:`~asistente.plataforma.ops.consumo.MeteredProvider`, whose routing (model,
     effort) and escalation it follows. It never calls the model itself.
     """
 

@@ -44,7 +44,7 @@ from typing import Any
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 
-from hacienda_gpt.processor.manifest import (
+from asistente.conocimiento.processor.manifest import (
     FileDiff,
     FileEntry,
     Manifest,
@@ -223,8 +223,8 @@ def _init_worker(max_tokens: int | None) -> None:
     from docling.chunking import HybridChunker
     from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
 
-    from hacienda_gpt import settings as _settings
-    from hacienda_gpt.utils import configure_logging
+    from asistente.plataforma import settings as _settings
+    from asistente.plataforma.utils import configure_logging
 
     configure_logging()
 
@@ -331,7 +331,7 @@ def _process_one_file(file_path: str) -> tuple[str, list[Document]]:
     progress in the order documents actually finish (with
     ``imap_unordered``).
     """
-    from hacienda_gpt.processor.strategies import (
+    from asistente.conocimiento.processor.strategies import (
         install_default_strategies,
         select_strategy,
     )
@@ -423,7 +423,7 @@ class DocumentProcessor:
         # generator model) means the FAISS vectors no longer match what a
         # query at runtime would produce. Include in the fingerprint so
         # the manifest layer forces a clean rebuild.
-        from hacienda_gpt import settings
+        from asistente.plataforma import settings
 
         contextual_model = None
         contextual_max_tokens = None
@@ -452,7 +452,7 @@ class DocumentProcessor:
         from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
         from langchain_docling.loader import DoclingLoader, ExportType
 
-        from hacienda_gpt import settings
+        from asistente.plataforma import settings
 
         # Same explicit-tokenizer construction as ``_init_worker``: Docling
         # ≥ 2.50 can't auto-detect ``max_tokens`` for the local MLX model
@@ -705,7 +705,7 @@ class DocumentProcessor:
                 # Zero-chunk file — ask the registry who claims this path
                 # now so we still record the strategy_id correctly.
                 try:
-                    from hacienda_gpt.processor.strategies import (
+                    from asistente.conocimiento.processor.strategies import (
                         install_default_strategies,
                         select_strategy,
                     )
@@ -764,7 +764,7 @@ class DocumentProcessor:
         # Pass the strategy router into the diff so files whose owning
         # strategy changed get re-ingested by the new owner.
         def _strategy_for(path: str) -> str:
-            from hacienda_gpt.processor.strategies import (
+            from asistente.conocimiento.processor.strategies import (
                 install_default_strategies,
                 select_strategy,
             )
@@ -865,7 +865,7 @@ class DocumentProcessor:
         db: Any | None = None
         existing_manifest: Manifest | None = None
         if diff is not None:
-            from hacienda_gpt import settings as _settings
+            from asistente.plataforma import settings as _settings
 
             # Loading the index unpickles it: only an index the operator trusts (docs/seguridad.md, S-17), like
             # agent/search.py and llm/chain.py. Checked before the fallback below, which would hide it.
@@ -965,10 +965,10 @@ class DocumentProcessor:
             # but that's fine — each batch of 200 chunks is processed in
             # a tight loop, and the worker pool keeps streaming the next
             # batch in parallel.
-            from hacienda_gpt import settings as _settings
+            from asistente.plataforma import settings as _settings
 
             if chunks_w and _settings.CONTEXTUAL_EMBEDDINGS_ENABLED:
-                from hacienda_gpt.processor.contextualizer import get_contextualizer
+                from asistente.conocimiento.processor.contextualizer import get_contextualizer
 
                 contextualizer = get_contextualizer(
                     model_path=_settings.CONTEXTUAL_MODEL_PATH,
@@ -1043,7 +1043,7 @@ class DocumentProcessor:
 
         # Format watch: what Docling yielded per file (zero chunks, PDFs of the autonomic codes without text).
         # Counting never raises and never changes what is indexed.
-        from hacienda_gpt.ops.formatos_corpus import RecuentoCorpus
+        from asistente.conocimiento.formatos_corpus import RecuentoCorpus
 
         recuento = RecuentoCorpus(self.content_dir)
 
@@ -1149,8 +1149,8 @@ def build_index(args: dict) -> None:
     # Lazy import keeps the processor module (and its CLI) light, and routes
     # through the shared embedder factory so the index always matches the
     # query path.
-    from hacienda_gpt import settings
-    from hacienda_gpt.llm.embeddings import create_embeddings
+    from asistente.conocimiento.llm.embeddings import create_embeddings
+    from asistente.plataforma import settings
 
     # Capture the embedder identity at construction time so the processor can
     # compute the pipeline fingerprint without re-importing settings later.

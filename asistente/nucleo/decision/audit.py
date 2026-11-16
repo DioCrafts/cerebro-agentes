@@ -3,9 +3,9 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
-from hacienda_gpt.decision.interpreter import InterpretationResult
-from hacienda_gpt.decision.rules_engine import RulesEngineResult
-from hacienda_gpt.decision.schemas import CaseState, ObligationCandidate
+from asistente.nucleo.decision.interpreter import InterpretationResult
+from asistente.nucleo.decision.rules_engine import RulesEngineResult
+from asistente.nucleo.decision.schemas import CaseState, ObligationCandidate
 
 PROMPT_VERSION = "decision_prompt_v1"
 MODEL_VERSION = "openai_model_config_v1"

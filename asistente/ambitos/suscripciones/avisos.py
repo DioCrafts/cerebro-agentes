@@ -18,12 +18,12 @@ from datetime import date, timedelta
 from decimal import Decimal
 import os
 
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
-from hacienda_gpt.modulos.suscripciones import almacen
-from hacienda_gpt.modulos.suscripciones.derechos import DerechosConsumidor, cargar
-from hacienda_gpt.modulos.suscripciones.deteccion import sumar_meses
-from hacienda_gpt.modulos.suscripciones.formato import euros, fecha, porcentaje
-from hacienda_gpt.modulos.suscripciones.modelos import CARGOS_POR_ANO, ServicioGuardado
+from asistente.ambitos.suscripciones import almacen
+from asistente.ambitos.suscripciones.derechos import DerechosConsumidor, cargar
+from asistente.ambitos.suscripciones.deteccion import sumar_meses
+from asistente.ambitos.suscripciones.formato import euros, fecha, porcentaje
+from asistente.ambitos.suscripciones.modelos import CARGOS_POR_ANO, ServicioGuardado
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
 
 DIAS_AVISO_POR_DEFECTO = 30
 DIAS_RECIENTE = 120

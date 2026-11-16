@@ -1,4 +1,4 @@
-// Client for the browser agent (hacienda_gpt/api/routers/navegador.py): which tasks the service offers,
+// Client for the browser agent (asistente/plataforma/api/routers/navegador.py): which tasks the service offers,
 // starting one after the user's acknowledgement, following it live, stopping and discarding it.
 //
 // Credentials never go through here: the user logs in in the browser window itself (mode "ventana") or

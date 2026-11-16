@@ -1,7 +1,7 @@
 """The planner's tax oracle: the household's IRPF for any allocation, computed by the tax optimiser.
 
 The planner has no tax formula of its own. For each combination of pension contributions, donation and housing
-payments it asks the optimiser's evaluator (:class:`hacienda_gpt.tax.optimizador._Optimizador`, the same code
+payments it asks the optimiser's evaluator (:class:`asistente.ambitos.fiscal.calculo.optimizador._Optimizador`, the same code
 behind ``optimizar_impuestos`` and ``POST /optimize``): it builds each spouse's return or the joint one with
 :func:`conjunta._conjunta`, applies every limit read from the year's data, and runs :func:`calcular_irpf`. The
 household files whichever way pays less (the filing mode is a free choice of the return, not a use of money),
@@ -25,7 +25,8 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from hacienda_gpt.modulos.fiscal.calculo.optimizador import (
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult
+from asistente.ambitos.fiscal.calculo.optimizador import (
     DESTINO_RECURRENTE,
     PalancaNoDisponible,
     Restricciones,
@@ -33,8 +34,7 @@ from hacienda_gpt.modulos.fiscal.calculo.optimizador import (
     _Optimizador,
     _Punto,
 )
-from hacienda_gpt.tax.irpf import IRPFInput, IRPFResult
-from hacienda_gpt.tax.params import IRPFParams
+from asistente.ambitos.fiscal.calculo.params import IRPFParams
 
 ZERO = Decimal(0)
 CENT = Decimal("0.01")

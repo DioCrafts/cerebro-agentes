@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from hacienda_gpt.capacidades.investigacion import puerta
-from hacienda_gpt.capacidades.investigacion.fuentes import FuenteRecuperada
+from asistente.capacidades.investigacion import puerta
+from asistente.capacidades.investigacion.fuentes import FuenteRecuperada
 
 OFICIAL = FuenteRecuperada(
     tipo="boe",

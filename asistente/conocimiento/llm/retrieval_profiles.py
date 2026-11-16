@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 
 @dataclass(frozen=True)

@@ -3,17 +3,17 @@
 Meant for cron::
 
     # Envuelve cada tarea con «ops run» para que quede registrada y avise si falla.
-    0 7 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run run-daily -- \
-                    uv run python -m hacienda_gpt.cli.proactive run-daily >> logs/proactive.log 2>&1
+    0 7 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run run-daily -- \
+                    uv run python -m asistente.plataforma.cli.proactive run-daily >> logs/proactive.log 2>&1
 
     # Envía por correo o webhook los avisos que aún no han salido.
-    15 7 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops deliver >> logs/ops.log 2>&1
+    15 7 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops deliver >> logs/ops.log 2>&1
 
     # Revisa que todas las tareas han corrido y avisa de las que no.
-    0 9 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops doctor >> logs/ops.log 2>&1
+    0 9 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops doctor >> logs/ops.log 2>&1
 
     # Revisa si algún formato externo ha dejado de entenderse y, con modelo configurado, lo diagnostica.
-    30 9 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops formatos check --diagnose \
+    30 9 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops formatos check --diagnose \
                     >> logs/ops.log 2>&1
 
 See ``docs/operacion.md``.
@@ -29,18 +29,18 @@ from typing import Any
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli.formatos import cli as formatos_cli
-from hacienda_gpt.eventos import salud as eventos_salud
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.vigia import EstadoIlegibleError, informar, leer_estado, revisar, vigilado
-from hacienda_gpt.proactive.entrega import (
+from asistente.conocimiento import formatos
+from asistente.nucleo.eventos import salud as eventos_salud
+from asistente.nucleo.proactive.entrega import (
     Canal,
     ConfiguracionCanalError,
     EntregaStore,
     canales_configurados,
     entregar_pendientes,
 )
+from asistente.plataforma import settings
+from asistente.plataforma.cli.formatos import cli as formatos_cli
+from asistente.plataforma.ops.vigia import EstadoIlegibleError, informar, leer_estado, revisar, vigilado
 
 logger = logging.getLogger(__name__)
 
@@ -86,7 +86,7 @@ def _con_consentimiento(db_path: str) -> Any:
     """With user accounts on, only notices of users who agreed to receive them outside the app leave it."""
     if settings.AUTH_MODE != "required":
         return None
-    from hacienda_gpt.auth.store import AuthStore
+    from asistente.plataforma.auth.store import AuthStore
 
     auth = AuthStore(db_path)
 
@@ -212,7 +212,7 @@ def run(nombre: str, comando: tuple[str, ...], state_path: str | None) -> None:
     """Ejecuta COMANDO bajo vigilancia: registra el resultado y avisa al healthcheck.
 
     \b
-    ops run boe-novedades -- uv run python -m hacienda_gpt.cli.proactive boe-novedades
+    ops run boe-novedades -- uv run python -m asistente.plataforma.cli.proactive boe-novedades
 
     La salida del comando no se toca y este proceso termina con su mismo código.
     """

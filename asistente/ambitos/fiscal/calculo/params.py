@@ -19,9 +19,9 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-# The parameter files are legal data with their quotes (the knowledge layer, maintained by the re-encoding loop):
-# they stay in hacienda_gpt/tax/data while the calculators that read them live in the tax module.
-DATA_DIR = Path(__file__).resolve().parents[3] / "tax" / "data"
+# The parameter files are legal data with their quotes (maintained by the knowledge layer's re-encoding loop): they
+# live in the tax domain's data directory (asistente/ambitos/fiscal/data), next to the calculators that read them.
+DATA_DIR = Path(__file__).resolve().parents[1] / "data"
 
 
 class _Model(BaseModel):
@@ -34,7 +34,7 @@ class Fuente(_Model):
     verificado: bool
     nota: str | None = None
     # BOE id of a decree-law this parameter exists only because of: if Congress
-    # repeals it, the parameter goes too (see hacienda_gpt.tax.vigencia_normas).
+    # repeals it, the parameter goes too (see asistente.conocimiento.vigencia_normas).
     condicionada_a: str | None = None
     # Date (AAAAMMDD) of the superseded wording this was read from, when it is not the
     # current text: https://www.boe.es/buscar/act.php?id=<id>&tn=1&p=<date>.
@@ -763,7 +763,7 @@ class DeduccionCalculable(Condiciones):
     requisitos_no_comprobados: list[str] = Field(default_factory=list)
     en_vigor_desde: str
     # Day (AAAA-MM-DD) this entry was re-encoded from the BOE by the automatic loop
-    # (hacienda_gpt.tax.recodificacion). While set, nobody has reviewed it yet and the
+    # (asistente.conocimiento.recodificacion). While set, nobody has reviewed it yet and the
     # calculator says so every time it uses the deduction; ``params-confirm`` clears it.
     recodificada_el: str | None = None
 

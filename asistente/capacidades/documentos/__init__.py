@@ -21,9 +21,9 @@ import base64
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
-from hacienda_gpt.capacidades.documentos import lectura, tramites
-from hacienda_gpt.capacidades.documentos.lectura import (
+from asistente.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
+from asistente.capacidades.documentos import lectura, tramites
+from asistente.capacidades.documentos.lectura import (
     MAX_SCAN_PAGES,
     DocumentoEscaneadoError,
     DocumentoNoLegibleError,

@@ -7,13 +7,13 @@ from collections.abc import Iterator
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_case_store
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_case_store
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
 
 CONSENTS = {"tratamiento_datos": True, "envio_documentos_a_proveedor_llm": False, "avisos_por_correo": False}
 
@@ -83,7 +83,7 @@ def test_the_modules_panel_reads_capabilities_with_the_shape_the_api_returns() -
     from pathlib import Path
     import re
 
-    from hacienda_gpt.api.routers.capacidades import CapacidadesResponse, CapacidadInfo, OperacionInfo
+    from asistente.plataforma.api.routers.capacidades import CapacidadesResponse, CapacidadInfo, OperacionInfo
 
     raiz = Path(__file__).resolve().parents[2] / "frontend" / "src"
     fuente = (raiz / "apiModulos.ts").read_text(encoding="utf-8")

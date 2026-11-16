@@ -1,8 +1,8 @@
 """Declarative rules and pure extractors for the BOE formats the app depends on.
 
 What used to be key names and XML paths written inside the parsers is now the
-``reglas`` of a versioned spec (``hacienda_gpt/ops/data/formatos/*.json``, see
-:mod:`hacienda_gpt.ops.formatos`). The functions here apply those rules and
+``reglas`` of a versioned spec (``asistente/conocimiento/data/formatos/*.json``, see
+:mod:`asistente.conocimiento.formatos`). The functions here apply those rules and
 nothing else: no clock, no network, no project state, so the same call can be
 replayed on a stored sample.
 
@@ -19,7 +19,7 @@ from xml.etree import ElementTree
 
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator
 
-from hacienda_gpt.ops.formatos import patron_seguro
+from asistente.conocimiento.formatos import patron_seguro
 
 
 class _Reglas(BaseModel):

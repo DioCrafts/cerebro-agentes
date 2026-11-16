@@ -9,12 +9,12 @@ import sqlite3
 from threading import RLock
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.decision.state_store import CaseStateStore, CaseVersionConflictError
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.decision.state_store import CaseStateStore, CaseVersionConflictError
+from asistente.plataforma.migraciones import asegurar_esquema
 
 # Hooks run on the store's connection INSIDE the save / delete transaction, before the write: whatever they
-# write commits or rolls back with the case. The event bus (hacienda_gpt/eventos) writes its outbox here.
+# write commits or rolls back with the case. The event bus (asistente/nucleo/eventos) writes its outbox here.
 AL_GUARDAR: list[Callable[[sqlite3.Connection, CaseState], None]] = []
 AL_BORRAR: list[Callable[[sqlite3.Connection, str], None]] = []
 
@@ -74,7 +74,7 @@ class SQLiteCaseStateStore(CaseStateStore):
 
     def _initialize(self) -> None:
         with self._connect() as conn:
-            asegurar_esquema(conn, "decision")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(conn, "decision")  # migrations (asistente/plataforma)
             conn.execute("""
                 CREATE TABLE IF NOT EXISTS case_states (
                     case_id TEXT PRIMARY KEY,
@@ -220,7 +220,7 @@ class SQLiteCaseStateStore(CaseStateStore):
         Used when the user deletes that fact from the case (see ``audit.redactar_hecho`` for what is covered).
         The write-ahead log is checkpointed afterwards so the old values do not linger there either.
         """
-        from hacienda_gpt.decision.audit import redactar_hecho
+        from asistente.nucleo.decision.audit import redactar_hecho
 
         cambiados = 0
         with self._lock, self._connect() as conn:

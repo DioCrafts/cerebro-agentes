@@ -34,9 +34,9 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.evaluacion.cifras import salida_de_herramienta, valor_de_cifra
-from hacienda_gpt.evaluacion.modelos import (
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.evaluacion.cifras import salida_de_herramienta, valor_de_cifra
+from asistente.nucleo.evaluacion.modelos import (
     CalculoEsperado,
     CasoEvaluacion,
     ExpCifra,
@@ -46,8 +46,8 @@ from hacienda_gpt.evaluacion.modelos import (
     Origen,
     Rubrica,
 )
-from hacienda_gpt.evaluacion.senales import Senal, es_repregunta, respuestas, senales_de_turno
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.nucleo.evaluacion.senales import Senal, es_repregunta, respuestas, senales_de_turno
+from asistente.plataforma.migraciones import asegurar_esquema
 
 CONSENTIMIENTO_VERSION = "2026-11-16"
 CONSENTIMIENTO_TEXTO = (
@@ -121,7 +121,7 @@ def _seudonimizar_valor(valor: Any) -> Any:
 
 
 def _valor_legible(nombre: str, valor: Any) -> Any:
-    from hacienda_gpt.modulos.perfil import valor_de_perfil
+    from asistente.nucleo.modulos.perfil import valor_de_perfil
 
     return valor_de_perfil(nombre, valor)
 
@@ -139,7 +139,7 @@ def hechos_usados(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) ->
     """
     if case is None:
         return []
-    from hacienda_gpt.modulos.registro import hechos_compartidos, registro
+    from asistente.nucleo.modulos.registro import hechos_compartidos, registro
 
     nombres = {fact.name for fact in case.facts}
     de_modulo = {nombre: dueno.clave for nombre, (dueno, _h) in registro().hechos().items()}
@@ -173,7 +173,7 @@ def instantanea_de(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) -
     """Pseudonymised snapshot of the facts used: ``{tax_period, jurisdiction, hechos, sensibles}``."""
     if case is None:
         return {"hechos": {}, "sensibles": []}
-    from hacienda_gpt.modulos.perfil import hecho_de_modulo
+    from asistente.nucleo.modulos.perfil import hecho_de_modulo
 
     usados = set(hechos_usados(case, traza))
     hechos = {f.name: _seudonimizar_valor(_valor_legible(f.name, f.value)) for f in case.facts if f.name in usados}
@@ -282,7 +282,7 @@ class FeedbackStore:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
-                asegurar_esquema(conn, "evaluacion")  # migrations (hacienda_gpt/plataforma)
+                asegurar_esquema(conn, "evaluacion")  # migrations (asistente/plataforma)
                 conn.execute(_TABLA)
                 conn.execute("CREATE INDEX IF NOT EXISTS idx_evaluacion_feedback_case ON evaluacion_feedback(case_id)")
             self._conn = conn
@@ -452,7 +452,7 @@ def capturar(
     Raises :class:`RespuestaNoEncontradaError` when the answer is not in the case's audit trail, and
     ``ValueError`` when a case is to be stored without a case to store it in.
     """
-    from hacienda_gpt.evaluacion.variantes import variante_activa
+    from asistente.nucleo.evaluacion.variantes import variante_activa
 
     if entrada.guardar_para_evaluacion and (case is None or cases is None):
         raise ValueError("Para guardar el caso para evaluación hace falta un expediente.")

@@ -6,9 +6,8 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
 
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.caducidades.agenda import avisos_de_agenda
-from hacienda_gpt.modulos.caducidades.hechos import (
+from asistente.ambitos.caducidades.agenda import avisos_de_agenda
+from asistente.ambitos.caducidades.hechos import (
     HECHO_ANTELACIONES,
     HECHO_COMPRAS,
     HECHO_CONTRATOS,
@@ -22,10 +21,11 @@ from hacienda_gpt.modulos.caducidades.hechos import (
     validar_fechas_nacimiento,
     validar_vehiculos,
 )
-from hacienda_gpt.modulos.caducidades.herramientas import HERRAMIENTAS
-from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosDocumentos, GanchosEventos
+from asistente.ambitos.caducidades.herramientas import HERRAMIENTAS
+from asistente.ambitos.caducidades.reglas import cargar_reglas
+from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosDocumentos, GanchosEventos
 
 HECHOS: tuple[HechoModulo, ...] = (
     HechoModulo(
@@ -122,7 +122,7 @@ class ModuloCaducidades(ModuloBase):
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
-        from hacienda_gpt.modulos.caducidades.reglas import FICHEROS_LEGALES
+        from asistente.ambitos.caducidades.reglas import FICHEROS_LEGALES
 
         return Ganchos(
             eventos=GanchosEventos(
@@ -141,7 +141,7 @@ class ModuloCaducidades(ModuloBase):
 
     def leer_documento(self, provider: Any, *, filename: str, data: bytes) -> Any:
         """Propose a purchase from an uploaded receipt (see :func:`ticket.leer_ticket`)."""
-        from hacienda_gpt.modulos.caducidades.ticket import leer_ticket
+        from asistente.ambitos.caducidades.ticket import leer_ticket
 
         return leer_ticket(provider, filename=filename, data=data)
 

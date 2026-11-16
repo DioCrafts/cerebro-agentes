@@ -14,11 +14,11 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.navegador import ejecutor as ejecutor_mod
-from hacienda_gpt.navegador import seguridad
-from hacienda_gpt.navegador.ejecutor import Ejecutor, Evento, ResultadoEjecucion
-from hacienda_gpt.navegador.guion import Guion, guion_activo, validar_parametros
-from hacienda_gpt.navegador.seguridad import origenes_efectivos
+from asistente.capacidades.navegador import ejecutor as ejecutor_mod
+from asistente.capacidades.navegador import seguridad
+from asistente.capacidades.navegador.ejecutor import Ejecutor, Evento, ResultadoEjecucion
+from asistente.capacidades.navegador.guion import Guion, guion_activo, validar_parametros
+from asistente.capacidades.navegador.seguridad import origenes_efectivos
 from tests.navegador.conftest import login_clave, login_datadis, sesion_de_usuario
 from tests.navegador.simulacion import USUARIO_DATADIS, Sitios, csv_datadis
 
@@ -171,7 +171,7 @@ def test_a_sede_procedure_stops_before_signing(chromium: str | None, sitios: Sit
 
 def _guion_hostil(pasos: list[dict[str, Any]]) -> Guion:
     """A script that tries something it must not, built WITHOUT validation (as if the static checks were bypassed)."""
-    from hacienda_gpt.navegador import guion as g
+    from asistente.capacidades.navegador import guion as g
 
     clases = {
         "ir": g.PasoIr,

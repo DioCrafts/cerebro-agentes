@@ -10,7 +10,7 @@
 * ``POST /push/prueba`` — send the fixed test message to the caller's devices.
 
 Same access rules as the rest of the API: API key when configured, a session when accounts are on (the owner
-is the account; without accounts it is the operator, :data:`~hacienda_gpt.push.almacen.OPERADOR`). The store is
+is the account; without accounts it is the operator, :data:`~asistente.plataforma.push.almacen.OPERADOR`). The store is
 the cases' SQLite file, so the subscriptions are erased with the account (triggers on ``users``).
 
 Built by :func:`build_router` with the case store passed in (see ``api.py``), like the other routers. No
@@ -26,13 +26,13 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.push.almacen import OPERADOR, VERSION_TEXTO_CONSENTIMIENTO, PushStore, RegistroConsentimiento
-from hacienda_gpt.push.cifrado import CifradoError, b64url_decode, cargar_publica
-from hacienda_gpt.push.envio import EndpointNoPermitidoError, carga_para, enviar_a_propietario, validar_endpoint
-from hacienda_gpt.push.vapid import ClavesVapid, ConfiguracionVapidError, claves_desde_entorno
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
+from asistente.plataforma.push.almacen import OPERADOR, VERSION_TEXTO_CONSENTIMIENTO, PushStore, RegistroConsentimiento
+from asistente.plataforma.push.cifrado import CifradoError, b64url_decode, cargar_publica
+from asistente.plataforma.push.envio import EndpointNoPermitidoError, carga_para, enviar_a_propietario, validar_endpoint
+from asistente.plataforma.push.vapid import ClavesVapid, ConfiguracionVapidError, claves_desde_entorno
 
 _NO_DISPONIBLE = "Los avisos en el móvil no están activados en este servicio."
 # One test message per owner every this many seconds.

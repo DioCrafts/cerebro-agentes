@@ -40,9 +40,8 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.navegador.ejecutor import Ejecutor, Evento, Modo, ResultadoEjecucion
-from hacienda_gpt.capacidades.navegador.guion import (
+from asistente.capacidades.navegador.ejecutor import Ejecutor, Evento, Modo, ResultadoEjecucion
+from asistente.capacidades.navegador.guion import (
     GuionError,
     SpecGuion,
     claves_incorporadas,
@@ -50,22 +49,23 @@ from hacienda_gpt.capacidades.navegador.guion import (
     guion_activo,
     validar_parametros,
 )
-from hacienda_gpt.capacidades.navegador.persistencia import (
+from asistente.capacidades.navegador.persistencia import (
     LATIDO_S,
     MENSAJE_HUERFANA,
     AlmacenTareas,
     identidad_de_proceso,
 )
-from hacienda_gpt.capacidades.navegador.reparacion import Reparador
-from hacienda_gpt.capacidades.navegador.seguridad import (
+from asistente.capacidades.navegador.reparacion import Reparador
+from asistente.capacidades.navegador.seguridad import (
     origen_de,
     origenes_efectivos,
     sustitutos_validos,
     texto_de_fichero,
 )
-from hacienda_gpt.capacidades.navegador.vigilancia import guardar_diagnostico, observar_ejecucion, proponer_reparacion
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
-from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
+from asistente.capacidades.navegador.vigilancia import guardar_diagnostico, observar_ejecucion, proponer_reparacion
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
+from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -218,8 +218,8 @@ def consentimiento(user_id: str | None, auth: Any | None) -> bool:
     With accounts a default (``MODULOS_ACTIVOS_POR_DEFECTO=todos``) is not consent: only an explicit choice of
     the user, which is recorded with its date, exported and erased with the account.
     """
-    from hacienda_gpt.modulos.preferencias import activos_por_defecto
-    from hacienda_gpt.modulos.registro import desactivados_por_operador
+    from asistente.nucleo.modulos.preferencias import activos_por_defecto
+    from asistente.nucleo.modulos.registro import desactivados_por_operador
 
     if CLAVE_MODULO in desactivados_por_operador():
         return False
@@ -232,8 +232,8 @@ def consentimiento(user_id: str | None, auth: Any | None) -> bool:
 
 
 def _modulo_de_herramienta_activo(nombre: str, case_id: str, auth: Any | None) -> bool:
-    from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
+    from asistente.nucleo.modulos.registro import registro
 
     encontrada = registro().herramienta(nombre)
     if encontrada is None:
@@ -255,10 +255,10 @@ def ejecutar_herramienta_de_modulo(
     user's confirmation); facts are written only through the tool's own ``registrar`` (validated by the
     module); the audit records the argument NAMES only (the CSV is not copied there).
     """
-    from hacienda_gpt.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
-    from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
-    from hacienda_gpt.modulos.registro import registro
-    from hacienda_gpt.proactive.jobs import hoy_en_espana
+    from asistente.nucleo.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
+    from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
+    from asistente.nucleo.modulos.registro import registro
+    from asistente.nucleo.proactive.jobs import hoy_en_espana
 
     encontrada = registro().herramienta(nombre)
     if encontrada is None:
@@ -664,7 +664,7 @@ class GestorTareas:
 
     @staticmethod
     def _auditar_huerfana(db_path: str, case_id: str, tarea_id: str, clave: str) -> None:
-        from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+        from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 
         store = SQLiteCaseStateStore(db_path)
         try:

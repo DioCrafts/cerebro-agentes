@@ -5,10 +5,10 @@ from types import SimpleNamespace
 
 import pytest
 
-from hacienda_gpt.agent.providers import create_provider
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
-from hacienda_gpt.agent.providers.base import ProviderError, ToolResult, ToolSpec, normalize_history
-from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
+from asistente.nucleo.agent.providers import create_provider
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
+from asistente.nucleo.agent.providers.base import ProviderError, ToolResult, ToolSpec, normalize_history
+from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
 TOOLS = [ToolSpec(name="buscar_fuentes", description="busca", input_schema={"type": "object", "properties": {}})]
 
@@ -279,7 +279,7 @@ def test_openai_complete_json_rejects_non_json() -> None:
 
 
 def test_create_provider_selects_backend(monkeypatch) -> None:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     claude = create_provider("anthropic")
     assert (claude.name, claude.model) == ("anthropic", "claude-opus-5-5")

@@ -15,9 +15,9 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.fiscal.calculo.actividad import ZERO, Traza, _round
-from hacienda_gpt.modulos.fiscal.calculo.autonomos_params import AutonomosParams, load_autonomos_params
-from hacienda_gpt.modulos.fiscal.calculo.irpf import Linea
+from asistente.ambitos.fiscal.calculo.actividad import ZERO, Traza, _round
+from asistente.ambitos.fiscal.calculo.autonomos_params import AutonomosParams, load_autonomos_params
+from asistente.ambitos.fiscal.calculo.irpf import Linea
 
 
 class Modelo303Input(BaseModel):

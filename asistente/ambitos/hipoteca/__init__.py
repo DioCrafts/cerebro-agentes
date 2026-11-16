@@ -1,7 +1,7 @@
 """Mortgage module ("hipoteca"): schedule, rate reviews with the official indices published in the BOE,
 early repayment (term vs instalment) with the fees of Ley 5/2019, and change of bank.
 
-See docs/modulos/hipoteca.md. ``MODULO`` is what the core discovers (hacienda_gpt/modulos/contrato.py).
+See docs/modulos/hipoteca.md. ``MODULO`` is what the core discovers (asistente/nucleo/modulos/contrato.py).
 """
 
 from __future__ import annotations
@@ -9,13 +9,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
 
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos, PuenteAmbito
-from hacienda_gpt.modulos.hipoteca.avisos import avisos_hipoteca
-from hacienda_gpt.modulos.hipoteca.herramientas import HERRAMIENTAS, pagos_del_ejercicio
-from hacienda_gpt.modulos.hipoteca.modelo import validar_prestamo
-from hacienda_gpt.modulos.hipoteca.normativa import cargar_normativa
+from asistente.ambitos.hipoteca.avisos import avisos_hipoteca
+from asistente.ambitos.hipoteca.herramientas import HERRAMIENTAS, pagos_del_ejercicio
+from asistente.ambitos.hipoteca.modelo import validar_prestamo
+from asistente.ambitos.hipoteca.normativa import cargar_normativa
+from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos, PuenteAmbito
 
 __all__ = ["MODULO", "pagos_del_ejercicio"]
 
@@ -100,8 +100,8 @@ class ModuloHipoteca(ModuloBase):
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
-        from hacienda_gpt.modulos.hipoteca import deduccion, indices, normativa
-        from hacienda_gpt.modulos.puentes import proponer_vivienda_pre2013
+        from asistente.ambitos.hipoteca import deduccion, indices, normativa
+        from asistente.nucleo.modulos.puentes import proponer_vivienda_pre2013
 
         return Ganchos(
             # A new official index moves the estimated instalment of the next review.

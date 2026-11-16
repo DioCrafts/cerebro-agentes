@@ -6,10 +6,10 @@ import sqlite3
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.memoria.almacen import REDACTADO
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
-from hacienda_gpt.proactive.store import Notification
+from asistente.nucleo.memoria.almacen import REDACTADO
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
+from asistente.nucleo.proactive.store import Notification
+from asistente.plataforma import settings
 from .conftest import PASSWORD, Env
 
 

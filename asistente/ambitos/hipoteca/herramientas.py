@@ -14,9 +14,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
-from hacienda_gpt.modulos.hipoteca.calculo import (
+from asistente.ambitos.hipoteca.calculo import (
     Cuadro,
     Supuestos,
     calcular_cuadro,
@@ -31,11 +29,13 @@ from hacienda_gpt.modulos.hipoteca.calculo import (
     sumar_meses,
     tipo_revisado,
 )
-from hacienda_gpt.modulos.hipoteca.comisiones import Comision, Operacion, comision_maxima, tramo_en
-from hacienda_gpt.modulos.hipoteca.deduccion import pagos_del_ano
-from hacienda_gpt.modulos.hipoteca.indices import BOE_DOC_URL, INDICES, Dato, SerieIndices, cargar_serie
-from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo
-from hacienda_gpt.modulos.hipoteca.normativa import Normativa, cargar_normativa
+from asistente.ambitos.hipoteca.comisiones import Comision, Operacion, comision_maxima, tramo_en
+from asistente.ambitos.hipoteca.deduccion import pagos_del_ano
+from asistente.ambitos.hipoteca.indices import BOE_DOC_URL, INDICES, Dato, SerieIndices, cargar_serie
+from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo
+from asistente.ambitos.hipoteca.normativa import Normativa, cargar_normativa
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 ZERO = Decimal(0)
 

@@ -11,13 +11,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from functools import cached_property
 
-from hacienda_gpt.eventos.tipos import CARGOS_IMPORTADOS, FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
-from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO, validar_servicios
-from hacienda_gpt.modulos.suscripciones.avisos import generar_avisos
-from hacienda_gpt.modulos.suscripciones.derechos import cargar
-from hacienda_gpt.modulos.suscripciones.herramientas import HERRAMIENTAS
+from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO, validar_servicios
+from asistente.ambitos.suscripciones.avisos import generar_avisos
+from asistente.ambitos.suscripciones.derechos import cargar
+from asistente.ambitos.suscripciones.herramientas import HERRAMIENTAS
+from asistente.nucleo.eventos.tipos import CARGOS_IMPORTADOS, FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
 
 INSTRUCCIONES = """\
 Eres el especialista en suscripciones y cargos recurrentes del hogar. Trabajas SOLO con extractos que el \
@@ -37,7 +37,7 @@ class ModuloSuscripciones(ModuloBase):
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
-        from hacienda_gpt.modulos.suscripciones.derechos import FICHEROS_LEGALES
+        from asistente.ambitos.suscripciones.derechos import FICHEROS_LEGALES
 
         return Ganchos(
             # A statement import changes the detected charges: renewals and price rises are recomputed at once.

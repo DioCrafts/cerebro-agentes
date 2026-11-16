@@ -15,7 +15,7 @@ import tempfile
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt.modulos.ayudas.convocatorias import Convocatoria
+from asistente.ambitos.ayudas.convocatorias import Convocatoria
 
 FICHERO = "convocatorias.json"
 # Calls whose last deadline passed this long ago are dropped.

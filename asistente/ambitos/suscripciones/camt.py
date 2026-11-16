@@ -20,9 +20,9 @@ from decimal import Decimal, InvalidOperation
 import re
 import xml.etree.ElementTree as ET
 
-from hacienda_gpt.modulos.suscripciones.lectura import enmascarar_cuenta
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
-from hacienda_gpt.utils.xml_seguro import XmlInseguroError, parse_seguro
+from asistente.ambitos.suscripciones.lectura import enmascarar_cuenta
+from asistente.ambitos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
+from asistente.plataforma.utils.xml_seguro import XmlInseguroError, parse_seguro
 
 _Elemento = ET.Element
 

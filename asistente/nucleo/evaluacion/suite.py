@@ -12,8 +12,8 @@ import re
 
 from pydantic import ValidationError
 
-from hacienda_gpt.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numeros_en, valor_de_cifra
-from hacienda_gpt.evaluacion.modelos import (
+from asistente.nucleo.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numeros_en, valor_de_cifra
+from asistente.nucleo.evaluacion.modelos import (
     CasoEvaluacion,
     ConfigSuite,
     Ejecucion,
@@ -30,8 +30,8 @@ from hacienda_gpt.evaluacion.modelos import (
     ExpTextoAusente,
     ExpTextoPresente,
 )
-from hacienda_gpt.evaluacion.modulo_prueba import MODULOS_SINTETICOS
-from hacienda_gpt.modulos.contrato import Modulo
+from asistente.nucleo.evaluacion.modulo_prueba import MODULOS_SINTETICOS
+from asistente.nucleo.modulos.contrato import Modulo
 
 CASOS_DIR = Path(__file__).resolve().parent / "casos"
 CONFIG = "suite.json"
@@ -94,7 +94,7 @@ def huella_suite(directorio: Path = CASOS_DIR) -> str:
 
 def modulos_de(caso: CasoEvaluacion) -> list[Modulo]:
     """The modules a case switches on (registered or synthetic). Raises :class:`SuiteInvalidaError`."""
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     modulos: list[Modulo] = []
     for clave in caso.modulos:

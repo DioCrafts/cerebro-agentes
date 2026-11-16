@@ -2,11 +2,11 @@
 
 A template is data: its id and version, a title and a description for the user, the memory ámbito a
 cancellation with a reason is recorded on, how many days the task has (optional), the JSON Schema of its
-parameters and the steps (the same :class:`~hacienda_gpt.tareas.modelo.PasoSpec` a model may propose). A
+parameters and the steps (the same :class:`~asistente.nucleo.tareas.modelo.PasoSpec` a model may propose). A
 string value ``"${nombre}"`` in a step's ``argumentos`` or ``parametros`` is replaced by that parameter.
 ``"x-defecto": "ejercicio_anterior"`` in a parameter's schema makes its default last year.
 
-Every template goes through the same gate as a model's plan (:func:`~hacienda_gpt.tareas.validacion.validar_plan`)
+Every template goes through the same gate as a model's plan (:func:`~asistente.nucleo.tareas.validacion.validar_plan`)
 when it is instantiated, and a test checks them all against the real module registry. Changing a template's
 steps means a new ``version``: tasks keep the version they were created with.
 """
@@ -22,9 +22,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tareas.capacidades import Capacidad
-from hacienda_gpt.tareas.modelo import ParametroValor, Tarea
-from hacienda_gpt.tareas.validacion import PlanInvalidoError, fallo_de_esquema, validar_plan
+from asistente.nucleo.tareas.capacidades import Capacidad
+from asistente.nucleo.tareas.modelo import ParametroValor, Tarea
+from asistente.nucleo.tareas.validacion import PlanInvalidoError, fallo_de_esquema, validar_plan
 
 DIRECTORIO = Path(__file__).parent / "plantillas"
 

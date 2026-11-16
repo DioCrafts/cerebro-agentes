@@ -3,7 +3,7 @@
 Every module stores its legal figures its own way (``evidencia`` lists inside each group, a ``valores`` map, a table
 of dated items…). Each module's adapter turns its file into :class:`GrupoLegal` objects — the figures, the literal
 quotes that print them (and how each figure is spelled there), and the source they were read from — so that one
-checker (:mod:`hacienda_gpt.conocimiento.comprobacion`) verifies all of them the same way.
+checker (:mod:`asistente.conocimiento.comprobacion`) verifies all of them the same way.
 """
 
 from __future__ import annotations
@@ -17,7 +17,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento.texto import VERSION_DIARIO
+from asistente.conocimiento.texto import VERSION_DIARIO
 
 Valor = Decimal | date
 

@@ -14,12 +14,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.fact_extractor import FactExtractor
-from hacienda_gpt.decision.interpreter import InterpretationResult, QuestionPrompt, interpret_turn
-from hacienda_gpt.decision.question_policy import QuestionPolicy
-from hacienda_gpt.decision.rules_engine import RulesEngineResult, evaluate_rules
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.decision.taxonomy import SupportedIntent
+from asistente.nucleo.decision.fact_extractor import FactExtractor
+from asistente.nucleo.decision.interpreter import InterpretationResult, QuestionPrompt, interpret_turn
+from asistente.nucleo.decision.question_policy import QuestionPolicy
+from asistente.nucleo.decision.rules_engine import RulesEngineResult, evaluate_rules
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.nucleo.decision.taxonomy import SupportedIntent
 
 
 @dataclass(frozen=True)

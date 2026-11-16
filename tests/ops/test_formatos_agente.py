@@ -11,16 +11,17 @@ from click.testing import CliRunner
 import formatos_util as util
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.cli import formatos as cli_formatos
-from hacienda_gpt.cli.ops import cli
-from hacienda_gpt.ops import formatos, formatos_agente, vigia
-from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
-from hacienda_gpt.ops.formatos import FormatoError
-from hacienda_gpt.ops.formatos_documentos import clase_de, esqueleto, palabras_permitidas
-from hacienda_gpt.proactive import novedades
-from hacienda_gpt.tax import documentos
+from asistente.ambitos.fiscal import documentos
+from asistente.conocimiento import formatos, formatos_agente
+from asistente.conocimiento.formatos import FormatoError
+from asistente.conocimiento.formatos_documentos import clase_de, esqueleto, palabras_permitidas
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.proactive import novedades
+from asistente.plataforma import settings
+from asistente.plataforma.cli import formatos as cli_formatos
+from asistente.plataforma.cli.ops import cli
+from asistente.plataforma.ops import vigia
+from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
 SUMARIO = "boe_sumario_20261110.json"
 T0 = datetime(2026, 11, 10, 8, 0, tzinfo=UTC)
@@ -159,7 +160,7 @@ def test_no_convergence_ends_in_a_developer_report_and_the_source_stays_broken(d
     assert (propuesta.tipo, propuesta.estado, propuesta.reglas_propuestas) == ("informe", "sin_converger", None)
     assert propuesta.llamadas_llm == 3 and len(propuesta.intentos) == 3
     informe = open(propuesta.informe, encoding="utf-8").read()
-    assert "no ha convergido en 3 intento(s)" in informe and "hacienda_gpt/proactive/novedades.py" in informe
+    assert "no ha convergido en 3 intento(s)" in informe and "asistente/nucleo/proactive/novedades.py" in informe
     adjuntos = sorted(p.name for p in (deriva.dir / "informes" / propuesta.id).iterdir())
     assert adjuntos == ["informe.md", "muestra_buena.json", "muestra_nueva.json"]
     assert formatos.spec_activa("boe_sumario").version == 1

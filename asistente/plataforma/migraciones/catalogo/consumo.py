@@ -1,4 +1,4 @@
-"""``hacienda_gpt.ops.consumo`` (``ConsumoStore``): the log of LLM calls (tokens, estimated cost).
+"""``asistente.plataforma.ops.consumo`` (``ConsumoStore``): the log of LLM calls (tokens, estimated cost).
 
 Baseline copied byte for byte from ``ops/consumo.py``, including its «ALTER if missing» of the four columns
 added after the first release, in the same order (SQLite appends each to the stored ``CREATE`` text).
@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 LLM_USAGE = """
                 CREATE TABLE IF NOT EXISTS llm_usage (
@@ -43,7 +43,7 @@ def _columnas_si_faltan(conn: sqlite3.Connection) -> None:
 
 PROPIETARIO = Propietario(
     nombre="consumo",
-    paquete="hacienda_gpt.ops",
+    paquete="asistente.plataforma.ops",
     descripcion="Registro de llamadas al LLM: tokens y coste estimado (anonimizado al borrar la cuenta).",
     tablas=("llm_usage",),
     otros_objetos=("idx_llm_usage_ts",),

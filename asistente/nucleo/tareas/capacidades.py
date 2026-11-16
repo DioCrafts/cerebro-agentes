@@ -1,8 +1,8 @@
 """Capabilities a task step can use: e-mail, browser, documents, research.
 
 A step's capability is a small adapter with a CLOSED list of operations, each with a JSON Schema for its
-parameters (checked by the plan gate, :mod:`hacienda_gpt.tareas.validacion`). E-mail, browser and documents are
-the REGISTERED capabilities (``hacienda_gpt/capacidades``), run through ``capacidades.pedir`` with the core as the
+parameters (checked by the plan gate, :mod:`asistente.nucleo.tareas.validacion`). E-mail, browser and documents are
+the REGISTERED capabilities (``asistente/capacidades``), run through ``capacidades.pedir`` with the core as the
 caller (``ambito="nucleo"``, ``origen="tarea"``): consent comes from the modules on for the case's owner, and the
 result type is the capabilities' own (``capacidades.contrato.ResultadoCapacidad``). Every operation offered here
 is deterministic, never sends or submits anything, and degrades to «the user does it» when the capability is off:
@@ -22,7 +22,7 @@ is deterministic, never sends or submits anything, and degrades to «the user do
   ``capacidades.investigacion.tareas.CapacidadInvestigacionTareas``, which adds ``investigar`` (the research
   capability, through ``pedir``).
 
-Tests replace any capability with a fake through :class:`hacienda_gpt.tareas.motor.Motor`.
+Tests replace any capability with a fake through :class:`asistente.nucleo.tareas.motor.Motor`.
 """
 
 from __future__ import annotations
@@ -34,11 +34,11 @@ from functools import lru_cache
 import logging
 from typing import Any, Protocol
 
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.capacidades.contrato import ResultadoCapacidad as ResultadoComun
-from hacienda_gpt.capacidades.documentos import tramites
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.modulos.contrato import Modulo
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.capacidades.contrato import ResultadoCapacidad as ResultadoComun
+from asistente.capacidades.documentos import tramites
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.modulos.contrato import Modulo
 
 logger = logging.getLogger(__name__)
 
@@ -112,7 +112,7 @@ class CapacidadPorPedir:
 
     @property
     def operaciones(self) -> Mapping[str, Operacion]:
-        from hacienda_gpt.capacidades.registro import registro
+        from asistente.capacidades.registro import registro
 
         salida: dict[str, Operacion] = {}
         for nombre in self.expuestas:
@@ -180,7 +180,7 @@ def raices_oficiales() -> frozenset[str]:
     """The official site roots research may use: the BOE and the procedures' sites of the modules' data."""
     raices = {RAIZ_BOE}
     try:
-        from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
+        from asistente.ambitos.caducidades.reglas import cargar_reglas
 
         for grupo in cargar_reglas().grupos().values():
             tramite = getattr(grupo, "tramite", None)
@@ -249,7 +249,7 @@ class CapacidadInvestigacion:
 def capacidades_por_defecto(buscador: Buscador | None = None) -> dict[str, Capacidad]:
     # The research capability's task view: ``webs_oficiales`` (above) plus ``investigar`` through ``pedir``
     # (imported here: that module builds on this one).
-    from hacienda_gpt.capacidades.investigacion.tareas import CapacidadInvestigacionTareas
+    from asistente.capacidades.investigacion.tareas import CapacidadInvestigacionTareas
 
     return {
         "correo": CapacidadCorreo(),

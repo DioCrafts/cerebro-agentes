@@ -8,7 +8,7 @@ LO 7/2015 (in force since 2016-07-22), where the Court answers a question with
 normally states its doctrine in a dedicated legal ground.
 
 This module is pure: no network and no LLM. It takes the HTML of ONE ruling,
-reuses :func:`hacienda_gpt.crawler.cendoj.parse_cendoj_document` for the basic
+reuses :func:`asistente.conocimiento.crawler.cendoj.parse_cendoj_document` for the basic
 metadata and adds what that parser does not know about: section, kind of
 appeal, appeal/judgment numbers, the admission question and the doctrine
 passage, plus a deterministic priority score with human-readable reasons.
@@ -24,7 +24,7 @@ import unicodedata
 import parsel
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.crawler.cendoj import parse_cendoj_document
+from asistente.conocimiento.crawler.cendoj import parse_cendoj_document
 
 # First day of the cassation regime of LO 7/2015 (disposición final décima).
 FECHA_NUEVA_CASACION = date(2016, 7, 22)

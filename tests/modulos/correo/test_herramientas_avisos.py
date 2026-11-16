@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from datetime import date
 
-from hacienda_gpt.modulos.contrato import ContextoModulo
-from hacienda_gpt.modulos.correo import MODULO, almacen, decisiones
-from hacienda_gpt.modulos.correo.avisos import generar_avisos
-from hacienda_gpt.modulos.correo.sincronizacion import sincronizar
-from hacienda_gpt.modulos.registro import problemas_de
+from asistente.capacidades.correo import MODULO, almacen, decisiones
+from asistente.capacidades.correo.avisos import generar_avisos
+from asistente.capacidades.correo.sincronizacion import sincronizar
+from asistente.nucleo.modulos.contrato import ContextoModulo
+from asistente.nucleo.modulos.registro import problemas_de
 from tests.modulos.correo import corpus
 from tests.modulos.correo.falso import GoogleFalso
 from tests.modulos.correo.test_oauth_y_sincronizacion import conectar
@@ -116,7 +116,7 @@ def test_no_me_interesa_por_categoria_y_remitente(google: GoogleFalso, db_path: 
     r = _tool("correo_resumen").ejecutar({}, ctx)
     assert "[m006accion]" not in r.contenido and "no te interesan" in r.contenido
     # The module's notice keys map onto its ámbitos for the core's inbox filter too.
-    from hacienda_gpt.memoria.ambitos import ambito_de_aviso
+    from asistente.nucleo.memoria.ambitos import ambito_de_aviso
 
     ambito = ambito_de_aviso("modulo:correo", "modulo:correo:accion:colegio-ejemplo.es:m006accion")
     assert ambito is not None and ambito.propuesta == "correo:accion:colegio-ejemplo.es"

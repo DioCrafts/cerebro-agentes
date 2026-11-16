@@ -20,7 +20,7 @@ import re
 from typing import Any, Literal
 import unicodedata
 
-from hacienda_gpt.agent.providers.base import Attachment
+from asistente.nucleo.agent.providers.base import Attachment
 
 MAX_DOCUMENT_BYTES = 10 * 1024 * 1024
 MAX_PAGES = 60

@@ -14,7 +14,7 @@ ni conexión de banca abierta en esta fase), el módulo:
 4. avisa antes de las renovaciones con tiempo para darse de baja;
 5. prepara un **borrador** de carta o correo de baja con su fundamento legal citado literalmente del BOE.
 
-Código: `hacienda_gpt/modulos/suscripciones/` · datos: `data/derechos_consumidor.json`, `data/comercios.json`,
+Código: `asistente/ambitos/suscripciones/` · datos: `data/derechos_consumidor.json`, `data/comercios.json`,
 `data/bancos.json` · pruebas: `tests/modulos/suscripciones/` · extractos del BOE y extractos bancarios sintéticos:
 `tests/fixtures/modulos/suscripciones/`.
 
@@ -144,7 +144,7 @@ Cada derecho guarda `fuente` (referencia, en vigor desde, verificado, nota), las
 valores y cómo se escribe cada cifra en su cita (`cifras`). Comprobación contra las páginas descargadas:
 
 ```
-uv run python -m hacienda_gpt.modulos.suscripciones.derechos <directorio con BOE-A-*.html o .txt>
+uv run python -m asistente.ambitos.suscripciones.derechos <directorio con BOE-A-*.html o .txt>
 ```
 
 Las pruebas hacen lo mismo con extractos pequeños de los artículos citados; el SHA-256 de cada página completa está

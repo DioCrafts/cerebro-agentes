@@ -3,7 +3,7 @@
 :func:`filtrar_al_escribir` is called by ``NotificationStore.add`` before every write, so the tax jobs, the
 modules' notices and anything else that writes to the inbox go through it; the weekly digest is built from
 what the inbox holds, so it never lists a proposal held back here. For a notice whose ámbito
-(:func:`hacienda_gpt.memoria.ambitos.ambito_de_aviso`) is covered by a decision of the case:
+(:func:`asistente.nucleo.memoria.ambitos.ambito_de_aviso`) is covered by a decision of the case:
 
 * a decision in force (a rejection, a restriction, «ya lo hice») → the notice is not written; the decision
   counts it (``omisiones``), so the assistant can say why it did not insist;
@@ -23,13 +23,13 @@ from pathlib import Path
 import sqlite3
 from typing import TYPE_CHECKING, Any
 
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.almacen import almacen, tabla_existe
-from hacienda_gpt.memoria.ambitos import ambito_de_aviso
-from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, Decision, Evaluacion, cubre, evaluar, fecha_es
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.almacen import almacen, tabla_existe
+from asistente.nucleo.memoria.ambitos import ambito_de_aviso
+from asistente.nucleo.memoria.modelo import BLOQUEAN_AVISOS, Decision, Evaluacion, cubre, evaluar, fecha_es
 
 if TYPE_CHECKING:
-    from hacienda_gpt.proactive.store import Notification
+    from asistente.nucleo.proactive.store import Notification
 
 logger = logging.getLogger(__name__)
 

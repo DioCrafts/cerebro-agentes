@@ -10,16 +10,16 @@ import json
 
 import pytest
 
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.memoria.ambitos import etiqueta
-from hacienda_gpt.modulos.contrato import ModuloBase
-from hacienda_gpt.modulos.correo import MODULO, almacen
-from hacienda_gpt.modulos.correo.clasificacion import CATEGORIAS
-from hacienda_gpt.modulos.correo.clasificador_llm import PROPOSITO
-from hacienda_gpt.modulos.correo.decisiones import ambito_silencio
-from hacienda_gpt.modulos.correo.sincronizacion import sincronizar
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.capacidades.correo import MODULO, almacen
+from asistente.capacidades.correo.clasificacion import CATEGORIAS
+from asistente.capacidades.correo.clasificador_llm import PROPOSITO
+from asistente.capacidades.correo.decisiones import ambito_silencio
+from asistente.capacidades.correo.sincronizacion import sincronizar
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.memoria.ambitos import etiqueta
+from asistente.nucleo.modulos.contrato import ModuloBase
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 from tests.modulos.correo import corpus as correos
 from tests.modulos.correo.falso import REFRESCO, GoogleFalso

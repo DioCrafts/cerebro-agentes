@@ -33,7 +33,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 import scrapy
 from scrapy.http import Response
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 CENDOJ_BASE_URL = "https://www.poderjudicial.es"
 CENDOJ_DEFAULT_USER_AGENT = "hacienda-asesor/0.1 (research; contacto@hacienda-asesor.local)"

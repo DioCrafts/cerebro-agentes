@@ -6,15 +6,14 @@ from collections.abc import Callable, Mapping
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.caducidades import calculo
-from hacienda_gpt.modulos.caducidades.agenda import (
+from asistente.ambitos.caducidades import calculo
+from asistente.ambitos.caducidades.agenda import (
     calcular_compra_de_hecho,
     construir_agenda,
     fecha_nacimiento,
 )
-from hacienda_gpt.modulos.caducidades.calculo import CalculoError, Vencimiento, fmt
-from hacienda_gpt.modulos.caducidades.hechos import (
+from asistente.ambitos.caducidades.calculo import CalculoError, Vencimiento, fmt
+from asistente.ambitos.caducidades.hechos import (
     HECHO_COMPRAS,
     HECHO_FECHAS_NACIMIENTO,
     Compra,
@@ -23,9 +22,10 @@ from hacienda_gpt.modulos.caducidades.hechos import (
     validar_compras,
     validar_fechas_nacimiento,
 )
-from hacienda_gpt.modulos.caducidades.reglas import Evidencia, Reglas, cargar_reglas
-from hacienda_gpt.modulos.caducidades.ticket import verificar_propuesta
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.ambitos.caducidades.reglas import Evidencia, Reglas, cargar_reglas
+from asistente.ambitos.caducidades.ticket import verificar_propuesta
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 _FECHA = {"type": "string", "description": "Fecha AAAA-MM-DD."}
 

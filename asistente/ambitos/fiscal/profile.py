@@ -13,14 +13,18 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt.tax.actividad import ActividadInput, ResultadoActividad, calcular_rendimiento_actividad
-from hacienda_gpt.tax.autonomos_params import load_autonomos_params
-from hacienda_gpt.tax.irpf import Descendiente, IRPFInput, IRPFResult, calcular_irpf
-from hacienda_gpt.tax.params import CAMPOS_GASTO, GASTOS_DESGLOSADOS, EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.actividad import (
+    ActividadInput,
+    ResultadoActividad,
+    calcular_rendimiento_actividad,
+)
+from asistente.ambitos.fiscal.calculo.autonomos_params import load_autonomos_params
+from asistente.ambitos.fiscal.calculo.irpf import Descendiente, IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import CAMPOS_GASTO, GASTOS_DESGLOSADOS, EjercicioNoDisponibleError
 
 # Profile facts and their value types ("string" | "number" | "boolean"); merged
 # into the extractor's vocabulary. Plain strings on purpose: this module must
-# not import ``hacienda_gpt.decision`` (which imports it back).
+# not import ``asistente.nucleo.decision`` (which imports it back).
 PROFILE_FACT_TYPES: dict[str, str] = {
     "comunidad_autonoma": "string",
     "estado_civil": "string",
@@ -157,7 +161,7 @@ PROFILE_FACT_TYPES: dict[str, str] = {
 }
 
 # The detail of each child: ONE fact whose value is the JSON text of a list of objects with the
-# fields of :class:`hacienda_gpt.tax.irpf.Descendiente` (the fact store, the PUT endpoint and the
+# fields of :class:`asistente.ambitos.fiscal.calculo.irpf.Descendiente` (the fact store, the PUT endpoint and the
 # agent's ``registrar_hechos`` only carry strings, numbers and booleans). It is not offered to
 # the conversational extractor nor to the document reader: free text would not parse. It is
 # written by the simulator and by the agent, both through :func:`descendientes_a_texto`.
@@ -165,8 +169,8 @@ DESCENDIENTES = "descendientes"
 # Two more facts of the same kind, written by the optimiser screen and by the agent:
 # ``datos_conyuge`` — the spouse's own figures (a JSON object, :class:`DatosConyuge`) — and
 # ``preferencias_optimizacion`` — what the user can and will do before 31 December (a JSON object,
-# ``hacienda_gpt.tax.optimizador.PreferenciasOptimizacion``). Every structured fact is checked and
-# canonicalised by ``hacienda_gpt.tax.optimizador.detalle_a_texto`` before it is stored.
+# ``asistente.ambitos.fiscal.calculo.optimizador.PreferenciasOptimizacion``). Every structured fact is checked and
+# canonicalised by ``asistente.ambitos.fiscal.calculo.optimizador.detalle_a_texto`` before it is stored.
 DATOS_CONYUGE = "datos_conyuge"
 PREFERENCIAS_OPTIMIZACION = "preferencias_optimizacion"
 DETALLE_FACT_TYPES: dict[str, str] = {

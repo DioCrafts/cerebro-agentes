@@ -28,9 +28,9 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from hacienda_gpt.modulos.ayudas.hogar import Hogar, entero, hogar_del_perfil
-from hacienda_gpt.modulos.ayudas.parametros import Grupo, PrestacionesParams, ejercicio_para, load_prestaciones
-from hacienda_gpt.modulos.ayudas.prestaciones import (
+from asistente.ambitos.ayudas.hogar import Hogar, entero, hogar_del_perfil
+from asistente.ambitos.ayudas.parametros import Grupo, PrestacionesParams, ejercicio_para, load_prestaciones
+from asistente.ambitos.ayudas.prestaciones import (
     ESTADOS_PROPONIBLES,
     ORDEN_ESTADOS,
     Evaluacion,
@@ -40,8 +40,8 @@ from hacienda_gpt.modulos.ayudas.prestaciones import (
     evaluar_imv,
     evaluar_todas,
 )
-from hacienda_gpt.planificador.modelos import EfectoAyuda
-from hacienda_gpt.planificador.textos import cita
+from asistente.nucleo.planificador.modelos import EfectoAyuda
+from asistente.nucleo.planificador.textos import cita
 
 ZERO = Decimal(0)
 CENT = Decimal("0.01")

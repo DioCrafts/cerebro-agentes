@@ -7,29 +7,17 @@ import json
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import RECORD_FACTS_TOOL, Toolbox
-from hacienda_gpt.api.api import app
-from hacienda_gpt.decision.fact_extractor import (
-    _PROVIDER_SCHEMA,
-    _RESPONSE_SCHEMA,
-    _SYSTEM_PROMPT,
-    EXPECTED_FACT_TYPE,
-    EXTRACTOR_FACT_NAMES,
-    OpenAIFactExtractor,
-)
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.modulos.fiscal.especificaciones import (
+from asistente.ambitos.fiscal.calculo.irpf import Descendiente, IRPFInput
+from asistente.ambitos.fiscal.calculo.params import GASTOS_DESGLOSADOS
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.documentos import DOCUMENT_FACTS
+from asistente.ambitos.fiscal.especificaciones import (
     AYUDA_REGISTRAR_HECHOS,
     BENEFITS_TOOL,
     CALCULATE_TOOL,
     JOINT_TOOL,
 )
-from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
-from hacienda_gpt.tax.irpf import Descendiente, IRPFInput
-from hacienda_gpt.tax.params import GASTOS_DESGLOSADOS
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.profile import (
     DESCENDIENTES,
     PROFILE_FACT_TYPES,
     RECUENTOS_DEL_DETALLE,
@@ -38,7 +26,19 @@ from hacienda_gpt.tax.profile import (
     descendientes_a_texto,
     normalizar_descendientes,
 )
-from hacienda_gpt.tax.simulador import simular
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import RECORD_FACTS_TOOL, Toolbox
+from asistente.nucleo.decision.fact_extractor import (
+    _PROVIDER_SCHEMA,
+    _RESPONSE_SCHEMA,
+    _SYSTEM_PROMPT,
+    EXPECTED_FACT_TYPE,
+    EXTRACTOR_FACT_NAMES,
+    OpenAIFactExtractor,
+)
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.plataforma.api.api import app
 
 D = Decimal
 client = TestClient(app)

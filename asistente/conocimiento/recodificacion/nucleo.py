@@ -43,10 +43,9 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion import prompts
-from hacienda_gpt.tax.recodificacion.control import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion import prompts
+from asistente.conocimiento.recodificacion.control import (
     CENT,
     Control,
     TextoLegal,
@@ -59,7 +58,8 @@ from hacienda_gpt.tax.recodificacion.control import (
     fecha_iso,
     indice_de,
 )
-from hacienda_gpt.tax.verificacion import VERSION_DIARIO, TextoDe, _comprimido
+from asistente.conocimiento.verificacion import VERSION_DIARIO, TextoDe, _comprimido
+from asistente.nucleo.agent.providers.base import ProviderError
 
 logger = logging.getLogger(__name__)
 
@@ -570,12 +570,15 @@ def ficheros_en_curso() -> dict[int, Any]:
 
 def _cargar_adaptadores() -> None:
     """Import every module that registers adapters. The ones for the other parameter files are optional; so are
-    those of the modules' legal data (``hacienda_gpt.conocimiento.recodificacion``)."""
+    those of the modules' legal data (``asistente.conocimiento.recodificacion.de_modulos``)."""
     import importlib
 
-    from hacienda_gpt.tax.recodificacion import adaptadores  # noqa: F401 - registers the IRPF adapters
+    from asistente.conocimiento.recodificacion import adaptadores  # noqa: F401 - registers the IRPF adapters
 
-    for nombre in ("hacienda_gpt.tax.recodificacion.adaptadores_otros", "hacienda_gpt.conocimiento.recodificacion"):
+    for nombre in (
+        "asistente.conocimiento.recodificacion.adaptadores_otros",
+        "asistente.conocimiento.recodificacion.de_modulos",
+    ):
         try:
             importlib.import_module(nombre)
         except ModuleNotFoundError as exc:
@@ -1250,7 +1253,8 @@ def _objetivo_de(propuesta: Propuesta) -> Objetivo:
 
 
 def _limpiar_caches() -> None:
-    from hacienda_gpt.tax import params, verificacion
+    from asistente.ambitos.fiscal.calculo import params
+    from asistente.conocimiento import verificacion
 
     params.load_params.cache_clear()
     verificacion._evidencia_deducciones.cache_clear()
@@ -1507,7 +1511,7 @@ def desglosar(objetivo: Objetivo, *, lector: Any, texto_de: TextoDe, etiqueta_ar
     its label hangs from the article's own label (``etiqueta_articulo``: "art. 5" → "art. 5.Dos.1"). The reader
     only LISTS; it encodes nothing here. Lets the provider's ``ProviderError`` through.
     """
-    from hacienda_gpt.tax.recodificacion.control import ruta_de_etiqueta
+    from asistente.conocimiento.recodificacion.control import ruta_de_etiqueta
 
     adaptador = adaptador_de(objetivo.tipo)
     _, texto = leer_texto(objetivo, texto_de)
@@ -1581,12 +1585,12 @@ def listar_preceptos(
     """Ask a reader which blocks of ``ley`` the amending ``norma`` changes, when its text could not be parsed for them.
 
     The last resort for a norm whose analysis names no article and whose sentences the deterministic parser
-    (:func:`~hacienda_gpt.tax.recodificacion.control.articulos_que_modifica`) does not understand. The reader only
+    (:func:`~asistente.conocimiento.recodificacion.control.articulos_que_modifica`) does not understand. The reader only
     LISTS: an item is kept only if its quote is literally in the passages of the norm that name the amended law by
     its number and names that very article or provision. Every item kept is then re-read by the normal loop; nothing
     is encoded here. Lets the provider's ``ProviderError`` through.
     """
-    from hacienda_gpt.tax.recodificacion.control import claves_nombradas, pasajes_que_nombran
+    from asistente.conocimiento.recodificacion.control import claves_nombradas, pasajes_que_nombran
 
     lista = ListaDePreceptos(norma=norma, ley=ley)
     pasajes = pasajes_que_nombran(pagina, ley_citada)
@@ -1680,9 +1684,9 @@ def ejecutar(
 
     A budget error stops the run at once (what was left is listed); any other failure is recorded and the run goes on.
     ``recodificador`` replaces :func:`recodificar` (same signature), e.g. with the escalating one of
-    :mod:`~hacienda_gpt.tax.recodificacion.lotes`.
+    :mod:`~asistente.conocimiento.recodificacion.lotes`.
     """
-    from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
+    from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
     informe = Informe(objetivos=len(objetivos))
     nuevas: list[Propuesta] = []
@@ -1769,7 +1773,7 @@ def texto_del_aviso(propuestas: Sequence[Propuesta]) -> str:
         lineas.append(f"  Propuesta: {p.id}")
     lineas += [
         "",
-        "Para verlas: python -m hacienda_gpt.cli.proactive params-proposals --show <id>",
+        "Para verlas: python -m asistente.plataforma.cli.proactive params-proposals --show <id>",
         "Para decidir: params-apply <id> | params-reject <id>; tras revisar una aplicada: params-confirm <id>",
     ]
     return "\n".join(lineas) + "\n"

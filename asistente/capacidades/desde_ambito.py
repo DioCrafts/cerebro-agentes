@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
 
 
 def pedir_desde_herramienta(

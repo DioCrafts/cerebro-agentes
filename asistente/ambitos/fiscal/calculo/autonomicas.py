@@ -14,7 +14,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Any
 
-from hacienda_gpt.modulos.fiscal.calculo.params import (
+from asistente.ambitos.fiscal.calculo.params import (
     CAMPOS_UNIDAD_HIJOS,
     PERIODOS_POR_HIJO,
     AjustePorHijo,

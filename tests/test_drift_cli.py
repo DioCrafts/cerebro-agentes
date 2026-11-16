@@ -6,7 +6,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from hacienda_gpt.cli.drift_check import cli
+from asistente.plataforma.cli.drift_check import cli
 
 
 def _sha(content: bytes) -> str:

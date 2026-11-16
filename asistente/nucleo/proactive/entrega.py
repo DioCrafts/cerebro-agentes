@@ -34,9 +34,9 @@ from typing import Any, Protocol
 from urllib.parse import urlsplit
 import urllib.request
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
 
@@ -191,9 +191,9 @@ def canales_configurados() -> list[Canal]:
                 starttls=settings.NOTIFY_SMTP_STARTTLS,
             )
         )
-    # Web Push to each user's own devices (hacienda_gpt/push): per user, with its own opt-in.
-    from hacienda_gpt.push.envio import canal_push_configurado
-    from hacienda_gpt.push.vapid import ConfiguracionVapidError
+    # Web Push to each user's own devices (asistente/plataforma/push): per user, with its own opt-in.
+    from asistente.plataforma.push.envio import canal_push_configurado
+    from asistente.plataforma.push.vapid import ConfiguracionVapidError
 
     try:
         push = canal_push_configurado()
@@ -216,7 +216,7 @@ class EntregaStore:
         self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
-            asegurar_esquema(self._conn, "proactive_entrega")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(self._conn, "proactive_entrega")  # migrations (asistente/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS notification_deliveries (
                     notification_id TEXT NOT NULL,
@@ -320,7 +320,7 @@ def entregar_pendientes(
         for notification in pendientes:
             try:
                 if por_usuario is not None:
-                    por_usuario(notification)  # only a generic sentence leaves: hacienda_gpt/push/envio.py
+                    por_usuario(notification)  # only a generic sentence leaves: asistente/plataforma/push/envio.py
                 else:
                     canal.enviar(notification.title, texto_plano(notification))
             except Exception as exc:  # one broken channel must not stop the others

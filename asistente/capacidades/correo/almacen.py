@@ -32,8 +32,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
 
@@ -185,7 +185,7 @@ def conectar(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
             conn.execute("PRAGMA journal_mode=WAL;")
             with _lock:
                 _wal.add(ruta)
-        asegurar_esquema(conn, "correo")  # migrations (hacienda_gpt/plataforma)
+        asegurar_esquema(conn, "correo")  # migrations (asistente/plataforma)
         conn.executescript(_ESQUEMA)  # idempotent and cheap: a recreated file always gets its tables
         with conn:
             yield conn
@@ -482,7 +482,7 @@ def al_borrar_caso(conn: sqlite3.Connection, case_id: str) -> None:
 
 
 def _revocar_pendientes() -> None:
-    from hacienda_gpt.capacidades.correo.oauth import revocar_token_cifrado
+    from asistente.capacidades.correo.oauth import revocar_token_cifrado
 
     while True:
         with _lock:
@@ -497,7 +497,7 @@ def _revocar_pendientes() -> None:
 
 def instalar() -> None:
     """Hook the erasure into the case store (idempotent; done when the package is imported)."""
-    from hacienda_gpt.decision import state_store_sqlite
+    from asistente.nucleo.decision import state_store_sqlite
 
     if al_borrar_caso not in state_store_sqlite.AL_BORRAR:
         state_store_sqlite.AL_BORRAR.append(al_borrar_caso)

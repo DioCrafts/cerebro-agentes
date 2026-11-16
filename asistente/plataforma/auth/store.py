@@ -26,9 +26,14 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt import settings
-from hacienda_gpt.auth.passwords import burn_password_check, check_password_policy, hash_password, verify_password
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma import settings
+from asistente.plataforma.auth.passwords import (
+    burn_password_check,
+    check_password_policy,
+    hash_password,
+    verify_password,
+)
+from asistente.plataforma.migraciones import asegurar_esquema
 
 ConsentType = Literal["tratamiento_datos", "envio_documentos_a_proveedor_llm", "avisos_por_correo"]
 CONSENT_TYPES: tuple[ConsentType, ...] = get_args(ConsentType)
@@ -114,7 +119,7 @@ class AuthStore:
             conn.row_factory = sqlite3.Row
             conn.execute("PRAGMA journal_mode=WAL;")
             with conn:
-                asegurar_esquema(conn, "auth")  # migrations (hacienda_gpt/plataforma)
+                asegurar_esquema(conn, "auth")  # migrations (asistente/plataforma)
                 conn.execute("""
                     CREATE TABLE IF NOT EXISTS users (
                         id TEXT PRIMARY KEY,

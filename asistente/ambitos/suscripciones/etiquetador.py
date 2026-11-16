@@ -20,7 +20,7 @@ from collections.abc import Callable
 import os
 import re
 
-from hacienda_gpt.modulos.suscripciones.modelos import CATEGORIAS
+from asistente.ambitos.suscripciones.modelos import CATEGORIAS
 
 Etiquetador = Callable[[str, tuple[str, ...]], str | None]
 

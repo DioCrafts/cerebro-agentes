@@ -1,6 +1,6 @@
 """The fiscal calendar under the format watch: coherence of the data, and its contrast with the BOE.
 
-``hacienda_gpt/tax/data/calendario.json`` is maintained by hand: recurring
+``asistente/ambitos/fiscal/data/calendario.json`` is maintained by hand: recurring
 rules ("the 20th of the month after each quarter") with the regulation that
 sets them. Two silent failures are possible, and each is a source here:
 
@@ -40,8 +40,8 @@ from typing import Annotated, Any
 import parsel
 from pydantic import BaseModel, BeforeValidator, ConfigDict, Field, field_validator, model_validator
 
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos import Fallo, Fuente, Lectura
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos import Fallo, Fuente, Lectura
 
 logger = logging.getLogger(__name__)
 
@@ -277,7 +277,7 @@ def extraer_contraste(reglas: ReglasCalendarioBoe, texto: str) -> list[dict[str,
 
 
 def _canarios_contraste(datos: Any, muestra: str, contexto: str, reglas: Any) -> Lectura:
-    from hacienda_gpt.tax import calendario
+    from asistente.ambitos.fiscal.calculo import calendario
 
     datos = datos if isinstance(datos, list) else []
     fallos: list[Fallo] = []
@@ -356,7 +356,7 @@ def _coherencia_con_los_datos(reglas: ReglasCalendarioBoe, cal: Any, dichas: dic
 
 def resumen_calendario(reglas: Any, texto: str) -> dict[str, Any]:
     """What the coherence check looks at: the obligations and their rules. Raises on invalid data."""
-    from hacienda_gpt.tax import calendario
+    from asistente.ambitos.fiscal.calculo import calendario
 
     cal = calendario.leer_calendario(texto)
     return {
@@ -381,7 +381,7 @@ def _hoy_de(contexto: str) -> date:
 
 
 def _canarios_calendario(datos: Any, muestra: str, contexto: str, reglas: Any) -> Lectura:
-    from hacienda_gpt.tax import calendario
+    from asistente.ambitos.fiscal.calculo import calendario
 
     hoy = _hoy_de(contexto)
     cal = calendario.leer_calendario(muestra)
@@ -492,7 +492,7 @@ def _canarios_calendario(datos: Any, muestra: str, contexto: str, reglas: Any) -
 def observar_calendario(hoy: date) -> formatos.Observacion | None:
     """Check the bundled calendar data as of ``hoy`` and record the outcome (never raises)."""
     try:
-        from hacienda_gpt.tax.calendario import RUTA_CALENDARIO
+        from asistente.ambitos.fiscal.calculo.calendario import RUTA_CALENDARIO
 
         crudo = RUTA_CALENDARIO.read_text(encoding="utf-8")
     except Exception as exc:
@@ -545,7 +545,7 @@ def registrar_fuentes() -> None:
             ),
             canarios=_canarios_calendario,
             extraer=resumen_calendario,
-            codigo="hacienda_gpt/tax/data/calendario.json, hacienda_gpt/tax/calendario.py",
+            codigo="asistente/ambitos/fiscal/data/calendario.json, asistente/ambitos/fiscal/calculo/calendario.py",
         )
     )
     formatos.registrar(
@@ -567,7 +567,7 @@ def registrar_fuentes() -> None:
             recortar=recortar_contraste,
             # A change here decides which deadline wording counts as "the law": always a person.
             auto_aplicable=False,
-            codigo="hacienda_gpt/ops/formatos_calendario.py (texto_articulo, extraer_contraste), "
-            "hacienda_gpt/tax/data/calendario.json",
+            codigo="asistente/conocimiento/formatos_calendario.py (texto_articulo, extraer_contraste), "
+            "asistente/ambitos/fiscal/data/calendario.json",
         )
     )

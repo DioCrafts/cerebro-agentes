@@ -1,8 +1,8 @@
 """The core's daily proactive run: every module's notices for every case, no LLM involved.
 
 Modules that write their own notifications (``ejecutar_en_bandeja``; the tax module's deadline reminders and
-year-end plan, in :mod:`hacienda_gpt.modulos.fiscal.avisos`) run first; then the household modules switched on
-for each case's owner return their notices through the contract (:mod:`hacienda_gpt.proactive.bandeja`).
+year-end plan, in :mod:`asistente.ambitos.fiscal.avisos`) run first; then the household modules switched on
+for each case's owner return their notices through the contract (:mod:`asistente.nucleo.proactive.bandeja`).
 
 The tax jobs lived here before they moved to the tax module: their old names (``recordatorios_de_plazos``,
 ``plan_fin_de_ejercicio``, ``ejecutar_para_caso``, ``facts_de``…) still resolve from this module.
@@ -16,16 +16,16 @@ import logging
 from typing import TYPE_CHECKING, Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from hacienda_gpt.decision.schemas import CaseState, CaseStatus
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.schemas import CaseState, CaseStatus
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive.store import NotificationStore
 
 if TYPE_CHECKING:  # the re-exported tax jobs, for type checkers (at run time ``__getattr__`` serves them)
-    from hacienda_gpt.modulos.fiscal.avisos import _CIERRE_EJERCICIO_ID as _CIERRE_EJERCICIO_ID
-    from hacienda_gpt.modulos.fiscal.avisos import ejecutar_para_caso as ejecutar_para_caso
-    from hacienda_gpt.modulos.fiscal.avisos import facts_de as facts_de
-    from hacienda_gpt.modulos.fiscal.avisos import plan_fin_de_ejercicio as plan_fin_de_ejercicio
-    from hacienda_gpt.modulos.fiscal.avisos import recordatorios_de_plazos as recordatorios_de_plazos
+    from asistente.ambitos.fiscal.avisos import _CIERRE_EJERCICIO_ID as _CIERRE_EJERCICIO_ID
+    from asistente.ambitos.fiscal.avisos import ejecutar_para_caso as ejecutar_para_caso
+    from asistente.ambitos.fiscal.avisos import facts_de as facts_de
+    from asistente.ambitos.fiscal.avisos import plan_fin_de_ejercicio as plan_fin_de_ejercicio
+    from asistente.ambitos.fiscal.avisos import recordatorios_de_plazos as recordatorios_de_plazos
 
 logger = logging.getLogger(__name__)
 
@@ -40,15 +40,15 @@ def hoy_en_espana() -> date:
 
 def con_bandeja_propia() -> list[Any]:
     """The modules (operator-enabled) that write their own notifications: ``Ganchos.bandeja`` (contract v2)."""
-    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.ganchos import escribe_su_bandeja
+    from asistente.nucleo.modulos.registro import registro
 
     return [modulo for modulo in registro().activos() if escribe_su_bandeja(modulo)]
 
 
 def ejecutar_bandejas_propias(case: CaseState, *, hoy: date, store: NotificationStore) -> dict[str, int]:
     """Run, for one case, the modules that write their own notifications; notifications created per kind."""
-    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.ganchos import ganchos_de
 
     creadas: dict[str, int] = {}
     for modulo in con_bandeja_propia():
@@ -74,12 +74,12 @@ def ejecutar_para_todos(
     year-end plan) run first, for every case; the summary counts each of their kinds (``tipos_en_bandeja``).
 
     Then the household modules switched on for each case's owner (``modulos_de``; by default the owner's
-    choices in ``auth``, or the defaults) write their notices (see :mod:`hacienda_gpt.proactive.bandeja`). The
+    choices in ``auth``, or the defaults) write their notices (see :mod:`asistente.nucleo.proactive.bandeja`). The
     summary gains ``modulos`` (notices per module) and ``errores_modulos`` only when some module beyond the
     tax one is on, so a tax-only deployment reports exactly what it always did. ``preparar_modulos`` (the
     ``run-daily`` command) first runs each such module's daily task once (e.g. reading the day's calls for aid).
     """
-    from hacienda_gpt.modulos.ganchos import GanchosBandeja, ganchos_de
+    from asistente.nucleo.modulos.ganchos import GanchosBandeja, ganchos_de
 
     propios: list[tuple[Any, GanchosBandeja]] = [
         (modulo, bandeja) for modulo in con_bandeja_propia() if (bandeja := ganchos_de(modulo).bandeja) is not None
@@ -104,10 +104,10 @@ def ejecutar_para_todos(
             for tipo, creadas in created.items():
                 summary[tipo] = summary.get(tipo, 0) + creadas
 
-    from hacienda_gpt.proactive.bandeja import avisos_de_modulos_para_todos
+    from asistente.nucleo.proactive.bandeja import avisos_de_modulos_para_todos
 
     def por_defecto(case: CaseState) -> Sequence[Any]:
-        from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+        from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 
         return modulos_activos_para_caso(case.case_id, auth)
 
@@ -124,9 +124,9 @@ def ejecutar_para_todos(
 
 
 def __getattr__(name: str) -> Any:
-    """The tax jobs' old names (they moved to :mod:`hacienda_gpt.modulos.fiscal.avisos`)."""
+    """The tax jobs' old names (they moved to :mod:`asistente.ambitos.fiscal.avisos`)."""
     if not name.startswith("__"):
-        from hacienda_gpt.modulos.fiscal import avisos
+        from asistente.ambitos.fiscal import avisos
 
         if hasattr(avisos, name):
             return getattr(avisos, name)

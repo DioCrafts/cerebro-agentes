@@ -15,8 +15,8 @@ import json
 from typing import Any
 from urllib.parse import parse_qs, urlsplit
 
-from hacienda_gpt.modulos.correo.config import SCOPE_LECTURA
-from hacienda_gpt.modulos.correo.http import RespuestaHttp
+from asistente.capacidades.correo.config import SCOPE_LECTURA
+from asistente.capacidades.correo.http import RespuestaHttp
 
 ACCESO = "ya29.acceso-falso"
 REFRESCO = "1//refresco-falso-secreto"

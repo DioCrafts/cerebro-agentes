@@ -1,6 +1,6 @@
 """The contract every life-admin module implements (fiscal, luz, caducidades, ayudas…).
 
-A module is a package ``hacienda_gpt.modulos.<clave>`` whose ``__init__`` exposes ``MODULO``, an object
+A module is a package ``asistente.ambitos.<clave>`` whose ``__init__`` exposes ``MODULO``, an object
 satisfying :class:`Modulo`. The central agent never computes anything itself: it routes the user's
 question to the specialist of each module, whose tools are deterministic calculators over the household
 profile. The same rules as the tax calculator hold for every module:
@@ -23,11 +23,11 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, Any, Literal, Protocol, runtime_checkable
 
-from hacienda_gpt.agent.providers.base import ToolSpec
+from asistente.nucleo.agent.providers.base import ToolSpec
 
 if TYPE_CHECKING:
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.decision.schemas import CaseState
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.decision.schemas import CaseState
 
 Efecto = Literal["lectura", "prepara", "actua"]
 TipoHecho = Literal["string", "number", "boolean", "json"]
@@ -138,7 +138,7 @@ class Modulo(Protocol):
         """Deterministic proactive job, run daily per case. Must be idempotent (same keys)."""
         ...
 
-    # Optional event hooks (hacienda_gpt/eventos), read with getattr so every existing module still
+    # Optional event hooks (asistente/nucleo/eventos), read with getattr so every existing module still
     # satisfies this protocol: ``eventos: Sequence[str]`` (event types the module subscribes to; empty =
     # the core's default for it, see eventos/rutas.py), ``al_evento(evento, contexto)`` (what to do when
     # woken; default: ``avisos``), ``proxima_revision(contexto) -> date | None`` (when to wake it next
@@ -169,7 +169,7 @@ class ModuloBase:
     hechos: Sequence[HechoModulo] = field(default_factory=tuple)
     herramientas: Sequence[HerramientaModulo] = field(default_factory=tuple)
     fuentes: Sequence[FuenteModulo] = field(default_factory=tuple)
-    # Event types this module wants to be woken by (hacienda_gpt/eventos/tipos.py); empty: the core's default.
+    # Event types this module wants to be woken by (asistente/nucleo/eventos/tipos.py); empty: the core's default.
     eventos: Sequence[str] = field(default_factory=tuple)
     # True: the central agent offers this module's (read-only) tools directly (see the Modulo hooks above).
     herramientas_directas: bool = False
@@ -178,7 +178,7 @@ class ModuloBase:
         return []
 
     def al_evento(self, evento: Any, contexto: ContextoModulo) -> list[AvisoModulo]:
-        """Woken by ``evento`` (a ``hacienda_gpt.eventos.Evento``): by default, the same notices as daily."""
+        """Woken by ``evento`` (a ``asistente.nucleo.eventos.Evento``): by default, the same notices as daily."""
         return self.avisos(contexto)
 
     def proxima_revision(self, contexto: ContextoModulo) -> date | None:

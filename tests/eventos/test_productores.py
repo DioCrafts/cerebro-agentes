@@ -7,11 +7,10 @@ import sqlite3
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.state_store import CaseVersionConflictError
-from hacienda_gpt.eventos import emitir, emitir_cambio_modulo, emitir_indices, emitir_novedades, productores
-from hacienda_gpt.eventos.bus import Bus
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.decision.state_store import CaseVersionConflictError
+from asistente.nucleo.eventos import emitir, emitir_cambio_modulo, emitir_indices, emitir_novedades, productores
+from asistente.nucleo.eventos.bus import Bus
+from asistente.nucleo.eventos.tipos import (
     CARGOS_IMPORTADOS,
     INDICE_PUBLICADO,
     MODULO_ACTIVADO,
@@ -20,7 +19,8 @@ from hacienda_gpt.eventos.tipos import (
     EventoInvalidoError,
     validar,
 )
-from hacienda_gpt.proactive.novedades import Novedad
+from asistente.nucleo.proactive.novedades import Novedad
+from asistente.plataforma import settings
 from tests.proactive import make_case
 from .ayudas import stores
 

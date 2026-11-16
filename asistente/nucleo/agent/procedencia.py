@@ -26,8 +26,8 @@ import json
 import re
 from typing import Any
 
-from hacienda_gpt.decision.schemas import FactValueType
-from hacienda_gpt.memoria.modelo import normalizar_texto
+from asistente.nucleo.decision.schemas import FactValueType
+from asistente.nucleo.memoria.modelo import normalizar_texto
 
 _CENT = Decimal("0.01")
 _MIL = Decimal(1000)
@@ -156,7 +156,7 @@ def numero_dicho(valor: Any, mensajes: Sequence[str], numeros: set[Decimal] | No
 def cita_valida(cita: Any, mensajes: Sequence[str]) -> bool:
     """``cita`` is the user's literal words (``memoria.agente._en_palabras_del_usuario``: same normalisation and
     minimum length as the quote of ``registrar_decision``)."""
-    from hacienda_gpt.memoria.agente import _en_palabras_del_usuario
+    from asistente.nucleo.memoria.agente import _en_palabras_del_usuario
 
     return isinstance(cita, str) and _en_palabras_del_usuario(cita, mensajes)
 

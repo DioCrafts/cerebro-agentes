@@ -19,7 +19,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt.modulos.fiscal.calculo.params import ReduccionArrendamiento
+from asistente.ambitos.fiscal.calculo.params import ReduccionArrendamiento
 
 ZERO = Decimal(0)
 

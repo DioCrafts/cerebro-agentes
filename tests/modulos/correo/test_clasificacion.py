@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.correo import clasificador_llm
-from hacienda_gpt.modulos.correo.clasificacion import CATEGORIAS, Clasificacion, clasificar
-from hacienda_gpt.modulos.correo.dominios import cargar
-from hacienda_gpt.modulos.correo.mime import leer_mensaje
+from asistente.capacidades.correo import clasificador_llm
+from asistente.capacidades.correo.clasificacion import CATEGORIAS, Clasificacion, clasificar
+from asistente.capacidades.correo.dominios import cargar
+from asistente.capacidades.correo.mime import leer_mensaje
 from tests.modulos.correo import corpus
 from tests.modulos.correo.falso import correo
 

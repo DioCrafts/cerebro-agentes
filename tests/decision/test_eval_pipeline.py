@@ -1,6 +1,11 @@
 from pathlib import Path
 
-from hacienda_gpt.cli.eval_pipeline import build_html_report, build_markdown_report, compute_metrics, load_eval_data
+from asistente.plataforma.cli.eval_pipeline import (
+    build_html_report,
+    build_markdown_report,
+    compute_metrics,
+    load_eval_data,
+)
 
 
 def test_eval_pipeline_metrics_and_reports() -> None:

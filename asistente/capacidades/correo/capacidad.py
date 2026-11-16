@@ -16,13 +16,13 @@ from collections.abc import Mapping
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
-from hacienda_gpt.capacidades.correo import almacen, decisiones
-from hacienda_gpt.capacidades.correo import resumen as resumenes
-from hacienda_gpt.capacidades.correo.clasificacion import CATEGORIAS
-from hacienda_gpt.capacidades.correo.normativa import FICHEROS_LEGALES
-from hacienda_gpt.capacidades.correo.seguridad import envolver
-from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
+from asistente.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
+from asistente.capacidades.correo import almacen, decisiones
+from asistente.capacidades.correo import resumen as resumenes
+from asistente.capacidades.correo.clasificacion import CATEGORIAS
+from asistente.capacidades.correo.normativa import FICHEROS_LEGALES
+from asistente.capacidades.correo.seguridad import envolver
+from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
 
 CLAVE = "correo"
 MAX_FACTURAS = 50
@@ -77,7 +77,7 @@ SALIDA_FACTURAS: dict[str, Any] = {
 
 
 def _resumen(args: Mapping[str, Any], ctx: ContextoPeticion) -> ResultadoCapacidad:
-    from hacienda_gpt.capacidades.correo.herramientas import correo_resumen
+    from asistente.capacidades.correo.herramientas import correo_resumen
 
     if ctx.case_id is None:
         return ResultadoCapacidad(resumen="Hace falta un expediente para leer el correo.", es_error=True)

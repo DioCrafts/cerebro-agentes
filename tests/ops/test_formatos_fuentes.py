@@ -23,14 +23,15 @@ from scrapy.http import HtmlResponse, Request, Response
 from scrapy.spidermiddlewares.httperror import HttpError
 from twisted.python.failure import Failure
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
-from hacienda_gpt.cli import formatos as cli_formatos
-from hacienda_gpt.crawler import cendoj, crawlers, teac
-from hacienda_gpt.crawler.boe_consolidado import BOECCAACrawler
-from hacienda_gpt.ops import formatos, formatos_agente, formatos_calendario, vigia
-from hacienda_gpt.ops.formatos_corpus import RecuentoCorpus
-from hacienda_gpt.tax import calendario
+from asistente.ambitos.fiscal.calculo import calendario
+from asistente.conocimiento import formatos, formatos_agente, formatos_calendario
+from asistente.conocimiento.crawler import cendoj, crawlers, teac
+from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler
+from asistente.conocimiento.formatos_corpus import RecuentoCorpus
+from asistente.plataforma import settings
+from asistente.plataforma.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
+from asistente.plataforma.cli import formatos as cli_formatos
+from asistente.plataforma.ops import vigia
 
 HOY = date(2026, 11, 12)
 T0 = datetime(2026, 11, 10, 8, 0, tzinfo=UTC)
@@ -151,7 +152,7 @@ def test_cendoj_crawler_reports_each_ruling_and_writes_the_same_files(vigilancia
 
 
 def test_the_skeleton_keeps_markup_labels_and_shapes_only() -> None:
-    from hacienda_gpt.ops.formatos_esqueleto import esqueleto_html, lista_permitida
+    from asistente.conocimiento.formatos_esqueleto import esqueleto_html, lista_permitida
 
     html = (
         '<html><head><script>var nombre = "Pérez";</script><style>p{}</style></head><body>'
@@ -191,8 +192,8 @@ class _RelojParado(datetime):
 def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia, monkeypatch) -> None:
     import re
 
-    from hacienda_gpt.ops import formatos_fuentes
-    from hacienda_gpt.ops.formatos_esqueleto import plano
+    from asistente.conocimiento import formatos_fuentes
+    from asistente.conocimiento.formatos_esqueleto import plano
 
     # Our own timestamps go to disk (ISO and «%Y%m%dT%H%M%S» file stamps): with a running clock, a run at 12:34 or
     # 20:24 would write «1234» or «2024» and look like a figure of the ruling. The clock is stopped instead.
@@ -509,8 +510,8 @@ def test_ccaa_text_yield_drop_against_the_recent_median(vigilancia, tmp_path) ->
 
 
 def test_the_ingest_reports_zero_chunk_files_without_changing_the_manifest(vigilancia, tmp_path, monkeypatch) -> None:
-    from hacienda_gpt.processor import document_loader as dl
-    from hacienda_gpt.processor import manifest as mf
+    from asistente.conocimiento.processor import document_loader as dl
+    from asistente.conocimiento.processor import manifest as mf
     from tests.test_document_loader_incremental import _DeterministicEmbed, _docs_for
 
     contenido = tmp_path / "html"

@@ -18,7 +18,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any, Final
 
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.eventos.tipos import (
     CAMBIO_NORMATIVO,
     CARGOS_IMPORTADOS,
     DIRIGIDOS,
@@ -62,7 +62,7 @@ HECHOS_DE_CARGOS: Final = frozenset({"suscripciones_servicios"})
 
 def suscripciones_de(modulo: Any) -> frozenset[str]:
     """Event types the module is subscribed to (its own declaration, else the core's default)."""
-    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.ganchos import ganchos_de
 
     declaradas = ganchos_de(modulo).eventos.tipos
     if declaradas:
@@ -73,7 +73,7 @@ def suscripciones_de(modulo: Any) -> frozenset[str]:
 def hechos_que_lee(modulo: Any, compartidos: Iterable[str]) -> frozenset[str]:
     """Fact names whose change concerns the module."""
     compartidos = frozenset(compartidos)
-    from hacienda_gpt.modulos.ganchos import TODOS, es_v2, ganchos_de
+    from asistente.nucleo.modulos.ganchos import TODOS, es_v2, ganchos_de
 
     propios = {h.nombre for h in getattr(modulo, "hechos", ()) or ()}
     declarados = {str(n) for n in ganchos_de(modulo).eventos.hechos_leidos}

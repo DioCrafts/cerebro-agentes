@@ -2,8 +2,8 @@ from datetime import date
 
 import pytest
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.proactive.impacto import (
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.proactive.impacto import (
     TAGS,
     CambioNormativo,
     analizar_cambio,
@@ -15,7 +15,7 @@ from hacienda_gpt.proactive.impacto import (
     preparar_eventos,
     procesar_eventos,
 )
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.proactive.store import NotificationStore
 from . import make_case
 
 # Synthetic page shaped like a BOE consolidated law (act.php). The real markup

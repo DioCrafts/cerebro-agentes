@@ -1,6 +1,6 @@
 """Discovery and validation of the capabilities (see ``contrato.py``).
 
-Every package ``hacienda_gpt.capacidades.<clave>`` whose ``__init__`` exposes ``CAPACIDAD`` is imported and
+Every package ``asistente.capacidades.<clave>`` whose ``__init__`` exposes ``CAPACIDAD`` is imported and
 checked. A capability that fails to import or breaks a rule is logged and left out; the others keep working.
 
 Rules checked here (``pedir`` relies on them):
@@ -26,11 +26,11 @@ import re
 import threading
 from typing import Any, get_args
 
-from hacienda_gpt.capacidades.contrato import Capacidad, Consentimiento, Efecto, OperacionCapacidad
+from asistente.capacidades.contrato import Capacidad, Consentimiento, Efecto, OperacionCapacidad
 
 logger = logging.getLogger(__name__)
 
-PAQUETE = "hacienda_gpt.capacidades"
+PAQUETE = "asistente.capacidades"
 _CLAVE_RE = re.compile(r"^[a-z][a-z0-9_]{1,30}$")
 _EFECTOS = frozenset(get_args(Efecto))
 _CONSENTIMIENTOS = frozenset(get_args(Consentimiento))
@@ -64,7 +64,7 @@ class RegistroCapacidades:
 
 
 def desactivadas_por_operador() -> frozenset[str]:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     valor = str(getattr(settings, "CAPACIDADES_DESACTIVADAS", None) or os.environ.get("CAPACIDADES_DESACTIVADAS", ""))
     return frozenset(part.strip().lower() for part in valor.split(",") if part.strip())

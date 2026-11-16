@@ -30,7 +30,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from zoneinfo import ZoneInfo
 
-from hacienda_gpt.capacidades.correo.dominios import host_valido
+from asistente.capacidades.correo.dominios import host_valido
 
 ZONA = ZoneInfo("Europe/Madrid")
 MAX_TEXTO = 200_000  # characters of visible text read per message

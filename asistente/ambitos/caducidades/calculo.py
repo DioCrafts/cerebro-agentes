@@ -18,7 +18,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.caducidades.reglas import (
+from asistente.ambitos.caducidades.reglas import (
     CategoriaITV,
     Evidencia,
     ReglaDocumentoPorEdad,

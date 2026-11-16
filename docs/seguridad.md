@@ -9,8 +9,8 @@
 
 ## Alcance y método
 
-- **Código**: la API FastAPI (`hacienda_gpt/api/api.py` y `routers/*`), las cuentas
-  (`hacienda_gpt/auth/`: contraseñas, sesiones, límites, dependencias, propiedad de expedientes,
+- **Código**: la API FastAPI (`asistente/plataforma/api/api.py` y `routers/*`), las cuentas
+  (`asistente/plataforma/auth/`: contraseñas, sesiones, límites, dependencias, propiedad de expedientes,
   `AUTH_MODE`, clave de API), cada endpoint y su aislamiento entre usuarios (también los que reciben
   el expediente por *query* o en el cuerpo), las subidas de ficheros (documentos, extractos, tiques),
   los lectores de PDF/XLSX/XML/OFX, toda petición de red que dependa de datos de usuario, el agente
@@ -52,7 +52,7 @@ robaría. (2) API ↔ proveedor del modelo: lo que se envía y con qué consenti
 proponer; una herramienta `efecto="actua"` nunca se ejecuta desde el modelo, solo se convierte en
 acción pendiente que confirma el dueño del expediente con su sesión (`POST /acciones/{id}/confirmar`).
 (4) Navegador automatizado ↔ webs externas: lista de orígenes por guion, sin POST en la fase del
-agente, *service workers* bloqueados y *websockets* interceptados (`hacienda_gpt/navegador/seguridad.py`,
+agente, *service workers* bloqueados y *websockets* interceptados (`asistente/capacidades/navegador/seguridad.py`,
 `ejecutor.py`). (5) CI ↔ repositorio.
 
 **Fuera de alcance del código** (lo resuelve el operador): TLS, el proxy inverso, el cifrado del
@@ -68,23 +68,23 @@ usuarios se sostiene en todas las rutas probadas.
 
 | ID | Sev. | Estado | Qué | Dónde |
 |---|---|---|---|---|
-| S-01 | alta | corregido | Un XLSX de pocos KB agota la memoria (columna `ZZZZZ`, hoja de 8 M filas, DOCTYPE oculto) | `hacienda_gpt/modulos/suscripciones/tablas.py` |
-| S-02 | alta | corregido | Un camt.053 de 15 MB se expande a 1 GB: el control de DOCTYPE solo miraba los primeros 10 000 caracteres | `hacienda_gpt/modulos/suscripciones/camt.py` |
-| S-03 | media | corregido | Sin límite de tamaño del cuerpo de las peticiones | `hacienda_gpt/api/security.py`, `api.py` |
-| S-04 | media | corregido | El límite diario de gasto por usuario no se aplicaba a documentos ni a `/cases/{id}/turn` | `hacienda_gpt/api/api.py` |
-| S-05 | media | corregido | El limitador de peticiones se esquivaba inventando `X-API-Key` | `hacienda_gpt/api/security.py` |
-| S-06 | media | corregido | Altas de cuenta ilimitadas por dirección y *password spraying* sin límite | `hacienda_gpt/api/routers/auth.py`, `auth/ratelimit.py` |
-| S-07 | media | corregido | Cada derivación scrypt reserva 128 MB y el acceso no exige sesión: ~5 GB con 40 peticiones simultáneas | `hacienda_gpt/auth/passwords.py` |
+| S-01 | alta | corregido | Un XLSX de pocos KB agota la memoria (columna `ZZZZZ`, hoja de 8 M filas, DOCTYPE oculto) | `asistente/ambitos/suscripciones/tablas.py` |
+| S-02 | alta | corregido | Un camt.053 de 15 MB se expande a 1 GB: el control de DOCTYPE solo miraba los primeros 10 000 caracteres | `asistente/ambitos/suscripciones/camt.py` |
+| S-03 | media | corregido | Sin límite de tamaño del cuerpo de las peticiones | `asistente/plataforma/api/security.py`, `api.py` |
+| S-04 | media | corregido | El límite diario de gasto por usuario no se aplicaba a documentos ni a `/cases/{id}/turn` | `asistente/plataforma/api/api.py` |
+| S-05 | media | corregido | El limitador de peticiones se esquivaba inventando `X-API-Key` | `asistente/plataforma/api/security.py` |
+| S-06 | media | corregido | Altas de cuenta ilimitadas por dirección y *password spraying* sin límite | `asistente/plataforma/api/routers/auth.py`, `auth/ratelimit.py` |
+| S-07 | media | corregido | Cada derivación scrypt reserva 128 MB y el acceso no exige sesión: ~5 GB con 40 peticiones simultáneas | `asistente/plataforma/auth/passwords.py` |
 | S-08 | baja | corregido | `/usage` y `/eventos/salud` (cifras de todo el servicio) abiertas a cualquiera con `AUTH_MODE=required` | `routers/consumo.py`, `routers/eventos.py` |
-| S-09 | baja | corregido | Respuestas sin cabeceras de seguridad ni `Cache-Control: no-store` | `hacienda_gpt/api/security.py` |
-| S-10 | media | **abierto** (producto) | El consentimiento «avisos por correo» envía los avisos del usuario al buzón o *webhook* **del operador** | `hacienda_gpt/cli/ops.py:85`, `proactive/entrega.py` |
+| S-09 | baja | corregido | Respuestas sin cabeceras de seguridad ni `Cache-Control: no-store` | `asistente/plataforma/api/security.py` |
+| S-10 | media | **abierto** (producto) | El consentimiento «avisos por correo» envía los avisos del usuario al buzón o *webhook* **del operador** | `asistente/plataforma/cli/ops.py:85`, `proactive/entrega.py` |
 | S-11 | baja | corregido | Mensajes de error con el texto de la excepción | `api.py`, `routers/modulos.py`, `routers/consumo.py` |
-| S-12 | baja | corregido | `llm_usage` conservaba usuario y expediente tras borrar la cuenta y no estaba documentada | `hacienda_gpt/ops/consumo.py`, `routers/auth.py` |
+| S-12 | baja | corregido | `llm_usage` conservaba usuario y expediente tras borrar la cuenta y no estaba documentada | `asistente/plataforma/ops/consumo.py`, `routers/auth.py` |
 | S-13 | baja | corregido | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA | `.github/workflows/*.yml` |
 | S-14 | media | corregido | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py`, `decision/fact_extractor.py` |
 | S-15 | media | corregido | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api/security.py`, `api.py`, `frontend/src/lib/historial.ts` |
-| S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `hacienda_gpt/agent/procedencia.py`, `agent/tools.py` |
-| S-17 | baja | corregido | El indexador incremental deserializa FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `hacienda_gpt/processor/document_loader.py` |
+| S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `asistente/nucleo/agent/procedencia.py`, `agent/tools.py` |
+| S-17 | baja | corregido | El indexador incremental deserializa FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `asistente/conocimiento/processor/document_loader.py` |
 | S-18 | baja | corregido | `/docs`, `/redoc` y `/openapi.json` públicos | `api.py`, `api/security.py` |
 
 ### S-01 (alta, corregido): el lector de XLSX se podía tumbar con ficheros diminutos
@@ -107,7 +107,7 @@ terminar, profundidad máxima 32, como mucho 65 536 elementos por fila); topes d
 2 M celdas y 500 000 textos; el libro, sus relaciones y los estilos, que se parsean enteros, hasta
 2 MB; la lectura de cada parte se corta en el límite aunque el ZIP declare otro tamaño; celdas
 malformadas → `ImportacionError` (antes, error 500); DOCTYPE rechazado en todo el prólogo con
-`hacienda_gpt/utils/xml_seguro.py`. El mismo fichero de 70 KB se rechaza ahora en 0,3 s.
+`asistente/plataforma/utils/xml_seguro.py`. El mismo fichero de 70 KB se rechaza ahora en 0,3 s.
 
 **Pruebas**: `test_a_cell_beyond_the_last_column_is_refused`,
 `test_a_doctype_behind_a_long_comment_is_still_refused_in_xlsx`,
@@ -124,7 +124,7 @@ tumbar la máquina de CI.
 entidades externas (no hay XXE) y el expat incluido (2.9.0) limita la amplificación de las internas
 a 100 veces la entrada, pero con 20 MB de entrada permitidos eso son 2 GB: un camt.053 de **15 MB**
 con un comentario delante y entidades anidadas llegó a **1,1 GB** de memoria en 2 s (medido), por
-petición. **Corrección**: `hacienda_gpt/utils/xml_seguro.py` pregunta al propio expat si hay
+petición. **Corrección**: `asistente/plataforma/utils/xml_seguro.py` pregunta al propio expat si hay
 declaración de DOCTYPE o de entidades en cualquier punto del prólogo y se detiene en el primer
 elemento (coste despreciable); `camt.py` y `tablas.py` lo usan. **Prueba**:
 `test_a_doctype_behind_a_long_comment_is_still_refused_in_camt`, `test_safe_parser_reads_ordinary_xml_and_rejects_any_dtd`.
@@ -205,10 +205,10 @@ termina TLS. **Prueba**: `test_responses_carry_security_headers_and_are_not_cach
 
 El usuario ve «Recibir por correo los avisos de plazos y cambios que te afecten»
 (`frontend/src/components/PrivacyPanel.tsx`, `AuthScreen.tsx`). Con `AUTH_MODE=required`,
-`ops deliver` (`hacienda_gpt/cli/ops.py:85`, `_con_consentimiento`) solo entrega los avisos de quien
+`ops deliver` (`asistente/plataforma/cli/ops.py:85`, `_con_consentimiento`) solo entrega los avisos de quien
 ha marcado la casilla, pero los entrega a **un único destino del operador** (`NOTIFY_EMAIL_TO` o
 `NOTIFY_WEBHOOK_URL`), con importes estimados e identificador del expediente
-(`hacienda_gpt/proactive/entrega.py`, cabecera del módulo). Es decir, marcar la casilla hace que los
+(`asistente/nucleo/proactive/entrega.py`, cabecera del módulo). Es decir, marcar la casilla hace que los
 avisos de esa persona salgan hacia el buzón del operador (o el servicio del *webhook*), que no es lo
 que dice el texto. `docs/privacidad.md` decía además que el envío no consultaba el consentimiento;
 se ha corregido para describir lo que hace el código. **Propuesta**: o enviar a la dirección de cada
@@ -245,7 +245,7 @@ eliminar la cuenta; tabla documentada. **Prueba**: `test_deleting_the_account_de
 en repositorios antiguos). Ahora declaran `contents: read`. Lo demás está bien: las PR desde *forks*
 no reciben secretos (`evaluacion.yml` comprueba que la clave existe antes de usarla); el único trabajo
 con escritura (`vigilancia.yml`, `lecturas-pr`) no ejecuta modelos ni descarga nada, vuelve a comprobar
-que solo cambian lecturas y limita `add-paths` a `hacienda_gpt/tax/data/*.json`; ningún `run:`
+que solo cambian lecturas y limita `add-paths` a `asistente/ambitos/fiscal/data/*.json`; ningún `run:`
 interpola datos de la PR (`github.event.*`). **Corregido después**: todas las acciones (también
 `peter-evans/create-pull-request`, la que usa un token de escritura) van fijadas por el SHA completo
 del *commit* al que apuntaba su etiqueta, con la versión en un comentario (`@<sha> # v4.4.0`). Los
@@ -307,7 +307,7 @@ usuario (como `registrar_decision`), o guardar lo que no aparezca como propuesta
 que los documentos). El módulo de correo que se está construyendo será, con diferencia, la mayor
 superficie de este tipo: debe seguir la misma regla.
 
-**Corrección** (`hacienda_gpt/agent/procedencia.py`, llamada desde `Toolbox._record_facts`): el agente
+**Corrección** (`asistente/nucleo/agent/procedencia.py`, llamada desde `Toolbox._record_facts`): el agente
 pasa a la caja de herramientas los mensajes **del usuario** de la conversación (la pregunta y los
 `role: user` del historial; nunca el bloque de contexto con los hechos del expediente, ni respuestas del
 asistente, ni resultados de herramientas). Cada valor se comprueba antes de guardarlo: una cifra tiene
@@ -387,17 +387,17 @@ inventario de rutas.
 ## Endurecimiento: lo que tiene que hacer el operador
 
 1. **`AUTH_MODE=required`** siempre que haya más de una persona. Con `off` no hay control de acceso.
-   No exponer la interfaz Streamlit (`hacienda_gpt/ui`) ni los CLI.
+   No exponer la interfaz Streamlit (`asistente/plataforma/ui`) ni los CLI.
 2. **Proxy inverso con TLS** (nginx, Caddy…) delante de uvicorn, que escuche solo en `127.0.0.1`:
    ```
-   uvicorn hacienda_gpt.api.api:app --host 127.0.0.1 --port 8000 \
+   uvicorn asistente.plataforma.api.api:app --host 127.0.0.1 --port 8000 \
      --proxy-headers --forwarded-allow-ips 127.0.0.1 --limit-concurrency 64 --no-server-header
    ```
    `--proxy-headers` hace que los límites por dirección vean la IP del cliente y no la del proxy
    (`--forwarded-allow-ips` debe ser la del proxy y nada más). Un solo proceso: los límites viven en
    memoria (con varios procesos, un limitador en el proxy).
 3. **Servir el frontend y la API en el mismo origen** (`/` y `/api/`), y ajustar `_ALLOWED_ORIGINS`
-   (`hacienda_gpt/api/api.py`) al dominio real o dejarlo sin orígenes cruzados.
+   (`asistente/plataforma/api/api.py`) al dominio real o dejarlo sin orígenes cruzados.
 4. **Cabeceras en el proxy** para las páginas del frontend (la API ya pone las suyas):
    ```
    Strict-Transport-Security: max-age=31536000; includeSubDomains

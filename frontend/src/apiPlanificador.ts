@@ -1,7 +1,7 @@
 // Client for the deterministic household planner (POST /planificar): the best use of a sum of
 // money among early mortgage repayment, pension contributions, a donation and liquidity. No model call.
 //
-// Shapes mirror hacienda_gpt/planificador/modelos.py (EntradaPlan, PlanHogar). Amounts are decimals
+// Shapes mirror asistente/nucleo/planificador/modelos.py (EntradaPlan, PlanHogar). Amounts are decimals
 // sent back as strings ("1082.46"). Everything goes through api.ts's `request`: session, timeout, errors.
 
 import { request } from "./api";

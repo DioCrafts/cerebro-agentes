@@ -15,14 +15,13 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.routers import plataforma as plataforma_router
-from hacienda_gpt.cli.plataforma import cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import despacho
-from hacienda_gpt.plataforma import procesos
-from hacienda_gpt.plataforma.migraciones import estado
-from hacienda_gpt.plataforma.procesos import (
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import despacho
+from asistente.plataforma import procesos, settings
+from asistente.plataforma.api.routers import plataforma as plataforma_router
+from asistente.plataforma.cli.plataforma import cli
+from asistente.plataforma.migraciones import estado
+from asistente.plataforma.procesos import (
     ZONA,
     ContextoServicio,
     EstadoCompartido,
@@ -35,7 +34,7 @@ from hacienda_gpt.plataforma.procesos import (
     describir,
     salud,
 )
-from hacienda_gpt.plataforma.trabajos import TRABAJOS, registrar_incorporados, servicio_eventos
+from asistente.plataforma.trabajos import TRABAJOS, registrar_incorporados, servicio_eventos
 
 
 def _madrid(*args: int) -> datetime:
@@ -79,17 +78,17 @@ def test_the_built_in_jobs_are_the_documented_cron_lines() -> None:
     argv = por_nombre["run-daily"].argv()
     assert argv[1:] == [
         "-m",
-        "hacienda_gpt.cli.ops",
+        "asistente.plataforma.cli.ops",
         "run",
         "run-daily",
         "--",
         sys.executable,
         "-m",
-        "hacienda_gpt.cli.proactive",
+        "asistente.plataforma.cli.proactive",
         "run-daily",
     ]
     # deliver records itself (as in the cron line).
-    assert por_nombre["deliver"].argv()[1:] == ["-m", "hacienda_gpt.cli.ops", "deliver"]
+    assert por_nombre["deliver"].argv()[1:] == ["-m", "asistente.plataforma.cli.ops", "deliver"]
     # Off by default: what writes into the repository's data, or needs the corpus and its models.
     assert not por_nombre["params-autopilot"].por_defecto and not por_nombre["indice-corpus"].por_defecto
 

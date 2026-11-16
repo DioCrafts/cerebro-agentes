@@ -8,11 +8,11 @@ from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_CEILING, Decimal
 
-from hacienda_gpt.modulos.luz.consumo import ConsumoGuardado
-from hacienda_gpt.modulos.luz.datos import DatoNoDisponibleError, cargar_regulados
-from hacienda_gpt.modulos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
-from hacienda_gpt.modulos.luz.ofertas import Oferta
-from hacienda_gpt.modulos.luz.periodos import Zona, es_dia_valle, hora_local, periodo_energia
+from asistente.ambitos.luz.consumo import ConsumoGuardado
+from asistente.ambitos.luz.datos import DatoNoDisponibleError, cargar_regulados
+from asistente.ambitos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
+from asistente.ambitos.luz.ofertas import Oferta
+from asistente.ambitos.luz.periodos import Zona, es_dia_valle, hora_local, periodo_energia
 
 # date range -> hourly prices; raises PreciosNoDisponiblesError when they cannot be obtained
 ProveedorPrecios = Callable[[date, date], dict[tuple[date, int], Decimal]]

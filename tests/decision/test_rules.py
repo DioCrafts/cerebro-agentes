@@ -3,7 +3,7 @@ from pathlib import Path
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.decision.rules import (
+from asistente.nucleo.decision.rules import (
     DecisionRule,
     RuleSet,
     RuleSourceRef,

@@ -18,9 +18,9 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt.modulos.fiscal.calculo.autonomicas import campo_que_la_activa
-from hacienda_gpt.modulos.fiscal.calculo.irpf import ZERO, IRPFInput, IRPFResult, calcular_irpf
-from hacienda_gpt.modulos.fiscal.calculo.params import Fuente, IRPFParams, load_params, normalizar_comunidad
+from asistente.ambitos.fiscal.calculo.autonomicas import campo_que_la_activa
+from asistente.ambitos.fiscal.calculo.irpf import ZERO, IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import Fuente, IRPFParams, load_params, normalizar_comunidad
 
 Estado = Literal["aplicado", "disponible", "por_confirmar", "no_aplica"]
 

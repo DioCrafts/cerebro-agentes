@@ -5,7 +5,7 @@
 * ``POST /evaluacion/feedback`` — 👍/👎 on one answer, optionally «corregir» (what was wrong and the right
   answer or figure). Storing the conversation as an evaluation case needs ``guardar_para_evaluacion`` AND the
   current consent version, every time: there is no standing consent. See
-  :mod:`hacienda_gpt.evaluacion.captura` for what is stored and where.
+  :mod:`asistente.nucleo.evaluacion.captura` for what is stored and where.
 * ``GET /evaluacion/feedback?case_id=…`` — the caller's feedback on one of their cases, with what is stored.
 * ``DELETE /evaluacion/feedback/{id}`` — withdraw it: the stored content leaves the case's audit trail.
 
@@ -23,10 +23,8 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.evaluacion.captura import (
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.evaluacion.captura import (
     CONSENTIMIENTO_TEXTO,
     CONSENTIMIENTO_VERSION,
     ETIQUETAS_CORRECCION,
@@ -36,6 +34,8 @@ from hacienda_gpt.evaluacion.captura import (
     RespuestaNoEncontradaError,
     capturar,
 )
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 
 
 class TipoCorreccionInfo(BaseModel):

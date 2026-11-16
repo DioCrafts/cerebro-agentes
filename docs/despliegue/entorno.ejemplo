@@ -8,7 +8,7 @@ AUTH_MODE=required
 HACIENDA_API_KEY=
 HACIENDA_OPERATOR_KEY=
 ANTHROPIC_API_KEY=
-# Copias cifradas: python -m hacienda_gpt.cli.plataforma nueva-clave
+# Copias cifradas: python -m asistente.plataforma.cli.plataforma nueva-clave
 PLATAFORMA_CLAVE_COPIAS=
 
 # Correo (Gmail), si se ofrece el módulo.

@@ -9,9 +9,9 @@ import json
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.agent.procedencia import mensajes_del_usuario, numero_dicho, numeros_del_usuario, sin_respaldo
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.agent.procedencia import mensajes_del_usuario, numero_dicho, numeros_del_usuario, sin_respaldo
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 from .fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 
 INYECCION = (

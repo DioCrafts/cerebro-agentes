@@ -12,7 +12,7 @@ import hmac
 import secrets
 import threading
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 PASSWORD_MIN_LENGTH = 10
 # Upper bound so a huge body cannot be used to burn CPU in the KDF.

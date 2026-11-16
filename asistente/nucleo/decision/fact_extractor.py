@@ -18,7 +18,7 @@ import os
 import re
 from typing import Any, Protocol
 
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 
 logger = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ EXPECTED_FACT_TYPE: dict[str, FactValueType] = {
 
 # Fiscal-profile facts (family, income breakdown, deductions) that feed the IRPF
 # calculator. Declared next to the calculator input they map onto.
-from hacienda_gpt.tax.profile import ACTIVIDAD_FACT_TYPES, DETALLE_FACT_TYPES, PROFILE_FACT_TYPES  # noqa: E402
+from asistente.ambitos.fiscal.profile import ACTIVIDAD_FACT_TYPES, DETALLE_FACT_TYPES, PROFILE_FACT_TYPES  # noqa: E402
 
 EXPECTED_FACT_TYPE.update({name: FactValueType(kind) for name, kind in PROFILE_FACT_TYPES.items()})
 # Income and expenses of a self-employed activity (the profile bridge computes the net income from them).
@@ -644,7 +644,7 @@ class ProviderFactExtractor:
         chat_history: list[dict[str, str]] | list[str],
         current_case_state: CaseState | None,
     ) -> ExtractionPayload:
-        from hacienda_gpt.agent.providers.base import ProviderError
+        from asistente.nucleo.agent.providers.base import ProviderError
 
         messages = OpenAIFactExtractor._build_messages(user_input, chat_history, current_case_state)
         try:
@@ -827,9 +827,9 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
     ``name`` "openai" builds it on OpenAI whatever ``LLM_PROVIDER`` says (``DECISION_EXTRACTOR=openai``, or only
     an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_MODEL``).
     """
-    from hacienda_gpt import settings
-    from hacienda_gpt.agent.providers import create_provider
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma import settings
+    from asistente.plataforma.ops.consumo import medir
 
     model = os.environ.get("DECISION_EXTRACTOR_MODEL") or None
     if name == "openai":
@@ -850,7 +850,7 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
 
 
 def _provider_credentials_available() -> bool:
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     provider = settings.LLM_PROVIDER.strip().lower()
     if provider in ("anthropic", "claude"):

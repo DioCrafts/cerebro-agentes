@@ -9,9 +9,9 @@ from __future__ import annotations
 
 from typing import Any, get_args
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.fiscal.calculo.params import EtapaEducativa
-from hacienda_gpt.tax.profile import CAMPOS_CONYUGE
+from asistente.ambitos.fiscal.calculo.params import EtapaEducativa
+from asistente.ambitos.fiscal.profile import CAMPOS_CONYUGE
+from asistente.nucleo.agent.providers.base import ToolSpec
 
 _ETAPAS_EDUCATIVAS = list(get_args(EtapaEducativa))
 

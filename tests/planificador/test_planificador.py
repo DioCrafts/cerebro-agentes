@@ -14,15 +14,15 @@ import sys
 
 import pytest
 
-from hacienda_gpt.modulos.ayudas.parametros import load_prestaciones
-from hacienda_gpt.modulos.contrato import ContextoModulo
-from hacienda_gpt.modulos.hipoteca import pagos_del_ejercicio
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.planificador import Asignacion, EntradaPlan, Planificador, planificar
-from hacienda_gpt.planificador.hipoteca import Crecimiento, PalancaHipoteca
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import load_params
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.ayudas.parametros import load_prestaciones
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.ambitos.hipoteca import pagos_del_ejercicio
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.nucleo.modulos.contrato import ContextoModulo
+from asistente.nucleo.planificador import Asignacion, EntradaPlan, Planificador, planificar
+from asistente.nucleo.planificador.hipoteca import Crecimiento, PalancaHipoteca
 
 D = Decimal
 HOY = date(2026, 11, 16)
@@ -364,7 +364,7 @@ def test_same_plan_with_any_hash_seed() -> None:
     raiz = Path(__file__).resolve().parents[2]
     codigo = (
         "import hashlib, sys; from datetime import date; from tests.planificador.test_planificador import "
-        "FAMILIA_ENTRADA, FAMILIA, ACTIVOS; from hacienda_gpt.planificador import planificar; "
+        "FAMILIA_ENTRADA, FAMILIA, ACTIVOS; from asistente.nucleo.planificador import planificar; "
         "p = planificar(FAMILIA_ENTRADA, facts=FAMILIA, modulos_activos=ACTIVOS, hoy=date(2026, 11, 16)); "
         "print(hashlib.sha256(p.model_dump_json().encode()).hexdigest())"
     )

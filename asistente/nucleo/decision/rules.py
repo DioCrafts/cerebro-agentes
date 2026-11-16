@@ -8,7 +8,7 @@ import re
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-from hacienda_gpt.decision.schemas import ObligationStatus, RiskLevel
+from asistente.nucleo.decision.schemas import ObligationStatus, RiskLevel
 
 _SHA256_HEX_RE = re.compile(r"^[0-9a-f]{64}$")
 

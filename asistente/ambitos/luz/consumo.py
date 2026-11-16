@@ -34,8 +34,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator
 
-from hacienda_gpt.modulos.luz.datos import PERIODOS
-from hacienda_gpt.modulos.luz.periodos import ZONAS, Zona, hora_local, horas_del_dia, periodo_energia
+from asistente.ambitos.luz.datos import PERIODOS
+from asistente.ambitos.luz.periodos import ZONAS, Zona, hora_local, horas_del_dia, periodo_energia
 
 DIAS_GUARDADOS = 400
 DIAS_HORARIOS = 62

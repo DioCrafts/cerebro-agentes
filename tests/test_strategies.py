@@ -18,14 +18,14 @@ from pathlib import Path
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.processor.strategies import (
+from asistente.conocimiento.processor.strategies import (
     install_default_strategies,
     register,
     registered_strategies,
     reset_registry,
     select_strategy,
 )
-from hacienda_gpt.processor.strategies.base import IngestStrategy
+from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 # --------------------------------------------------------------------------- #
 # Test doubles
@@ -151,7 +151,7 @@ def _minimal_boe_html(n_rows: int) -> str:
 
 def test_boe_probe_claims_only_large_boe_html(tmp_path: Path) -> None:
     """Probe must require BOTH the BOE-A title marker AND size > 4 MB."""
-    from hacienda_gpt.processor.strategies.boe import BoeConsolidadoTableStrategy
+    from asistente.conocimiento.processor.strategies.boe import BoeConsolidadoTableStrategy
 
     strategy = BoeConsolidadoTableStrategy()
 
@@ -175,7 +175,7 @@ def test_boe_probe_claims_only_large_boe_html(tmp_path: Path) -> None:
 
 
 def test_boe_probe_rejects_non_html_extensions(tmp_path: Path) -> None:
-    from hacienda_gpt.processor.strategies.boe import BoeConsolidadoTableStrategy
+    from asistente.conocimiento.processor.strategies.boe import BoeConsolidadoTableStrategy
 
     strategy = BoeConsolidadoTableStrategy()
     # Big enough byte-wise but wrong extension.
@@ -188,7 +188,7 @@ def test_split_block_tables_keeps_thead_on_each_fragment() -> None:
     """The whole point of the row-bound split is that every sub-table
     remains independently intelligible — i.e. each sub-fragment carries
     the column headers."""
-    from hacienda_gpt.processor.strategies.boe import _split_block_tables
+    from asistente.conocimiento.processor.strategies.boe import _split_block_tables
 
     # Build a block with 1500 rows; MAX_ROWS_PER_TABLE=500 → 3 sub-tables.
     block = """
@@ -218,7 +218,7 @@ def test_split_block_tables_keeps_thead_on_each_fragment() -> None:
 def test_split_block_tables_passes_small_block_through_unchanged() -> None:
     """A block whose tables are all under the row threshold should be
     returned as a single fragment — no splitting overhead for normal docs."""
-    from hacienda_gpt.processor.strategies.boe import _split_block_tables
+    from asistente.conocimiento.processor.strategies.boe import _split_block_tables
 
     block = """
     <div class="bloque">

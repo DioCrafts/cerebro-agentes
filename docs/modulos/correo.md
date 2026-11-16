@@ -4,14 +4,14 @@ Objetivo: que lo importante del buzón no se pierda —una notificación de Haci
 intento de fraude— sin que el asistente pueda tocar el buzón. **Fase 1: leer, clasificar, resumir, avisar y
 proponer datos a otros módulos.** No envía, no borra, no archiva, no etiqueta, no marca como leído.
 
-> **Capacidad, no ámbito.** El correo es una *capacidad* (`hacienda_gpt/capacidades/correo/`, contrato en
-> `hacienda_gpt/capacidades/contrato.py`): cualquier ámbito la pide con `pedir("correo", "facturas_de_emisor", …)`
+> **Capacidad, no ámbito.** El correo es una *capacidad* (`asistente/capacidades/correo/`, contrato en
+> `asistente/capacidades/contrato.py`): cualquier ámbito la pide con `pedir("correo", "facturas_de_emisor", …)`
 > (luz y suscripciones ya lo hacen) y sus propuestas van al ámbito que declara aceptar ese dato
 > (`Ganchos.entradas`: compras → caducidades, potencia → luz). Sigue teniendo su cara en el chat y su
-> interruptor en «Módulos» (`MODULO`, descubierto por `hacienda_gpt/modulos/correo/`, que queda como alias de
+> interruptor en «Módulos» (`MODULO`, descubierto por `asistente/capacidades/correo/`, que queda como alias de
 > la ruta antigua). Ver [README de los módulos](README.md).
 
-Código: `hacienda_gpt/capacidades/correo/` (alias en `hacienda_gpt/modulos/correo/`) · API: `hacienda_gpt/api/routers/correo.py` · interfaz:
+Código: `asistente/capacidades/correo/` (alias en `asistente/capacidades/correo/`) · API: `asistente/plataforma/api/routers/correo.py` · interfaz:
 `frontend/src/components/CorreoSeccion.tsx` (dentro de la tarjeta del módulo en «Módulos») · datos:
 `data/notificaciones.json` (BOE) y `data/remitentes.json` (lista del operador) · pruebas: `tests/modulos/correo/`
 · extractos del BOE: `tests/fixtures/modulos/correo/boe/`.
@@ -25,7 +25,7 @@ Código: `hacienda_gpt/capacidades/correo/` (alias en `hacienda_gpt/modulos/corr
    código, comprueba que se concedió el permiso de lectura (si no, revoca y no conecta) y guarda el *refresh
    token* **cifrado** (Fernet). «Desconectar» revoca el permiso en Google y borra el token (y, si se pide, todo
    lo clasificado).
-2. **Sincronización incremental** («Sincronizar ahora» o `python -m hacienda_gpt.modulos.correo sincronizar`
+2. **Sincronización incremental** («Sincronizar ahora» o `python -m asistente.capacidades.correo sincronizar`
    en un cron): la primera vez, los últimos 30 días (`correo_ventana_dias`, de 1 a 90; o `CORREO_VENTANA_DIAS`)
    con un tope de `CORREO_MAX_MENSAJES` (300); después, solo lo nuevo con `users.history.list` desde el último
    `historyId` (si Gmail responde 404 porque el historial caducó, vuelve a la ventana). Nunca recorre el buzón
@@ -142,7 +142,7 @@ de un gancho del núcleo).
 | `CORREO_GOOGLE_CLIENT_ID`, `CORREO_GOOGLE_CLIENT_SECRET` | Cliente OAuth de tipo «Aplicación web» en Google Cloud |
 | `CORREO_REDIRECT_URI` | `https://<tu-api>/correo/oauth/callback` (idéntica a la registrada en Google) |
 | `CORREO_URL_RETORNO` | A dónde vuelve el navegador después (la web, p. ej. `https://<tu-web>/`) |
-| `CORREO_CLAVE_CIFRADO` | Clave Fernet (`python -m hacienda_gpt.modulos.correo nueva-clave`). Varias separadas por comas para rotar: la primera cifra; después `… rotar-clave` |
+| `CORREO_CLAVE_CIFRADO` | Clave Fernet (`python -m asistente.capacidades.correo nueva-clave`). Varias separadas por comas para rotar: la primera cifra; después `… rotar-clave` |
 | `CORREO_VENTANA_DIAS` (30), `CORREO_MAX_MENSAJES` (300), `CORREO_CONSERVACION_DIAS` (180) | Límites |
 | `CORREO_DOMINIOS_OFICIALES_EXTRA` | `marca=dominio,dominio;…` para completar `data/remitentes.json` |
 | `CORREO_AUTHSERV_ID` (`mx.google.com`) | Servidor cuyas `Authentication-Results` se creen |

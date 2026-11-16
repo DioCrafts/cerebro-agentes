@@ -18,9 +18,9 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion, ConfigSuite, InformeEvaluacion, ResultadoCaso
-from hacienda_gpt.evaluacion.runner import Entorno, comparar, evaluar
-from hacienda_gpt.evaluacion.variantes import Variante, escribir_activa, variante_activa
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, ConfigSuite, InformeEvaluacion, ResultadoCaso
+from asistente.nucleo.evaluacion.runner import Entorno, comparar, evaluar
+from asistente.nucleo.evaluacion.variantes import Variante, escribir_activa, variante_activa
 
 
 @dataclass

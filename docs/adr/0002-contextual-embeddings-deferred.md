@@ -11,7 +11,7 @@ Anthropic publicó en septiembre de 2024 la técnica de *Contextual Embeddings* 
 
 Durante sesiones previas de este proyecto:
 
-- Se implementó el código en [`hacienda_gpt/processor/contextualizer.py`](../../hacienda_gpt/processor/contextualizer.py) con Qwen3-1.7B-Instruct (MLX bf16).
+- Se implementó el código en [`asistente/conocimiento/processor/contextualizer.py`](../../asistente/conocimiento/processor/contextualizer.py) con Qwen3-1.7B-Instruct (MLX bf16).
 - El prompt fue iterado tres veces hasta llegar a 57.3% prefixes "good", 42.7% "generic", 0% hallucination sobre una muestra de 1031 chunks.
 - La feature se dejó **opt-in** vía `CONTEXTUAL_EMBEDDINGS_ENABLED` (default `False`), de modo que activarla bumpea el `pipeline_fingerprint` del manifest y fuerza una re-ingesta completa del corpus.
 
@@ -44,7 +44,7 @@ Las CE-stress queries fueron diseñadas explícitamente para forzar el modo de f
 
 ## 4) Implicaciones
 
-- El código de CE queda en el repositorio (`hacienda_gpt/processor/contextualizer.py` y settings `CONTEXTUAL_EMBEDDINGS_ENABLED`, `CONTEXTUAL_MODEL_PATH`, `CONTEXTUAL_MAX_TOKENS`).
+- El código de CE queda en el repositorio (`asistente/conocimiento/processor/contextualizer.py` y settings `CONTEXTUAL_EMBEDDINGS_ENABLED`, `CONTEXTUAL_MODEL_PATH`, `CONTEXTUAL_MAX_TOKENS`).
 - `CONTEXTUAL_EMBEDDINGS_ENABLED` permanece `False` por defecto. Activarlo bumpea el `pipeline_fingerprint` y fuerza re-ingesta — comportamiento esperado.
 - No se introducen flujos automáticos que dependan de CE.
 - Las queries CE-stress (`ce_*` en [`scripts/qa_battery_test.py`](../../scripts/qa_battery_test.py)) se quedan en la batería como **regresión-tests**: si en el futuro alguien activa CE, debe medir cuánto sube `context_precision` específicamente en esa cohorte para justificar el coste.

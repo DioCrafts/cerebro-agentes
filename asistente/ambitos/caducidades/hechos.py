@@ -18,8 +18,8 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
-from hacienda_gpt.modulos.caducidades.calculo import Modalidad, TipoBien, TipoVencimiento
-from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
+from asistente.ambitos.caducidades.calculo import Modalidad, TipoBien, TipoVencimiento
+from asistente.ambitos.caducidades.reglas import cargar_reglas
 
 HECHO_DOCUMENTOS = "caducidades_documentos"
 HECHO_VEHICULOS = "caducidades_vehiculos"

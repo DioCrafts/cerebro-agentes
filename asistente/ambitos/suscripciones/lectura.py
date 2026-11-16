@@ -14,7 +14,7 @@ from decimal import Decimal, InvalidOperation
 import re
 import unicodedata
 
-from hacienda_gpt.modulos.suscripciones.modelos import ImportacionError
+from asistente.ambitos.suscripciones.modelos import ImportacionError
 
 # Largest statement accepted, uncompressed (a year of a busy account is well under 5 MB).
 TAMANO_MAXIMO = 20 * 1024 * 1024

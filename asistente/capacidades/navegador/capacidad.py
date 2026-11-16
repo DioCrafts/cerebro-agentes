@@ -17,9 +17,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
-from hacienda_gpt.modulos.contrato import ContextoModulo
+from asistente.capacidades.contrato import CapacidadBase, ContextoPeticion, OperacionCapacidad, ResultadoCapacidad
+from asistente.nucleo.modulos.contrato import ContextoModulo
+from asistente.plataforma import settings
 
 CLAVE = "navegador"
 
@@ -39,7 +39,7 @@ ENTRADA_VACIA: dict[str, Any] = {"type": "object", "additionalProperties": False
 
 
 def _preparar_descarga(args: Mapping[str, Any], ctx: ContextoPeticion) -> ResultadoCapacidad:
-    from hacienda_gpt.capacidades.navegador.modulo import descargar_consumo_datadis
+    from asistente.capacidades.navegador.modulo import descargar_consumo_datadis
 
     argumentos = {k: v for k, v in args.items() if v not in (None, "")}
     # The CUPS comes from the asking domain; the browser never reads another domain's facts on its own.
@@ -57,7 +57,7 @@ def _consumo_datadis(args: Mapping[str, Any], ctx: ContextoPeticion) -> Resultad
     if ctx.activos is not None:
         activo = CLAVE in ctx.activos
     else:
-        from hacienda_gpt.capacidades.consentimiento import consentida
+        from asistente.capacidades.consentimiento import consentida
 
         activo = consentida(CAPACIDAD, ctx)
     con_navegador = bool(getattr(settings, "NAVEGADOR_ACTIVO", False)) and activo

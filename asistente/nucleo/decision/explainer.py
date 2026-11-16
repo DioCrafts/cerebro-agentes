@@ -2,9 +2,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from hacienda_gpt.decision.interpreter import InterpretationResult
-from hacienda_gpt.decision.planner import PlannerResult
-from hacienda_gpt.decision.schemas import CaseState, ObligationCandidate
+from asistente.nucleo.decision.interpreter import InterpretationResult
+from asistente.nucleo.decision.planner import PlannerResult
+from asistente.nucleo.decision.schemas import CaseState, ObligationCandidate
 
 
 @dataclass(frozen=True)

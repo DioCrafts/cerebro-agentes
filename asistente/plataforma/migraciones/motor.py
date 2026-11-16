@@ -25,7 +25,7 @@ Guarantees
   one read of ``schema_migrations`` and takes no lock unless something is pending.
 
 ``MIGRACIONES_AUTOMATICAS=false`` turns the store hook off (the stores then create their own tables exactly
-as before the migrations existed); ``python -m hacienda_gpt.cli.plataforma migrar`` still works.
+as before the migrations existed); ``python -m asistente.plataforma.cli.plataforma migrar`` still works.
 """
 
 from __future__ import annotations
@@ -39,6 +39,7 @@ from pathlib import Path
 import sqlite3
 import textwrap
 import threading
+from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -55,6 +56,22 @@ DDL_REGISTRO = """CREATE TABLE IF NOT EXISTS schema_migrations (
     aplicada_el TEXT NOT NULL,
     PRIMARY KEY (propietario, version)
 )"""
+
+
+# A migration's checksum names its function by module path, and the checksum is STORED in ``schema_migrations`` when
+# the migration is applied: the module path the package had then (``hacienda_gpt.…``) is used for ever, so moving
+# the catalogue never makes an applied migration look edited. New prefix -> the prefix recorded in the checksums.
+PREFIJOS_HISTORICOS: tuple[tuple[str, str], ...] = (("asistente.plataforma.", "hacienda_gpt.plataforma."),)
+
+
+def nombre_de_funcion(funcion: Callable[..., Any]) -> str:
+    """``module.qualname`` of a migration function, spelled as when the catalogue was first published."""
+    modulo = funcion.__module__
+    for actual, historico in PREFIJOS_HISTORICOS:
+        if modulo.startswith(actual):
+            modulo = historico + modulo[len(actual) :]
+            break
+    return f"{modulo}.{funcion.__qualname__}"
 
 
 class MigracionError(RuntimeError):
@@ -78,7 +95,7 @@ class Migracion:
             h.update(sentencia.encode("utf-8"))
             h.update(b"\x00")
         if self.funcion is not None:
-            h.update(f"{self.funcion.__module__}.{self.funcion.__qualname__}".encode())
+            h.update(nombre_de_funcion(self.funcion).encode())
         return h.hexdigest()[:16]
 
     def aplicar(self, conn: sqlite3.Connection) -> None:
@@ -128,7 +145,7 @@ def _cargar_catalogo() -> None:
         if _catalogo:
             return
         _catalogo.append(True)
-        from hacienda_gpt.plataforma.migraciones.catalogo import PROPIETARIOS
+        from asistente.plataforma.migraciones.catalogo import PROPIETARIOS
 
         for propietario_ in PROPIETARIOS:
             _registro.setdefault(propietario_.nombre, propietario_)
@@ -277,7 +294,7 @@ def _paso(propietario_: Propietario, migracion: Migracion, espera: list[str] | N
         version=migracion.version,
         nombre=migracion.nombre,
         sentencias=[textwrap.dedent(s).strip() for s in migracion.sentencias],
-        funcion=f"{funcion.__module__}.{funcion.__qualname__}" if funcion is not None else None,
+        funcion=nombre_de_funcion(funcion) if funcion is not None else None,
         espera_tablas=espera or [],
     )
 
@@ -289,7 +306,7 @@ def _paso(propietario_: Propietario, migracion: Migracion, espera: list[str] | N
 
 def automaticas() -> bool:
     """Whether the stores bring their schema up to date when they open a connection (default: yes)."""
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     return bool(getattr(settings, "MIGRACIONES_AUTOMATICAS", True))
 

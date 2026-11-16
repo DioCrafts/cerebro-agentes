@@ -11,8 +11,8 @@ from pydantic import BaseModel, ConfigDict
 
 # The dependency lives in api.security (api.api only re-imports it), so there is
 # no import cycle with the module that includes this router.
-from hacienda_gpt.api.security import require_operator
-from hacienda_gpt.ops.consumo import (
+from asistente.plataforma.api.security import require_operator
+from asistente.plataforma.ops.consumo import (
     ConsumoStore,
     Presupuesto,
     ResumenConsumo,

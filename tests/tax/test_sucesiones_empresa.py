@@ -11,14 +11,14 @@ from decimal import Decimal
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.modulos.fiscal.especificaciones import ISD_TOOL
-from hacienda_gpt.tax.sucesiones import BeneficiarioISD, calcular_isd
-from hacienda_gpt.tax.sucesiones_params import (
+from asistente.ambitos.fiscal.calculo.sucesiones import BeneficiarioISD, calcular_isd
+from asistente.ambitos.fiscal.calculo.sucesiones_params import (
     AdquirenteBienes,
     ISDParams,
     comprobar_evidencias,
     load_isd_params,
 )
+from asistente.ambitos.fiscal.especificaciones import ISD_TOOL
 
 D = Decimal
 EMPRESA = dict(modo="sucesion", valor_recibido=500000, valor_empresa_familiar=500000, edad=40)

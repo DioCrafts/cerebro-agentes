@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.capacidades import peticion
-from hacienda_gpt.capacidades.contrato import (
+from asistente.capacidades import peticion
+from asistente.capacidades.contrato import (
     CapacidadBase,
     Confirmacion,
     ContextoPeticion,
@@ -19,7 +19,7 @@ from hacienda_gpt.capacidades.contrato import (
     huella_de,
     pedir,
 )
-from hacienda_gpt.capacidades.registro import construir_registro, problemas_de
+from asistente.capacidades.registro import construir_registro, problemas_de
 
 HOY = date(2026, 11, 16)
 OBJETO: dict[str, Any] = {"type": "object"}
@@ -154,7 +154,7 @@ def test_third_party_results_reach_a_model_only_wrapped_and_inert() -> None:
 
 
 def test_metering_purpose_and_attribution() -> None:
-    from hacienda_gpt.ops import consumo
+    from asistente.plataforma.ops import consumo
 
     vistos.clear()
     proveedor = Proveedor()
@@ -207,7 +207,7 @@ def test_the_registry_validates_capabilities() -> None:
 
 
 def test_the_real_capabilities_are_discovered_and_valid() -> None:
-    from hacienda_gpt.capacidades.registro import registro
+    from asistente.capacidades.registro import registro
 
     reg = registro()
     assert {"correo", "navegador", "documentos"} <= set(reg.capacidades)

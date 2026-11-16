@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.processor import manifest as mf
+from asistente.conocimiento.processor import manifest as mf
 
 # --------------------------------------------------------------------------- #
 # Hashing + fingerprint

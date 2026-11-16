@@ -9,12 +9,12 @@ from fastapi import FastAPI, HTTPException
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.routers import investigacion as router_mod
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.capacidades.investigacion import capacidad
-from hacienda_gpt.capacidades.investigacion.servicio import Investigador
-from hacienda_gpt.capacidades.investigacion.web import DocumentoWeb
+from asistente.capacidades.investigacion import capacidad
+from asistente.capacidades.investigacion.servicio import Investigador
+from asistente.capacidades.investigacion.web import DocumentoWeb
+from asistente.plataforma import settings
+from asistente.plataforma.api.routers import investigacion as router_mod
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 from .conftest import PLAN, SINTESIS_BUENA, TEXTO_WEB_OFICIAL, FakeProvider, FakeWeb
 
 

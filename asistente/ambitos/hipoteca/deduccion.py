@@ -11,7 +11,7 @@ the amortisation, the interest, the early repayments and their fees) or not (pur
 loan costs), with the literal words of the law that cover it; plus the conditions it cannot check. The rate and
 the cap are NOT here: they are the IRPF calculator's (``tax/data/irpf_*.json``, ``vivienda_habitual_transitoria``).
 
-:func:`comprobar` is the self-check (the shared checker of :mod:`hacienda_gpt.conocimiento`, the file being
+:func:`comprobar` is the self-check (the shared checker of :mod:`asistente.conocimiento`, the file being
 declared in ``FICHEROS_LEGALES``): every figure is inside its quote, every concept's words are inside its quote and,
 given the law texts, every quote is verbatim in the wording it was read from (the 2012 wording is a superseded
 version: ``act.php?id=BOE-A-2006-20764&tn=1&p=20121031``).
@@ -28,7 +28,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.conocimiento import (
+from asistente.ambitos.hipoteca.calculo import Cuadro
+from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada
+from asistente.ambitos.hipoteca.normativa import leer_cifra
+from asistente.conocimiento import (
     FRONTERA_LIBRE,
     CitaLegal,
     FicheroLegal,
@@ -37,9 +40,6 @@ from hacienda_gpt.conocimiento import (
     comprimido,
     texto_plano,
 )
-from hacienda_gpt.modulos.hipoteca.calculo import Cuadro
-from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada
-from hacienda_gpt.modulos.hipoteca.normativa import leer_cifra
 
 DEDUCCION_PATH = Path(__file__).resolve().parent / "data" / "deduccion_vivienda.json"
 
@@ -206,7 +206,7 @@ FICHEROS_LEGALES = (
 def comprobar(fundamento: FundamentoPuente, textos: dict[str, str] | None = None) -> list[str]:
     """Problems found re-reading the data against its quotes and (with ``textos``: ``"<BOE-ID>"`` or
     ``"<BOE-ID>@<AAAAMMDD>"`` -> page HTML or plain text) the quotes against the law. Empty list = consistent.
-    The checker is the shared one of :mod:`hacienda_gpt.conocimiento`."""
+    The checker is the shared one of :mod:`asistente.conocimiento`."""
     planos = None if textos is None else {clave: texto_plano(texto) for clave, texto in textos.items()}
     return FICHEROS_LEGALES[0].comprobar(fundamento, planos)
 

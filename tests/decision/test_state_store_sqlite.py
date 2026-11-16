@@ -5,8 +5,8 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 
 
 def _build_case(case_id: str, user_id: str, updated_at: datetime) -> CaseState:
@@ -76,7 +76,7 @@ def test_save_case_bumps_version_on_update(tmp_path: pytest.TempPathFactory) -> 
 
 
 def test_save_case_raises_on_stale_version(tmp_path: pytest.TempPathFactory) -> None:
-    from hacienda_gpt.decision.state_store import CaseVersionConflictError
+    from asistente.nucleo.decision.state_store import CaseVersionConflictError
 
     store = SQLiteCaseStateStore(str(tmp_path / "state.db"))
     now = datetime.now(UTC)

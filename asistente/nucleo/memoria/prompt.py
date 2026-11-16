@@ -1,6 +1,6 @@
 """The central agent's rules about the user's decisions (appended to ``CASE_TOOLS_ADDENDUM``).
 
-Plain text with no imports, so ``hacienda_gpt.agent.prompts`` can import it without cycles.
+Plain text with no imports, so ``asistente.nucleo.agent.prompts`` can import it without cycles.
 """
 
 MEMORIA_ADDENDUM = """

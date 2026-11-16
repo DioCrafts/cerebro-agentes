@@ -37,7 +37,7 @@ def stub_mlx(monkeypatch):
     fake_lm.load = fake_load
     monkeypatch.setitem(sys.modules, "mlx_lm", fake_lm)
 
-    from hacienda_gpt.llm import reranker as r
+    from asistente.conocimiento.llm import reranker as r
 
     r._MODEL_CACHE.clear()
 
@@ -185,7 +185,7 @@ def test_model_cache_is_thread_safe(stub_mlx) -> None:
         return real_get_model(path)
 
     # Replace the (already-patched) _get_model with the counter wrapper.
-    import hacienda_gpt.llm.reranker as r
+    import asistente.conocimiento.llm.reranker as r
 
     r._get_model = counting_get_model
 

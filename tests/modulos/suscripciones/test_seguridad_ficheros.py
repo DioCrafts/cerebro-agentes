@@ -14,11 +14,11 @@ import zipfile
 
 import pytest
 
-from hacienda_gpt.modulos.suscripciones import tablas
-from hacienda_gpt.modulos.suscripciones.camt import leer_camt
-from hacienda_gpt.modulos.suscripciones.modelos import ImportacionError
-from hacienda_gpt.modulos.suscripciones.tablas import filas_xlsx
-from hacienda_gpt.utils.xml_seguro import XmlInseguroError, parse_seguro, rechazar_dtd
+from asistente.ambitos.suscripciones import tablas
+from asistente.ambitos.suscripciones.camt import leer_camt
+from asistente.ambitos.suscripciones.modelos import ImportacionError
+from asistente.ambitos.suscripciones.tablas import filas_xlsx
+from asistente.plataforma.utils.xml_seguro import XmlInseguroError, parse_seguro, rechazar_dtd
 
 NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 WORKBOOK = f'<workbook xmlns="{NS}"><sheets><sheet name="a" sheetId="1"/></sheets></workbook>'

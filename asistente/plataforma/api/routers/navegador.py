@@ -1,4 +1,4 @@
-"""Browser agent: start a task, follow it live, stop it, close it (see ``hacienda_gpt/navegador``).
+"""Browser agent: start a task, follow it live, stop it, close it (see ``asistente/capacidades/navegador``).
 
 * ``GET /navegador/estado`` — whether the operator switched it on, the login modes, the tasks offered (with
   their sites, version and whether they were verified against the real site), the consent text, the user's
@@ -27,14 +27,9 @@ from typing import Annotated, Any, Literal
 from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access, require_session
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.navegador import vigilancia
-from hacienda_gpt.navegador.reparacion import Reparador
-from hacienda_gpt.navegador.tareas import (
+from asistente.capacidades.navegador import vigilancia
+from asistente.capacidades.navegador.reparacion import Reparador
+from asistente.capacidades.navegador.tareas import (
     TEXTO_CONSENTIMIENTO,
     TEXTO_CONSENTIMIENTO_VERSION,
     GestorTareas,
@@ -46,7 +41,12 @@ from hacienda_gpt.navegador.tareas import (
     gestor,
     modos_permitidos,
 )
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.plataforma import settings
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_session
 
 logger = logging.getLogger(__name__)
 
@@ -224,9 +224,9 @@ def _reparador_por_defecto() -> Reparador | None:
     if not settings.NAVEGADOR_REPARAR_SELECTORES:
         return None
     try:
-        from hacienda_gpt.agent.providers import create_provider
-        from hacienda_gpt.navegador.reparacion import ReparadorLLM
-        from hacienda_gpt.ops.consumo import medir
+        from asistente.capacidades.navegador.reparacion import ReparadorLLM
+        from asistente.nucleo.agent.providers import create_provider
+        from asistente.plataforma.ops.consumo import medir
 
         return ReparadorLLM(medir(create_provider(effort="low"), "navegador_reparacion"))
     except Exception:

@@ -1,7 +1,7 @@
 """The user's decisions as constraints of the tax optimiser.
 
-:func:`optimizar_con_memoria` is :func:`hacienda_gpt.tax.optimizador.optimizar_desde_hechos` for a case, with
-the case's rejections, restrictions and «ya lo hice» in force turned into :class:`~hacienda_gpt.tax.optimizador.Restricciones`
+:func:`optimizar_con_memoria` is :func:`asistente.ambitos.fiscal.calculo.optimizador.optimizar_desde_hechos` for a case, with
+the case's rejections, restrictions and «ya lo hice» in force turned into :class:`~asistente.ambitos.fiscal.calculo.optimizador.Restricciones`
 (the optimiser itself is unchanged):
 
 =======================================  ====================================================================
@@ -37,12 +37,7 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.ambitos import etiqueta
-from hacienda_gpt.memoria.modelo import BLOQUEAN_OPTIMIZADOR, Decision, Evaluacion, cubre, evaluar, fecha_es
-from hacienda_gpt.memoria.servicio import decisiones_del_caso
-from hacienda_gpt.tax.optimizador import (
+from asistente.ambitos.fiscal.calculo.optimizador import (
     MODALIDAD_DESCARTADA,
     PalancaNoDisponible,
     PlanOptimo,
@@ -50,7 +45,12 @@ from hacienda_gpt.tax.optimizador import (
     normalizar_preferencias,
     optimizar_desde_hechos,
 )
-from hacienda_gpt.tax.profile import PREFERENCIAS_OPTIMIZACION, DatosInvalidosError
+from asistente.ambitos.fiscal.profile import PREFERENCIAS_OPTIMIZACION, DatosInvalidosError
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.ambitos import etiqueta
+from asistente.nucleo.memoria.modelo import BLOQUEAN_OPTIMIZADOR, Decision, Evaluacion, cubre, evaluar, fecha_es
+from asistente.nucleo.memoria.servicio import decisiones_del_caso
+from asistente.plataforma import settings
 
 _PALANCAS = {
     "plan_pensiones_contribuyente": "fiscal:plan_pensiones:contribuyente",

@@ -1,4 +1,4 @@
-"""Turn the DGT golden set (:mod:`hacienda_gpt.evals.agent_eval`) into suite cases.
+"""Turn the DGT golden set (:mod:`asistente.nucleo.evals.agent_eval`) into suite cases.
 
 ``eval_agent build`` writes ``eval_data/dgt_golden.jsonl`` from downloaded consultas (one model call each);
 this module converts each line into a ``dgt`` case of the suite: the consulta is hidden from retrieval while
@@ -12,8 +12,8 @@ import json
 from pathlib import Path
 import re
 
-from hacienda_gpt.evals.agent_eval import GoldenCase, load_golden
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion, ExpCitas, Origen, Rubrica
+from asistente.nucleo.evals.agent_eval import GoldenCase, load_golden
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, ExpCitas, Origen, Rubrica
 
 
 def caso_dgt(golden: GoldenCase) -> CasoEvaluacion:

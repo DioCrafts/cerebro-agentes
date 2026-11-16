@@ -37,14 +37,29 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt.modulos.hipoteca.calculo import fmt_pct
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.modulos.perfil import valor_de_perfil
-from hacienda_gpt.modulos.puentes import HECHO_VIVIENDA_PRE2013
-from hacienda_gpt.planificador.ayudas import ContextoAyudas, Desplazamiento
-from hacienda_gpt.planificador.fiscal import Fiscal, OraculoFiscal
-from hacienda_gpt.planificador.hipoteca import Crecimiento, EfectoAmortizacion, EfectoAproximado, PalancaHipoteca
-from hacienda_gpt.planificador.modelos import (
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.optimizador import (
+    PlanOptimo,
+    Restricciones,
+    TextoLegal,
+    conocidos_de,
+    optimizar,
+)
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.profile import (
+    DATOS_CONYUGE,
+    DatosInvalidosError,
+    build_input_con_actividad,
+    normalizar_datos_conyuge,
+)
+from asistente.ambitos.hipoteca.calculo import fmt_pct
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.nucleo.modulos.perfil import valor_de_perfil
+from asistente.nucleo.modulos.puentes import HECHO_VIVIENDA_PRE2013
+from asistente.nucleo.planificador.ayudas import ContextoAyudas, Desplazamiento
+from asistente.nucleo.planificador.fiscal import Fiscal, OraculoFiscal
+from asistente.nucleo.planificador.hipoteca import Crecimiento, EfectoAmortizacion, EfectoAproximado, PalancaHipoteca
+from asistente.nucleo.planificador.modelos import (
     NOMBRES_PALANCAS,
     PALANCAS,
     Asignacion,
@@ -61,22 +76,7 @@ from hacienda_gpt.planificador.modelos import (
     Valoracion,
     VistaPensiones,
 )
-from hacienda_gpt.planificador.textos import TEXTOS
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.optimizador import (
-    PlanOptimo,
-    Restricciones,
-    TextoLegal,
-    conocidos_de,
-    optimizar,
-)
-from hacienda_gpt.tax.params import load_params
-from hacienda_gpt.tax.profile import (
-    DATOS_CONYUGE,
-    DatosInvalidosError,
-    build_input_con_actividad,
-    normalizar_datos_conyuge,
-)
+from asistente.nucleo.planificador.textos import TEXTOS
 
 ZERO = Decimal(0)
 ONE = Decimal(1)

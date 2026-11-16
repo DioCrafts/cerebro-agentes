@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import sqlite3
 
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.migraciones import asegurar_esquema
 
 TABLAS = (
     "eventos",
@@ -93,7 +93,7 @@ DDL = (
 
 def crear_tablas(conn: sqlite3.Connection) -> None:
     """Create the bus tables if missing (idempotent; safe inside an open transaction)."""
-    asegurar_esquema(conn, "eventos")  # migrations (hacienda_gpt/plataforma)
+    asegurar_esquema(conn, "eventos")  # migrations (asistente/plataforma)
     for sentencia in DDL:
         conn.execute(sentencia)
 

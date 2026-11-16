@@ -1,11 +1,11 @@
 """The process model: an ``api`` process (uvicorn) and a ``worker`` process, over the same cases' database.
 
-* **api** — ``uvicorn hacienda_gpt.api.api:app``: answers requests, writes events. With
+* **api** — ``uvicorn asistente.plataforma.api.api:app``: answers requests, writes events. With
   ``EVENTOS_DESPACHO_EN_API=true`` (the default, as before) it also drains the event bus itself right after a
   change, for latency; with ``false`` only the worker dispatches. Browser tasks run in the API process that
   started them (the user's login window or handed-over session lives there) and are shared with every other
   process through the database (``navegador/persistencia.py``).
-* **worker** — ``python -m hacienda_gpt.cli.plataforma worker``: the long-running **services** (the event bus
+* **worker** — ``python -m asistente.plataforma.cli.plataforma worker``: the long-running **services** (the event bus
   worker; anything another package registers, e.g. a task engine) and the **scheduled jobs** that used to be
   cron lines (daily run, weekly digest, BOE watch, index updates, Gmail sync…). Every scheduled slot is
   claimed in ``plataforma_trabajos`` first, so two workers never run the same slot twice; a slot missed while
@@ -15,7 +15,7 @@
 
 Registering more (other packages)::
 
-    def registrar_en_plataforma(registro: Registro) -> None:      # in e.g. hacienda_gpt/tareas/__init__.py
+    def registrar_en_plataforma(registro: Registro) -> None:      # in e.g. asistente/nucleo/tareas/__init__.py
         registro.registrar_servicio(Servicio("tareas", "Motor de tareas largas", arrancar=mi_bucle))
         registro.registrar_trabajo(Trabajo("tareas-purga", "…", Programacion(hora=time(3, 10)), funcion=purgar))
 
@@ -40,14 +40,14 @@ import threading
 from typing import Any
 from zoneinfo import ZoneInfo
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.migraciones import BASE_CASOS, asegurar_esquema, estado, migrar
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import BASE_CASOS, asegurar_esquema, estado, migrar
 
 logger = logging.getLogger(__name__)
 
 ZONA = ZoneInfo("Europe/Madrid")
 # Packages the worker asks for services and jobs (``registrar_en_plataforma``); missing ones are skipped.
-EXTENSIONES: tuple[str, ...] = ("hacienda_gpt.tareas",)
+EXTENSIONES: tuple[str, ...] = ("asistente.nucleo.tareas",)
 # A job's slot is considered abandoned (another worker may take it) after this long without finishing.
 TIEMPO_MAXIMO_TRABAJO = timedelta(hours=6)
 
@@ -150,7 +150,7 @@ class Trabajo:
         orden = [sys.executable, "-m", *self.orden]
         if not self.vigilado:
             return orden
-        return [sys.executable, "-m", "hacienda_gpt.cli.ops", "run", self.nombre, "--", *orden]
+        return [sys.executable, "-m", "asistente.plataforma.cli.ops", "run", self.nombre, "--", *orden]
 
 
 @dataclass
@@ -249,7 +249,7 @@ def registro() -> Registro:
     """The process-wide registry: the built-in services and jobs, plus the extensions'."""
     with _registro_lock:
         if not _registro:
-            from hacienda_gpt.plataforma.trabajos import registrar_incorporados
+            from asistente.plataforma.trabajos import registrar_incorporados
 
             nuevo = Registro()
             registrar_incorporados(nuevo)
@@ -561,7 +561,7 @@ class Worker:
             self.preparar()
         resumen: dict[str, Any] = {}
         if self.con_servicios and "eventos" in self.registro.servicios:
-            from hacienda_gpt.plataforma.trabajos import pasada_de_eventos
+            from asistente.plataforma.trabajos import pasada_de_eventos
 
             resumen["eventos"] = pasada_de_eventos(self.db_path, self.nombre)
         resumen["trabajos"] = self.paso(esperar=True)
@@ -635,10 +635,10 @@ def describir(registro_: Registro | None = None, *, ahora: datetime | None = Non
     return {
         "procesos": {
             "api": {
-                "orden": "uvicorn hacienda_gpt.api.api:app --proxy-headers",
+                "orden": "uvicorn asistente.plataforma.api.api:app --proxy-headers",
                 "despacha_eventos": despacho_en_api(),
             },
-            "worker": {"orden": "python -m hacienda_gpt.cli.plataforma worker"},
+            "worker": {"orden": "python -m asistente.plataforma.cli.plataforma worker"},
         },
         "servicios": [
             {"nombre": s.nombre, "descripcion": s.descripcion, "activo": s.por_defecto} for s in reg.servicios.values()

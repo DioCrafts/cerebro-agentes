@@ -1,7 +1,7 @@
 """Waking one module for one case: run it, store its notices, and work out when to wake it next.
 
 The notices are written exactly as the daily run writes them (same kinds, keys and replacement rules,
-through :mod:`hacienda_gpt.proactive.bandeja` and the tax jobs), so a notice created by an event and the
+through :mod:`asistente.nucleo.proactive.bandeja` and the tax jobs), so a notice created by an event and the
 same notice found by the daily run are one and the same row: handlers are idempotent by construction.
 
 The module's hooks are read through ``modulos.ganchos.ganchos_de`` (contract v2, or the v1 adapter); no module
@@ -24,11 +24,11 @@ from datetime import date
 import logging
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.eventos.tipos import INDICE_PUBLICADO, Evento
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
-from hacienda_gpt.modulos.ganchos import Ganchos, ganchos_de, proxima_revision_de_caso
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.eventos.tipos import INDICE_PUBLICADO, Evento
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
+from asistente.nucleo.modulos.ganchos import Ganchos, ganchos_de, proxima_revision_de_caso
+from asistente.nucleo.proactive.store import NotificationStore
 
 logger = logging.getLogger(__name__)
 
@@ -54,7 +54,7 @@ class Resultado:
 def _refrescar_indices() -> None:
     """The mortgage module caches the index series in-process: a long-running worker must re-read it."""
     try:
-        from hacienda_gpt.modulos.hipoteca import indices
+        from asistente.ambitos.hipoteca import indices
     except Exception:  # the module may be absent or switched off
         return
     limpiar = getattr(getattr(indices, "cargar_serie", None), "cache_clear", None)
@@ -67,7 +67,7 @@ REFRESCOS: dict[str, Callable[[], None]] = {INDICE_PUBLICADO: _refrescar_indices
 
 def proxima_revision_fiscal(case: CaseState, *, hoy: date) -> date | None:
     """The tax module's next wake-up for a case (kept for callers; it lives in ``modulos/fiscal/modulo.py``)."""
-    from hacienda_gpt.modulos.fiscal.modulo import proxima_revision
+    from asistente.ambitos.fiscal.modulo import proxima_revision
 
     return proxima_revision(case, hoy=hoy)
 
@@ -81,7 +81,7 @@ def guardar_avisos(case_id: str, modulo: Any, avisos: Sequence[Any], store: Noti
     """Store a module's notices exactly as the daily run does. Invalid ones raise after the valid are kept."""
     from pydantic import ValidationError
 
-    from hacienda_gpt.proactive.bandeja import MAX_AVISOS_POR_MODULO, _notificacion, clave_de
+    from asistente.nucleo.proactive.bandeja import MAX_AVISOS_POR_MODULO, _notificacion, clave_de
 
     if len(avisos) > MAX_AVISOS_POR_MODULO:
         logger.error("Module %s returned %d notices; only the first are kept", modulo.clave, len(avisos))
@@ -134,7 +134,7 @@ def despertar_modulo(modulo: Any, evento: Evento, case: CaseState, *, hoy: date,
         proxima = bandeja.proxima_revision(case, hoy=hoy) if bandeja.proxima_revision is not None else None
         return Resultado(avisos=sum(int(n) for n in dict(por_tipo).values()), proxima_revision=proxima)
 
-    from hacienda_gpt.modulos.perfil import perfil_de
+    from asistente.nucleo.modulos.perfil import perfil_de
 
     contexto = ContextoModulo(perfil=perfil_de(case), hoy=hoy, case_id=case.case_id)
     al_evento = ganchos.eventos.al_evento

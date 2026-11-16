@@ -7,8 +7,8 @@ import json
 
 import pytest
 
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.evaluacion.captura import (
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.evaluacion.captura import (
     CONSENTIMIENTO_VERSION,
     FeedbackEntrada,
     FeedbackRegistrado,
@@ -20,9 +20,9 @@ from hacienda_gpt.evaluacion.captura import (
     referencia_anonima,
     seudonimizar,
 )
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion, ExpCifra
-from hacienda_gpt.evaluacion.senales import agregar, es_repregunta, senales_de_auditoria
-from hacienda_gpt.evaluacion.suite import cifras_esperadas
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, ExpCifra
+from asistente.nucleo.evaluacion.senales import agregar, es_repregunta, senales_de_auditoria
+from asistente.nucleo.evaluacion.suite import cifras_esperadas
 
 PRESTAMO = {
     "capital_inicial": "100000",

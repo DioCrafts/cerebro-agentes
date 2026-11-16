@@ -26,7 +26,7 @@ import os
 import re
 import unicodedata
 
-from hacienda_gpt.capacidades.correo.dominios import (
+from asistente.capacidades.correo.dominios import (
     Remitentes,
     es_oficial,
     es_sede_estatal,
@@ -36,8 +36,8 @@ from hacienda_gpt.capacidades.correo.dominios import (
     parecido_a,
     registrable,
 )
-from hacienda_gpt.capacidades.correo.mime import Mensaje
-from hacienda_gpt.llm.security import sanitize_retrieved_context
+from asistente.capacidades.correo.mime import Mensaje
+from asistente.conocimiento.llm.security import sanitize_retrieved_context
 
 UMBRAL_SOSPECHA = 3
 

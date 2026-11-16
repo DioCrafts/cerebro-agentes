@@ -1,6 +1,6 @@
 """VAPID (RFC 8292): how this server identifies itself to the browsers' push services.
 
-The operator generates ONE key pair (``python -m hacienda_gpt.push.vapid``) and sets:
+The operator generates ONE key pair (``python -m asistente.plataforma.push.vapid``) and sets:
 
 * ``PUSH_VAPID_PRIVATE_KEY`` — the private key: the base64url of its 32-byte scalar (the format of
   ``web-push generate-vapid-keys``) or a PEM block. A secret: environment or secret store, never the repo.
@@ -29,7 +29,7 @@ from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.utils import decode_dss_signature, encode_dss_signature
 
-from hacienda_gpt.push.cifrado import (
+from asistente.plataforma.push.cifrado import (
     CifradoError,
     b64url_decode,
     b64url_encode,

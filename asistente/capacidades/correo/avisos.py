@@ -14,12 +14,12 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-from hacienda_gpt.capacidades.correo import almacen, decisiones
-from hacienda_gpt.capacidades.correo.almacen import Elemento
-from hacienda_gpt.capacidades.correo.normativa import cargar as cargar_normativa
-from hacienda_gpt.capacidades.correo.propuestas import fecha_es
-from hacienda_gpt.capacidades.correo.seguridad import citar
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
+from asistente.capacidades.correo import almacen, decisiones
+from asistente.capacidades.correo.almacen import Elemento
+from asistente.capacidades.correo.normativa import cargar as cargar_normativa
+from asistente.capacidades.correo.propuestas import fecha_es
+from asistente.capacidades.correo.seguridad import citar
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
 
 DIAS_ADMINISTRACION = 10
 DIAS_PHISHING = 7

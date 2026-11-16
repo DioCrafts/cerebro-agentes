@@ -1,7 +1,7 @@
 """The ``caducidades`` rules in the agentic re-encoding loop: their family and the reviewer's test cases.
 
 A reviewer proves (or disproves) a proposed rule by running cases through the module's own calculator
-(``hacienda_gpt.modulos.caducidades.calculo``, used as it is): a DNI issued at 29 and at 30, a car on the day it
+(``asistente.ambitos.caducidades.calculo``, used as it is): a DNI issued at 29 and at 30, a car on the day it
 turns four, a purchase delivered on a given day… Each case names a calculation, its inputs and the result line it
 compares. The calculator returns dates; a case compares them as AAAAMMDD numbers (``fecha``: 20310115), or as the
 days from the start of the period (``vigencia_dias``).
@@ -95,7 +95,7 @@ def _vencimiento(v: Any, desde: date) -> ResultadoCaso:
 
 
 def _calculos() -> dict[str, tuple[type[BaseModel], Callable[[Any, Any], ResultadoCaso], str]]:
-    from hacienda_gpt.modulos.caducidades import calculo as c
+    from asistente.ambitos.caducidades import calculo as c
 
     return {
         "dni": (
@@ -204,9 +204,9 @@ def evaluar(nombre: str, entrada: dict[str, Any], reglas: Any) -> ResultadoCaso:
 
 def familia_caducidades() -> Any:
     """The ``Familia`` the generic adapter of the loop needs for ``modulos/caducidades/data/reglas.json``."""
-    from hacienda_gpt.modulos.caducidades import reglas as modulo
-    from hacienda_gpt.tax.recodificacion.adaptadores_otros import Calculo, Familia
-    from hacienda_gpt.tax.recodificacion.control import Reglas
+    from asistente.ambitos.caducidades import reglas as modulo
+    from asistente.conocimiento.recodificacion.adaptadores_otros import Calculo, Familia
+    from asistente.conocimiento.recodificacion.control import Reglas
 
     def cargador(
         modelo: type[BaseModel], funcion: Callable[[Any, Any], ResultadoCaso]

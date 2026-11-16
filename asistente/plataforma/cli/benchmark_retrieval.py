@@ -6,10 +6,10 @@ from pathlib import Path
 import click
 from langchain_openai import ChatOpenAI
 
-from hacienda_gpt.llm.chain import _create_retriever
-from hacienda_gpt.llm.embeddings import create_embeddings
-from hacienda_gpt.settings import OPENAI_MODEL, OPENAI_TEMPERATURE
-from hacienda_gpt.utils import get_openai_api_key
+from asistente.conocimiento.llm.chain import _create_retriever
+from asistente.conocimiento.llm.embeddings import create_embeddings
+from asistente.plataforma.settings import OPENAI_MODEL, OPENAI_TEMPERATURE
+from asistente.plataforma.utils import get_openai_api_key
 
 BENCH_QUESTIONS: list[tuple[str, list[str]]] = [
     ("¿Qué norma aplica al IRPF en 2025?", ["normativa", "ley"]),

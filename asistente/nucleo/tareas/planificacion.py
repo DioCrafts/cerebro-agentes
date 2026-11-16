@@ -1,4 +1,4 @@
-"""A model proposes a custom plan; the gate decides (:func:`~hacienda_gpt.tareas.validacion.validar_plan`).
+"""A model proposes a custom plan; the gate decides (:func:`~asistente.nucleo.tareas.validacion.validar_plan`).
 
 Used when no template fits a goal (``POST /tareas/proponer``; in the chat the central agent writes the plan
 itself through ``crear_tarea``). The model receives the goal and the catalogue of what a step may use: the
@@ -17,11 +17,11 @@ import json
 import logging
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
-from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.tareas.capacidades import Capacidad, capacidades_por_defecto
-from hacienda_gpt.tareas.modelo import EVENTOS_DE_ESPERA, TIPOS_PASO, Paso
-from hacienda_gpt.tareas.validacion import MAX_PASOS_PLAN, PlanInvalidoError, validar_plan
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
+from asistente.nucleo.modulos.contrato import Modulo
+from asistente.nucleo.tareas.capacidades import Capacidad, capacidades_por_defecto
+from asistente.nucleo.tareas.modelo import EVENTOS_DE_ESPERA, TIPOS_PASO, Paso
+from asistente.nucleo.tareas.validacion import MAX_PASOS_PLAN, PlanInvalidoError, validar_plan
 
 logger = logging.getLogger(__name__)
 

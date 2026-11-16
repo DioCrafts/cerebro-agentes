@@ -23,7 +23,7 @@ import sqlite3
 from threading import RLock
 from typing import Any
 
-from hacienda_gpt.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
+from asistente.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
 
 logger = logging.getLogger(__name__)
 

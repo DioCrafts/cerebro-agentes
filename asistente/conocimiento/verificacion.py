@@ -20,7 +20,7 @@ the text it was read from is no longer there.
 
 What is specific to the tax parameters (which checks each group of the IRPF file gets) lives here; how a page is
 read, the literal-quote rule and :func:`verificar` itself are the shared legal-data library's
-(:mod:`hacienda_gpt.conocimiento`), re-exported under their old names.
+(:mod:`asistente.conocimiento`), re-exported under their old names.
 """
 
 from __future__ import annotations
@@ -33,9 +33,11 @@ from typing import Any
 
 from pydantic import BaseModel
 
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, Escala, IRPFParams, load_params
+
 # The text handling and the checker are the shared legal-data library's; re-exported under their old names.
-from hacienda_gpt.conocimiento.comprobacion import Comprobacion, Resultado, Tipo, verificar
-from hacienda_gpt.conocimiento.texto import (
+from asistente.conocimiento.comprobacion import Comprobacion, Resultado, Tipo, verificar
+from asistente.conocimiento.texto import (
     VENTANA_TABLA,
     VERSION_DIARIO,
     TextoDe,
@@ -43,11 +45,10 @@ from hacienda_gpt.conocimiento.texto import (
     texto_plano,
     url_de,
 )
-from hacienda_gpt.conocimiento.texto import aparece as _aparece
-from hacienda_gpt.conocimiento.texto import comprimido as _comprimido
-from hacienda_gpt.conocimiento.texto import formas as _formas
-from hacienda_gpt.conocimiento.texto import juntas as _juntas
-from hacienda_gpt.tax.params import DATA_DIR, Escala, IRPFParams, load_params
+from asistente.conocimiento.texto import aparece as _aparece
+from asistente.conocimiento.texto import comprimido as _comprimido
+from asistente.conocimiento.texto import formas as _formas
+from asistente.conocimiento.texto import juntas as _juntas
 
 
 def _cifras_de(node: Any) -> list[Decimal]:

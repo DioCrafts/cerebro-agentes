@@ -4,16 +4,16 @@ Meant for cron::
 
     # Recordatorios de plazos, plan de fin de ejercicio y avisos de los módulos del hogar.
     # No usa ningún LLM (no cuesta nada): cada día a las 07:00.
-    0 7 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive run-daily >> logs/proactive.log 2>&1
+    0 7 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive run-daily >> logs/proactive.log 2>&1
 
     # Resumen semanal de cada caso (lo que vence, importes, acciones por decidir): los lunes a las 07:30.
-    30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive run-weekly >> logs/proactive.log 2>&1
+    30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive run-weekly >> logs/proactive.log 2>&1
 
     # Cambios normativos: primero boe_watch detecta y descarga las normas que han cambiado,
     # y después boe-impact avisa a los usuarios afectados (una llamada al LLM por norma
     # cambiada, ninguna por usuario; --yes para no pedir confirmación en cron).
-    30 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.boe_watch >> logs/boe_watch.log 2>&1
-    45 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.proactive boe-impact \
+    30 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.boe_watch >> logs/boe_watch.log 2>&1
+    45 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive boe-impact \
                     --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
 
 Both are safe to re-run: notifications are deduplicated per case, and
@@ -36,17 +36,9 @@ import urllib.request
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.schemas import CaseStatus
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import emitir_novedades
-from hacienda_gpt.proactive.impacto import clave_evento, parse_fecha_actualizacion, preparar_eventos, procesar_eventos
-from hacienda_gpt.proactive.jobs import ejecutar_para_todos, hoy_en_espana
-from hacienda_gpt.proactive.novedades import ItemSumario, notificar_novedad, revisar
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.fuentes import desactualizadas, normas_de_parametros
-from hacienda_gpt.tax.params import DATA_DIR, ejercicios_disponibles, load_params
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, ejercicios_disponibles, load_params
+from asistente.conocimiento.fuentes import desactualizadas, normas_de_parametros
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     Hallazgo,
     Objetivo,
@@ -67,10 +59,23 @@ from hacienda_gpt.tax.recodificacion import (
     rechazar_propuesta,
     todos_los_objetivos,
 )
-from hacienda_gpt.tax.recodificacion.nucleo import leer_texto, resumen_de
-from hacienda_gpt.tax.rollover import heredar_citas, preparar_ejercicio
-from hacienda_gpt.tax.verificacion import cargar_y_verificar, leer_snapshot, url_de
-from hacienda_gpt.tax.vigencia_normas import estado_desde_xml, guardar_estados, leer_estados
+from asistente.conocimiento.recodificacion.nucleo import leer_texto, resumen_de
+from asistente.conocimiento.rollover import heredar_citas, preparar_ejercicio
+from asistente.conocimiento.verificacion import cargar_y_verificar, leer_snapshot, url_de
+from asistente.conocimiento.vigencia_normas import estado_desde_xml, guardar_estados, leer_estados
+from asistente.nucleo.decision.schemas import CaseStatus
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import emitir_novedades
+from asistente.nucleo.proactive.impacto import (
+    clave_evento,
+    parse_fecha_actualizacion,
+    preparar_eventos,
+    procesar_eventos,
+)
+from asistente.nucleo.proactive.jobs import ejecutar_para_todos, hoy_en_espana
+from asistente.nucleo.proactive.novedades import ItemSumario, notificar_novedad, revisar
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -163,11 +168,11 @@ def run_daily(db_path: str | None, hoy: date | None) -> None:
         auth=_auth_de(path),
         preparar_modulos=True,
     )
-    # Long-running tasks (hacienda_gpt/tareas): their dates and pending actions are checked here too (no LLM).
-    from hacienda_gpt.tareas.almacen import tabla_existe as hay_tareas
+    # Long-running tasks (asistente/nucleo/tareas): their dates and pending actions are checked here too (no LLM).
+    from asistente.nucleo.tareas.almacen import tabla_existe as hay_tareas
 
     if hay_tareas(path):
-        from hacienda_gpt.tareas.motor import ciclo as ciclo_tareas
+        from asistente.nucleo.tareas.motor import ciclo as ciclo_tareas
 
         dia = hoy or hoy_en_espana()
         summary["tareas"] = ciclo_tareas(path, hoy=lambda: dia, ejecutar_consultas=False, auth=_auth_de(path))
@@ -178,7 +183,7 @@ def _auth_de(path: str) -> Any:
     """The accounts store on ``path`` when accounts are on (who switched which module on); None otherwise."""
     if settings.AUTH_MODE != "required":
         return None
-    from hacienda_gpt.auth.store import AuthStore
+    from asistente.plataforma.auth.store import AuthStore
 
     return AuthStore(path)
 
@@ -192,9 +197,9 @@ def run_weekly(db_path: str | None, hoy: date | None) -> None:
     Uno por caso y semana ISO (se puede repetir sin duplicar). Se construye con los avisos ya guardados de todos
     los módulos; no usa ningún LLM y no suma cifras de módulos distintos.
     """
-    from hacienda_gpt.modulos.acciones import AccionStore
-    from hacienda_gpt.modulos.registro import registro
-    from hacienda_gpt.proactive.bandeja import resumen_semanal_para_todos
+    from asistente.nucleo.modulos.acciones import AccionStore
+    from asistente.nucleo.modulos.registro import registro
+    from asistente.nucleo.proactive.bandeja import resumen_semanal_para_todos
 
     path = db_path or settings.DECISION_STATE_DB_PATH
     summary = resumen_semanal_para_todos(
@@ -210,8 +215,8 @@ def run_weekly(db_path: str | None, hoy: date | None) -> None:
 @cli.command("modulos")
 def modulos_cmd() -> None:
     """Módulos del hogar descubiertos, los apagados por el operador y los que no se han podido cargar."""
-    from hacienda_gpt.modulos.preferencias import activos_por_defecto
-    from hacienda_gpt.modulos.registro import desactivados_por_operador, registro
+    from asistente.nucleo.modulos.preferencias import activos_por_defecto
+    from asistente.nucleo.modulos.registro import desactivados_por_operador, registro
 
     reg = registro()
     apagados = desactivados_por_operador()
@@ -285,7 +290,7 @@ def boe_impact(changes_log: Path, snapshot_dir: Path, since: date | None, yes: b
     if events:
         provider: Any = None
         if pendientes:
-            from hacienda_gpt.agent.providers import create_provider
+            from asistente.nucleo.agent.providers import create_provider
 
             provider = create_provider()
         path = db_path or settings.DECISION_STATE_DB_PATH
@@ -323,7 +328,7 @@ def params_lecturas(base: str, body_path: Path | None, data_dir: Path | None) ->
     """
     import subprocess
 
-    from hacienda_gpt.tax.recodificacion import procedencia
+    from asistente.conocimiento.recodificacion import procedencia
 
     antes: dict[str, Any] = {}
     despues: dict[str, Any] = {}
@@ -361,7 +366,7 @@ def params_check(fail_on_stale: bool, marcar_modulos_revisados: bool) -> None:
     hayan cambiado: significa que hay que releerla. Las normas del BOE de las que
     leen sus datos los módulos del hogar se comprueban igual (apartado «modulos»).
     """
-    from hacienda_gpt.cli.boe_watch import _fetch_metadata
+    from asistente.plataforma.cli.boe_watch import _fetch_metadata
 
     fechas: dict[str, date] = {}
     errores: list[str] = []
@@ -396,7 +401,7 @@ def params_check(fail_on_stale: bool, marcar_modulos_revisados: bool) -> None:
 
 def _revisar_fuentes_de_modulos(fetch_metadata: Any, *, marcar_revisadas: bool) -> dict[str, Any] | None:
     """The BOE laws behind the household modules, checked like the calculator's (None when there are none)."""
-    from hacienda_gpt.modulos import fuentes as fuentes_modulos
+    from asistente.nucleo.modulos import fuentes as fuentes_modulos
 
     try:
         vigiladas = fuentes_modulos.fuentes_de_modulos()
@@ -463,7 +468,7 @@ def _sumario(dia: date) -> dict[str, Any] | None:
         payload: dict[str, Any] = json.loads(raw)
     except ValueError:
         # An HTML error page served with 200 never reaches the parser: tell the format watch before failing.
-        from hacienda_gpt.ops import formatos
+        from asistente.conocimiento import formatos
 
         formatos.observar("boe_sumario", raw.decode("utf-8", errors="replace"), contexto=dia.isoformat())
         raise
@@ -486,7 +491,7 @@ def _vigiladas() -> frozenset[str]:
 def _boe_de_modulos() -> frozenset[str]:
     """BOE laws the household modules read their data from (empty if the registry cannot be loaded)."""
     try:
-        from hacienda_gpt.modulos.fuentes import boe_ids_de_modulos
+        from asistente.nucleo.modulos.fuentes import boe_ids_de_modulos
 
         return boe_ids_de_modulos()
     except Exception:
@@ -571,7 +576,7 @@ _FICHEROS_DE_PARAMETROS = ("irpf", "autonomos", "sociedades", "patrimonio", "isd
 
 def _ficheros_de_modulos() -> tuple[str, ...]:
     """Names ``--fichero`` accepts for the modules' legal data: each declared file's key and its module's."""
-    from hacienda_gpt.conocimiento import ficheros_legales
+    from asistente.conocimiento import ficheros_legales
 
     return tuple(dict.fromkeys(n for f in ficheros_legales() for n in (f.modulo, f.clave)))
 
@@ -589,9 +594,9 @@ def _ficheros_pedidos(valores: tuple[str, ...]) -> tuple[str, ...]:
 
 
 def _verificar_modulos(texto_de: Any, ficheros: tuple[str, ...]) -> dict[str, list[Any]]:
-    """The legal data every module declares (``hacienda_gpt.conocimiento``), by file name; with ``--fichero``, only
+    """The legal data every module declares (``asistente.conocimiento``), by file name; with ``--fichero``, only
     the modules named (a run limited to tax files checks none)."""
-    from hacienda_gpt.conocimiento import verificar_modulos
+    from asistente.conocimiento import verificar_modulos
 
     if ficheros and all(n in _FICHEROS_DE_PARAMETROS for n in ficheros):
         return {}
@@ -608,7 +613,7 @@ def _verificar_otros_ficheros(
     import importlib
 
     try:
-        otros = importlib.import_module("hacienda_gpt.tax.recodificacion.adaptadores_otros")
+        otros = importlib.import_module("asistente.conocimiento.recodificacion.adaptadores_otros")
     except ModuleNotFoundError:
         return {}
     familias = [f for f in otros.FAMILIAS if not ficheros or f.clave in ficheros]
@@ -622,7 +627,7 @@ def _verificar_otros_ficheros(
 
 def _fecha_boe(boe_id: str) -> date | None:
     """The day the BOE's metadata says a consolidated law was last updated: what ``params-check`` compares."""
-    from hacienda_gpt.cli.boe_watch import _fetch_metadata
+    from asistente.plataforma.cli.boe_watch import _fetch_metadata
 
     fecha = parse_fecha_actualizacion(_fetch_metadata(boe_id).get("fecha_actualizacion"))
     time.sleep(0.3)
@@ -660,7 +665,7 @@ def _anotar_lecturas(
     texto_de: Any, *, desde_snapshot: bool, data_dir: Path, proposals_dir: Path | None = None
 ) -> dict[str, Any]:
     """Record today's reading of the laws that are up to date again (see ``recodificacion.procedencia``)."""
-    from hacienda_gpt.tax.recodificacion.procedencia import refrescar_lo_que_se_pueda
+    from asistente.conocimiento.recodificacion.procedencia import refrescar_lo_que_se_pueda
 
     try:
         hecho = refrescar_lo_que_se_pueda(
@@ -977,7 +982,7 @@ def _revisar_novedades(
 
 
 # --------------------------------------------------------------------------- #
-# Automatic re-encoding of parameters (hacienda_gpt/tax/recodificacion)
+# Automatic re-encoding of parameters (asistente/conocimiento/recodificacion)
 # --------------------------------------------------------------------------- #
 
 _PROPOSALS_OPTION = click.option(
@@ -1019,8 +1024,8 @@ def hay_credenciales_llm() -> bool:
 
 def _proveedores_de_recodificacion() -> tuple[Any, Any]:
     """Reader and reviewer, both metered: every call counts against the daily budget."""
-    from hacienda_gpt.agent.providers import create_provider
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma.ops.consumo import medir
 
     lector = medir(create_provider(model=settings.RECODE_MODEL or None), "recodificacion")
     if settings.RECODE_REVIEWER_MODEL and settings.RECODE_REVIEWER_MODEL != settings.RECODE_MODEL:
@@ -1031,13 +1036,13 @@ def _proveedores_de_recodificacion() -> tuple[Any, Any]:
 
 
 def _ejecutor_de_recodificacion(tipo: str) -> Any:
-    from hacienda_gpt.tax.recodificacion.lotes import ejecutor_de_recodificacion
+    from asistente.conocimiento.recodificacion.lotes import ejecutor_de_recodificacion
 
     return ejecutor_de_recodificacion(tipo)
 
 
 def _canales_del_operador() -> list[Any]:
-    from hacienda_gpt.proactive.entrega import ConfiguracionCanalError, canales_configurados
+    from asistente.nucleo.proactive.entrega import ConfiguracionCanalError, canales_configurados
 
     try:
         return list(canales_configurados())
@@ -1048,7 +1053,7 @@ def _canales_del_operador() -> list[Any]:
 
 def _anotaciones_de(norma: str, boe_id: str) -> str:
     """What the BOE's analysis of the amending ``norma`` says it does to the law ``boe_id``."""
-    from hacienda_gpt.proactive.novedades import leer_analisis
+    from asistente.nucleo.proactive.novedades import leer_analisis
 
     raw = _xml(norma)
     if not raw:
@@ -1065,7 +1070,7 @@ def _anotaciones_de(norma: str, boe_id: str) -> str:
 
 def _estimacion(objetivo: Objetivo, texto_de: Any) -> dict[str, Any]:
     """Size of what one reader call and one reviewer call would send for ``objetivo`` (no LLM involved)."""
-    from hacienda_gpt.tax.recodificacion import prompts
+    from asistente.conocimiento.recodificacion import prompts
 
     fila: dict[str, Any] = {
         "tipo": objetivo.tipo,
@@ -1121,7 +1126,7 @@ def _recodificar(
         return salida
     lector, revisor = _proveedores_de_recodificacion()
     almacen = _almacen(proposals_dir)
-    from hacienda_gpt.tax.recodificacion.lotes import ejecutor_de_recodificacion
+    from asistente.conocimiento.recodificacion.lotes import ejecutor_de_recodificacion
 
     # Plain ``ejecutar`` (with one escalation of a reader that fails the gate, when routing has a tier above),
     # or the batch executor with RECODE_BATCH=true.
@@ -1370,7 +1375,7 @@ def _pilotar(
     ``texto_de`` given means the laws come from a snapshot, not from today's BOE: the provenance of the files is then
     only simulated.
     """
-    from hacienda_gpt.tax.recodificacion import piloto
+    from asistente.conocimiento.recodificacion import piloto
 
     data_dir = data_dir or DATA_DIR
     registro_path = output_dir / REGISTRO_NOVEDADES
@@ -1571,7 +1576,7 @@ def params_eval(
     codificación humana. No escribe nada en los parámetros ni guarda propuestas.
     Sirve para decidir, con tu modelo real, si activar RECODE_AUTO_APPLY.
     """
-    from hacienda_gpt.tax.recodificacion import evaluacion
+    from asistente.conocimiento.recodificacion import evaluacion
 
     data_dir = data_dir or DATA_DIR
     texto_de = leer_snapshot(snapshot_dir) if snapshot_dir else _texto_del_boe()
@@ -1591,7 +1596,7 @@ def params_eval(
     if not hay_credenciales_llm():
         raise click.ClickException("No hay credenciales del proveedor de LLM configurado: no se puede evaluar.")
     lector, revisor = _proveedores_de_recodificacion()
-    from hacienda_gpt.tax.recodificacion.lotes import evaluador_de_recodificacion
+    from asistente.conocimiento.recodificacion.lotes import evaluador_de_recodificacion
 
     resultado = evaluador_de_recodificacion()(
         elegidos,

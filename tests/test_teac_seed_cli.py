@@ -6,7 +6,7 @@ from pathlib import Path
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import teac_seed
+from asistente.plataforma.cli import teac_seed
 
 _LIST_PAGE_1 = """
 <html><body>

@@ -1,21 +1,21 @@
 """Continuous evaluation of the central assistant: run the suite, gate prompt/model changes, review cases.
 
     # Model-free part (every pull request): schema, expected figures, reference scripts replayed.
-    uv run python -m hacienda_gpt.cli.evaluacion validar
-    uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion
+    uv run python -m asistente.plataforma.cli.evaluacion validar
+    uv run python -m asistente.plataforma.cli.evaluacion run --reproduccion
 
     # With a model (needs a key; asks before spending): the active variant, or a candidate.
-    uv run python -m hacienda_gpt.cli.evaluacion run --out reports/evaluacion/base.json
-    uv run python -m hacienda_gpt.cli.evaluacion run --config variantes/candidata.json --baseline reports/evaluacion/base.json
+    uv run python -m asistente.plataforma.cli.evaluacion run --out reports/evaluacion/base.json
+    uv run python -m asistente.plataforma.cli.evaluacion run --config variantes/candidata.json --baseline reports/evaluacion/base.json
 
     # Gate: baseline vs candidate; writes the active variant only if the candidate improves.
-    uv run python -m hacienda_gpt.cli.evaluacion promote --config variantes/candidata.json
+    uv run python -m asistente.plataforma.cli.evaluacion promote --config variantes/candidata.json
 
     # Users' feedback: automatic signals, review queue, promotion of a reviewed case to the suite.
-    uv run python -m hacienda_gpt.cli.evaluacion senales
-    uv run python -m hacienda_gpt.cli.evaluacion casos pendientes
-    uv run python -m hacienda_gpt.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
-    uv run python -m hacienda_gpt.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \\
+    uv run python -m asistente.plataforma.cli.evaluacion senales
+    uv run python -m asistente.plataforma.cli.evaluacion casos pendientes
+    uv run python -m asistente.plataforma.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
+    uv run python -m asistente.plataforma.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \\
         --confirmo-anonimizado --revisor "Nombre"
 """
 
@@ -30,9 +30,9 @@ import tempfile
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.evaluacion import suite as suite_mod
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion
+from asistente.nucleo.evaluacion import suite as suite_mod
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion
+from asistente.plataforma import settings
 
 _CASOS = click.option(
     "--casos",
@@ -66,7 +66,7 @@ def cli() -> None:
 @click.option("--estricto", is_flag=True, help="Falla también si alguna cifra registrada ha cambiado (deriva).")
 def validar(casos_dir: Path, estricto: bool) -> None:
     """Comprueba la suite sin modelo: esquema, categorías, módulos y que cada cifra esperada se calcula."""
-    from hacienda_gpt.evaluacion.variantes import comprobar_integrados, desajustes, variante_activa
+    from asistente.nucleo.evaluacion.variantes import comprobar_integrados, desajustes, variante_activa
 
     informe = suite_mod.validar(casos_dir)
     for aviso in desajustes(variante_activa()):
@@ -96,19 +96,19 @@ def _seleccion(casos_dir: Path, categorias: tuple[str, ...], ids: tuple[str, ...
 
 
 def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: bool, sin_juez: bool):  # type: ignore[no-untyped-def]
-    from hacienda_gpt.evaluacion.runner import (
+    from asistente.nucleo.evaluacion.runner import (
         Entorno,
         buscador_por_defecto,
         proveedor_real,
         proveedor_reproduccion,
     )
-    from hacienda_gpt.ops.consumo import ConsumoStore, Presupuesto, almacen_por_defecto
+    from asistente.plataforma.ops.consumo import ConsumoStore, Presupuesto, almacen_por_defecto
 
     if reproduccion:
         temporal = Path(tempfile.mkdtemp(prefix="evaluacion-")) / "consumo.sqlite3"
         return Entorno(proveedor=proveedor_reproduccion, consumo=ConsumoStore(str(temporal)), modo="reproduccion")
-    from hacienda_gpt.agent.search import CorpusSearcher
-    from hacienda_gpt.evaluacion.cifras import SinCorpus
+    from asistente.nucleo.agent.search import CorpusSearcher
+    from asistente.nucleo.evaluacion.cifras import SinCorpus
 
     avisos: list[str] = []
     buscador: CorpusSearcher
@@ -122,7 +122,7 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
 
     def juez():  # type: ignore[no-untyped-def]
         # The judge is the configured model, the same for baseline and candidate.
-        from hacienda_gpt.agent.providers import create_provider
+        from asistente.nucleo.agent.providers import create_provider
 
         return create_provider()
 
@@ -141,7 +141,7 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
 
 
 def _variante(config: Path | None):  # type: ignore[no-untyped-def]
-    from hacienda_gpt.evaluacion.variantes import VarianteInvalidaError, cargar_variante, variante_activa
+    from asistente.nucleo.evaluacion.variantes import VarianteInvalidaError, cargar_variante, variante_activa
 
     if config is None:
         return variante_activa()
@@ -191,7 +191,7 @@ def run(
     yes: bool,
 ) -> None:
     """Ejecuta el asistente central con una variante sobre la suite y escribe el informe."""
-    from hacienda_gpt.evaluacion.runner import cargar_informe, comparar, evaluar, formatear, guardar
+    from asistente.nucleo.evaluacion.runner import cargar_informe, comparar, evaluar, formatear, guardar
 
     casos = _seleccion(casos_dir, categorias, ids)
     variante = _variante(config)
@@ -243,9 +243,9 @@ def promote(
     yes: bool,
 ) -> None:
     """Base frente a candidata: aplica la candidata solo si mejora (y no empeora ninguna categoría crítica)."""
-    from hacienda_gpt.evaluacion.gate import promover
-    from hacienda_gpt.evaluacion.runner import formatear, guardar
-    from hacienda_gpt.evaluacion.variantes import ruta_activa, variante_activa
+    from asistente.nucleo.evaluacion.gate import promover
+    from asistente.nucleo.evaluacion.runner import formatear, guardar
+    from asistente.nucleo.evaluacion.variantes import ruta_activa, variante_activa
 
     candidata = _variante(config)
     base = variante_activa()
@@ -286,7 +286,7 @@ def promote(
 @cli.command()
 def variante() -> None:
     """Muestra la variante activa y la integridad de los prompts registrados."""
-    from hacienda_gpt.evaluacion.variantes import (
+    from asistente.nucleo.evaluacion.variantes import (
         INTEGRADOS,
         comprobar_integrados,
         desajustes,
@@ -308,13 +308,19 @@ def variante() -> None:
 
 @cli.group()
 def prompts() -> None:
-    """Versiones registradas de los prompts integrados (hacienda_gpt/agent/prompts.py)."""
+    """Versiones registradas de los prompts integrados (asistente/nucleo/agent/prompts.py)."""
 
 
 @prompts.command("estado")
 def prompts_estado() -> None:
     """Versión vigente de cada prompt y si el texto de prompts.py coincide con ella."""
-    from hacienda_gpt.evaluacion.variantes import ROLES, cargar_registro, comprobar_integrados, huella, texto_integrado
+    from asistente.nucleo.evaluacion.variantes import (
+        ROLES,
+        cargar_registro,
+        comprobar_integrados,
+        huella,
+        texto_integrado,
+    )
 
     registro = cargar_registro()
     for rol in ROLES:
@@ -338,8 +344,8 @@ def prompts_estado() -> None:
 @click.option("--sin-evaluar", "motivo", help="Registrar sin evaluación; el motivo queda escrito en el registro.")
 def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> None:
     """Registra como versión nueva el texto actual de un prompt de prompts.py."""
-    from hacienda_gpt.evaluacion.runner import cargar_informe
-    from hacienda_gpt.evaluacion.variantes import huella, registrar_version, texto_integrado
+    from asistente.nucleo.evaluacion.runner import cargar_informe
+    from asistente.nucleo.evaluacion.variantes import huella, registrar_version, texto_integrado
 
     if (informe is None) == (motivo is None):
         raise click.ClickException('Indica --informe <informe.json> o --sin-evaluar "<motivo>" (uno de los dos).')
@@ -386,7 +392,7 @@ def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> Non
 @click.option("--motivo", required=True, help="Por qué se registra sin evaluación (queda escrito en el registro).")
 def prompts_sincronizar(motivo: str) -> None:
     """Registra como versión nueva cada prompt de prompts.py cuyo texto ya no coincide con el registro."""
-    from hacienda_gpt.evaluacion.variantes import INTEGRADOS, ROLES, huella, registrar_version, texto_integrado
+    from asistente.nucleo.evaluacion.variantes import INTEGRADOS, ROLES, huella, registrar_version, texto_integrado
 
     cambiados = [rol for rol in ROLES if huella(texto_integrado(rol)) != INTEGRADOS[rol].huella]
     if not cambiados:
@@ -408,7 +414,7 @@ def prompts_sincronizar(motivo: str) -> None:
 @click.option("--sobrescribir", is_flag=True)
 def importar_dgt_cmd(dataset: Path, destino: Path, sobrescribir: bool) -> None:
     """Convierte el conjunto de la DGT (eval_agent build) en casos de la suite (categoría «dgt»)."""
-    from hacienda_gpt.evaluacion.importar import importar_dgt
+    from asistente.nucleo.evaluacion.importar import importar_dgt
 
     escritos = importar_dgt(dataset, destino, sobrescribir=sobrescribir)
     click.echo(f"{len(escritos)} casos escritos en {destino}.")
@@ -423,8 +429,8 @@ def importar_dgt_cmd(dataset: Path, destino: Path, sobrescribir: bool) -> None:
 @_DB
 def senales(db_path: str) -> None:
     """Señales automáticas de todos los expedientes (solo recuentos, sin contenido)."""
-    from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-    from hacienda_gpt.evaluacion.senales import agregar, senales_de_auditoria
+    from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+    from asistente.nucleo.evaluacion.senales import agregar, senales_de_auditoria
 
     cases = SQLiteCaseStateStore(db_path)
     todas = []
@@ -439,8 +445,8 @@ def casos() -> None:
 
 
 def _stores(db_path: str):  # type: ignore[no-untyped-def]
-    from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-    from hacienda_gpt.evaluacion.captura import FeedbackStore
+    from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+    from asistente.nucleo.evaluacion.captura import FeedbackStore
 
     cases = SQLiteCaseStateStore(db_path)
     return cases, FeedbackStore(db_path)
@@ -497,7 +503,7 @@ def ver(db_path: str, feedback_id: str) -> None:
 @click.option("--out", "out_path", required=True, type=click.Path(dir_okay=False, path_type=Path))
 def borrador(db_path: str, feedback_id: str, out_path: Path) -> None:
     """Escribe un borrador de caso para revisar y editar (no entra en la suite)."""
-    from hacienda_gpt.evaluacion.captura import borrador_de_caso
+    from asistente.nucleo.evaluacion.captura import borrador_de_caso
 
     _cases, store = _stores(db_path)
     registro = _registro(store, feedback_id)
@@ -526,8 +532,8 @@ def promover(
     db_path: str, casos_dir: Path, feedback_id: str, desde: Path, revisor: str, confirmo_anonimizado: bool
 ) -> None:
     """Incorpora a la suite un caso revisado y anonimizado (categoría y expectativas del fichero)."""
-    from hacienda_gpt.evaluacion.captura import comprobar_anonimizado, referencia_anonima, registrar_revision
-    from hacienda_gpt.evaluacion.modelos import Origen
+    from asistente.nucleo.evaluacion.captura import comprobar_anonimizado, referencia_anonima, registrar_revision
+    from asistente.nucleo.evaluacion.modelos import Origen
 
     if not confirmo_anonimizado:
         raise click.ClickException("Hace falta --confirmo-anonimizado: revisa que el caso no identifica a nadie.")
@@ -583,7 +589,7 @@ def promover(
 @click.argument("feedback_id")
 def descartar(db_path: str, feedback_id: str) -> None:
     """Descarta un caso guardado (su contenido sigue en el expediente del usuario hasta que lo borre)."""
-    from hacienda_gpt.evaluacion.captura import registrar_revision
+    from asistente.nucleo.evaluacion.captura import registrar_revision
 
     cases, store = _stores(db_path)
     registro = _registro(store, feedback_id)

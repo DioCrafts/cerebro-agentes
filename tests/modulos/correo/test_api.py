@@ -11,16 +11,16 @@ from urllib.parse import parse_qs, urlsplit
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_case_store, get_notification_store
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.modulos import registro
-from hacienda_gpt.modulos.correo import almacen
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.capacidades.correo import almacen
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.modulos import registro
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_case_store, get_notification_store
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
 from tests.modulos.correo import corpus
 from tests.modulos.correo.falso import REFRESCO, GoogleFalso
 

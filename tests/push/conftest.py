@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from hacienda_gpt.push import envio
+from asistente.plataforma.push import envio
 
 
 @pytest.fixture(autouse=True)

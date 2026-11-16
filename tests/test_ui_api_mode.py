@@ -1,4 +1,4 @@
-from hacienda_gpt.ui import app
+from asistente.plataforma.ui import app
 
 
 def test_api_create_case_if_needed_stores_case_id(monkeypatch):

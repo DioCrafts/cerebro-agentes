@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.cli import proactive
+from asistente.plataforma.cli import proactive
 
 ORDEN = "BOE-A-2025-5407"
 PAGINA = (

@@ -14,7 +14,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.fiscal.calculo.params import DATA_DIR, Fuente
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, Fuente
 
 Aplica = Literal["siempre", "actividad_economica", "actividad_economica_iva_trimestral", "bienes_en_el_extranjero"]
 

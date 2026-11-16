@@ -28,8 +28,8 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import asegurar_esquema
 
 # The owner of everything when there are no accounts.
 OPERADOR = "operador"
@@ -78,7 +78,7 @@ class PushStore:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         if settings.AUTH_MODE == "required":
             # The erasure triggers hang off ``users``: make sure the accounts' tables exist first.
-            from hacienda_gpt.auth.store import AuthStore
+            from asistente.plataforma.auth.store import AuthStore
 
             cuentas = AuthStore(self.db_path)
             try:
@@ -89,7 +89,7 @@ class PushStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.execute("PRAGMA journal_mode=WAL;")
-            asegurar_esquema(self._conn, "push")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(self._conn, "push")  # migrations (asistente/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS push_suscripciones (
                     id TEXT PRIMARY KEY,

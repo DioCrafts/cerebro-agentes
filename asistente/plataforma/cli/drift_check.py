@@ -1,7 +1,7 @@
 """CLI entrypoint for the normative drift detector.
 
 Usage:
-    uv run python -m hacienda_gpt.cli.drift_check \\
+    uv run python -m asistente.plataforma.cli.drift_check \\
         --rules-dir rules \\
         --snapshot-root ./data \\
         --output reports/drift.json \\
@@ -19,9 +19,15 @@ from pathlib import Path
 
 import click
 
-from hacienda_gpt.decision.rules import load_rules_from_directory
-from hacienda_gpt.governance.drift import DriftDetector, DriftReport, DriftStatus, FilesystemResolver, write_report
-from hacienda_gpt.settings import RULES_DIR
+from asistente.nucleo.decision.rules import load_rules_from_directory
+from asistente.plataforma.governance.drift import (
+    DriftDetector,
+    DriftReport,
+    DriftStatus,
+    FilesystemResolver,
+    write_report,
+)
+from asistente.plataforma.settings import RULES_DIR
 
 
 def record_unverified_hashes(rules_dir: Path, report: DriftReport) -> int:

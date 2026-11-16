@@ -1,13 +1,13 @@
-"""Research as a step of a long-running task (``hacienda_gpt/tareas``, step type ``capacidad``).
+"""Research as a step of a long-running task (``asistente/nucleo/tareas``, step type ``capacidad``).
 
 :class:`CapacidadInvestigacionTareas` is the tasks layer's ``investigacion`` capability with one more
 operation, ``investigar``, which runs this package's research through the capability contract
-(:func:`~hacienda_gpt.capacidades.contrato.pedir`, domain ``nucleo``, origin ``tarea``). The existing
+(:func:`~asistente.capacidades.contrato.pedir`, domain ``nucleo``, origin ``tarea``). The existing
 ``webs_oficiales`` operation is inherited unchanged. The step's summary is the report's answer (already
 reduced to verified claims), its confidence and what could not be verified; the evidences are the cited
 sources. A question carrying a value of the user's case is refused (the same privacy gate as the agent tool).
 
-Wiring (in ``hacienda_gpt/tareas/capacidades.py``, ``capacidades_por_defecto``)::
+Wiring (in ``asistente/nucleo/tareas/capacidades.py``, ``capacidades_por_defecto``)::
 
     "investigacion": CapacidadInvestigacionTareas(buscador),
 """
@@ -18,11 +18,11 @@ from collections.abc import Callable, Mapping
 import logging
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.capacidades.investigacion.capacidad import CLAVE
-from hacienda_gpt.capacidades.investigacion.herramienta import dato_privado_en, valores_privados
-from hacienda_gpt.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE
-from hacienda_gpt.tareas.capacidades import (
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.capacidades.investigacion.capacidad import CLAVE
+from asistente.capacidades.investigacion.herramienta import dato_privado_en, valores_privados
+from asistente.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE
+from asistente.nucleo.tareas.capacidades import (
     Buscador,
     CapacidadInvestigacion,
     ContextoCapacidad,
@@ -52,8 +52,8 @@ OPERACION_INVESTIGAR = Operacion(
 
 def _proveedor_por_defecto() -> Any | None:
     try:
-        from hacienda_gpt.agent.providers import create_provider
-        from hacienda_gpt.ops.consumo import medir
+        from asistente.nucleo.agent.providers import create_provider
+        from asistente.plataforma.ops.consumo import medir
 
         return medir(create_provider(), "investigacion:sintetizar")
     except Exception as exc:  # no model configured: the research lists sources without an answer

@@ -1,7 +1,7 @@
 """The modules' legal data in the agentic re-encoding loop (model proposes, deterministic gate decides, reviewer
 with test cases), with no change to the loop.
 
-Every file declared in :mod:`hacienda_gpt.conocimiento.registro` with a :class:`~hacienda_gpt.conocimiento.registro.
+Every file declared in :mod:`asistente.conocimiento.registro` with a :class:`~asistente.conocimiento.registro.
 Recodificable` gets, for each kind of group (pydantic model) it holds, an adapter :class:`GrupoDeModulo` — the
 generic adapter of the files whose groups carry their own quotes (``GrupoConEvidencia``), told where the module
 keeps its file and how a reviewer's case runs through the module's calculator. Importing this module registers
@@ -31,13 +31,13 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from hacienda_gpt.conocimiento.registro import FicheroLegal, ficheros_legales
-from hacienda_gpt.conocimiento.texto import TextoDe
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion import adaptadores_otros as otros
-from hacienda_gpt.tax.recodificacion.adaptadores import Hallazgo
-from hacienda_gpt.tax.recodificacion.control import Control
-from hacienda_gpt.tax.recodificacion.nucleo import Objetivo, registrar
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion import adaptadores_otros as otros
+from asistente.conocimiento.recodificacion.adaptadores import Hallazgo
+from asistente.conocimiento.recodificacion.control import Control
+from asistente.conocimiento.recodificacion.nucleo import Objetivo, registrar
+from asistente.conocimiento.registro import FicheroLegal, ficheros_legales
+from asistente.conocimiento.texto import TextoDe
 
 REVISION_HUMANA = (
     "datos legales de un módulo del hogar: una persona confirma la propuesta antes de aplicarla (nunca se aplica "
@@ -190,7 +190,7 @@ def objetivo_de_ruta(
     anotaciones: str = "",
 ) -> Objetivo:
     """A module's group asked for by the operator ("caducidades:itv")."""
-    from hacienda_gpt.tax.recodificacion.nucleo import RecodificacionError
+    from asistente.conocimiento.recodificacion.nucleo import RecodificacionError
 
     if isinstance(familia, str):
         familia = next((f for f in FAMILIAS if f.clave == familia), None)
@@ -225,7 +225,7 @@ def todos_los_objetivos(
 
 def revisar_grupos(familia: Any, textos: dict[str, str]) -> list[otros.GrupoRevisado]:
     """Every shipped group of a module's file through the gate with its own quotes (``params-gate`` for modules)."""
-    from hacienda_gpt.tax.recodificacion.nucleo import SIN_EJERCICIO
+    from asistente.conocimiento.recodificacion.nucleo import SIN_EJERCICIO
 
     directorio = directorio_de_familia(familia, DATA_DIR)
     raw = json.loads((directorio / familia.fichero).read_text(encoding="utf-8"))

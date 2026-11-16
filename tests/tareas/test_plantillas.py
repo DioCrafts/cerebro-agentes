@@ -6,13 +6,13 @@ from datetime import date, timedelta
 import json
 import sqlite3
 
-from hacienda_gpt.eventos import productores
-from hacienda_gpt.memoria.servicio import decisiones_del_caso
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tareas import servicio
-from hacienda_gpt.tareas.motor import MODULO_TEMPORIZADOR
-from hacienda_gpt.tareas.plantillas import instanciar, plantillas
+from asistente.nucleo.eventos import productores
+from asistente.nucleo.memoria.servicio import decisiones_del_caso
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.nucleo.tareas import servicio
+from asistente.nucleo.tareas.motor import MODULO_TEMPORIZADOR
+from asistente.nucleo.tareas.plantillas import instanciar, plantillas
 from .conftest import HOY, Entorno
 
 
@@ -250,7 +250,7 @@ def test_an_event_wait_times_out_and_asks_the_user(entorno: Entorno) -> None:
 
 
 def test_export_holds_the_task_and_its_history(entorno: Entorno) -> None:
-    from hacienda_gpt.tareas.almacen import exportar_tareas
+    from asistente.nucleo.tareas.almacen import exportar_tareas
 
     case_id = entorno.caso()
     motor = entorno.motor()

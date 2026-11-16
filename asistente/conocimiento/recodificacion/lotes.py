@@ -3,11 +3,11 @@
 Batch mode (``RECODE_BATCH=true``, off by default) runs ``params-recode``, the
 autopilot and ``params-eval`` through the provider's batch API (about half the
 price; results within hours). It reuses the synchronous loop unchanged by
-replay (:mod:`hacienda_gpt.agent.providers.lotes`): rounds of
-:func:`~hacienda_gpt.tax.recodificacion.nucleo.recodificar` with stand-in
+replay (:mod:`asistente.nucleo.agent.providers.lotes`): rounds of
+:func:`~asistente.conocimiento.recodificacion.nucleo.recodificar` with stand-in
 providers discover the next call of every group, those calls go out as one
 batch, and once no group needs anything else the real
-:func:`~hacienda_gpt.tax.recodificacion.nucleo.ejecutar` runs with the answers:
+:func:`~asistente.conocimiento.recodificacion.nucleo.ejecutar` runs with the answers:
 same deterministic gate, same reviewer, same proposals, same saving and
 auto-application as a synchronous run with those answers.
 
@@ -25,18 +25,8 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.agent.providers.lotes import (
-    ColaDeLotes,
-    LoteSinTerminarError,
-    PendienteDeLoteError,
-    ProveedorEnLote,
-    admite_lotes,
-    ejecutar_en_lotes,
-)
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion.nucleo import (
     MAX_ITER,
     AlmacenPropuestas,
     Informe,
@@ -50,7 +40,17 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     leer_texto,
     recodificar,
 )
-from hacienda_gpt.tax.verificacion import TextoDe
+from asistente.conocimiento.verificacion import TextoDe
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.providers.lotes import (
+    ColaDeLotes,
+    LoteSinTerminarError,
+    PendienteDeLoteError,
+    ProveedorEnLote,
+    admite_lotes,
+    ejecutar_en_lotes,
+)
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -208,7 +208,7 @@ class EjecutorPorLotes:
                 getattr(lector, "name", "?"),
             )
             return ejecutar(objetivos, lector=lector, revisor=revisor, **comunes)
-        from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
+        from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
         cola = ColaDeLotes(self.estado_path, tipo="recodificacion")
         lector_lote, revisor_lote = ProveedorEnLote(lector, cola), ProveedorEnLote(revisor, cola)
@@ -255,7 +255,7 @@ class EjecutorPorLotes:
 
 
 class EvaluadorPorLotes:
-    """Drop-in for :func:`~hacienda_gpt.tax.recodificacion.evaluacion.evaluar` at batch prices."""
+    """Drop-in for :func:`~asistente.conocimiento.recodificacion.evaluacion.evaluar` at batch prices."""
 
     def __init__(self, estado_path: str | Path, *, esperar: Callable[[float], None] | None = None, **opciones: Any):
         self.estado_path = Path(estado_path)
@@ -264,7 +264,7 @@ class EvaluadorPorLotes:
         self.resumen: dict[str, Any] = {}
 
     def __call__(self, objetivos: Sequence[Objetivo], *, lector: Any, revisor: Any, **kwargs: Any) -> Any:
-        from hacienda_gpt.tax.recodificacion import evaluacion
+        from asistente.conocimiento.recodificacion import evaluacion
 
         if not (admite_lotes(lector) and admite_lotes(revisor)):
             logger.warning("RECODE_BATCH: provider without a batch API; evaluating synchronously.")
@@ -316,7 +316,7 @@ def evaluador_de_recodificacion() -> Callable[..., Any]:
     reader: it never escalates."""
     if settings.RECODE_BATCH:
         return EvaluadorPorLotes(_ruta_de_estado("params-eval"))
-    from hacienda_gpt.tax.recodificacion import evaluacion
+    from asistente.conocimiento.recodificacion import evaluacion
 
     return evaluacion.evaluar
 

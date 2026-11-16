@@ -3,7 +3,7 @@ a new reading is written without reformatting a file.
 
 The tax parameter files and the modules' data files record a law's reading the same way — a node with ``boe_id``,
 ``consolidado_a``, ``consultado_el`` and ``sha256_html`` (``fuentes_principales`` of each file) — so the reading
-log of :mod:`hacienda_gpt.tax.recodificacion.procedencia` covers both. This module holds what is specific to the
+log of :mod:`asistente.conocimiento.recodificacion.procedencia` covers both. This module holds what is specific to the
 modules' files.
 """
 
@@ -15,8 +15,8 @@ from pathlib import Path
 import re
 from typing import Any
 
-from hacienda_gpt.conocimiento.modelo import GrupoLegal
-from hacienda_gpt.conocimiento.registro import FicheroLegal, con_datos
+from asistente.conocimiento.modelo import GrupoLegal
+from asistente.conocimiento.registro import FicheroLegal, con_datos
 
 
 def ficheros_de_modulos(data_dir: Path, modulos: Sequence[FicheroLegal] | None = None) -> list[FicheroLegal]:
@@ -27,7 +27,7 @@ def ficheros_de_modulos(data_dir: Path, modulos: Sequence[FicheroLegal] | None =
     """
     if modulos is not None:
         return con_datos(modulos)
-    from hacienda_gpt.tax.params import DATA_DIR
+    from asistente.ambitos.fiscal.calculo.params import DATA_DIR
 
     if Path(data_dir).resolve() != Path(DATA_DIR).resolve():
         return []
@@ -37,8 +37,8 @@ def ficheros_de_modulos(data_dir: Path, modulos: Sequence[FicheroLegal] | None =
 def bloques_de_grupo(grupo: GrupoLegal, boe_id: str, pagina: str | None) -> set[str]:
     """Blocks of the law ``boe_id`` a module group is read from ("5", "da 61"): the articles its passages are
     labelled with and those where today's page prints them."""
-    from hacienda_gpt.tax.recodificacion.adaptadores_otros import bloques_de
-    from hacienda_gpt.tax.recodificacion.control import articulos_que_contienen, partir_base
+    from asistente.conocimiento.recodificacion.adaptadores_otros import bloques_de
+    from asistente.conocimiento.recodificacion.control import articulos_que_contienen, partir_base
 
     propias = [c for c in grupo.citas if c.boe_id == boe_id and c.version is None]
     if not propias:

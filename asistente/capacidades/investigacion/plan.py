@@ -12,7 +12,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from hacienda_gpt.capacidades.investigacion.fuentes import palabras_clave
+from asistente.capacidades.investigacion.fuentes import palabras_clave
 
 PROPOSITO = "investigacion:planificar"
 

@@ -5,11 +5,17 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.tax.compensacion import compensar_ahorro
-from hacienda_gpt.tax.conjunta import _conjunta, comparar_tributacion, hijos_comunes
-from hacienda_gpt.tax.irpf import Descendiente, IRPFInput, IRPFResult, PrevisionSocialMiembro, calcular_irpf
-from hacienda_gpt.tax.params import load_params
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.compensacion import compensar_ahorro
+from asistente.ambitos.fiscal.calculo.conjunta import _conjunta, comparar_tributacion, hijos_comunes
+from asistente.ambitos.fiscal.calculo.irpf import (
+    Descendiente,
+    IRPFInput,
+    IRPFResult,
+    PrevisionSocialMiembro,
+    calcular_irpf,
+)
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
 
 D = Decimal
 L = D("0.25")
@@ -133,9 +139,9 @@ def test_separate_filing_wins_with_two_similar_salaries() -> None:
 
 
 def test_joint_comparison_is_available_to_the_agent() -> None:
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.providers.base import ToolCall
-    from hacienda_gpt.agent.tools import Toolbox
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.providers.base import ToolCall
+    from asistente.nucleo.agent.tools import Toolbox
     from tests.agent.fakes import FakeSearcher
 
     ledger = EvidenceLedger()
@@ -162,9 +168,9 @@ def test_joint_comparison_is_available_to_the_agent() -> None:
 
 
 def test_self_employed_calculators_are_available_to_the_agent() -> None:
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.providers.base import ToolCall
-    from hacienda_gpt.agent.tools import Toolbox
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.providers.base import ToolCall
+    from asistente.nucleo.agent.tools import Toolbox
     from tests.agent.fakes import FakeSearcher
 
     ledger = EvidenceLedger()
@@ -205,9 +211,9 @@ def test_self_employed_calculators_are_available_to_the_agent() -> None:
 
 
 def test_company_and_wealth_calculators_are_available_to_the_agent() -> None:
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.providers.base import ToolCall
-    from hacienda_gpt.agent.tools import Toolbox
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.providers.base import ToolCall
+    from asistente.nucleo.agent.tools import Toolbox
     from tests.agent.fakes import FakeSearcher
 
     toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger())
@@ -239,9 +245,9 @@ def test_company_and_wealth_calculators_are_available_to_the_agent() -> None:
 
 
 def test_inheritance_calculator_is_available_to_the_agent() -> None:
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.providers.base import ToolCall
-    from hacienda_gpt.agent.tools import Toolbox
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.providers.base import ToolCall
+    from asistente.nucleo.agent.tools import Toolbox
     from tests.agent.fakes import FakeSearcher
 
     toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger())

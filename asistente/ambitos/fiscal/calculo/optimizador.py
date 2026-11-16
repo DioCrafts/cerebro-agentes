@@ -51,16 +51,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.conjunta import _conjunta, hijos_comunes
-from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFInput, IRPFResult, _minimo_descendientes, calcular_irpf
-from hacienda_gpt.modulos.fiscal.calculo.params import (
+from asistente.ambitos.fiscal.calculo.conjunta import _conjunta, hijos_comunes
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, _minimo_descendientes, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import (
     GASTOS_DESGLOSADOS,
     DeduccionCalculable,
     IRPFParams,
     Variante,
     load_params,
 )
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.profile import (
     ACTIVIDAD_FACT_FIELDS,
     CAMPOS_CONYUGE,
     CORE_FIELDS,

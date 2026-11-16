@@ -17,10 +17,10 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.ganchos import obligatorio
-from hacienda_gpt.modulos.registro import FISCAL, Registro, obligatorios, registro
+from asistente.nucleo.modulos.contrato import Modulo
+from asistente.nucleo.modulos.ganchos import obligatorio
+from asistente.nucleo.modulos.registro import FISCAL, Registro, obligatorios, registro
+from asistente.plataforma import settings
 
 # Kept for callers; the registry's declaration (``Ganchos.obligatorio``) is what decides.
 SIEMPRE_ACTIVOS = frozenset({FISCAL})
@@ -81,7 +81,7 @@ def modulos_activos_para_caso(case_id: str, auth: Any | None = None, reg: Regist
     if not _cuentas_activas():
         return modulos_activos_para(None, None, reg)
     if auth is None:
-        from hacienda_gpt.auth.deps import get_auth_store
+        from asistente.plataforma.auth.deps import get_auth_store
 
         auth = get_auth_store()
     owner = auth.owner_of(case_id)

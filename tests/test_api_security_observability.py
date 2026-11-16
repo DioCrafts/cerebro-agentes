@@ -3,9 +3,9 @@ from __future__ import annotations
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.api import api
-from hacienda_gpt.api.api import app
-from hacienda_gpt.api.security import RateLimiter
+from asistente.plataforma.api import api
+from asistente.plataforma.api.api import app
+from asistente.plataforma.api.security import RateLimiter
 
 client = TestClient(app)
 

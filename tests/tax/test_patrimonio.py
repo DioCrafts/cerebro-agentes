@@ -12,9 +12,9 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.patrimonio import ComunidadNoDisponibleError, PatrimonioInput, calcular_patrimonio
-from hacienda_gpt.tax.patrimonio_params import (
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.patrimonio import ComunidadNoDisponibleError, PatrimonioInput, calcular_patrimonio
+from asistente.ambitos.fiscal.calculo.patrimonio_params import (
     PatrimonioParams,
     comprobar_evidencias,
     comprobar_sin_regulacion,

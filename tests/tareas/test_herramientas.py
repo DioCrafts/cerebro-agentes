@@ -5,9 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from hacienda_gpt.memoria.servicio import decisiones_del_caso
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.tareas.herramientas import TareasAgente
+from asistente.nucleo.memoria.servicio import decisiones_del_caso
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.nucleo.tareas.herramientas import TareasAgente
 from .conftest import Entorno
 
 

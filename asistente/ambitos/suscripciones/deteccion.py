@@ -29,9 +29,9 @@ from decimal import ROUND_HALF_UP, Decimal
 import hashlib
 from statistics import median
 
-from hacienda_gpt.modulos.suscripciones import etiquetador
-from hacienda_gpt.modulos.suscripciones.formato import euros
-from hacienda_gpt.modulos.suscripciones.modelos import (
+from asistente.ambitos.suscripciones import etiquetador
+from asistente.ambitos.suscripciones.formato import euros
+from asistente.ambitos.suscripciones.modelos import (
     CARGOS_POR_ANO,
     CambioPrecio,
     Duplicado,
@@ -40,7 +40,7 @@ from hacienda_gpt.modulos.suscripciones.modelos import (
     PruebaConvertida,
     ServicioGuardado,
 )
-from hacienda_gpt.modulos.suscripciones.normalizacion import Identidad, identificar
+from asistente.ambitos.suscripciones.normalizacion import Identidad, identificar
 
 # periodicity -> (nominal days, tolerance in days, months to add for the next charge)
 PERIODOS: dict[str, tuple[float, float, int]] = {

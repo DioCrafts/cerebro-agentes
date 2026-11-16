@@ -12,10 +12,10 @@ from urllib.parse import parse_qs, urlsplit
 
 import pytest
 
-from hacienda_gpt.modulos.correo import almacen, cifrado, oauth
-from hacienda_gpt.modulos.correo.config import SCOPE_LECTURA
-from hacienda_gpt.modulos.correo.http import CorreoError
-from hacienda_gpt.modulos.correo.sincronizacion import sincronizar
+from asistente.capacidades.correo import almacen, cifrado, oauth
+from asistente.capacidades.correo.config import SCOPE_LECTURA
+from asistente.capacidades.correo.http import CorreoError
+from asistente.capacidades.correo.sincronizacion import sincronizar
 from tests.modulos.correo import corpus
 from tests.modulos.correo.falso import ACCESO, REFRESCO, GoogleFalso
 
@@ -204,10 +204,10 @@ def test_sin_conexion() -> None:
 
 
 def test_evento_al_clasificar_correo_nuevo(google: GoogleFalso, db_path: str) -> None:
-    from hacienda_gpt.eventos import productores
-    from hacienda_gpt.eventos.rutas import le_afecta
-    from hacienda_gpt.eventos.tipos import Evento
-    from hacienda_gpt.modulos.correo import MODULO
+    from asistente.capacidades.correo import MODULO
+    from asistente.nucleo.eventos import productores
+    from asistente.nucleo.eventos.rutas import le_afecta
+    from asistente.nucleo.eventos.tipos import Evento
 
     productores.instalar()
     try:
@@ -235,8 +235,8 @@ def test_evento_al_clasificar_correo_nuevo(google: GoogleFalso, db_path: str) ->
 def test_ordenes_del_operador(google: GoogleFalso, monkeypatch, capsys) -> None:
     from cryptography.fernet import Fernet
 
-    from hacienda_gpt import settings
-    from hacienda_gpt.modulos.correo.__main__ import main
+    from asistente.capacidades.correo.__main__ import main
+    from asistente.plataforma import settings
 
     monkeypatch.setattr(settings, "MODULOS_ACTIVOS_POR_DEFECTO", "correo")
     google.mensajes = [corpus.aeat()]
@@ -257,7 +257,7 @@ def test_transporte_http_real_contra_el_servidor_falso_local(monkeypatch) -> Non
     """The default ``requests`` transport, end to end over loopback HTTP (never Google)."""
     import requests
 
-    from hacienda_gpt.modulos.correo import http
+    from asistente.capacidades.correo import http
     from tests.modulos.correo.servidor_falso import en_hilo
 
     falso = GoogleFalso(mensajes=[corpus.aeat(), corpus.compra()])

@@ -1,4 +1,4 @@
-"""The tax module object the registry discovers (``hacienda_gpt.modulos.fiscal.MODULO``).
+"""The tax module object the registry discovers (``asistente.ambitos.fiscal.MODULO``).
 
 A contract v2 domain (``modulos/ganchos.py``): what is particular about it is DECLARED in ``ganchos``, never
 told apart by its key:
@@ -34,20 +34,20 @@ from datetime import date, timedelta
 from functools import cached_property
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.eventos.tipos import CAMBIO_NORMATIVO, FECHA_UMBRAL, NORMA_BOE, PERFIL_CAMBIADO
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, HerramientaModulo
-from hacienda_gpt.modulos.fiscal.avisos import TIPOS_EN_BANDEJA, ejecutar_para_caso
-from hacienda_gpt.modulos.fiscal.calculo.optimizador import detalle_a_texto
-from hacienda_gpt.modulos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS
-from hacienda_gpt.modulos.fiscal.herramientas import HERRAMIENTAS, caso_desde_perfil
-from hacienda_gpt.modulos.ganchos import Ganchos, GanchosAgente, GanchosBandeja, GanchosEventos
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES
+from asistente.ambitos.fiscal.avisos import TIPOS_EN_BANDEJA, ejecutar_para_caso
+from asistente.ambitos.fiscal.calculo.optimizador import detalle_a_texto
+from asistente.ambitos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS
+from asistente.ambitos.fiscal.herramientas import HERRAMIENTAS, caso_desde_perfil
+from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.eventos.tipos import CAMBIO_NORMATIVO, FECHA_UMBRAL, NORMA_BOE, PERFIL_CAMBIADO
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, HerramientaModulo
+from asistente.nucleo.modulos.ganchos import Ganchos, GanchosAgente, GanchosBandeja, GanchosEventos
+from asistente.nucleo.proactive.store import NotificationStore
 
 # The reminder window of ``recordatorios_de_plazos`` (its default ``dias``).
 DIAS_AVISO_PLAZO = 30
-# Event types (hacienda_gpt/eventos/tipos.py): profile changes, dates, new BOE norms, analysed law changes.
+# Event types (asistente/nucleo/eventos/tipos.py): profile changes, dates, new BOE norms, analysed law changes.
 EVENTOS = (PERFIL_CAMBIADO, FECHA_UMBRAL, NORMA_BOE, CAMBIO_NORMATIVO)
 
 
@@ -57,9 +57,9 @@ def proxima_revision(case: CaseState, *, hoy: date) -> date | None:
     A filing deadline is reminded when it is at most ``DIAS_AVISO_PLAZO`` days away, so the case is woken
     the day the next one enters that window; the year-end plan starts on 1 October of the case's year.
     """
-    from hacienda_gpt.decision.schemas import parse_fiscal_year
-    from hacienda_gpt.modulos.fiscal.avisos import _CIERRE_EJERCICIO_ID, facts_de
-    from hacienda_gpt.modulos.fiscal.calculo.calendario import proximos_vencimientos
+    from asistente.ambitos.fiscal.avisos import _CIERRE_EJERCICIO_ID, facts_de
+    from asistente.ambitos.fiscal.calculo.calendario import proximos_vencimientos
+    from asistente.nucleo.decision.schemas import parse_fiscal_year
 
     candidatos: list[date] = []
     for vencimiento in proximos_vencimientos(facts_de(case), hoy=hoy, dias=400):
@@ -78,12 +78,12 @@ def al_evento_en_bandeja(evento: Any, case: CaseState, *, hoy: date, store: Noti
     """New tax law matched against this case (same criteria as ever); None: run the daily tax jobs."""
     tipo = getattr(evento, "tipo", None)
     if tipo == NORMA_BOE:
-        from hacienda_gpt.proactive.novedades import Novedad, notificar_novedad
+        from asistente.nucleo.proactive.novedades import Novedad, notificar_novedad
 
         novedad = Novedad.model_validate(evento.payload["novedad"])
         return int(notificar_novedad(novedad, [case], store))
     if tipo == CAMBIO_NORMATIVO:
-        from hacienda_gpt.proactive.impacto import CambioNormativo, notificar_cambio
+        from asistente.nucleo.proactive.impacto import CambioNormativo, notificar_cambio
 
         cambio = CambioNormativo.model_validate(evento.payload["cambio"])
         return int(notificar_cambio(cambio, [case], store))
@@ -115,7 +115,7 @@ class ModuloFiscal:
     @cached_property
     def ganchos(self) -> Ganchos:
         """Contract v2: everything particular about the tax module, declared (see the module docstring)."""
-        from hacienda_gpt.conocimiento.citas_fiscales import FICHEROS_LEGALES
+        from asistente.conocimiento.citas_fiscales import FICHEROS_LEGALES
 
         return Ganchos(
             obligatorio=True,
@@ -165,7 +165,7 @@ class ModuloFiscal:
 
     @cached_property
     def fuentes(self) -> Sequence[FuenteModulo]:  # type: ignore[override]
-        from hacienda_gpt.tax.fuentes import normas_de_parametros
+        from asistente.conocimiento.fuentes import normas_de_parametros
 
         return tuple(
             FuenteModulo(

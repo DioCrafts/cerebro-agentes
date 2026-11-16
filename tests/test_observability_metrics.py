@@ -1,4 +1,4 @@
-from hacienda_gpt.observability.metrics import MetricsCollector
+from asistente.plataforma.observability.metrics import MetricsCollector
 
 
 def test_metrics_collector_computes_rates_and_errors() -> None:

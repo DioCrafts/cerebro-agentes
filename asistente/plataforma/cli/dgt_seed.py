@@ -4,7 +4,7 @@ The DGT publishes its full consulta database at ``petete.tributos.hacienda.gob.e
 This CLI walks the entire vinculantes archive (~68k consultas from 1997 to
 present) and persists each one as standalone HTML + JSON sidecar under
 ``data/html/<snapshot>/dgt-vinculantes/V<num>-<year>.html``, so the existing
-``hacienda_gpt.cli.processor`` ingest pipeline picks them up incrementally
+``asistente.plataforma.cli.processor`` ingest pipeline picks them up incrementally
 through the manifest like any other BOE document.
 
 Architecture notes
@@ -54,7 +54,7 @@ import click
 from pydantic import BaseModel, ConfigDict, field_validator
 import requests
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 logger = logging.getLogger(__name__)
 

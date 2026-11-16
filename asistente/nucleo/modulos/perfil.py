@@ -22,11 +22,11 @@ from decimal import Decimal
 import json
 from typing import Any
 
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE, _coerce_value
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.modulos.contrato import HechoModulo, Modulo
-from hacienda_gpt.modulos.registro import Registro, registro
-from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES
+from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE, _coerce_value
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.modulos.contrato import HechoModulo, Modulo
+from asistente.nucleo.modulos.registro import Registro, registro
 
 TIPO_DE_HECHO: dict[str, FactValueType] = {
     "string": FactValueType.STRING,

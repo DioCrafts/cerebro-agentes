@@ -17,7 +17,7 @@ from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
-from hacienda_gpt.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.migraciones import asegurar_esquema
 
 # The tax module's kinds (unchanged since before the modules existed), the weekly digest, and one kind per
 # household module: ``modulo:<clave>``. The kind lives in the JSON payload, so rows written before the
@@ -79,7 +79,7 @@ class NotificationStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.execute("PRAGMA journal_mode=WAL;")
-            asegurar_esquema(self._conn, "proactive")  # migrations (hacienda_gpt/plataforma)
+            asegurar_esquema(self._conn, "proactive")  # migrations (asistente/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS notifications (
                     seq INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -100,9 +100,9 @@ class NotificationStore:
 
     def add(self, notification: Notification) -> bool:
         """Store ``notification``; False (and no write) when its ``(case_id, key)`` already exists."""
-        # The user's decisions (hacienda_gpt/memoria): a rejected proposal is not written; one that may come
+        # The user's decisions (asistente/nucleo/memoria): a rejected proposal is not written; one that may come
         # back is written once, saying what the user decided and what changed. Never fails the write.
-        from hacienda_gpt.memoria.bandeja import filtrar_al_escribir
+        from asistente.nucleo.memoria.bandeja import filtrar_al_escribir
 
         filtrada = filtrar_al_escribir(self, notification)
         if filtrada is None:
@@ -124,7 +124,7 @@ class NotificationStore:
             nueva = cursor.rowcount == 1
         if nueva:
             # Urgent notices reach the phone at once (never raises; no-op unless push is configured).
-            from hacienda_gpt.push.envio import avisar_al_escribir
+            from asistente.plataforma.push.envio import avisar_al_escribir
 
             avisar_al_escribir(self.db_path, notification)
         return nueva

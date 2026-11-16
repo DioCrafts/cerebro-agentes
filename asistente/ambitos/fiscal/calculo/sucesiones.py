@@ -7,7 +7,7 @@
     a ingresar      = cuota tributaria − regional allowance ("bonificación")
 
 The state rules are those of Ley 29/1987; a community's rules are data
-(:class:`~hacienda_gpt.modulos.fiscal.calculo.sucesiones_params.NormativaAutonomicaISD`) applied
+(:class:`~asistente.ambitos.fiscal.calculo.sucesiones_params.NormativaAutonomicaISD`) applied
 generically: for each step the first community rule whose conditions hold is
 used, and the state rule otherwise.
 
@@ -26,8 +26,8 @@ from decimal import ROUND_DOWN, ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from hacienda_gpt.modulos.fiscal.calculo.irpf import Linea
-from hacienda_gpt.modulos.fiscal.calculo.sucesiones_params import (
+from asistente.ambitos.fiscal.calculo.irpf import Linea
+from asistente.ambitos.fiscal.calculo.sucesiones_params import (
     AdquirenteBienes,
     CondicionesISD,
     Grupo,

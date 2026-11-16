@@ -18,7 +18,7 @@ import re
 from typing import Any
 import unicodedata
 
-from hacienda_gpt.doctrine.grafo import RELACIONES, Relacion
+from asistente.conocimiento.doctrine.grafo import RELACIONES, Relacion
 
 _SUPERA = (
     r"cambi[oa] de criterio",

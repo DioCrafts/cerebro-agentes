@@ -1,6 +1,6 @@
 """Propose a purchase (for its warranty and return dates) from a receipt or invoice.
 
-Same safeguard as the tax document reader (:mod:`hacienda_gpt.modulos.fiscal.documentos`), reused, not copied: every
+Same safeguard as the tax document reader (:mod:`asistente.ambitos.fiscal.documentos`), reused, not copied: every
 proposed field comes with the literal passage it was read from, and a field whose passage is not in the
 document — or whose value is not in its passage — is discarded. Scans and photos are read twice,
 independently, and only the fields both readings agree on are proposed. Nothing is saved: the user confirms
@@ -24,7 +24,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.capacidades.documentos.lectura import DocumentoNoLegibleError, normalizar_pasaje
+from asistente.capacidades.documentos.lectura import DocumentoNoLegibleError, normalizar_pasaje
 
 CAMPOS = ("descripcion", "establecimiento", "fecha_compra", "fecha_entrega", "importe")
 CampoTicket = Literal["descripcion", "establecimiento", "fecha_compra", "fecha_entrega", "importe"]
@@ -290,8 +290,8 @@ def _leer_imagen(lecturas: list[Any]) -> PropuestaCompra:
 
 def leer_ticket(provider: Any, *, filename: str, data: bytes, hoy: date | None = None) -> PropuestaCompra:
     """Propose a purchase from an uploaded receipt. Raises ``DocumentoNoLegibleError`` or the provider's error."""
-    from hacienda_gpt.capacidades.contrato import ContextoPeticion, pedir
-    from hacienda_gpt.capacidades.documentos import contenido
+    from asistente.capacidades.contrato import ContextoPeticion, pedir
+    from asistente.capacidades.documentos import contenido
 
     leido = pedir(
         "documentos",

@@ -21,12 +21,12 @@ import unicodedata
 import urllib.parse
 import urllib.request
 
-from hacienda_gpt.agent.evidence import infer_authority, source_type_for
-from hacienda_gpt.agent.search import CorpusSearcher, SearchFilters
-from hacienda_gpt.capacidades.investigacion.dominios import es_oficial, host_de
-from hacienda_gpt.capacidades.investigacion.modelo import TipoFuente
-from hacienda_gpt.conocimiento.texto import texto_de_html, url_de
-from hacienda_gpt.llm.security import neutralizar_inyeccion, parece_inyeccion
+from asistente.capacidades.investigacion.dominios import es_oficial, host_de
+from asistente.capacidades.investigacion.modelo import TipoFuente
+from asistente.conocimiento.llm.security import neutralizar_inyeccion, parece_inyeccion
+from asistente.conocimiento.texto import texto_de_html, url_de
+from asistente.nucleo.agent.evidence import infer_authority, source_type_for
+from asistente.nucleo.agent.search import CorpusSearcher, SearchFilters
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ REDACCION = "[INSTRUCCIÓN INCRUSTADA ELIMINADA]"
 
 
 def sospechosa(texto: str) -> bool:
-    """Does ``texto`` carry prompt-injection bait? (:func:`hacienda_gpt.llm.security.parece_inyeccion`)"""
+    """Does ``texto`` carry prompt-injection bait? (:func:`asistente.conocimiento.llm.security.parece_inyeccion`)"""
     return parece_inyeccion(texto)
 
 
@@ -155,7 +155,7 @@ def _vigencia(grafo: Any, metadata: dict[str, Any]) -> str | None:
     if grafo is None:
         return None
     try:
-        from hacienda_gpt.doctrine.citas import identify_document
+        from asistente.conocimiento.doctrine.citas import identify_document
 
         doc = identify_document(metadata)
         if doc is None:

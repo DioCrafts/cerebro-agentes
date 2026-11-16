@@ -7,9 +7,9 @@ from __future__ import annotations
 
 from decimal import Decimal
 
-from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFResult
-from hacienda_gpt.modulos.fiscal.calculo.obligacion import ResultadoObligacion
-from hacienda_gpt.modulos.fiscal.calculo.optimizador import PlanOptimo
+from asistente.ambitos.fiscal.calculo.irpf import IRPFResult
+from asistente.ambitos.fiscal.calculo.obligacion import ResultadoObligacion
+from asistente.ambitos.fiscal.calculo.optimizador import PlanOptimo
 
 
 def money(value: Decimal) -> str:

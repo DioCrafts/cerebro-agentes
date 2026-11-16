@@ -1,7 +1,7 @@
 """The tax module's tools: what runs when the model calls ``calcular_irpf``, ``optimizar_impuestos``…
 
 Moved from the advisor's toolbox (``agent/tools.py``) with their behaviour unchanged. Each tool is a
-:class:`~hacienda_gpt.modulos.contrato.HerramientaModulo` of :data:`HERRAMIENTAS`, and runs in one of two ways:
+:class:`~asistente.nucleo.modulos.contrato.HerramientaModulo` of :data:`HERRAMIENTAS`, and runs in one of two ways:
 
 * as a DIRECT tool of the central agent (the module sets ``herramientas_directas``): the core passes the run's
   evidence ledger (``ContextoModulo.evidencia``) and the stored case (``ContextoModulo.caso``). Each result is
@@ -24,25 +24,21 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
-from hacienda_gpt.decision.schemas import CaseState, Fact, parse_fiscal_year
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
-from hacienda_gpt.modulos.fiscal.calculo.actividad import ActividadInput, calcular_rendimiento_actividad
-from hacienda_gpt.modulos.fiscal.calculo.autonomos_params import ejercicios_autonomos_disponibles
-from hacienda_gpt.modulos.fiscal.calculo.beneficios import evaluar_beneficios
-from hacienda_gpt.modulos.fiscal.calculo.calendario import aviso_festivos, proximos_vencimientos
-from hacienda_gpt.modulos.fiscal.calculo.conjunta import comparar_tributacion
-from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFInput
-from hacienda_gpt.modulos.fiscal.calculo.iva import Modelo303Input, calcular_modelo_303
-from hacienda_gpt.modulos.fiscal.calculo.obligacion import obligado_a_declarar
-from hacienda_gpt.modulos.fiscal.calculo.optimizador import detalle_a_texto, resumen_conyuge
-from hacienda_gpt.modulos.fiscal.calculo.pagos_fraccionados import Modelo130Input, calcular_modelo_130
-from hacienda_gpt.modulos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles, load_params
-from hacienda_gpt.modulos.fiscal.calculo.patrimonio import PatrimonioInput, calcular_patrimonio
-from hacienda_gpt.modulos.fiscal.calculo.patrimonio_params import ejercicios_patrimonio_disponibles
-from hacienda_gpt.modulos.fiscal.calculo.simulador import simular
-from hacienda_gpt.modulos.fiscal.calculo.sociedades import (
+from asistente.ambitos.fiscal.calculo.actividad import ActividadInput, calcular_rendimiento_actividad
+from asistente.ambitos.fiscal.calculo.autonomos_params import ejercicios_autonomos_disponibles
+from asistente.ambitos.fiscal.calculo.beneficios import evaluar_beneficios
+from asistente.ambitos.fiscal.calculo.calendario import aviso_festivos, proximos_vencimientos
+from asistente.ambitos.fiscal.calculo.conjunta import comparar_tributacion
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.iva import Modelo303Input, calcular_modelo_303
+from asistente.ambitos.fiscal.calculo.obligacion import obligado_a_declarar
+from asistente.ambitos.fiscal.calculo.optimizador import detalle_a_texto, resumen_conyuge
+from asistente.ambitos.fiscal.calculo.pagos_fraccionados import Modelo130Input, calcular_modelo_130
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles, load_params
+from asistente.ambitos.fiscal.calculo.patrimonio import PatrimonioInput, calcular_patrimonio
+from asistente.ambitos.fiscal.calculo.patrimonio_params import ejercicios_patrimonio_disponibles
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.calculo.sociedades import (
     ComparacionInput,
     PagoFraccionadoSociedadesInput,
     SociedadesInput,
@@ -50,10 +46,10 @@ from hacienda_gpt.modulos.fiscal.calculo.sociedades import (
     calcular_sociedades,
     comparar_autonomo_vs_sociedad,
 )
-from hacienda_gpt.modulos.fiscal.calculo.sociedades_params import ejercicios_sociedades_disponibles
-from hacienda_gpt.modulos.fiscal.calculo.sucesiones import BeneficiarioISD, calcular_isd
-from hacienda_gpt.modulos.fiscal.calculo.sucesiones_params import ejercicios_isd_disponibles
-from hacienda_gpt.modulos.fiscal.especificaciones import (
+from asistente.ambitos.fiscal.calculo.sociedades_params import ejercicios_sociedades_disponibles
+from asistente.ambitos.fiscal.calculo.sucesiones import BeneficiarioISD, calcular_isd
+from asistente.ambitos.fiscal.calculo.sucesiones_params import ejercicios_isd_disponibles
+from asistente.ambitos.fiscal.especificaciones import (
     _RESTRICCIONES,
     ACTIVITY_TOOL,
     AUTONOMO_SOCIEDAD_TOOL,
@@ -71,15 +67,14 @@ from hacienda_gpt.modulos.fiscal.especificaciones import (
     SOCIEDADES_PAGO_TOOL,
     SOCIEDADES_TOOL,
 )
-from hacienda_gpt.modulos.fiscal.presentacion import (
+from asistente.ambitos.fiscal.presentacion import (
     OBLIGADO,
     money,
     render_obligacion,
     render_plan,
     render_result,
 )
-from hacienda_gpt.proactive.jobs import hoy_en_espana
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.profile import (
     DATOS_CONYUGE,
     DETALLE_FACT_TYPES,
     RECUENTOS_DEL_DETALLE,
@@ -87,6 +82,11 @@ from hacienda_gpt.tax.profile import (
     build_input_con_actividad,
     normalizar_datos_conyuge,
 )
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE
+from asistente.nucleo.decision.schemas import CaseState, Fact, parse_fiscal_year
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.nucleo.proactive.jobs import hoy_en_espana
 
 logger = logging.getLogger(__name__)
 
@@ -414,8 +414,8 @@ class EjecucionFiscal:
         restricciones = {k: arguments[k] for k in _RESTRICCIONES if arguments.get(k) is not None}
         try:
             year, facts, datos = self._scenario_base(arguments)
-            # With a case, the user's rejections and restrictions in force are constraints (hacienda_gpt/memoria).
-            from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+            # With a case, the user's rejections and restrictions in force are constraints (asistente/nucleo/memoria).
+            from asistente.nucleo.memoria.optimizador import optimizar_con_memoria
 
             plan = optimizar_con_memoria(
                 case_id=self.case.case_id if self.case is not None else None,

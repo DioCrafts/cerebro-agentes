@@ -1,6 +1,6 @@
 """Operator commands of the mail module.
 
-``python -m hacienda_gpt.capacidades.correo sincronizar`` — sync every connected case whose owner has the module
+``python -m asistente.capacidades.correo sincronizar`` — sync every connected case whose owner has the module
 on (for cron, e.g. every 30 minutes). ``nueva-clave`` — print a new Fernet key for ``CORREO_CLAVE_CIFRADO``.
 ``rotar-clave`` — re-encrypt every stored token with the first key of ``CORREO_CLAVE_CIFRADO`` (put the new
 key first and keep the old one after a comma until this has run).
@@ -10,8 +10,8 @@ from __future__ import annotations
 
 import sys
 
-from hacienda_gpt.capacidades.correo import almacen, cifrado
-from hacienda_gpt.capacidades.correo.http import CorreoError
+from asistente.capacidades.correo import almacen, cifrado
+from asistente.capacidades.correo.http import CorreoError
 
 
 def _casos_conectados() -> list[str]:
@@ -20,9 +20,9 @@ def _casos_conectados() -> list[str]:
 
 
 def sincronizar_todo() -> int:
-    from hacienda_gpt.capacidades.correo.sincronizacion import sincronizar
-    from hacienda_gpt.memoria import reloj
-    from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+    from asistente.capacidades.correo.sincronizacion import sincronizar
+    from asistente.nucleo.memoria import reloj
+    from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 
     fallos = 0
     for case_id in _casos_conectados():
@@ -59,7 +59,7 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     if orden == "rotar-clave":
         return rotar_clave()
-    print("uso: python -m hacienda_gpt.capacidades.correo {sincronizar|nueva-clave|rotar-clave}")
+    print("uso: python -m asistente.capacidades.correo {sincronizar|nueva-clave|rotar-clave}")
     return 2
 
 

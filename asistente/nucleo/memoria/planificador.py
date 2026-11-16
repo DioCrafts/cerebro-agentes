@@ -1,8 +1,8 @@
 """The user's decisions as restrictions of the household planner.
 
-:func:`planificar_con_memoria` is :func:`hacienda_gpt.planificador.motor.planificar` for a case, with the
+:func:`planificar_con_memoria` is :func:`asistente.nucleo.planificador.motor.planificar` for a case, with the
 case's rejections, restrictions and «ya lo hice» in force turned into
-:class:`~hacienda_gpt.planificador.modelos.RestriccionesPlan` (the planner does not import this package):
+:class:`~asistente.nucleo.planificador.modelos.RestriccionesPlan` (the planner does not import this package):
 
 =================================================  =================================================
 Decision in force about                              Restriction of the plan
@@ -21,7 +21,7 @@ A decision covers its narrower ámbitos (``fiscal`` every tax lever, ``hipoteca`
 ``rechazo`` and ``restriccion`` exclude a filing mode or a way of repaying: «ya lo hice» about a filing mode
 means the user files that way, not that they reject it.
 
-**Rule for the request's own values** (the same as :mod:`hacienda_gpt.memoria.optimizador`): the request can
+**Rule for the request's own values** (the same as :mod:`asistente.nucleo.memoria.optimizador`): the request can
 only add restrictions; a decision in force always holds, even against a figure of the request (a cap, a
 planned donation, a maximum contribution). The user lifts it by saying so now: in the chat the agent records
 it with ``registrar_decision`` (checked against the user's literal words; the new decision about the same
@@ -39,14 +39,14 @@ from dataclasses import dataclass, field
 from datetime import date
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.modelo import Decision, evaluar
-from hacienda_gpt.memoria.optimizador import _bloqueo, _razon
-from hacienda_gpt.memoria.servicio import decisiones_del_caso
-from hacienda_gpt.planificador.modelos import NOMBRES_PALANCAS, EntradaPlan, PlanHogar, RestriccionesPlan
-from hacienda_gpt.planificador.motor import planificar
-from hacienda_gpt.tax.optimizador import MODALIDAD_DESCARTADA
+from asistente.ambitos.fiscal.calculo.optimizador import MODALIDAD_DESCARTADA
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.modelo import Decision, evaluar
+from asistente.nucleo.memoria.optimizador import _bloqueo, _razon
+from asistente.nucleo.memoria.servicio import decisiones_del_caso
+from asistente.nucleo.planificador.modelos import NOMBRES_PALANCAS, EntradaPlan, PlanHogar, RestriccionesPlan
+from asistente.nucleo.planificador.motor import planificar
+from asistente.plataforma import settings
 
 # Planner lever -> the ámbito a decision must cover to exclude it.
 PALANCAS_PLANIFICADOR: dict[str, str] = {

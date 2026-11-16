@@ -1,9 +1,9 @@
 """The deterministic gate every plan passes before it can exist: a template, or one a model proposed.
 
-A model may PROPOSE a plan (the central agent through ``crear_tarea``, or :mod:`hacienda_gpt.tareas.planificacion`);
+A model may PROPOSE a plan (the central agent through ``crear_tarea``, or :mod:`asistente.nucleo.tareas.planificacion`);
 code decides whether it is acceptable. Nothing the planner writes is trusted:
 
-* the steps are :class:`~hacienda_gpt.tareas.modelo.PasoSpec` (``extra="forbid"``): only the closed set of step
+* the steps are :class:`~asistente.nucleo.tareas.modelo.PasoSpec` (``extra="forbid"``): only the closed set of step
   types, and no state field (``estado``, ``resultado``…) can be slipped in;
 * ``calculo`` names a registered module tool whose effect is ``lectura`` or ``prepara``; ``accion`` one whose
   effect is ``actua`` (it will only ever become a pending action the owner confirms with a button); the
@@ -17,7 +17,7 @@ code decides whether it is acceptable. Nothing the planner writes is trusted:
   cannot smuggle a link or an instruction into the inbox or into a specialist's prompt;
 * the steps form a DAG over earlier steps, at most :data:`MAX_PASOS_PLAN` for a proposed plan.
 
-The result is a list of fresh :class:`~hacienda_gpt.tareas.modelo.Paso` (state ``pendiente``). Whatever passes
+The result is a list of fresh :class:`~asistente.nucleo.tareas.modelo.Paso` (state ``pendiente``). Whatever passes
 still becomes a ``propuesta`` that the user must accept before it runs.
 """
 
@@ -30,8 +30,8 @@ from typing import Any, Final, Literal
 
 from pydantic import ValidationError
 
-from hacienda_gpt.tareas.capacidades import Capacidad, capacidades_por_defecto, raices_oficiales
-from hacienda_gpt.tareas.modelo import MAX_PASOS, Paso, PasoSpec, problemas_del_grafo
+from asistente.nucleo.tareas.capacidades import Capacidad, capacidades_por_defecto, raices_oficiales
+from asistente.nucleo.tareas.modelo import MAX_PASOS, Paso, PasoSpec, problemas_del_grafo
 
 MAX_PASOS_PLAN: Final = 15
 _ENLACE = re.compile(r"(https?://|www\.|\b[a-z0-9-]+\.(com|es|net|org|io|info|gob\.es)\b)", re.IGNORECASE)
@@ -86,7 +86,7 @@ def fallo_de_esquema(datos: Mapping[str, Any], schema: Any) -> str | None:
 
 
 def _ids_calendario() -> frozenset[str]:
-    from hacienda_gpt.tax.calendario import _load
+    from asistente.ambitos.fiscal.calculo.calendario import _load
 
     return frozenset(o.id for o in _load().obligaciones)
 
@@ -94,7 +94,7 @@ def _ids_calendario() -> frozenset[str]:
 def _registro(reg: Any) -> Any:
     if reg is not None:
         return reg
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     return registro()
 

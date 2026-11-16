@@ -11,7 +11,7 @@
   It is built deterministically from the notices and actions already stored: no model is involved, and no
   figure from two modules is ever added up.
 
-The tax module keeps its own runner (:func:`hacienda_gpt.proactive.jobs.ejecutar_para_caso`), so its
+The tax module keeps its own runner (:func:`asistente.nucleo.proactive.jobs.ejecutar_para_caso`), so its
 notices are written exactly as before.
 """
 
@@ -27,10 +27,10 @@ import unicodedata
 
 from pydantic import ValidationError
 
-from hacienda_gpt.decision.schemas import CaseState, CaseStatus
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, Modulo
-from hacienda_gpt.proactive.store import KIND_RESUMEN, PREFIJO_MODULO, Notification, NotificationStore, modulo_de
+from asistente.nucleo.decision.schemas import CaseState, CaseStatus
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, Modulo
+from asistente.nucleo.proactive.store import KIND_RESUMEN, PREFIJO_MODULO, Notification, NotificationStore, modulo_de
 
 logger = logging.getLogger(__name__)
 
@@ -73,8 +73,8 @@ def avisos_de_modulos(
 
     Modules with their own runner (``Ganchos.bandeja``: the tax module) are skipped here.
     """
-    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
-    from hacienda_gpt.modulos.perfil import perfil_de
+    from asistente.nucleo.modulos.ganchos import escribe_su_bandeja
+    from asistente.nucleo.modulos.perfil import perfil_de
 
     perfil = perfil_de(case)
     creados: dict[str, int] = {}
@@ -126,7 +126,7 @@ TAREAS_DIARIAS: dict[str, str] = {"ayudas": "actualizar_convocatorias"}
 
 
 def tarea_diaria_de(modulo: Modulo) -> Callable[[date], Any] | None:
-    from hacienda_gpt.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.ganchos import ganchos_de
 
     return ganchos_de(modulo).tarea_diaria
 
@@ -160,7 +160,7 @@ def avisos_de_modulos_para_todos(
     With ``preparar`` (the daily runner), the daily task of every module that is on for at least one case
     runs once first (see :data:`TAREAS_DIARIAS`); its outcome is under ``tareas_modulos``.
     """
-    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
+    from asistente.nucleo.modulos.ganchos import escribe_su_bandeja
 
     por_modulo: dict[str, int] = {}
     errores = 0
@@ -229,7 +229,7 @@ def _orden(n: Notification) -> tuple[Any, ...]:
 
 def _modulos_registrados() -> list[Modulo]:
     try:
-        from hacienda_gpt.modulos.registro import registro
+        from asistente.nucleo.modulos.registro import registro
 
         return list(registro().modulos.values())
     except Exception:  # the digest never fails because of the registry
@@ -245,7 +245,7 @@ def _nombres_de_ambitos() -> dict[str, str]:
 def _ambito_de_tipo(kind: str) -> str:
     """The domain a notice belongs to: ``modulo:<clave>``, else the domain that declares writing that kind
     (``Ganchos.bandeja``), else what the store says."""
-    from hacienda_gpt.modulos.ganchos import propietario_de_tipo
+    from asistente.nucleo.modulos.ganchos import propietario_de_tipo
 
     if kind.startswith(PREFIJO_MODULO):
         return kind[len(PREFIJO_MODULO) :]

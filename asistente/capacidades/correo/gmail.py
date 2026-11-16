@@ -20,7 +20,7 @@ import logging
 import re
 from typing import Any
 
-from hacienda_gpt.capacidades.correo.http import CorreoError, Transporte
+from asistente.capacidades.correo.http import CorreoError, Transporte
 
 logger = logging.getLogger(__name__)
 

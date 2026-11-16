@@ -5,7 +5,7 @@ the IRPF calculator (through the optimiser for the year-end plan), so a daily
 run over every case costs nothing and can only say what those modules already
 stand behind.
 
-Moved from ``hacienda_gpt/proactive/jobs.py`` (whose names still resolve there). The core's daily inbox runs
+Moved from ``asistente/nucleo/proactive/jobs.py`` (whose names still resolve there). The core's daily inbox runs
 them through the module contract (``ModuloFiscal.ejecutar_en_bandeja``), writing the notifications exactly as
 before (kinds ``plazo`` / ``fin_de_ejercicio``, same keys).
 """
@@ -19,13 +19,13 @@ import json
 import logging
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState, parse_fiscal_year
-from hacienda_gpt.modulos.fiscal.calculo.calendario import proximos_vencimientos
-from hacienda_gpt.modulos.fiscal.calculo.optimizador import PalancaElegida
-from hacienda_gpt.modulos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles
-from hacienda_gpt.modulos.fiscal.calculo.simulador import simular
-from hacienda_gpt.proactive.store import Notification, NotificationStore
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.calendario import proximos_vencimientos
+from asistente.ambitos.fiscal.calculo.optimizador import PalancaElegida
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError, ejercicios_disponibles
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.nucleo.decision.schemas import CaseState, parse_fiscal_year
+from asistente.nucleo.proactive.store import Notification, NotificationStore
 
 logger = logging.getLogger(__name__)
 
@@ -96,7 +96,7 @@ def _tiene_ingresos(facts: dict[str, Any]) -> bool:
 def _hechos_de_modulos() -> frozenset[str]:
     """Names of the facts the household modules own (empty if the registry cannot be loaded)."""
     try:
-        from hacienda_gpt.modulos.registro import registro
+        from asistente.nucleo.modulos.registro import registro
 
         return frozenset(registro().hechos())
     except Exception:
@@ -201,7 +201,7 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
 
     Acts only from 1 October to 31 December and only for a case whose fiscal
     year is the current one. The plan is the optimiser's best COMBINATION of
-    levers (:mod:`hacienda_gpt.modulos.fiscal.calculo.optimizador`), with each lever's marginal
+    levers (:mod:`asistente.ambitos.fiscal.calculo.optimizador`), with each lever's marginal
     contribution: standalone savings are never added up. What the case keeps for
     the optimiser — the spouse's figures (``datos_conyuge``, for a married user)
     and the preferences (``preferencias_optimizacion``: cash for pension plans,
@@ -259,8 +259,8 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
     try:
         # The benefit catalogue only feeds the "one datum away" section; the plan is the optimiser's.
         simulacion = simular(ejercicio=ejercicio, facts=facts, con_beneficios=True)
-        # The user's rejections and restrictions in force are constraints of the plan (hacienda_gpt/memoria).
-        from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+        # The user's rejections and restrictions in force are constraints of the plan (asistente/nucleo/memoria).
+        from asistente.nucleo.memoria.optimizador import optimizar_con_memoria
 
         plan = optimizar_con_memoria(
             case_id=case.case_id, db_path=store.db_path, hoy=hoy, ejercicio=ejercicio, fecha=hoy, facts=facts

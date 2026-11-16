@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.tax.actividad import (
+from asistente.ambitos.fiscal.calculo.actividad import (
     ActividadInput,
     RetencionProfesionalInput,
     calcular_rendimiento_actividad,
@@ -20,9 +20,13 @@ from hacienda_gpt.tax.actividad import (
     cumple_supuesto_d_retencion,
     tipo_retencion_profesional,
 )
-from hacienda_gpt.tax.autonomos_params import comprobar_evidencias, load_autonomos_params, textos_de_directorio
-from hacienda_gpt.tax.iva import Modelo303Input, calcular_modelo_303
-from hacienda_gpt.tax.pagos_fraccionados import Modelo130Input, calcular_modelo_130
+from asistente.ambitos.fiscal.calculo.autonomos_params import (
+    comprobar_evidencias,
+    load_autonomos_params,
+    textos_de_directorio,
+)
+from asistente.ambitos.fiscal.calculo.iva import Modelo303Input, calcular_modelo_303
+from asistente.ambitos.fiscal.calculo.pagos_fraccionados import Modelo130Input, calcular_modelo_130
 
 D = Decimal
 EXTRACTOS = Path(__file__).resolve().parents[1] / "fixtures" / "boe_autonomos"

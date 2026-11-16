@@ -32,15 +32,12 @@ import json
 import logging
 from typing import Any
 
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.agent.search import CorpusSearcher
-from hacienda_gpt.capacidades.investigacion import plan as planificacion
-from hacienda_gpt.capacidades.investigacion import puerta, sintesis
-from hacienda_gpt.capacidades.investigacion.ajustes import Ajustes, ajustes
-from hacienda_gpt.capacidades.investigacion.almacen import AlmacenInvestigacion, clave_cache
-from hacienda_gpt.capacidades.investigacion.dominios import es_oficial
-from hacienda_gpt.capacidades.investigacion.fuentes import (
+from asistente.capacidades.investigacion import plan as planificacion
+from asistente.capacidades.investigacion import puerta, sintesis
+from asistente.capacidades.investigacion.ajustes import Ajustes, ajustes
+from asistente.capacidades.investigacion.almacen import AlmacenInvestigacion, clave_cache
+from asistente.capacidades.investigacion.dominios import es_oficial
+from asistente.capacidades.investigacion.fuentes import (
     ClienteBOE,
     FuenteRecuperada,
     buscar_boe,
@@ -48,7 +45,7 @@ from hacienda_gpt.capacidades.investigacion.fuentes import (
     extracto,
     palabras_clave,
 )
-from hacienda_gpt.capacidades.investigacion.modelo import (
+from asistente.capacidades.investigacion.modelo import (
     TIPOS_FUENTE,
     EstadoWeb,
     FuenteInforme,
@@ -56,7 +53,7 @@ from hacienda_gpt.capacidades.investigacion.modelo import (
     PeticionInvestigacion,
     TipoFuente,
 )
-from hacienda_gpt.capacidades.investigacion.presupuesto import (
+from asistente.capacidades.investigacion.presupuesto import (
     Coster,
     PresupuestoInvestigacion,
     PresupuestoInvestigacionAgotadoError,
@@ -64,7 +61,10 @@ from hacienda_gpt.capacidades.investigacion.presupuesto import (
     coste_por_defecto,
     observar,
 )
-from hacienda_gpt.capacidades.investigacion.web import BuscadorWeb, WebNoDisponibleError, web_para
+from asistente.capacidades.investigacion.web import BuscadorWeb, WebNoDisponibleError, web_para
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.search import CorpusSearcher
 
 logger = logging.getLogger(__name__)
 
@@ -75,14 +75,14 @@ SIN_RESPUESTA = "No he podido verificar ninguna respuesta con citas literales de
 
 
 def _hoy(ahora: datetime) -> date:
-    from hacienda_gpt.ops.consumo import hoy_madrid
+    from asistente.plataforma.ops.consumo import hoy_madrid
 
     return hoy_madrid(ahora)
 
 
 def _complete_json(proveedor: Any, *, validar: enrutado.Validador | None = None, **kwargs: Any) -> dict[str, Any]:
     """``complete_json``, with the deterministic check for escalation when the provider is metered."""
-    from hacienda_gpt.ops.consumo import MeteredProvider
+    from asistente.plataforma.ops.consumo import MeteredProvider
 
     if isinstance(proveedor, MeteredProvider):
         return proveedor.complete_json(validar=validar, **kwargs)
@@ -440,7 +440,7 @@ class Investigador:
 
 
 def _usuario(user_id: str | None) -> str:
-    from hacienda_gpt.capacidades.investigacion.almacen import usuario_de
+    from asistente.capacidades.investigacion.almacen import usuario_de
 
     return usuario_de(user_id)
 

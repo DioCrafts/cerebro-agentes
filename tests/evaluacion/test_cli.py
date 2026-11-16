@@ -9,12 +9,12 @@ import shutil
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli.evaluacion import cli
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.evaluacion import suite as s
-from hacienda_gpt.evaluacion import variantes as v
-from hacienda_gpt.evaluacion.captura import CONSENTIMIENTO_VERSION, FeedbackEntrada, FeedbackStore, capturar
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.evaluacion import suite as s
+from asistente.nucleo.evaluacion import variantes as v
+from asistente.nucleo.evaluacion.captura import CONSENTIMIENTO_VERSION, FeedbackEntrada, FeedbackStore, capturar
+from asistente.plataforma.cli.evaluacion import cli
 
 PRESTAMO = {
     "capital_inicial": "100000",

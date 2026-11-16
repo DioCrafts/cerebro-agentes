@@ -7,13 +7,13 @@ from datetime import date
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.almacen import olvidar_almacenes
-from hacienda_gpt.modulos import registro
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.almacen import olvidar_almacenes
+from asistente.nucleo.modulos import registro
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
 
 # The accounts API fixtures (``env``: AUTH_MODE=required over one private database file).
 from tests.auth.conftest import CONSENTS, PASSWORD, Env, env, fast_scrypt  # noqa: F401

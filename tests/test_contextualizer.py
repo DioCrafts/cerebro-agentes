@@ -68,7 +68,7 @@ def stub_mlx_lm(monkeypatch, tmp_path: Path):
     model_dir = tmp_path / "fake-model"
     model_dir.mkdir()
 
-    from hacienda_gpt.processor import contextualizer as ctx
+    from asistente.conocimiento.processor import contextualizer as ctx
 
     # Clear the module-level singleton so each test starts fresh.
     ctx._INSTANCE = None
@@ -81,7 +81,7 @@ def stub_mlx_lm(monkeypatch, tmp_path: Path):
 
 
 def test_clean_output_strips_eot_markers() -> None:
-    from hacienda_gpt.processor.contextualizer import _clean_output
+    from asistente.conocimiento.processor.contextualizer import _clean_output
 
     assert _clean_output("foo bar<|im_end|>extra") == "foo bar"
     assert _clean_output("foo</s>baz") == "foo"
@@ -89,7 +89,7 @@ def test_clean_output_strips_eot_markers() -> None:
 
 
 def test_clean_output_drops_redundant_prefix() -> None:
-    from hacienda_gpt.processor.contextualizer import _clean_output
+    from asistente.conocimiento.processor.contextualizer import _clean_output
 
     assert _clean_output("Contexto: trata del IRPF") == "trata del IRPF"
     assert _clean_output("[Contexto] sobre el modelo 720") == "sobre el modelo 720"
@@ -98,14 +98,14 @@ def test_clean_output_drops_redundant_prefix() -> None:
 def test_clean_output_keeps_only_first_line() -> None:
     """A multi-paragraph answer is reduced to the first line — extra
     paragraphs would balloon the embedded text without adding signal."""
-    from hacienda_gpt.processor.contextualizer import _clean_output
+    from asistente.conocimiento.processor.contextualizer import _clean_output
 
     raw = "Primera línea.\nSegunda línea extra.\nTercera."
     assert _clean_output(raw) == "Primera línea."
 
 
 def test_clean_output_empty_input_returns_empty() -> None:
-    from hacienda_gpt.processor.contextualizer import _clean_output
+    from asistente.conocimiento.processor.contextualizer import _clean_output
 
     assert _clean_output("") == ""
     assert _clean_output("   \n  ") == ""
@@ -117,7 +117,7 @@ def test_clean_output_empty_input_returns_empty() -> None:
 
 
 def test_contextualize_prepends_prefix_to_page_content(stub_mlx_lm) -> None:
-    from hacienda_gpt.processor.contextualizer import MLXContextualizer
+    from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     _, model_dir = stub_mlx_lm
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
@@ -153,7 +153,7 @@ def test_contextualize_passes_through_on_generator_error(stub_mlx_lm) -> None:
 
     fake_lm.generate = boom
 
-    from hacienda_gpt.processor.contextualizer import MLXContextualizer
+    from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
     docs = [Document(page_content="x", metadata={"title": "t"})]
@@ -170,7 +170,7 @@ def test_contextualize_empty_generator_output_passes_through(stub_mlx_lm) -> Non
     fake_lm, model_dir = stub_mlx_lm
     fake_lm.generator_output = ""
 
-    from hacienda_gpt.processor.contextualizer import MLXContextualizer
+    from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
     docs = [Document(page_content="x", metadata={"title": "t"})]
@@ -180,7 +180,7 @@ def test_contextualize_empty_generator_output_passes_through(stub_mlx_lm) -> Non
 
 
 def test_missing_model_path_raises(stub_mlx_lm, tmp_path: Path) -> None:
-    from hacienda_gpt.processor.contextualizer import MLXContextualizer
+    from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     with pytest.raises(FileNotFoundError, match="Contextualizer model not found"):
         MLXContextualizer(model_path=str(tmp_path / "missing"), max_tokens=80)
@@ -190,7 +190,7 @@ def test_thinking_disabled_in_chat_template(stub_mlx_lm) -> None:
     """Qwen3's thinking mode would eat the ``max_tokens`` budget with a
     chain-of-thought block before producing real output. The contextualizer
     must always call ``apply_chat_template(enable_thinking=False)``."""
-    from hacienda_gpt.processor.contextualizer import MLXContextualizer
+    from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     _, model_dir = stub_mlx_lm
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
@@ -204,7 +204,7 @@ def test_singleton_factory_reuses_loaded_model(stub_mlx_lm) -> None:
     """``get_contextualizer`` is a thread-safe lazy singleton — multiple
     calls with the same path must return the same instance, not reload
     the (3 GB) MLX weights."""
-    from hacienda_gpt.processor.contextualizer import get_contextualizer
+    from asistente.conocimiento.processor.contextualizer import get_contextualizer
 
     _, model_dir = stub_mlx_lm
     a = get_contextualizer(model_dir)

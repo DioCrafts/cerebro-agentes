@@ -5,7 +5,7 @@ import click
 from scrapy.crawler import CrawlerProcess
 from scrapy.spiders import Spider
 
-from hacienda_gpt.crawler.crawlers import (
+from asistente.conocimiento.crawler.crawlers import (
     AgenciaTributariaPDFCrawler,
     AgenciaTributariaWebCrawler,
     BOECCAACrawler,
@@ -40,7 +40,7 @@ SETTINGS = {
         "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 400,
         # Route every HTTPS request through scrapy-playwright so we sidestep
         # the X509/pyOpenSSL incompatibility on the stock Scrapy downloader.
-        "hacienda_gpt.crawler.middlewares.ForcePlaywrightMiddleware": 543,
+        "asistente.conocimiento.crawler.middlewares.ForcePlaywrightMiddleware": 543,
     },
     "DOWNLOAD_HANDLERS": {
         "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",

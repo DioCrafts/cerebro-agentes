@@ -15,9 +15,9 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.contrato import Capacidad, ContextoPeticion
-from hacienda_gpt.capacidades.registro import RegistroCapacidades, desactivadas_por_operador, registro
+from asistente.capacidades.contrato import Capacidad, ContextoPeticion
+from asistente.capacidades.registro import RegistroCapacidades, desactivadas_por_operador, registro
+from asistente.plataforma import settings
 
 
 @dataclass(frozen=True)
@@ -34,7 +34,7 @@ class EstadoCapacidad:
 
 
 def _apagadas() -> frozenset[str]:
-    from hacienda_gpt.modulos.registro import desactivados_por_operador
+    from asistente.nucleo.modulos.registro import desactivados_por_operador
 
     return desactivadas_por_operador() | desactivados_por_operador()
 
@@ -89,7 +89,7 @@ def consentida(capacidad: Capacidad, contexto: ContextoPeticion, auth: Any | Non
     if settings.AUTH_MODE != "required":
         return _por_defecto(capacidad.clave)
     if auth is None:
-        from hacienda_gpt.auth.deps import get_auth_store
+        from asistente.plataforma.auth.deps import get_auth_store
 
         auth = get_auth_store()
     dueno = _dueno(contexto, auth)

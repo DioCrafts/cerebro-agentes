@@ -10,12 +10,12 @@ from typing import Any
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.api import api as api_module
-from hacienda_gpt.api import security
-from hacienda_gpt.api.api import app, get_agent, get_fact_extractor, get_qa_chain
-from hacienda_gpt.decision.fact_extractor import FactExtractionError
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.decision.fact_extractor import FactExtractionError
+from asistente.plataforma import settings
+from asistente.plataforma.api import api as api_module
+from asistente.plataforma.api import security
+from asistente.plataforma.api.api import app, get_agent, get_fact_extractor, get_qa_chain
 from .conftest import CONSENTS, Env
 
 client = TestClient(app)
@@ -188,7 +188,7 @@ def test_trimming_never_cuts_a_message_and_keeps_short_conversations_whole() -> 
 def test_provider_failures_show_a_fixed_message_and_log_the_detail(env: Env, grabador, caplog, monkeypatch) -> None:
     ana = env.register("ana@example.com", consents={**CONSENTS, "envio_documentos_a_proveedor_llm": True})
     case_id = env.new_case(ana)
-    with caplog.at_level(logging.ERROR, logger="hacienda_gpt.api.api"):
+    with caplog.at_level(logging.ERROR, logger="asistente.plataforma.api.api"):
         agente = env.client.post("/agent", json={"query": "hola"}, headers=ana)
         turno = env.client.post(f"/cases/{case_id}/turn", json={"user_input": "hola"}, headers=ana)
     assert agente.status_code == turno.status_code == 503

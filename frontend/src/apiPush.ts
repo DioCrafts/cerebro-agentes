@@ -1,4 +1,4 @@
-// Client for Web Push (hacienda_gpt/api/routers/push.py): the opt-in, this device's subscription, a test.
+// Client for Web Push (asistente/plataforma/api/routers/push.py): the opt-in, this device's subscription, a test.
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";

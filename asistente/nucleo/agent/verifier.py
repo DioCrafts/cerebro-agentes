@@ -16,9 +16,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.evidence import Fragment
-from hacienda_gpt.agent.prompts import VERIFIER_SCHEMA, VERIFIER_SYSTEM_PROMPT
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
+from asistente.nucleo.agent.evidence import Fragment
+from asistente.nucleo.agent.prompts import VERIFIER_SCHEMA, VERIFIER_SYSTEM_PROMPT
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
 
 logger = logging.getLogger(__name__)
 

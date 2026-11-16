@@ -24,10 +24,10 @@ from xml.etree import ElementTree
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.ayudas.hogar import Hogar, booleano, entero
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasSumario, extraer_sumario
-from hacienda_gpt.proactive.novedades import ItemSumario
+from asistente.ambitos.ayudas.hogar import Hogar, booleano, entero
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_boe import ReglasSumario, extraer_sumario
+from asistente.nucleo.proactive.novedades import ItemSumario
 
 # BOE sections read: III (full calls of ministries) and V-B (extracts of calls, with the BDNS id).
 SECCIONES = frozenset({"3", "5B"})
@@ -605,7 +605,7 @@ def registrar_clasificador_llm(funcion: ClasificadorLLM | None) -> None:
     It is used only when ``AYUDAS_CLASIFICADOR_LLM=1`` and the rules leave the call undecided
     ("desconocido" or "mixto"). Its answer is discarded unless ``cita`` is literally in the text.
     An adapter that calls a model wraps its provider with
-    ``hacienda_gpt.ops.consumo.medir(provider, PROPOSITO_CLASIFICADOR)`` (metering and routing).
+    ``asistente.plataforma.ops.consumo.medir(provider, PROPOSITO_CLASIFICADOR)`` (metering and routing).
     """
     global _clasificador_llm
     _clasificador_llm = funcion

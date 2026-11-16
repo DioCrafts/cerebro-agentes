@@ -31,7 +31,7 @@ jobs:
       - run: uv sync
       - name: Critical regression (real deterministic pipeline)
         run: |
-          uv run python -m hacienda_gpt.cli.check_critical_regressions \
+          uv run python -m asistente.plataforma.cli.check_critical_regressions \
             --dataset eval_data/critical_cases/tramite_year_critical_cases.jsonl \
             --min-intent-accuracy 0.80 \
             --min-fact-f1 0.75 \
@@ -53,7 +53,7 @@ jobs:
         # executes. On infra that has ./data populated, add --fail-on-changed to
         # turn this into a blocking gate before promoting a snapshot.
         run: |
-          uv run python -m hacienda_gpt.cli.drift_check \
+          uv run python -m asistente.plataforma.cli.drift_check \
             --rules-dir rules \
             --snapshot-root ./data \
             --output reports/drift.json

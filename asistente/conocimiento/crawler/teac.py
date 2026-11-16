@@ -35,7 +35,7 @@ from pydantic import BaseModel, ConfigDict, field_validator
 import scrapy
 from scrapy.http import Response
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 DYCTEA_BASE_URL = "https://serviciostelematicosext.hacienda.gob.es/TEAC/DYCTEA"
 DYCTEA_NOT_FOUND_MARKER = "El criterio no existe"

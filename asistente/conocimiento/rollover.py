@@ -19,8 +19,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.tax.params import DATA_DIR, IRPFParams
-from hacienda_gpt.tax.verificacion import Resultado, TextoDe, comprobaciones, verificar
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, IRPFParams
+from asistente.conocimiento.verificacion import Resultado, TextoDe, comprobaciones, verificar
 
 
 class InformeRollover(BaseModel):

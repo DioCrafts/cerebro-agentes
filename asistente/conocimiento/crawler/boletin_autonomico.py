@@ -29,7 +29,7 @@ from pydantic import BaseModel, ConfigDict
 import scrapy
 from scrapy.http import Response
 
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
 
 
 @dataclass(frozen=True)
@@ -105,7 +105,7 @@ BUNDLED_SPECS: dict[str, RegionalBoletinSpec] = {
 
 
 class ReglasBoletin(BaseModel):
-    """The selectors of one gazette as format-spec data (``boletin_<key>``, see ``hacienda_gpt.ops.formatos``)."""
+    """The selectors of one gazette as format-spec data (``boletin_<key>``, see ``asistente.conocimiento.formatos``)."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 

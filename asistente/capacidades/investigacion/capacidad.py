@@ -1,13 +1,13 @@
-"""The research capability under the capability contract (``hacienda_gpt/capacidades/contrato.py``).
+"""The research capability under the capability contract (``asistente/capacidades/contrato.py``).
 
 One operation, ``investigar`` (effect ``lectura``: it reads public sources and returns a report; there is no
-write or act operation). Its result quotes third-party text, so :func:`~hacienda_gpt.capacidades.contrato.pedir`
+write or act operation). Its result quotes third-party text, so :func:`~asistente.capacidades.contrato.pedir`
 wraps the text for a model as untrusted data. Consent: ``ninguno`` at the capability level — the corpus and
 the BOE only process the question the caller hands over, like any question to the assistant — while the WEB
 part needs the operator's switch AND the user's own consent, kept by this capability (``almacen.py``) and
 checked on every research.
 
-The :class:`~hacienda_gpt.capacidades.investigacion.servicio.Investigador` that serves the operation is built
+The :class:`~asistente.capacidades.investigacion.servicio.Investigador` that serves the operation is built
 once from the settings (:func:`investigador_por_defecto`); the app or the tests can replace it
 (:func:`configurar`).
 """
@@ -19,19 +19,19 @@ from pathlib import Path
 import threading
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.contrato import (
+from asistente.capacidades.contrato import (
     CapacidadBase,
     ContextoPeticion,
     OperacionCapacidad,
     ResultadoCapacidad,
 )
-from hacienda_gpt.capacidades.investigacion.ajustes import ajustes
-from hacienda_gpt.capacidades.investigacion.almacen import AlmacenInvestigacion
-from hacienda_gpt.capacidades.investigacion.fuentes import ClienteBOE
-from hacienda_gpt.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE, PeticionInvestigacion
-from hacienda_gpt.capacidades.investigacion.servicio import Investigador, texto_informe
-from hacienda_gpt.capacidades.investigacion.sintesis import PROPOSITO as PROPOSITO_SINTESIS
+from asistente.capacidades.investigacion.ajustes import ajustes
+from asistente.capacidades.investigacion.almacen import AlmacenInvestigacion
+from asistente.capacidades.investigacion.fuentes import ClienteBOE
+from asistente.capacidades.investigacion.modelo import PROFUNDIDADES, TIPOS_FUENTE, PeticionInvestigacion
+from asistente.capacidades.investigacion.servicio import Investigador, texto_informe
+from asistente.capacidades.investigacion.sintesis import PROPOSITO as PROPOSITO_SINTESIS
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ def _construir() -> Investigador:
     almacen = almacen_por_defecto()
     searcher = None
     try:
-        from hacienda_gpt.agent.search import FaissCorpusSearcher
+        from asistente.nucleo.agent.search import FaissCorpusSearcher
 
         searcher = FaissCorpusSearcher.from_settings()
     except Exception as exc:  # no index on this server: the corpus is reported as unavailable
@@ -105,7 +105,7 @@ def _construir() -> Investigador:
     grafo = None
     try:
         if Path(settings.DOCTRINE_GRAPH_PATH).exists():
-            from hacienda_gpt.doctrine.grafo import DoctrineGraph
+            from asistente.conocimiento.doctrine.grafo import DoctrineGraph
 
             grafo = DoctrineGraph(settings.DOCTRINE_GRAPH_PATH)
     except Exception:
@@ -144,7 +144,7 @@ def usuario_del_contexto(contexto: ContextoPeticion) -> str | None:
     if contexto.case_id is None or settings.AUTH_MODE != "required":
         return None
     try:
-        from hacienda_gpt.auth.deps import get_auth_store
+        from asistente.plataforma.auth.deps import get_auth_store
 
         dueno = get_auth_store().owner_of(contexto.case_id)
     except Exception:

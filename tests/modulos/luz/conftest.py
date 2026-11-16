@@ -17,7 +17,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from hacienda_gpt.modulos.luz.periodos import hora_local, horas_del_dia
+from asistente.ambitos.luz.periodos import hora_local, horas_del_dia
 
 CUPS = "ES0031405912345678JY0F"
 TZ = ZoneInfo("Europe/Madrid")

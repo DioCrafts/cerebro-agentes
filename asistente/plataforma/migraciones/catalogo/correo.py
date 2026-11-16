@@ -1,11 +1,11 @@
-"""``hacienda_gpt.modulos.correo``: Gmail connections, OAuth requests in flight, derived items, proposals.
+"""``asistente.capacidades.correo``: Gmail connections, OAuth requests in flight, derived items, proposals.
 
 Baseline copied byte for byte from ``modulos/correo/almacen.py`` (``_ESQUEMA``, one statement each).
 """
 
 from __future__ import annotations
 
-from hacienda_gpt.plataforma.migraciones.motor import Migracion, Propietario
+from asistente.plataforma.migraciones.motor import Migracion, Propietario
 
 DDL = (
     """CREATE TABLE IF NOT EXISTS correo_conexiones (
@@ -54,7 +54,7 @@ DDL = (
 
 PROPIETARIO = Propietario(
     nombre="correo",
-    paquete="hacienda_gpt.modulos.correo",
+    paquete="asistente.capacidades.correo",
     descripcion="Conexión de Gmail (token cifrado), estados OAuth, elementos derivados, propuestas, contactos.",
     tablas=("correo_conexiones", "correo_oauth_estados", "correo_elementos", "correo_propuestas", "correo_contactos"),
     otros_objetos=("idx_correo_elementos_fecha",),

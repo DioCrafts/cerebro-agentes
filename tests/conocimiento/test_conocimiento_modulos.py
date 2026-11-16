@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.conocimiento import (
+from asistente.conocimiento import (
     CitaLegal,
     GrupoLegal,
     Ortografia,
@@ -21,8 +21,8 @@ from hacienda_gpt.conocimiento import (
     ficheros_legales,
     verificar_fichero,
 )
-from hacienda_gpt.conocimiento.modelo import FRONTERA_PALABRA
-from hacienda_gpt.conocimiento.registro import DECLARANTES
+from asistente.conocimiento.modelo import FRONTERA_PALABRA
+from asistente.conocimiento.registro import DECLARANTES
 
 TESTS = Path(__file__).resolve().parents[1]
 MODULOS = TESTS / "fixtures" / "modulos"
@@ -67,7 +67,7 @@ def test_every_declarant_declares_and_every_file_says_who_maintains_it() -> None
     claves = {f.clave for f in ficheros_legales()}
     assert set(EXTRACTOS) | set(SIN_EXTRACTOS) == claves
     # Only the core's own files are listed by hand; domains and capabilities declare theirs.
-    assert DECLARANTES == ("hacienda_gpt.planificador.textos",)
+    assert DECLARANTES == ("asistente.nucleo.planificador.textos",)
     for fichero in ficheros_legales():
         # Either the loop re-encodes it, or the declaration says why a person does.
         assert (fichero.recodificable is not None) != bool(fichero.solo_persona), fichero.clave
@@ -140,9 +140,9 @@ def test_the_checker_reads_spellings_as_each_module_spells_them() -> None:
 
 
 def test_legal_files_come_from_each_domains_hooks_and_each_capabilitys_declaration() -> None:
-    from hacienda_gpt.capacidades.registro import descubrir as descubrir_capacidades
-    from hacienda_gpt.modulos.ganchos import ganchos_de
-    from hacienda_gpt.modulos.registro import descubrir as descubrir_ambitos
+    from asistente.capacidades.registro import descubrir as descubrir_capacidades
+    from asistente.nucleo.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.registro import descubrir as descubrir_ambitos
 
     de_ambitos = {f.clave for _o, m in descubrir_ambitos()[0] for f in ganchos_de(m).ficheros_legales}
     de_capacidades = {f.clave for _o, c in descubrir_capacidades()[0] for f in getattr(c, "ficheros_legales", ())}
@@ -170,9 +170,9 @@ def test_legal_files_come_from_each_domains_hooks_and_each_capabilitys_declarati
 def test_a_new_domains_legal_file_is_covered_without_listing_it(monkeypatch) -> None:
     from dataclasses import replace
 
-    from hacienda_gpt.conocimiento import registro as conocimiento_registro
-    from hacienda_gpt.modulos import registro as modulos_registro
-    from hacienda_gpt.modulos.ganchos import Ganchos
+    from asistente.conocimiento import registro as conocimiento_registro
+    from asistente.nucleo.modulos import registro as modulos_registro
+    from asistente.nucleo.modulos.ganchos import Ganchos
 
     nuevo = replace(fichero_legal("luz"), clave="agua_nueva", modulo="agua")
 

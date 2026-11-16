@@ -1,7 +1,7 @@
 """HTTP-edge observability: request IDs, structured access logs, and a
 Prometheus-format ``/metrics`` registry.
 
-The repo already had ``hacienda_gpt.observability.metrics.MetricsCollector`` but
+The repo already had ``asistente.plataforma.observability.metrics.MetricsCollector`` but
 nothing in the running app ever instantiated it, so latency/error series were
 empty and the dashboard plotted nothing. This module wires real per-request
 signals into the FastAPI app:
@@ -24,7 +24,7 @@ from uuid import uuid4
 from starlette.requests import Request
 from starlette.responses import Response
 
-from hacienda_gpt.observability.metrics import emit_structured_log
+from asistente.plataforma.observability.metrics import emit_structured_log
 
 
 class ApiMetrics:

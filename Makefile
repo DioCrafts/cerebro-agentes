@@ -8,7 +8,7 @@ lint:
 	uv run ruff check .
 
 type-check:
-	uv run mypy hacienda_gpt
+	uv run mypy asistente hacienda_gpt
 
 test:
 	uv run pytest -q

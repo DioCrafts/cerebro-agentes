@@ -8,8 +8,8 @@ from decimal import Decimal
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.memoria.ambitos import ambito_de_accion, ambito_de_aviso, ambito_de_palanca, etiqueta
-from hacienda_gpt.memoria.modelo import (
+from asistente.nucleo.memoria.ambitos import ambito_de_accion, ambito_de_aviso, ambito_de_palanca, etiqueta
+from asistente.nucleo.memoria.modelo import (
     Condicion,
     Decision,
     caducidad_por_defecto,

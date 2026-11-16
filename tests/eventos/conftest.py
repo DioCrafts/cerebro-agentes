@@ -4,8 +4,8 @@ from collections.abc import Iterator
 
 import pytest
 
-from hacienda_gpt.eventos import despacho, productores
-from hacienda_gpt.modulos import registro
+from asistente.nucleo.eventos import despacho, productores
+from asistente.nucleo.modulos import registro
 
 
 @pytest.fixture(autouse=True)

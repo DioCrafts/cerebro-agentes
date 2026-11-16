@@ -7,8 +7,8 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.capacidades.investigacion import dominios
-from hacienda_gpt.capacidades.investigacion.web import (
+from asistente.capacidades.investigacion import dominios
+from asistente.capacidades.investigacion.web import (
     MAX_DOMINIOS,
     ResultadoWeb,
     WebAnthropic,

@@ -7,14 +7,14 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.agent.prompts import (
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.agent.prompts import (
     AGENT_SYSTEM_PROMPT,
     CASE_TOOLS_ADDENDUM,
     MODULES_ADDENDUM,
     SPECIALIST_SYSTEM_PROMPT,
 )
-from hacienda_gpt.evaluacion import variantes as v
+from asistente.nucleo.evaluacion import variantes as v
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, verdict
 
 
@@ -29,10 +29,10 @@ def _run(**kwargs) -> ScriptedProvider:  # type: ignore[no-untyped-def]
 
 
 def test_the_prompt_registry_and_the_code_agree() -> None:
-    """prompts/registro.json records the content hash of every prompt in hacienda_gpt/agent/prompts.py.
+    """prompts/registro.json records the content hash of every prompt in asistente/nucleo/agent/prompts.py.
 
     It is not frozen text: when a prompt is edited, register the new version (it gets the next id and its hash)
-    with `python -m hacienda_gpt.cli.evaluacion prompts registrar --rol <rol> --informe <informe>` after
+    with `python -m asistente.plataforma.cli.evaluacion prompts registrar --rol <rol> --informe <informe>` after
     evaluating it, or `prompts sincronizar --motivo "<por qué no se evaluó>"`. This test only fails while the
     registry and the code disagree.
     """
@@ -107,7 +107,7 @@ def test_variant_files_load_prompt_texts_next_to_them(tmp_path: Path) -> None:
 
 
 def test_case_addendum_still_follows_the_active_prompt() -> None:
-    from hacienda_gpt.decision.schemas import CaseState
+    from asistente.nucleo.decision.schemas import CaseState
 
     case = CaseState(case_id="c1", user_id="u", jurisdiction="ES", tax_period="2025")
     assert _system(_run(case=case)) == AGENT_SYSTEM_PROMPT + CASE_TOOLS_ADDENDUM

@@ -3,8 +3,8 @@ from pathlib import Path
 from click.testing import CliRunner
 from langchain_core.documents import Document
 
-from hacienda_gpt.agent.search import SearchFilters
-from hacienda_gpt.evals.agent_eval import (
+from asistente.nucleo.agent.search import SearchFilters
+from asistente.nucleo.evals.agent_eval import (
     CaseResult,
     ExcludingSearcher,
     GoldenCase,
@@ -155,7 +155,7 @@ def test_summary_highlights_confident_errors() -> None:
 
 
 def test_cli_build_requires_consultas(tmp_path: Path) -> None:
-    from hacienda_gpt.cli.eval_agent import cli
+    from asistente.plataforma.cli.eval_agent import cli
 
     result = CliRunner().invoke(cli, ["build", "--dgt-dir", str(tmp_path), "--out", str(tmp_path / "g.jsonl")])
     assert result.exit_code != 0 and "No se encontraron consultas" in result.output
@@ -164,10 +164,10 @@ def test_cli_build_requires_consultas(tmp_path: Path) -> None:
 def test_cli_run_meters_the_judge_as_evaluacion_juez(tmp_path: Path, monkeypatch) -> None:
     """The judge is metered and routed as «evaluacion-juez»; its verdicts, prompts and model are unchanged,
     and a --judge-model is kept even with a routing profile."""
-    from hacienda_gpt import settings
-    from hacienda_gpt.agent import providers
-    from hacienda_gpt.cli import eval_agent
-    from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider
+    from asistente.nucleo.agent import providers
+    from asistente.plataforma import settings
+    from asistente.plataforma.cli import eval_agent
+    from asistente.plataforma.ops.consumo import ConsumoStore, MeteredProvider
 
     for nombre in ("LLM_ROUTING_PROFILE", "LLM_ROUTES", "LLM_MODEL_LARGE", "LLM_EFFORT_LARGE"):
         monkeypatch.setattr(settings, nombre, "")

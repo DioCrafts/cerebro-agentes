@@ -14,24 +14,8 @@ import json
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import RECORD_FACTS_TOOL, Toolbox
-from hacienda_gpt.api.api import app
-from hacienda_gpt.decision.fact_extractor import (
-    _PROVIDER_SCHEMA,
-    _RESPONSE_SCHEMA,
-    EXPECTED_FACT_TYPE,
-    EXTRACTOR_FACT_NAMES,
-    OpenAIFactExtractor,
-)
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.modulos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS, JOINT_TOOL
-from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.optimizador import (
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.optimizador import (
     DETALLE_A_TEXTO,
     PlanOptimo,
     PreferenciasOptimizacion,
@@ -41,7 +25,9 @@ from hacienda_gpt.tax.optimizador import (
     optimizar_desde_hechos,
     preferencias_a_texto,
 )
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.documentos import DOCUMENT_FACTS
+from asistente.ambitos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS, JOINT_TOOL
+from asistente.ambitos.fiscal.profile import (
     DATOS_CONYUGE,
     DETALLE_FACT_TYPES,
     PREFERENCIAS_OPTIMIZACION,
@@ -50,6 +36,20 @@ from hacienda_gpt.tax.profile import (
     datos_conyuge_a_texto,
     normalizar_datos_conyuge,
 )
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import RECORD_FACTS_TOOL, Toolbox
+from asistente.nucleo.decision.fact_extractor import (
+    _PROVIDER_SCHEMA,
+    _RESPONSE_SCHEMA,
+    EXPECTED_FACT_TYPE,
+    EXTRACTOR_FACT_NAMES,
+    OpenAIFactExtractor,
+)
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.api.api import app
 
 D = Decimal
 NOV = date(2026, 11, 13)
@@ -490,8 +490,8 @@ def test_optimize_endpoint_uses_the_case_and_takes_the_request_over_it() -> None
 
 
 def test_the_optimiser_tool_starts_from_what_the_case_keeps(monkeypatch) -> None:
-    import hacienda_gpt.modulos.fiscal.herramientas as herramientas
-    from hacienda_gpt.modulos.fiscal.presentacion import money
+    import asistente.ambitos.fiscal.herramientas as herramientas
+    from asistente.ambitos.fiscal.presentacion import money
 
     monkeypatch.setattr(herramientas, "hoy_en_espana", lambda: NOV)
     toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(_guardados()))

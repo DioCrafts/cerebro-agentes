@@ -10,9 +10,9 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.ayudas import almacen as almacen_mod
-from hacienda_gpt.modulos.ayudas import bdns, convocatorias
-from hacienda_gpt.modulos.ayudas.convocatorias import (
+from asistente.ambitos.ayudas import almacen as almacen_mod
+from asistente.ambitos.ayudas import bdns, convocatorias
+from asistente.ambitos.ayudas.convocatorias import (
     Convocatoria,
     aceptar_respuesta_llm,
     analizar,
@@ -23,9 +23,9 @@ from hacienda_gpt.modulos.ayudas.convocatorias import (
     sumar_dias_habiles,
     sumar_meses,
 )
-from hacienda_gpt.modulos.ayudas.hogar import hogar_del_perfil
-from hacienda_gpt.modulos.ayudas.revision import actualizar_convocatorias, enriquecer_con_bdns
-from hacienda_gpt.proactive.novedades import ItemSumario
+from asistente.ambitos.ayudas.hogar import hogar_del_perfil
+from asistente.ambitos.ayudas.revision import actualizar_convocatorias, enriquecer_con_bdns
+from asistente.nucleo.proactive.novedades import ItemSumario
 from .conftest import FIXTURES
 
 HOY = date(2026, 11, 13)

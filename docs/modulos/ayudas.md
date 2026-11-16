@@ -3,7 +3,7 @@
 Encuentra ayudas públicas que corresponden al hogar y que no ha pedido, con su importe cuando la ley lo fija, su
 plazo, cómo pedirlas y el texto literal de la norma. Lo que no puede comprobar con el perfil lo dice siempre.
 
-Código: `hacienda_gpt/modulos/ayudas/` · datos: `hacienda_gpt/modulos/ayudas/data/prestaciones_2026.json` ·
+Código: `asistente/ambitos/ayudas/` · datos: `asistente/ambitos/ayudas/data/prestaciones_2026.json` ·
 pruebas: `tests/modulos/ayudas/` · fixtures: `tests/fixtures/modulos/ayudas/`.
 
 ## Dos familias de ayudas
@@ -104,7 +104,7 @@ inventarla.
 
 ## Revisión diaria del BOE
 
-`hacienda_gpt.modulos.ayudas.actualizar_convocatorias(hoy)` (sin CLI) lee los días pendientes (hasta 7 atrás),
+`asistente.ambitos.ayudas.actualizar_convocatorias(hoy)` (sin CLI) lee los días pendientes (hasta 7 atrás),
 guarda las convocatorias y no repite el trabajo el mismo día. El trabajo diario del núcleo debe llamarla una vez al
 día antes de los avisos por caso. Con `AYUDAS_BOE_AUTOMATICO=1` la llama el propio `avisos` (una vez al día).
 Nunca lanza excepciones: los errores quedan en el resumen y el día fallido se reintenta.
@@ -129,7 +129,7 @@ Leídas en www.boe.es el 13/11/2026 (textos consolidados): Ley 19/2021 (BOE-A-20
 (BOE-A-2026-6544, convalidado), RDL 15/2018 (BOE-A-2018-13593), RDL 20/2022 (BOE-A-2022-22685), RDL 35/2026
 (BOE-A-2026-23604, pendiente de convalidación), LIRPF (BOE-A-2006-20764) y Ley 39/2015 (BOE-A-2015-10565).
 
-Comprobación: `python -m hacienda_gpt.modulos.ayudas.parametros <directorio con BOE-A-*.html>` y la prueba
+Comprobación: `python -m asistente.ambitos.ayudas.parametros <directorio con BOE-A-*.html>` y la prueba
 `tests/modulos/ayudas/test_ayudas_fuentes.py` (con `HACIENDA_BOE_PAGINAS` apunta a las páginas completas).
 
 Supuestos y límites:

@@ -1,4 +1,4 @@
-"""Paperwork operations of the documents capability, used by long-running tasks (``hacienda_gpt/tareas``).
+"""Paperwork operations of the documents capability, used by long-running tasks (``asistente/nucleo/tareas``).
 
 Moved here from ``tareas/capacidades.py``: a checklist of what to have at hand for a procedure (for passports and
 ID cards from the expiry module's data, with its BOE references; for the income tax return an orientative list
@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, ResultadoCapacidad
+from asistente.capacidades.contrato import ContextoPeticion, ResultadoCapacidad
 
 ORIGENES_LISTA = ("caducidades:pasaporte", "caducidades:dni", "renta")
 MODELOS_BORRADOR = ("solicitud_cambio_comercializadora",)
@@ -70,7 +70,7 @@ SALIDA_VACIA: dict[str, Any] = {"type": "object"}
 def lista_de_comprobacion(args: Mapping[str, Any], ctx: ContextoPeticion) -> ResultadoCapacidad:
     origen = str(args["origen"])
     if origen.startswith("caducidades:"):
-        from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
+        from asistente.ambitos.caducidades.reglas import cargar_reglas
 
         regla = getattr(cargar_reglas(), origen.split(":", 1)[1])
         tramite = regla.tramite

@@ -1,6 +1,6 @@
 """Provider-neutral contract for the tool-using agent.
 
-The agent loop (:mod:`hacienda_gpt.agent.agent`) never talks to an SDK. It
+The agent loop (:mod:`asistente.nucleo.agent.agent`) never talks to an SDK. It
 drives a :class:`Conversation` obtained from an :class:`LLMProvider`, so the
 same loop runs on Claude (default), OpenAI, or any local model served behind an
 OpenAI-compatible endpoint (Ollama, LM Studio, ``mlx_lm.server``, vLLM…).

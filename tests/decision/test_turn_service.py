@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.fact_extractor import RegexFactExtractor
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.decision.turn_service import process_turn, resolve_tax_period
+from asistente.nucleo.decision.fact_extractor import RegexFactExtractor
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.decision.turn_service import process_turn, resolve_tax_period
 
 
 def _fresh_case() -> CaseState:

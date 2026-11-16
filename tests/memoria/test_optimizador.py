@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import date
 import json
 
-from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
-from hacienda_gpt.memoria.servicio import borrar, registrar
-from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
-from hacienda_gpt.tax.optimizador import optimizar_desde_hechos
+from asistente.ambitos.fiscal.calculo.optimizador import optimizar_desde_hechos
+from asistente.nucleo.memoria.optimizador import optimizar_con_memoria
+from asistente.nucleo.memoria.servicio import borrar, registrar
+from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
 from tests.proactive import SALARIED, make_case
 from .conftest import HOY, guardar
 

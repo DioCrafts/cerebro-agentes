@@ -1,6 +1,6 @@
 """The browser scripts in the format watch, and what is kept when a page changed.
 
-* Every script is a format-watch source ``nav_<clave>`` (:mod:`hacienda_gpt.ops.formatos`). Each run that got
+* Every script is a format-watch source ``nav_<clave>`` (:mod:`asistente.conocimiento.formatos`). Each run that got
   past the user's login is observed: a step whose element is missing or does not match is a grave failure, a
   step that only worked with a repaired selector a minor one. ``ops formatos status`` / ``ops doctor`` then
   say «formato nav_datadis_consumo: ROTA…» like for any other parser. No sample of the page is stored by the
@@ -28,9 +28,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.navegador.ejecutor import FALLOS_DE_FORMATO, ResultadoEjecucion
-from hacienda_gpt.capacidades.navegador.guion import (
+from asistente.capacidades.navegador.ejecutor import FALLOS_DE_FORMATO, ResultadoEjecucion
+from asistente.capacidades.navegador.guion import (
     PREFIJO_FUENTE,
     Guion,
     SpecGuion,
@@ -40,8 +39,9 @@ from hacienda_gpt.capacidades.navegador.guion import (
     guion_incorporado,
     ruta_reparada,
 )
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos import Ensayo, Fallo, Fuente, Lectura, Propuesta
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos import Ensayo, Fallo, Fuente, Lectura, Propuesta
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -134,7 +134,7 @@ def registrar_fuentes() -> None:
                 guarda_muestras=False,
                 ensayo=ensayo,
                 auto_aplicable=False,
-                codigo=f"hacienda_gpt/capacidades/navegador/guiones/{clave}.json",
+                codigo=f"asistente/capacidades/navegador/guiones/{clave}.json",
             )
         )
 

@@ -21,16 +21,16 @@ import logging
 import os
 from typing import Any
 
-from hacienda_gpt.capacidades.correo import almacen, clasificador_llm, decisiones, oauth, propuestas
-from hacienda_gpt.capacidades.correo.almacen import CampoGuardado, Elemento
-from hacienda_gpt.capacidades.correo.clasificacion import Clasificacion, clasificar
-from hacienda_gpt.capacidades.correo.config import VENTANA_DIAS_MAX, configuracion
-from hacienda_gpt.capacidades.correo.dominios import Remitentes
-from hacienda_gpt.capacidades.correo.dominios import cargar as cargar_remitentes
-from hacienda_gpt.capacidades.correo.extraccion import enmascarar
-from hacienda_gpt.capacidades.correo.gmail import ClienteGmail, HistorialCaducadoError
-from hacienda_gpt.capacidades.correo.http import CorreoError, Transporte, transporte
-from hacienda_gpt.capacidades.correo.mime import Mensaje, leer_mensaje
+from asistente.capacidades.correo import almacen, clasificador_llm, decisiones, oauth, propuestas
+from asistente.capacidades.correo.almacen import CampoGuardado, Elemento
+from asistente.capacidades.correo.clasificacion import Clasificacion, clasificar
+from asistente.capacidades.correo.config import VENTANA_DIAS_MAX, configuracion
+from asistente.capacidades.correo.dominios import Remitentes
+from asistente.capacidades.correo.dominios import cargar as cargar_remitentes
+from asistente.capacidades.correo.extraccion import enmascarar
+from asistente.capacidades.correo.gmail import ClienteGmail, HistorialCaducadoError
+from asistente.capacidades.correo.http import CorreoError, Transporte, transporte
+from asistente.capacidades.correo.mime import Mensaje, leer_mensaje
 
 logger = logging.getLogger(__name__)
 
@@ -228,7 +228,7 @@ def _sincronizar(
 def _emitir(db_path: str, case_id: str, resultado: ResultadoSincronizacion, history: str | None) -> None:
     """Wake the subscribed modules (ids and counts only; never a subject or an address)."""
     try:
-        from hacienda_gpt.eventos import emitir
+        from asistente.nucleo.eventos import emitir
 
         emitir(
             db_path,

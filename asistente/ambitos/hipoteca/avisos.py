@@ -16,8 +16,7 @@ from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 import os
 
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
-from hacienda_gpt.modulos.hipoteca.calculo import (
+from asistente.ambitos.hipoteca.calculo import (
     cuota_francesa,
     fechas_revision,
     fmt,
@@ -25,10 +24,11 @@ from hacienda_gpt.modulos.hipoteca.calculo import (
     sumar_meses,
     tipo_revisado,
 )
-from hacienda_gpt.modulos.hipoteca.comisiones import comision_maxima
-from hacienda_gpt.modulos.hipoteca.herramientas import DatosHipotecaError, _Entorno, estimar_revision
-from hacienda_gpt.modulos.hipoteca.indices import SerieIndices
-from hacienda_gpt.modulos.hipoteca.normativa import Normativa
+from asistente.ambitos.hipoteca.comisiones import comision_maxima
+from asistente.ambitos.hipoteca.herramientas import DatosHipotecaError, _Entorno, estimar_revision
+from asistente.ambitos.hipoteca.indices import SerieIndices
+from asistente.ambitos.hipoteca.normativa import Normativa
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
 
 DIAS_AVISO_REVISION = 45
 UMBRAL_EUR = Decimal(20)

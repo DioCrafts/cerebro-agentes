@@ -1,4 +1,4 @@
-// Client for the mail module (hacienda_gpt/api/routers/correo.py): Gmail in read-only mode.
+// Client for the mail module (asistente/plataforma/api/routers/correo.py): Gmail in read-only mode.
 //
 // The Google consent screen is reached with a full-page navigation to the URL the API returns; Google
 // sends the browser back to the API, which stores the (encrypted) permission and redirects here with

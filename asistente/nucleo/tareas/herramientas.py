@@ -4,7 +4,7 @@ Offered only with a case (like the decision memory's tools). The agent may PROPO
 commits the user is checked deterministically against the conversation, like ``aceptar_propuesta``:
 
 * ``crear_tarea`` stores a PROPOSAL (nothing runs). ``objetivo`` must be the user's own words. A custom plan
-  goes through the gate (:mod:`~hacienda_gpt.tareas.validacion`); its errors go back to the model to fix.
+  goes through the gate (:mod:`~asistente.nucleo.tareas.validacion`); its errors go back to the model to fix.
 * ``avanzar_tarea`` accepts a proposal only when the assistant's previous message showed the task (its title
   or its reference) and ``cita_del_usuario`` is the user's literal words in the CURRENT message, with a «sí»
   and no negation. On a task in progress it just advances it (nothing to confirm).
@@ -25,18 +25,18 @@ from datetime import date
 import json
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.agent.tools import ExtraTool, ToolOutcome
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.memoria.modelo import normalizar_texto
-from hacienda_gpt.modulos.propuestas_chat import AFIRMACIONES, NEGACIONES
-from hacienda_gpt.tareas import servicio
-from hacienda_gpt.tareas.modelo import TIPOS_PASO, Tarea
-from hacienda_gpt.tareas.motor import Motor
-from hacienda_gpt.tareas.plantillas import catalogo
-from hacienda_gpt.tareas.prompt import TAREAS_ADDENDUM
-from hacienda_gpt.tareas.validacion import PlanInvalidoError
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.agent.tools import ExtraTool, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.memoria.modelo import normalizar_texto
+from asistente.nucleo.modulos.propuestas_chat import AFIRMACIONES, NEGACIONES
+from asistente.nucleo.tareas import servicio
+from asistente.nucleo.tareas.modelo import TIPOS_PASO, Tarea
+from asistente.nucleo.tareas.motor import Motor
+from asistente.nucleo.tareas.plantillas import catalogo
+from asistente.nucleo.tareas.prompt import TAREAS_ADDENDUM
+from asistente.nucleo.tareas.validacion import PlanInvalidoError
+from asistente.plataforma import settings
 
 MIN_CITA = 2
 # Besides the general «yes» words: a step the user says is done.
@@ -344,8 +344,8 @@ class TareasAgente:
 
     def _decision_previa(self, tarea: Tarea) -> str:
         """A «no» of the user to this kind of task still in force (it is still created: the user asked now)."""
-        from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, fecha_es
-        from hacienda_gpt.memoria.servicio import decisiones_del_caso
+        from asistente.nucleo.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, fecha_es
+        from asistente.nucleo.memoria.servicio import decisiones_del_caso
 
         if not tarea.ambito_decision:
             return ""
@@ -501,7 +501,7 @@ def _tiene_tareas(case_id: str) -> bool:
     """Read-only: whether the case has any task (never creates the tables)."""
     import sqlite3
 
-    from hacienda_gpt.tareas.almacen import tabla_existe
+    from asistente.nucleo.tareas.almacen import tabla_existe
 
     ruta = settings.DECISION_STATE_DB_PATH
     if not tabla_existe(ruta):

@@ -5,7 +5,7 @@ Every :class:`FuenteModulo` whose identifier (or URL) names a BOE document joins
 * ``boe-novedades`` treats it as a watched law (a new provision that amends it is detected);
 * ``params-check`` asks the BOE when the consolidated text was last updated and lists the module's law for
   re-reading when that date is later than the module's reading. The reading date is the one the module's legal
-  data file records (``fuentes_principales[*].consultado_el``, declared to :mod:`hacienda_gpt.conocimiento`), the
+  data file records (``fuentes_principales[*].consultado_el``, declared to :mod:`asistente.conocimiento`), the
   same field the tax files use: ``params-verify``/``params-autopilot`` move it when every group quoting the law
   still matches, and the weekly pull request of readings carries it, so nothing depends on state kept between
   runs. Only a source no data file records (a module outside the shared library) falls back to the first date
@@ -27,9 +27,9 @@ from pathlib import Path
 import re
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.modulos.ganchos import fuentes_vigiladas_aparte
-from hacienda_gpt.modulos.registro import Registro, registro
+from asistente.nucleo.modulos.ganchos import fuentes_vigiladas_aparte
+from asistente.nucleo.modulos.registro import Registro, registro
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ def lecturas_en_datos() -> dict[tuple[str, str], date]:
     """(module, BOE id) -> the earliest reading of the law's CURRENT text recorded in that module's legal data files
     (a source pinned to a version or to the daily BOE only counts when nothing else names the law)."""
     try:
-        from hacienda_gpt.conocimiento import lecturas_de_modulos
+        from asistente.conocimiento import lecturas_de_modulos
 
         lecturas = lecturas_de_modulos()
     except Exception:  # a broken declaration must not hide the BOE watch: the baselines still work

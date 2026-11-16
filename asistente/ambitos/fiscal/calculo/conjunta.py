@@ -19,15 +19,15 @@ from typing import Any, NamedTuple
 
 from pydantic import BaseModel, ConfigDict
 
-from hacienda_gpt.modulos.fiscal.calculo.irpf import (
+from asistente.ambitos.fiscal.calculo.irpf import (
     Descendiente,
     IRPFInput,
     IRPFResult,
     PrevisionSocialMiembro,
     calcular_irpf,
 )
-from hacienda_gpt.modulos.fiscal.calculo.params import IRPFParams
-from hacienda_gpt.tax.profile import DatosInvalidosError
+from asistente.ambitos.fiscal.calculo.params import IRPFParams
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
 
 # Facts of the household rather than of each spouse (counts of its children and dependants, days of the
 # year): the larger of the two figures is taken, not the sum.

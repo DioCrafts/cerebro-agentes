@@ -27,8 +27,8 @@ from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
-from hacienda_gpt.modulos.suscripciones.lectura import enmascarar_cuenta
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
+from asistente.ambitos.suscripciones.lectura import enmascarar_cuenta
+from asistente.ambitos.suscripciones.modelos import Extracto, ImportacionError, Medio, Movimiento
 
 LONGITUD = 80
 

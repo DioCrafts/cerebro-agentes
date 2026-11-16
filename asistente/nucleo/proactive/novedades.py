@@ -23,13 +23,18 @@ from xml.etree import ElementTree
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasDocumentoXml, ReglasSumario, extraer_documento_xml, extraer_sumario
-from hacienda_gpt.proactive.impacto import CRITERIOS, VOCABULARIO
-from hacienda_gpt.proactive.store import Notification, NotificationStore
-from hacienda_gpt.tax.fuentes import comunidad_de, norma_de_parametros
-from hacienda_gpt.tax.params import ejercicios_disponibles, load_params
+from asistente.ambitos.fiscal.calculo.params import ejercicios_disponibles, load_params
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_boe import (
+    ReglasDocumentoXml,
+    ReglasSumario,
+    extraer_documento_xml,
+    extraer_sumario,
+)
+from asistente.conocimiento.fuentes import comunidad_de, norma_de_parametros
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.proactive.impacto import CRITERIOS, VOCABULARIO
+from asistente.nucleo.proactive.store import Notification, NotificationStore
 
 # Sections of the BOE read in full (I: general dispositions) and by title only (III: other dispositions).
 SECCION_GENERAL = "1"

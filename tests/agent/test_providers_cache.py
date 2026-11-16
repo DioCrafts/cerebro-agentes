@@ -13,11 +13,11 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider, usage_from_response
-from hacienda_gpt.agent.providers.base import ToolSpec, Usage
-from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
-from hacienda_gpt.ops import consumo
-from hacienda_gpt.ops.consumo import ConsumoStore, calcular_coste, cargar_precios
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider, usage_from_response
+from asistente.nucleo.agent.providers.base import ToolSpec, Usage
+from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
+from asistente.plataforma.ops import consumo
+from asistente.plataforma.ops.consumo import ConsumoStore, calcular_coste, cargar_precios
 from tests.agent.fakes_http import FakeAnthropicAPI, FakeOpenAIAPI, mensaje
 
 LARGO = "Eres el asesor fiscal. " + "Instrucción estable del sistema. " * 120  # well over the cacheable minimum

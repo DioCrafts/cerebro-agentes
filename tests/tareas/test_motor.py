@@ -9,13 +9,13 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.eventos.bus import Bus
-from hacienda_gpt.eventos.tipos import PERFIL_CAMBIADO
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.tareas import servicio
-from hacienda_gpt.tareas.almacen import TareaStore
-from hacienda_gpt.tareas.capacidades import ResultadoCapacidad, capacidades_por_defecto
-from hacienda_gpt.tareas.motor import Configuracion, id_accion
+from asistente.nucleo.eventos.bus import Bus
+from asistente.nucleo.eventos.tipos import PERFIL_CAMBIADO
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.nucleo.tareas import servicio
+from asistente.nucleo.tareas.almacen import TareaStore
+from asistente.nucleo.tareas.capacidades import ResultadoCapacidad, capacidades_por_defecto
+from asistente.nucleo.tareas.motor import Configuracion, id_accion
 from .conftest import Entorno
 
 
@@ -312,9 +312,8 @@ def test_a_deleted_case_takes_its_tasks_with_it(entorno: Entorno) -> None:
 def test_the_platform_worker_runs_the_engine_as_a_service(entorno: Entorno, monkeypatch: pytest.MonkeyPatch) -> None:
     import threading
 
-    from hacienda_gpt import settings
-    from hacienda_gpt.plataforma import procesos
-    from hacienda_gpt.tareas import registrar_en_plataforma
+    from asistente.nucleo.tareas import registrar_en_plataforma
+    from asistente.plataforma import procesos, settings
 
     registro = procesos.Registro()
     registrar_en_plataforma(registro)

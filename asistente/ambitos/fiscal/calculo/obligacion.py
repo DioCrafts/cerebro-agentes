@@ -3,7 +3,7 @@
 A pure function from the calculator's input to a three-way answer — «sí», «no» or «no se puede saber» — with
 the rule of the law that decides it (literal quote and reference), the data still missing when it cannot be
 decided, and a recommendation: a taxpayer who is not obliged may still want to file to get a refund, which is
-worked out with :func:`hacienda_gpt.modulos.fiscal.calculo.irpf.calcular_irpf`.
+worked out with :func:`asistente.ambitos.fiscal.calculo.irpf.calcular_irpf`.
 
 The figures (22.000 / 15.876 / 1.500 / 1.600 / 1.000 / 500 euros) are data, read for each tax year from
 ``data/irpf_<year>.json`` (group ``obligacion_declarar``, quotes in ``evidencia_parametros.json``). The rules
@@ -34,10 +34,10 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.fiscal.calculo.params import IRPFParams, ObligacionDeclarar, load_params
+from asistente.ambitos.fiscal.calculo.params import IRPFParams, ObligacionDeclarar, load_params
 
 if TYPE_CHECKING:
-    from hacienda_gpt.modulos.fiscal.calculo.irpf import IRPFInput, IRPFResult
+    from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult
 
 ZERO = Decimal(0)
 LIRPF = "BOE-A-2006-20764"
@@ -741,7 +741,7 @@ def obligado_a_declarar(
     ``resultado``: the calculator's result for ``inp`` when the caller already has it (``calcular_irpf`` passes
     its own); otherwise it is computed, for the pension-scheme reduction, the housing deduction and the refund.
     """
-    from hacienda_gpt.modulos.fiscal.calculo.irpf import calcular_irpf
+    from asistente.ambitos.fiscal.calculo.irpf import calcular_irpf
 
     p = params or load_params(inp.ejercicio)
     o = p.obligacion_declarar

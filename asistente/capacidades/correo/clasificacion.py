@@ -16,18 +16,18 @@ from datetime import date, timedelta
 import re
 import unicodedata
 
-from hacienda_gpt.capacidades.correo import extraccion
-from hacienda_gpt.capacidades.correo.dominios import (
+from asistente.capacidades.correo import extraccion
+from asistente.capacidades.correo.dominios import (
     Marca,
     Remitentes,
     es_correo_gratuito,
     marca_nombrada,
     marca_oficial_de,
 )
-from hacienda_gpt.capacidades.correo.extraccion import Extraido
-from hacienda_gpt.capacidades.correo.mime import Mensaje
-from hacienda_gpt.capacidades.correo.normativa import cargar as cargar_normativa
-from hacienda_gpt.capacidades.correo.seguridad import UMBRAL_SOSPECHA, Senal, autenticacion, puntuacion, senales
+from asistente.capacidades.correo.extraccion import Extraido
+from asistente.capacidades.correo.mime import Mensaje
+from asistente.capacidades.correo.normativa import cargar as cargar_normativa
+from asistente.capacidades.correo.seguridad import UMBRAL_SOSPECHA, Senal, autenticacion, puntuacion, senales
 
 CATEGORIAS: tuple[str, ...] = (
     "administracion",

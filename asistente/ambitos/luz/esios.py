@@ -31,7 +31,7 @@ from typing import Any
 import urllib.parse
 import urllib.request
 
-from hacienda_gpt.modulos.luz.periodos import Zona, zona_horaria
+from asistente.ambitos.luz.periodos import Zona, zona_horaria
 
 URL = "https://api.esios.ree.es/indicators/1001"
 INDICADOR = 1001

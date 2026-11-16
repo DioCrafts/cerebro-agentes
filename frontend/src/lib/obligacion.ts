@@ -1,5 +1,5 @@
 // The answer to «¿estoy obligado a declarar?» as /simulate returns it inside each IRPF result
-// (hacienda_gpt/tax/obligacion.py, ResultadoObligacion), and the facts the simulator asks for it.
+// (asistente/ambitos/fiscal/calculo/obligacion.py, ResultadoObligacion), and the facts the simulator asks for it.
 
 export interface ReglaObligacion {
   referencia: string;

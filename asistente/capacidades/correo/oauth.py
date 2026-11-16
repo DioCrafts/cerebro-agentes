@@ -24,9 +24,9 @@ import threading
 from typing import Any
 from urllib.parse import urlencode
 
-from hacienda_gpt.capacidades.correo import almacen, cifrado
-from hacienda_gpt.capacidades.correo.config import SCOPE_LECTURA, SCOPES_FASE_1, Configuracion, configuracion
-from hacienda_gpt.capacidades.correo.http import CorreoError, Transporte, transporte
+from asistente.capacidades.correo import almacen, cifrado
+from asistente.capacidades.correo.config import SCOPE_LECTURA, SCOPES_FASE_1, Configuracion, configuracion
+from asistente.capacidades.correo.http import CorreoError, Transporte, transporte
 
 logger = logging.getLogger(__name__)
 

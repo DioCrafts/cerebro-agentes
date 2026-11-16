@@ -3,16 +3,16 @@
 How an event flows (at-least-once, every step idempotent):
 
 1. **Outbox.** A producer writes the event into ``eventos`` — for a profile change, in the SAME transaction
-   that saves the case (see :mod:`hacienda_gpt.eventos.productores`), so the change and its event commit or
+   that saves the case (see :mod:`asistente.nucleo.eventos.productores`), so the change and its event commit or
    roll back together. Producers that can re-run pass a ``clave`` and a re-run writes nothing.
 2. **Consumers.** Each consumer keeps a cursor (the last event id it has fully handled). The built-in one,
    :class:`RepartoAModulos`, turns an event into deliveries: one per (module, case) that the event concerns
-   (see :mod:`hacienda_gpt.eventos.rutas`) and whose module is on for the case's owner. The fan-out of one
+   (see :mod:`asistente.nucleo.eventos.rutas`) and whose module is on for the case's owner. The fan-out of one
    event and the cursor move are one transaction, and deliveries are unique per (event, module, case), so
    two workers, or a crash and a retry, never deliver twice. A consumer that fails on an event retries it
    with backoff and, after the last attempt, writes it as a dead letter and moves on.
 3. **Deliveries.** A worker claims a batch with a lease (``BEGIN IMMEDIATE``: one claimer at a time), runs
-   the module (:func:`hacienda_gpt.eventos.manejadores.despertar_modulo`) outside any transaction, and marks
+   the module (:func:`asistente.nucleo.eventos.manejadores.despertar_modulo`) outside any transaction, and marks
    the row done only if it still holds the lease. A failure is retried with exponential backoff; after
    ``max_intentos`` the row is ``muerto`` (dead letter) and ``ops doctor`` reports it. A worker that dies
    mid-run loses its lease and another one runs the delivery again: handlers are idempotent (notices are
@@ -21,7 +21,7 @@ How an event flows (at-least-once, every step idempotent):
    case and module and, when the date comes, emits a ``fecha.umbral`` event for that module only.
 
 No external broker: any process with the database file can produce, and ``python -m
-hacienda_gpt.cli.eventos worker`` (or the API's in-process dispatcher) consumes.
+asistente.plataforma.cli.eventos worker`` (or the API's in-process dispatcher) consumes.
 """
 
 from __future__ import annotations
@@ -39,15 +39,15 @@ import time
 from typing import Any, Protocol
 from uuid import uuid4
 
-from hacienda_gpt import settings
-from hacienda_gpt.eventos.esquema import crear_tablas, hay_tablas
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.eventos.esquema import crear_tablas, hay_tablas
+from asistente.nucleo.eventos.tipos import (
     FECHA_UMBRAL,
     GLOBALES,
     MODULO_DESACTIVADO,
     Evento,
     validar,
 )
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
@@ -146,8 +146,8 @@ class RepartoAModulos:
     nombre: str = "modulos"
 
     def procesar(self, bus: Bus, evento: Evento, conn: sqlite3.Connection) -> None:
-        from hacienda_gpt.eventos.rutas import le_afecta
-        from hacienda_gpt.modulos.registro import hechos_compartidos
+        from asistente.nucleo.eventos.rutas import le_afecta
+        from asistente.nucleo.modulos.registro import hechos_compartidos
 
         if evento.tipo == MODULO_DESACTIVADO:
             # The module is off: nothing to wake. Its timer and its pending deliveries for the case go.
@@ -180,7 +180,7 @@ def consumidores_del_trabajador() -> list[Any]:
     the tasks worker (or the API) acts on the signals whenever it runs, and two processes moving the same cursor
     queue on the bus's write transaction, so no event is read twice.
     """
-    from hacienda_gpt.tareas.motor import ConsumidorTareas
+    from asistente.nucleo.tareas.motor import ConsumidorTareas
 
     return [RepartoAModulos(), ConsumidorTareas()]
 
@@ -219,7 +219,7 @@ class Bus:
     def dia(self) -> date:
         if self.hoy is not None:
             return self.hoy()
-        from hacienda_gpt.proactive.jobs import hoy_en_espana
+        from asistente.nucleo.proactive.jobs import hoy_en_espana
 
         return hoy_en_espana()
 
@@ -248,14 +248,14 @@ class Bus:
 
     def notificaciones(self) -> Any:
         if self._notificaciones is None:
-            from hacienda_gpt.proactive.store import NotificationStore
+            from asistente.nucleo.proactive.store import NotificationStore
 
             self._notificaciones = NotificationStore(self.db_path)
         return self._notificaciones
 
     def casos(self) -> Any:
         if self._casos is None:
-            from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+            from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 
             self._casos = SQLiteCaseStateStore(self.db_path)
         return self._casos
@@ -264,10 +264,10 @@ class Bus:
         """Modules on for the owner of ``case_id`` (operator switch, defaults and the owner's choices)."""
         if self.modulos_activos is not None:
             return self.modulos_activos(case_id)
-        from hacienda_gpt.modulos.preferencias import modulos_activos_para_caso
+        from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 
         if settings.AUTH_MODE == "required" and self._auth is None:
-            from hacienda_gpt.auth.store import AuthStore
+            from asistente.plataforma.auth.store import AuthStore
 
             self._auth = AuthStore(self.db_path)
         return modulos_activos_para_caso(case_id, self._auth)
@@ -432,8 +432,8 @@ class Bus:
 
     def procesar_entrega(self, entrega: Mapping[str, Any], trabajador: str) -> str:
         """Run one claimed delivery. Returns its new state."""
-        from hacienda_gpt.decision.schemas import CaseStatus
-        from hacienda_gpt.eventos.manejadores import despertar_modulo
+        from asistente.nucleo.decision.schemas import CaseStatus
+        from asistente.nucleo.eventos.manejadores import despertar_modulo
 
         inicio = time.perf_counter()
         ahora = self.ahora
@@ -539,7 +539,7 @@ class Bus:
 
     def reconciliar(self, hoy: date | None = None) -> int:
         """Recompute every timer from the modules' cheap ``proxima_revision`` (daily safety net)."""
-        from hacienda_gpt.eventos.manejadores import proxima_revision_de
+        from asistente.nucleo.eventos.manejadores import proxima_revision_de
 
         hoy = hoy or self.dia()
         with self._lock:

@@ -1,6 +1,6 @@
 """Data model of the evaluation suite: cases, expectations, rubrics, runs and reports.
 
-A suite case is a JSON file under ``hacienda_gpt/evaluacion/casos/``. It carries:
+A suite case is a JSON file under ``asistente/nucleo/evaluacion/casos/``. It carries:
 
 * the question (and optional chat history), the household modules switched on and a pseudonymised
   snapshot of the case facts needed to reproduce it;
@@ -8,7 +8,7 @@ A suite case is a JSON file under ``hacienda_gpt/evaluacion/casos/``. It carries
   (computed by re-running a deterministic calculator on the snapshot, never written by hand nor taken
   from a model), which claims must not appear, how many citations are required, which modes are
   acceptable, whether an ``actua`` call must stay pending;
-* an optional **rubric** for an LLM judge, gated deterministically (see :mod:`hacienda_gpt.evaluacion.juez`);
+* an optional **rubric** for an LLM judge, gated deterministically (see :mod:`asistente.nucleo.evaluacion.juez`);
 * an optional **script** (``guion``) of a reference run, replayed without any model in CI to prove the case
   is satisfiable and the harness, tools and specialists work end to end.
 """
@@ -242,7 +242,7 @@ class CasoEvaluacion(_Modelo):
     pregunta: str = Field(min_length=1)
     historial: list[dict[str, str]] = Field(default_factory=list)
     # Household modules switched on besides the tax one (``prueba_actua`` is the synthetic module of
-    # :mod:`hacienda_gpt.evaluacion.modulo_prueba`).
+    # :mod:`asistente.nucleo.evaluacion.modulo_prueba`).
     modulos: list[str] = Field(default_factory=list)
     expediente: Expediente | None = None
     expectativas: list[Expectativa] = Field(default_factory=list)

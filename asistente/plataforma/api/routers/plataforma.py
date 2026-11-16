@@ -14,10 +14,10 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends
 
-from hacienda_gpt.api.security import require_operator
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.plataforma.migraciones import automaticas, migrar
-from hacienda_gpt.plataforma.procesos import salud
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma.api.security import require_operator
+from asistente.plataforma.migraciones import automaticas, migrar
+from asistente.plataforma.procesos import salud
 
 logger = logging.getLogger(__name__)
 

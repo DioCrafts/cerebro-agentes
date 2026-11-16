@@ -1,4 +1,4 @@
-"""Long-running tasks over HTTP (``hacienda_gpt.tareas``): list, propose, accept, confirm or skip a step, pause,
+"""Long-running tasks over HTTP (``asistente.nucleo.tareas``): list, propose, accept, confirm or skip a step, pause,
 resume, retry, cancel.
 
 * ``GET  /tareas/plantillas`` — the templates (id, version, title, description, parameters, step titles).
@@ -13,7 +13,7 @@ resume, retry, cancel.
 
 Same access rules as every case endpoint: API key, session when accounts are on, and ownership (somebody else's
 task reads exactly like one that does not exist: 404). Errors come back with one Spanish sentence in ``detail``.
-The engine runs here without specialist consultations (``python -m hacienda_gpt.tareas worker`` does those).
+The engine runs here without specialist consultations (``python -m asistente.nucleo.tareas worker`` does those).
 
 Built by :func:`build_router` with the case store passed in (see ``api.py``). No ``from __future__ import
 annotations``: FastAPI resolves the local aliases.
@@ -28,15 +28,15 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import LLMProvider
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access, require_session
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.tareas import servicio
-from hacienda_gpt.tareas.modelo import EN_MARCHA, EntradaHistorial, PasoSpec, Tarea
-from hacienda_gpt.tareas.motor import Motor
-from hacienda_gpt.tareas.plantillas import catalogo
-from hacienda_gpt.tareas.validacion import PlanInvalidoError
+from asistente.nucleo.agent.providers.base import LLMProvider
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.tareas import servicio
+from asistente.nucleo.tareas.modelo import EN_MARCHA, EntradaHistorial, PasoSpec, Tarea
+from asistente.nucleo.tareas.motor import Motor
+from asistente.nucleo.tareas.plantillas import catalogo
+from asistente.nucleo.tareas.validacion import PlanInvalidoError
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_session
 
 logger = logging.getLogger(__name__)
 
@@ -94,7 +94,7 @@ class Cancelacion(_Modelo):
 
 def proveedor_planificador() -> LLMProvider:
     """The model that proposes custom plans (tests override this dependency)."""
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.providers import create_provider
 
     try:
         return create_provider()
@@ -209,7 +209,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         access: access_dep,
         provider: Annotated[LLMProvider, Depends(proveedor_planificador)],
     ) -> TareaDetalle:
-        from hacienda_gpt.tareas.planificacion import proponer_con_modelo
+        from asistente.nucleo.tareas.planificacion import proponer_con_modelo
 
         _caso(payload.case_id, cases, access)
         with _motor(cases, access) as motor:

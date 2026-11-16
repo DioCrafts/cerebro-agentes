@@ -20,7 +20,7 @@ import sys
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.fiscal.calculo.params import DATA_DIR, EjercicioNoDisponibleError, Fuente, FuentePrincipal
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, EjercicioNoDisponibleError, Fuente, FuentePrincipal
 
 
 class _Model(BaseModel):
@@ -297,11 +297,11 @@ def textos_de_directorio(directorio: Path) -> dict[str, str]:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.modulos.fiscal.calculo.autonomos_params <ejercicio> <dir with the BOE pages>``."""
+    """``python -m asistente.ambitos.fiscal.calculo.autonomos_params <ejercicio> <dir with the BOE pages>``."""
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 2:
         print(
-            "uso: python -m hacienda_gpt.modulos.fiscal.calculo.autonomos_params <ejercicio> <directorio con BOE-A-*.html>"
+            "uso: python -m asistente.ambitos.fiscal.calculo.autonomos_params <ejercicio> <directorio con BOE-A-*.html>"
         )
         return 2
     problemas = comprobar_evidencias(load_autonomos_params(int(args[0])), textos_de_directorio(Path(args[1])))

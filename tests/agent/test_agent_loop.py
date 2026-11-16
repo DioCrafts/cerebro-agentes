@@ -1,6 +1,6 @@
-from hacienda_gpt.agent.agent import ABSTAIN_MESSAGE, AgentMode, TaxAgent
-from hacienda_gpt.agent.providers.base import ModelTurn, ProviderError
-from hacienda_gpt.decision.schemas import CaseState
+from asistente.nucleo.agent.agent import ABSTAIN_MESSAGE, AgentMode, TaxAgent
+from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError
+from asistente.nucleo.decision.schemas import CaseState
 from .fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 
 QUESTION = "¿Qué plazo tengo para reinvertir tras vender mi vivienda habitual?"

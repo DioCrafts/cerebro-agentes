@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
-from hacienda_gpt.memoria.modelo import ambito_valido
+from asistente.nucleo.memoria.modelo import ambito_valido
 
 # Known ámbitos, with a Spanish label for the user (and the agent tool's description). Narrower ones
 # («…:conyuge», «…:<oferta>») are accepted too; a whole module («luz») covers all its proposals.

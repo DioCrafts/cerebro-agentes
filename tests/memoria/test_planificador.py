@@ -7,13 +7,13 @@ from datetime import date
 
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.memoria.planificador import ajuste_para_planificador, aplicar_a_la_entrada, planificar_con_memoria
-from hacienda_gpt.memoria.servicio import decisiones_del_caso, registrar
-from hacienda_gpt.planificador import agente
-from hacienda_gpt.planificador.modelos import EntradaPlan
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.memoria.planificador import ajuste_para_planificador, aplicar_a_la_entrada, planificar_con_memoria
+from asistente.nucleo.memoria.servicio import decisiones_del_caso, registrar
+from asistente.nucleo.planificador import agente
+from asistente.nucleo.planificador.modelos import EntradaPlan
 from tests.auth.conftest import Env
 from tests.planificador.test_agente import ESPECIALISTA, _case, _NoSearch
 from tests.planificador.test_api import PETICION, _caso_con_hipoteca

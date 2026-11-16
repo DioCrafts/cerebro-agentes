@@ -20,12 +20,23 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import auth_required, bearer_token, get_auth_store, require_user
-from hacienda_gpt.auth.passwords import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PasswordPolicyError
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import (
+from asistente.capacidades.correo import almacen as correo_almacen
+from asistente.capacidades.correo import oauth as correo_oauth
+from asistente.capacidades.investigacion import capacidad as investigacion_capacidad
+from asistente.capacidades.navegador import tareas as tareas_navegador
+from asistente.capacidades.navegador import vigilancia
+from asistente.capacidades.navegador.persistencia import exportar as exportar_navegador
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.memoria.almacen import exportar_decisiones
+from asistente.nucleo.modulos.acciones import AccionStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.nucleo.tareas.almacen import exportar_tareas
+from asistente.plataforma import settings
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import auth_required, bearer_token, get_auth_store, require_user
+from asistente.plataforma.auth.passwords import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PasswordPolicyError
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import (
     CONSENT_TEXT_VERSION,
     CONSENT_TYPES,
     AuthStore,
@@ -35,19 +46,8 @@ from hacienda_gpt.auth.store import (
     InvalidEmailError,
     User,
 )
-from hacienda_gpt.capacidades.investigacion import capacidad as investigacion_capacidad
-from hacienda_gpt.capacidades.navegador.persistencia import exportar as exportar_navegador
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.memoria.almacen import exportar_decisiones
-from hacienda_gpt.modulos.acciones import AccionStore
-from hacienda_gpt.modulos.correo import almacen as correo_almacen
-from hacienda_gpt.modulos.correo import oauth as correo_oauth
-from hacienda_gpt.navegador import tareas as tareas_navegador
-from hacienda_gpt.navegador import vigilancia
-from hacienda_gpt.ops.consumo import anonimizar_consumo
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.push.almacen import PushStore
-from hacienda_gpt.tareas.almacen import exportar_tareas
+from asistente.plataforma.ops.consumo import anonimizar_consumo
+from asistente.plataforma.push.almacen import PushStore
 
 _limiter_lock = threading.Lock()
 _limiters: dict[tuple[int, int], LoginRateLimiter] = {}
@@ -332,11 +332,11 @@ def build_router(
                     "notifications": [n.model_dump(mode="json") for n in notifications.list(case_id)],
                     "notification_deliveries": notifications.deliveries_for_case(case_id),
                     "pending_actions": acciones.exportar(case_id) if acciones is not None else [],
-                    # What the user decided or prefers (hacienda_gpt/memoria), with its redacted history.
+                    # What the user decided or prefers (asistente/nucleo/memoria), with its redacted history.
                     "decisiones": exportar_decisiones(cases.db_path, case_id),
                     # The Gmail module: connection (without the token), derived items, proposals, pinned contacts.
                     "correo": correo_almacen.exportar(case_id, cases.db_path),
-                    # Long-running tasks (hacienda_gpt/tareas), each with its history.
+                    # Long-running tasks (asistente/nucleo/tareas), each with its history.
                     "tareas": exportar_tareas(cases.db_path, case_id),
                     # Browser tasks (capacidades/navegador): state, steps and the parameters of a prepared one.
                     "navegador": exportar_navegador(cases.db_path, case_id),
@@ -351,7 +351,7 @@ def build_router(
             "consents": [c.model_dump(mode="json") for c in store.consent_history(user.id)],
             "module_choices": [c.model_dump(mode="json") for c in store.module_choice_history(user.id)],
             "cases": exported_cases,
-            # Devices registered for push notices and the consent history (hacienda_gpt/push).
+            # Devices registered for push notices and the consent history (asistente/plataforma/push).
             "push": PushStore(cases.db_path).exportar(user.id),
             # Research with sources (capacidades/investigacion): web consent history and cached reports.
             "investigacion": investigacion_capacidad.exportar_usuario(user.id),

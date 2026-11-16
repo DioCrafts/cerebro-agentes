@@ -23,7 +23,7 @@ del art. 9 RGPD.
 
 ## Dos modos de funcionamiento
 
-`AUTH_MODE` (variable de entorno, ver `hacienda_gpt/settings.py`):
+`AUTH_MODE` (variable de entorno, ver `asistente/plataforma/settings.py`):
 
 | Valor | Comportamiento |
 |---|---|
@@ -62,8 +62,8 @@ tener que repetirlo en cada consulta:
 
 | Hecho | Contenido | Para qué |
 |---|---|---|
-| `datos_conyuge` | Cifras propias del cónyuge: salario, cotizaciones, retenciones, rendimientos, ganancias, aportaciones a planes de pensiones, donativos, **edad, grado de discapacidad y si necesita ayuda de terceros** (lista cerrada en `DatosConyuge`, `hacienda_gpt/tax/profile.py`). | Comparar la declaración conjunta con las individuales. Se usan solo si el expediente dice que el usuario está casado (o si una consulta trae cifras del cónyuge). |
-| `preferencias_optimizacion` | Lo que el usuario puede y quiere hacer antes del 31 de diciembre: dinero disponible para planes de pensiones (suyo y del cónyuge), si acepta inmovilizarlo, donativo previsto y presupuesto, donativo del año anterior a la misma entidad, inversiones con pérdidas o ganancias latentes (importe, descripción libre de hasta 200 caracteres, tipo, titular) y cómo pensaba declarar la pareja (lista cerrada en `PreferenciasOptimizacion`, `hacienda_gpt/tax/optimizador.py`). | Que el optimizador, el asesor y el plan de fin de año respeten esos límites en vez de suponer los máximos legales. |
+| `datos_conyuge` | Cifras propias del cónyuge: salario, cotizaciones, retenciones, rendimientos, ganancias, aportaciones a planes de pensiones, donativos, **edad, grado de discapacidad y si necesita ayuda de terceros** (lista cerrada en `DatosConyuge`, `asistente/ambitos/fiscal/profile.py`). | Comparar la declaración conjunta con las individuales. Se usan solo si el expediente dice que el usuario está casado (o si una consulta trae cifras del cónyuge). |
+| `preferencias_optimizacion` | Lo que el usuario puede y quiere hacer antes del 31 de diciembre: dinero disponible para planes de pensiones (suyo y del cónyuge), si acepta inmovilizarlo, donativo previsto y presupuesto, donativo del año anterior a la misma entidad, inversiones con pérdidas o ganancias latentes (importe, descripción libre de hasta 200 caracteres, tipo, titular) y cómo pensaba declarar la pareja (lista cerrada en `PreferenciasOptimizacion`, `asistente/ambitos/fiscal/calculo/optimizador.py`). | Que el optimizador, el asesor y el plan de fin de año respeten esos límites en vez de suponer los máximos legales. |
 
 Son **datos de un tercero** (el cónyuge, que no ha aceptado nada) y, si se indica su
 discapacidad, **datos de salud** del art. 9 RGPD; el operador debe contemplarlos (puntos 1 y 11
@@ -85,7 +85,7 @@ Además:
 - **Documentos subidos** (nóminas, certificados…): se procesan en memoria y **no se almacenan**. En
   el rastro de auditoría queda el nombre del fichero, el tipo de documento detectado y los nombres
   (no los valores) de los datos propuestos.
-- **Vigilancia del lector de documentos** (`hacienda_gpt/ops/formatos_documentos.py`): por cada
+- **Vigilancia del lector de documentos** (`asistente/conocimiento/formatos_documentos.py`): por cada
   documento analizado se anota, en `FORMAT_STATE_PATH` y sin vínculo con el expediente ni con el
   usuario, el tipo de documento detectado, cuántos datos se propusieron y los nombres (no los
   valores) de los descartados. Sirve para detectar que un tipo de documento ha dejado de leerse
@@ -99,7 +99,7 @@ Además:
   modelo cuando se diagnostica el lector (`ops formatos diagnose`). No está ligado a una cuenta,
   así que **no se borra al eliminar la cuenta** ni figura en la exportación: quien active la
   opción debe valorar si ese residuo es admisible en su despliegue.
-- **Vigilancia del lector de sentencias del CENDOJ** (`hacienda_gpt/ops/formatos_esqueleto.py`): las
+- **Vigilancia del lector de sentencias del CENDOJ** (`asistente/conocimiento/formatos_esqueleto.py`): las
   sentencias no son datos de los usuarios, pero las condiciones de reutilización del CENDOJ prohíben
   la descarga masiva y la creación de bases de datos de resoluciones sin autorización del CGPJ. La
   vigilancia de formatos no hace ninguna petición al CENDOJ y **no guarda el texto de ninguna
@@ -187,7 +187,7 @@ suscripciones, hipoteca…), cada uno en un **módulo**. Lo que cambia para la p
 
 ### Agente con navegador
 
-El módulo «Agente con navegador» (`hacienda_gpt/navegador/`) maneja un navegador en webs oficiales en nombre del
+El módulo «Agente con navegador» (`asistente/capacidades/navegador/`) maneja un navegador en webs oficiales en nombre del
 usuario (descargar su consumo de Datadis, preparar un trámite sin presentarlo). Lo que trata y cómo:
 
 - **Interruptor y consentimiento.** No funciona si el operador no pone `NAVEGADOR_ACTIVO=true`. Con cuentas, el
@@ -220,7 +220,7 @@ usuario (descargar su consumo de Datadis, preparar un trámite sin presentarlo).
 
 ### Correo (Gmail, solo lectura)
 
-El módulo `correo` (`hacienda_gpt/modulos/correo/`, detalle en [`docs/modulos/correo.md`](modulos/correo.md)) lee el
+El módulo `correo` (`asistente/capacidades/correo/`, detalle en [`docs/modulos/correo.md`](modulos/correo.md)) lee el
 Gmail del usuario **solo si él lo conecta** («Conectar Gmail») y con un único permiso de Google,
 `gmail.readonly`: no puede enviar, borrar, mover ni marcar nada.
 
@@ -264,7 +264,7 @@ Gmail del usuario **solo si él lo conecta** («Conectar Gmail») y con un únic
 
 El asistente guarda lo que el usuario **decide** sobre lo que se le propone (no quiere planes de pensiones
 porque necesita liquidez, rechazó cambiar de tarifa por la permanencia, prefiere la declaración conjunta, ya
-presentó un modelo), para no volver a proponérselo (`hacienda_gpt/memoria/`).
+presentó un modelo), para no volver a proponérselo (`asistente/nucleo/memoria/`).
 
 - **Qué se guarda y dónde.** Tabla `decisiones` del mismo fichero SQLite que los expedientes, una fila por
   decisión: sobre qué (módulo y palanca), qué decidió, **sus palabras** (pueden contener datos personales,
@@ -317,13 +317,13 @@ Solo existen si el operador configura `PUSH_VAPID_*` y solo para quien los activ
 - **Sin cuentas** (`AUTH_MODE=off`) todos los avisos son del operador, como en los demás canales: los
   reciben los dispositivos que el operador active.
 - **A dónde puede llamar el servidor.** Solo a los servicios de *push* conocidos (lista en
-  `hacienda_gpt/push/envio.py`, ampliable con `PUSH_HOSTS_PERMITIDOS`), por HTTPS y sin seguir
+  `asistente/plataforma/push/envio.py`, ampliable con `PUSH_HOSTS_PERMITIDOS`), por HTTPS y sin seguir
   redirecciones: una suscripción no puede hacer que el servidor llame a otra máquina.
 - **Acceso y borrado.** `GET /push/suscripciones` devuelve los dispositivos (solo el servicio, sin la URL ni
   las claves) y el historial del consentimiento. Al eliminar la cuenta (`DELETE /me`), unos disparadores de
   SQLite borran sus suscripciones y consentimientos de *push* en la misma operación que la cuenta. Lo
   comprueba `tests/push/test_api.py`. **Pendiente**: `GET /me/export` aún no incluye estos datos (hay que
-  añadirlos en `hacienda_gpt/api/routers/auth.py`; ver el informe del cambio).
+  añadirlos en `asistente/plataforma/api/routers/auth.py`; ver el informe del cambio).
 - **La app instalada y la caché del navegador.** El *service worker* (`frontend/pwa/sw.js`) guarda solo los
   ficheros de la aplicación; **nunca** respuestas de la API, que van siempre a la red y llegan con
   `Cache-Control: no-store`. Las conversaciones siguen donde estaban: en el almacenamiento del navegador
@@ -339,7 +339,7 @@ Se registran como hechos fechados (tipo, concedido o retirado, instante, versió
 | `envio_documentos_a_proveedor_llm` | Enviar documentos al proveedor del modelo | Sin él, subir documentos devuelve 403. Se puede dar y retirar en cualquier momento. |
 | `avisos_por_correo` | Recibir avisos por correo | Con `AUTH_MODE=required` decide qué avisos entrega `ops deliver`, pero al destino único del operador; ver «Otros destinatarios». |
 
-La versión del texto mostrado es `CONSENT_TEXT_VERSION` (`hacienda_gpt/auth/store.py`). Hay que
+La versión del texto mostrado es `CONSENT_TEXT_VERSION` (`asistente/plataforma/auth/store.py`). Hay que
 cambiarla cada vez que cambie la redacción que ve el usuario (`frontend/src/components/AuthScreen.tsx`
 y `PrivacyPanel.tsx`).
 
@@ -446,7 +446,7 @@ Lo que **no** alcanza ese borrado:
   sin `--proxy-headers`, deja de ser fiable: hace falta un limitador en el proxy.
 - **Los accesos que no pasan por la API no tienen control de acceso**: las tareas proactivas y los
   CLI leen todos los expedientes (es necesario para que funcionen sin sesión), y la interfaz
-  Streamlit (`hacienda_gpt/ui`) abre la base de datos directamente. Con `AUTH_MODE=required` no
+  Streamlit (`asistente/plataforma/ui`) abre la base de datos directamente. Con `AUTH_MODE=required` no
   debe exponerse Streamlit a usuarios; con `UI_USE_API=true` tampoco funciona, porque no inicia sesión.
 - Quien tenga acceso al fichero SQLite o a sus copias lo lee todo.
 - Este diseño no ha pasado una auditoría de seguridad externa ni una prueba de intrusión (la revisión
@@ -488,7 +488,7 @@ Nada de esto lo resuelve el código. Sin ello, el despliegue no debería recibir
    - Permisos del fichero SQLite, quién puede ejecutar los CLI y las tareas proactivas, y no
      exponer la interfaz Streamlit.
    - `AUTH_MODE=required`, `HACIENDA_API_KEY` si procede, `API_RATE_LIMIT_PER_MIN` y un limitador
-     en el proxy; orígenes CORS acordes con el dominio real (`_ALLOWED_ORIGINS` en `hacienda_gpt/api/api.py`).
+     en el proxy; orígenes CORS acordes con el dominio real (`_ALLOWED_ORIGINS` en `asistente/plataforma/api/api.py`).
    - Cabeceras de seguridad en el proxy (como mínimo una política de contenido que limite los
      scripts), porque el token de sesión está al alcance del JavaScript de la página.
 9. **Plazos de conservación** y su aplicación (cuentas inactivas, expedientes sin dueño heredados
@@ -502,11 +502,11 @@ Nada de esto lo resuelve el código. Sin ello, el despliegue no debería recibir
 
 | Qué | Dónde |
 |---|---|
-| Usuarios, sesiones, consentimientos, propiedad | `hacienda_gpt/auth/store.py` |
-| Contraseñas (scrypt) | `hacienda_gpt/auth/passwords.py` |
-| Límite de intentos | `hacienda_gpt/auth/ratelimit.py` |
-| Comprobación de sesión, propiedad y consentimiento | `hacienda_gpt/auth/deps.py` |
-| Endpoints de cuenta, exportación y borrado | `hacienda_gpt/api/routers/auth.py` |
+| Usuarios, sesiones, consentimientos, propiedad | `asistente/plataforma/auth/store.py` |
+| Contraseñas (scrypt) | `asistente/plataforma/auth/passwords.py` |
+| Límite de intentos | `asistente/plataforma/auth/ratelimit.py` |
+| Comprobación de sesión, propiedad y consentimiento | `asistente/plataforma/auth/deps.py` |
+| Endpoints de cuenta, exportación y borrado | `asistente/plataforma/api/routers/auth.py` |
 | Pruebas | `tests/auth/` |
-| Decisiones y preferencias recordadas (tabla, exportación, borrado) | `hacienda_gpt/memoria/`, `hacienda_gpt/api/routers/memoria.py`, `tests/memoria/` |
+| Decisiones y preferencias recordadas (tabla, exportación, borrado) | `asistente/nucleo/memoria/`, `asistente/plataforma/api/routers/memoria.py`, `tests/memoria/` |
 | Pantalla de acceso y panel de privacidad | `frontend/src/components/Auth*.tsx`, `PrivacyPanel.tsx` |

@@ -18,15 +18,15 @@ from pathlib import Path
 from hipoteca_util import FIXTURES
 import pytest
 
-from hacienda_gpt.modulos.hipoteca.deduccion import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, load_params
+from asistente.ambitos.hipoteca.deduccion import (
     DEDUCCION_PATH,
     FundamentoPuente,
     cargar_fundamento,
     comprobar,
     textos_de_directorio,
 )
-from hacienda_gpt.tax.params import DATA_DIR, load_params
-from hacienda_gpt.tax.verificacion import comprobaciones, verificar
+from asistente.conocimiento.verificacion import comprobaciones, verificar
 
 EXTRACTOS = FIXTURES / "deduccion_vivienda"
 HISTORICA = "20121031"

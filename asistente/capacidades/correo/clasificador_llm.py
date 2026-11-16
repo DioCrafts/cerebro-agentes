@@ -22,12 +22,12 @@ from datetime import date
 import logging
 from typing import Any, Final
 
-from hacienda_gpt.capacidades.correo import extraccion
-from hacienda_gpt.capacidades.correo.clasificacion import CATEGORIAS, Clasificacion
-from hacienda_gpt.capacidades.correo.config import configuracion
-from hacienda_gpt.capacidades.correo.extraccion import Extraido
-from hacienda_gpt.capacidades.correo.mime import Mensaje
-from hacienda_gpt.capacidades.correo.seguridad import citar, envolver
+from asistente.capacidades.correo import extraccion
+from asistente.capacidades.correo.clasificacion import CATEGORIAS, Clasificacion
+from asistente.capacidades.correo.config import configuracion
+from asistente.capacidades.correo.extraccion import Extraido
+from asistente.capacidades.correo.mime import Mensaje
+from asistente.capacidades.correo.seguridad import citar, envolver
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +78,8 @@ def activo() -> bool:
 
 
 def _proveedor() -> Any:
-    from hacienda_gpt.agent import enrutado
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent import enrutado
+    from asistente.plataforma.ops.consumo import medir
 
     base = _fabrica[0]()
     ruta = enrutado.resolver(PROPOSITO, proveedor=str(getattr(base, "name", "")), nivel=NIVEL)

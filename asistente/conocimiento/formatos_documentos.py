@@ -24,8 +24,8 @@ from pathlib import Path
 import re
 import unicodedata
 
-from hacienda_gpt import settings
-from hacienda_gpt.ops import formatos
+from asistente.conocimiento import formatos
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

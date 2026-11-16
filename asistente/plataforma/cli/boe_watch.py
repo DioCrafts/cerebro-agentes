@@ -20,8 +20,8 @@ next ``processor --incremental`` run.
 Usage::
 
     # Daily / weekly via launchd/cron:
-    uv run python -m hacienda_gpt.cli.boe_watch
-    uv run python -m hacienda_gpt.cli.processor --incremental --max-tokens 512
+    uv run python -m asistente.plataforma.cli.boe_watch
+    uv run python -m asistente.plataforma.cli.processor --incremental --max-tokens 512
 
 Add ``--dry-run`` to inspect what would change without writing anything,
 ``--catalog`` to point at a non-default catalog, or ``--only ID,ID,…``
@@ -41,8 +41,8 @@ import urllib.request
 
 import click
 
-from hacienda_gpt.ops import formatos
-from hacienda_gpt.ops.formatos_boe import ReglasMetadatos, entrada_metadatos
+from asistente.conocimiento import formatos
+from asistente.conocimiento.formatos_boe import ReglasMetadatos, entrada_metadatos
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +350,7 @@ def cli(
     if not dry_run and (stats["changed"] + stats["new"]) > 0:
         click.echo(
             "\nRe-downloaded one or more documents. Run "
-            "`uv run python -m hacienda_gpt.cli.processor --incremental "
+            "`uv run python -m asistente.plataforma.cli.processor --incremental "
             "--max-tokens 512 --num-workers 8` to fold the changes into FAISS."
         )
 

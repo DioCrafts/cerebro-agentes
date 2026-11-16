@@ -4,10 +4,10 @@ from datetime import date
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.doctrine.citas import Documento, extract_citations, identify_document, parse_date
-from hacienda_gpt.doctrine.construccion import build_graph
-from hacienda_gpt.doctrine.grafo import Arista, DoctrineGraph
-from hacienda_gpt.doctrine.relaciones import leer_heuristica, leer_llm
+from asistente.conocimiento.doctrine.citas import Documento, extract_citations, identify_document, parse_date
+from asistente.conocimiento.doctrine.construccion import build_graph
+from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.doctrine.relaciones import leer_heuristica, leer_llm
 
 PASAJE = (
     "En este sentido se pronuncia la consulta V1234-19 y la resolución del TEAC de 25 de junio de 2019 "

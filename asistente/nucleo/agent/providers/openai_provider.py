@@ -16,7 +16,7 @@ import json
 import re
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import (
+from asistente.nucleo.agent.providers.base import (
     Attachment,
     ModelTurn,
     ProviderError,

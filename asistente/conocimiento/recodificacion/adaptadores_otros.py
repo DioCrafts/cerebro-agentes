@@ -46,22 +46,22 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
-from hacienda_gpt.tax import (
+from asistente.ambitos.fiscal.calculo import (
     autonomos_params as autonomos_mod,
 )
-from hacienda_gpt.tax import (
+from asistente.ambitos.fiscal.calculo import (
     patrimonio_params as patrimonio_mod,
 )
-from hacienda_gpt.tax import (
+from asistente.ambitos.fiscal.calculo import (
     sociedades_params as sociedades_mod,
 )
-from hacienda_gpt.tax import (
+from asistente.ambitos.fiscal.calculo import (
     sucesiones_params as isd_mod,
 )
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion import prompts
-from hacienda_gpt.tax.recodificacion.adaptadores import Hallazgo
-from hacienda_gpt.tax.recodificacion.control import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion import prompts
+from asistente.conocimiento.recodificacion.adaptadores import Hallazgo
+from asistente.conocimiento.recodificacion.control import (
     CENT,
     MIN_CITA,
     Control,
@@ -76,7 +76,7 @@ from hacienda_gpt.tax.recodificacion.control import (
     numeros_de_texto_sin_respaldo,
     ruta_de_etiqueta,
 )
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.conocimiento.recodificacion.nucleo import (
     Adaptador,
     Objetivo,
     Propuesta,
@@ -86,7 +86,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     leer_ruta,
     registrar,
 )
-from hacienda_gpt.tax.verificacion import Comprobacion, Resultado, TextoDe, _comprimido, verificar
+from asistente.conocimiento.verificacion import Comprobacion, Resultado, TextoDe, _comprimido, verificar
 
 MARCA = "Recodificada automáticamente el "
 # Appended to ``fuente.referencia`` while nobody has confirmed the group: the calculators print the reference of
@@ -219,7 +219,7 @@ def _calculo(
     def cargar() -> tuple[type[BaseModel], Callable[[Any, Any], Any]]:
         import importlib
 
-        mod = importlib.import_module(f"hacienda_gpt.tax.{modulo}")
+        mod = importlib.import_module(f"asistente.ambitos.fiscal.calculo.{modulo}")
         return getattr(mod, entrada), getattr(mod, funcion)
 
     return cargar
@@ -429,7 +429,7 @@ SOCIEDADES = Familia(
 
 
 def _patrimonio() -> tuple[type[BaseModel], Callable[[Any, Any], Any]]:
-    from hacienda_gpt.tax.patrimonio import PatrimonioInput, calcular_patrimonio
+    from asistente.ambitos.fiscal.calculo.patrimonio import PatrimonioInput, calcular_patrimonio
 
     return PatrimonioInput, calcular_patrimonio
 
@@ -488,7 +488,7 @@ PATRIMONIO = Familia(
 
 
 def _isd() -> tuple[type[BaseModel], Callable[[Any, Any], Any]]:
-    from hacienda_gpt.tax.sucesiones import BeneficiarioISD, calcular_isd
+    from asistente.ambitos.fiscal.calculo.sucesiones import BeneficiarioISD, calcular_isd
 
     return BeneficiarioISD, calcular_isd
 
@@ -1349,7 +1349,8 @@ for _familia in FAMILIAS:
 
 def adaptador_del_grupo(familia: Familia, params: Any, ruta: Sequence[str]) -> GrupoConEvidencia | None:
     """The adapter that maintains the group at ``ruta`` of a validated file: one of this module's or one registered
-    by another family of the same kind (the modules' legal data, ``hacienda_gpt.conocimiento.recodificacion``)."""
+    by another family of the same kind (the modules' legal data, ``asistente.conocimiento.recodificacion.de_modulos``).
+    """
     nombre = type(_en_modelo(params, ruta)).__name__
     propio = ADAPTADORES.get((familia.clave, nombre))
     if propio is not None:
@@ -1677,14 +1678,14 @@ def revisar_grupos_vigentes(
 
 
 def main(argv: list[str] | None = None) -> int:
-    """``python -m hacienda_gpt.tax.recodificacion.adaptadores_otros <familia> <ejercicio> <dir with the laws>``.
+    """``python -m asistente.conocimiento.recodificacion.adaptadores_otros <familia> <ejercicio> <dir with the laws>``.
 
     Says, without any model, what the gate thinks of each shipped group of a file read with its own quotes.
     """
     args = sys.argv[1:] if argv is None else argv
     if len(args) != 3 or args[0] not in {f.clave for f in FAMILIAS}:
         print(
-            "uso: python -m hacienda_gpt.tax.recodificacion.adaptadores_otros "
+            "uso: python -m asistente.conocimiento.recodificacion.adaptadores_otros "
             f"<{'|'.join(f.clave for f in FAMILIAS)}> <ejercicio> <directorio con <ID>.html o <ID>.txt>"
         )
         return 2

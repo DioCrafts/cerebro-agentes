@@ -11,7 +11,7 @@ assumptions explicit and checks them on every real read:
   the extraction on a sample;
 * :func:`observar` is called by the real parsers with what they just read. It
   evaluates the canaries, records the outcome in a small JSON state file (same
-  pattern as :mod:`hacienda_gpt.ops.vigia`) and keeps a rotating known-good
+  pattern as :mod:`asistente.plataforma.ops.vigia`) and keeps a rotating known-good
   sample and the latest bad one per source;
 * :func:`calcular_estado` turns the recent observations into ``ok`` /
   ``degradada`` / ``rota``, and :func:`problemas` phrases it for ``ops doctor``;
@@ -20,7 +20,7 @@ assumptions explicit and checks them on every real read:
   gate that replays a candidate spec on the known-good sample (must reproduce
   the stored extraction) and on the bad one (must satisfy the canaries);
 * :class:`Propuesta` records what the diagnosis agent
-  (:mod:`hacienda_gpt.ops.formatos_agente`) proposed, and :func:`aplicar`,
+  (:mod:`asistente.conocimiento.formatos_agente`) proposed, and :func:`aplicar`,
   :func:`rechazar` and :func:`confirmar` are the only ways a spec changes.
 
 Nothing here calls an LLM and nothing here may break a parser: every entry
@@ -44,14 +44,14 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
 Estado = Literal["ok", "degradada", "rota", "sin_datos"]
 Gravedad = Literal["grave", "leve"]
 Politica = Literal["consecutivos", "tasa"]
-# Same words as the parameter re-encoding loop (hacienda_gpt/tax/recodificacion), plus "confirmada".
+# Same words as the parameter re-encoding loop (asistente/conocimiento/recodificacion), plus "confirmada".
 EstadoPropuesta = Literal["propuesta", "aplicada", "rechazada", "sin_converger", "confirmada"]
 TipoPropuesta = Literal["spec", "informe"]
 
@@ -227,7 +227,7 @@ def _cargar_registro() -> None:
     global _cargado
     if not _cargado:
         _cargado = True
-        from hacienda_gpt.ops import formatos_fuentes  # noqa: F401 - registers the sources on import
+        from asistente.conocimiento import formatos_fuentes  # noqa: F401 - registers the sources on import
 
 
 def fuentes() -> dict[str, Fuente]:

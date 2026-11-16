@@ -19,7 +19,7 @@ from __future__ import annotations
 import logging
 from threading import RLock
 
-from hacienda_gpt.processor.strategies.base import IngestStrategy
+from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 logger = logging.getLogger(__name__)
 
@@ -87,8 +87,8 @@ def install_default_strategies() -> None:
     # Import inside the function so this module stays importable when a
     # subset of strategy deps (lxml, mlx, ...) is missing — useful for
     # tooling that only needs the protocol/registry.
-    from hacienda_gpt.processor.strategies.boe import BoeConsolidadoTableStrategy
-    from hacienda_gpt.processor.strategies.default import DefaultDoclingStrategy
+    from asistente.conocimiento.processor.strategies.boe import BoeConsolidadoTableStrategy
+    from asistente.conocimiento.processor.strategies.default import DefaultDoclingStrategy
 
     with _REGISTRY_LOCK:
         present = {s.strategy_id for s in _REGISTRY}

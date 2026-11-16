@@ -1,6 +1,6 @@
-// Client for «Investigar» (hacienda_gpt/api/routers/investigacion.py): research with sources.
+// Client for «Investigar» (asistente/plataforma/api/routers/investigacion.py): research with sources.
 //
-// Shapes mirror hacienda_gpt/capacidades/investigacion/modelo.py (PeticionInvestigacion, Informe). Money comes
+// Shapes mirror asistente/capacidades/investigacion/modelo.py (PeticionInvestigacion, Informe). Money comes
 // as decimal strings. Everything goes through api.ts's `request`: same session token, timeout and errors.
 
 import { request } from "./api";

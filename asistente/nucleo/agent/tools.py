@@ -20,22 +20,22 @@ import json
 import logging
 from typing import TYPE_CHECKING, Any
 
-from hacienda_gpt.agent.evidence import SOURCE_TYPES, EvidenceLedger, Fragment
-from hacienda_gpt.agent.procedencia import AVISO_SIN_RESPALDO, sin_respaldo
-from hacienda_gpt.agent.providers.base import ToolCall, ToolSpec
-from hacienda_gpt.agent.search import CorpusSearcher, SearchFilters, normalize_date
-from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE, KNOWN_FACT_NAMES, _coerce_value
-from hacienda_gpt.decision.interpreter import _merge_facts
-from hacienda_gpt.decision.rules_engine import evaluate_rules
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.doctrine.citas import extract_citations, identify_document
-from hacienda_gpt.doctrine.grafo import DoctrineGraph
-from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
-from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL, planificar_para_agente
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.conocimiento.doctrine.citas import extract_citations, identify_document
+from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.nucleo.agent.evidence import SOURCE_TYPES, EvidenceLedger, Fragment
+from asistente.nucleo.agent.procedencia import AVISO_SIN_RESPALDO, sin_respaldo
+from asistente.nucleo.agent.providers.base import ToolCall, ToolSpec
+from asistente.nucleo.agent.search import CorpusSearcher, SearchFilters, normalize_date
+from asistente.nucleo.decision.fact_extractor import EXPECTED_FACT_TYPE, KNOWN_FACT_NAMES, _coerce_value
+from asistente.nucleo.decision.interpreter import _merge_facts
+from asistente.nucleo.decision.rules_engine import evaluate_rules
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
+from asistente.nucleo.planificador.agente import PLANIFICAR_TOOL, planificar_para_agente
+from asistente.nucleo.proactive.jobs import hoy_en_espana
 
 if TYPE_CHECKING:
-    from hacienda_gpt.modulos.contrato import HerramientaModulo, Modulo
+    from asistente.nucleo.modulos.contrato import HerramientaModulo, Modulo
 
 logger = logging.getLogger(__name__)
 
@@ -204,7 +204,7 @@ def registrar_hechos_spec(ayudas: Iterable[str]) -> ToolSpec:
 
 def modulos_del_nucleo() -> list[Modulo]:
     """The modules the operator has on, in registry order: where direct tools and fact helpers come from."""
-    from hacienda_gpt.modulos.registro import modulos_activos
+    from asistente.nucleo.modulos.registro import modulos_activos
 
     return modulos_activos()
 
@@ -254,7 +254,7 @@ class Toolbox:
         self._directas: dict[str, tuple[Modulo, HerramientaModulo]] = {}
         # Shared facts whose shape a module knows: name -> validate and return the canonical text to store.
         self._estructurados: dict[str, Callable[[Any], str]] = {}
-        from hacienda_gpt.modulos.ganchos import ganchos_de
+        from asistente.nucleo.modulos.ganchos import ganchos_de
 
         agentes = [(modulo, ganchos_de(modulo).agente) for modulo in fuentes]
         for modulo, agente in agentes:
@@ -314,7 +314,7 @@ class Toolbox:
         """A direct module tool: it registers its own fragments in the run's ledger; its text goes as it is."""
 
         def ejecutar(arguments: dict[str, Any]) -> ToolOutcome:
-            from hacienda_gpt.modulos.perfil import perfil_de
+            from asistente.nucleo.modulos.perfil import perfil_de
 
             contexto = ContextoModulo(
                 perfil=perfil_de(self.case),

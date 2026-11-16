@@ -2,7 +2,7 @@
 
 from typing import Any
 
-from hacienda_gpt.modulos.caducidades.ticket import fechas_en, importes_en, leer_ticket, verificar_propuesta
+from asistente.ambitos.caducidades.ticket import fechas_en, importes_en, leer_ticket, verificar_propuesta
 
 TIQUE = """ELECTRODOMÉSTICOS EL PUENTE S.L.
 C/ Mayor 1 - Madrid

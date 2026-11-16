@@ -1,7 +1,7 @@
 """The tax module as a real module: its tools reach the model through the registry, as direct tools.
 
 The central agent's own file (``agent/tools.py``) knows nothing about taxes; the tax tools come from
-``hacienda_gpt.modulos.fiscal`` through the contract's ``herramientas_directas`` flag, and the model is offered
+``asistente.ambitos.fiscal`` through the contract's ``herramientas_directas`` flag, and the model is offered
 exactly what it was offered before the move (``tests/fixtures/fiscal/herramientas_agente.json`` was written
 from the code BEFORE the move: same tools, same order, byte-identical specs).
 """
@@ -15,23 +15,23 @@ import json
 from pathlib import Path
 from typing import Any
 
-from hacienda_gpt.agent.especialistas import Coordinador
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall, ToolSpec
-from hacienda_gpt.agent.tools import RECORD_FACTS_TOOL, Toolbox, ToolOutcome
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.doctrine.grafo import DoctrineGraph
-from hacienda_gpt.modulos.fiscal import MODULO
-from hacienda_gpt.modulos.fiscal import avisos as avisos_fiscales
-from hacienda_gpt.modulos.fiscal.especificaciones import ESPECIFICACIONES
-from hacienda_gpt.modulos.fiscal.herramientas import EjecucionFiscal
-from hacienda_gpt.proactive import jobs
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.ambitos.fiscal import MODULO
+from asistente.ambitos.fiscal import avisos as avisos_fiscales
+from asistente.ambitos.fiscal.especificaciones import ESPECIFICACIONES
+from asistente.ambitos.fiscal.herramientas import EjecucionFiscal
+from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.nucleo.agent.especialistas import Coordinador
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall, ToolSpec
+from asistente.nucleo.agent.tools import RECORD_FACTS_TOOL, Toolbox, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.proactive import jobs
+from asistente.nucleo.proactive.store import Notification, NotificationStore
 from .fakes import Llamadas, ModuloFalso, agua, instalar
 
 RAIZ = Path(__file__).resolve().parents[2]
 FIXTURE = RAIZ / "tests" / "fixtures" / "fiscal" / "herramientas_agente.json"
-TOOLS_PY = RAIZ / "hacienda_gpt" / "agent" / "tools.py"
+TOOLS_PY = RAIZ / "asistente" / "nucleo" / "agent" / "tools.py"
 NOV = date(2026, 11, 12)
 MOVIDOS = (
     "actividad",
@@ -124,10 +124,10 @@ def test_the_core_tools_file_knows_nothing_about_taxes() -> None:
     texto = TOOLS_PY.read_text(encoding="utf-8")
     for herramienta in MODULO.herramientas:
         assert herramienta.spec.name not in texto, herramienta.spec.name
-    for prohibido in ("hacienda_gpt.tax", "modulos.fiscal", "tax.", "calculo"):
+    for prohibido in ("asistente.ambitos.fiscal.calculo", "ambitos.fiscal", "modulos.fiscal", "tax.", "calculo"):
         assert prohibido not in texto, prohibido
     # No identifier of the tax module (calculators, specs, renderers) is used by the core's tools.
-    fiscal = RAIZ / "hacienda_gpt" / "modulos" / "fiscal"
+    fiscal = RAIZ / "asistente" / "ambitos" / "fiscal"
     definidos: set[str] = set()
     for fichero in (*fiscal.glob("*.py"), *(fiscal / "calculo").glob("*.py")):
         for nodo in ast.parse(fichero.read_text(encoding="utf-8")).body:
@@ -150,12 +150,15 @@ def test_the_core_tools_file_knows_nothing_about_taxes() -> None:
 
 def test_the_old_import_paths_are_the_same_modules() -> None:
     for nombre in MOVIDOS:
-        viejo = importlib.import_module(f"hacienda_gpt.tax.{nombre}")
-        nuevo = importlib.import_module(f"hacienda_gpt.modulos.fiscal.calculo.{nombre}")
+        viejo = importlib.import_module(f"asistente.ambitos.fiscal.calculo.{nombre}")
+        nuevo = importlib.import_module(f"asistente.ambitos.fiscal.calculo.{nombre}")
         assert viejo is nuevo, nombre
-    from hacienda_gpt.tax import params
+    from asistente.ambitos.fiscal.calculo import params
 
-    assert params.DATA_DIR == RAIZ / "hacienda_gpt" / "tax" / "data" and (params.DATA_DIR / "irpf_2026.json").exists()
+    assert (
+        params.DATA_DIR == RAIZ / "asistente" / "ambitos" / "fiscal" / "data"
+        and (params.DATA_DIR / "irpf_2026.json").exists()
+    )
     # The proactive jobs' old names resolve to the tax module's.
     assert jobs.plan_fin_de_ejercicio is avisos_fiscales.plan_fin_de_ejercicio
     assert jobs.recordatorios_de_plazos is avisos_fiscales.recordatorios_de_plazos
@@ -189,7 +192,7 @@ def test_a_direct_tool_registers_its_fragment_in_the_run_ledger() -> None:
     assert fragmento.fragment_id == "F1" and fragmento.title == "Cálculo IRPF 2026 — Situación actual"
     # Through the plain contract the same text, without the throw-away ledger's ids.
     herramienta = next(h for h in MODULO.herramientas if h.spec.name == "calcular_irpf")
-    from hacienda_gpt.modulos.contrato import ContextoModulo
+    from asistente.nucleo.modulos.contrato import ContextoModulo
 
     por_contrato = herramienta.ejecutar(
         {"ejercicio": 2026},
@@ -239,7 +242,7 @@ class _ConBandejaPropia(ModuloFalso):
 
 
 def test_the_daily_run_calls_the_modules_own_runners_through_the_contract(tmp_path) -> None:
-    from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+    from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 
     propio = _ConBandejaPropia(clave="contador", nombre="Contador", descripcion="Cuenta.", instrucciones="Cuenta.")
     instalar(propio)

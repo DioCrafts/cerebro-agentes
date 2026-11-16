@@ -15,7 +15,7 @@ from typing import Any, Protocol
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.agent.evidence import infer_authority, source_type_for
+from asistente.nucleo.agent.evidence import infer_authority, source_type_for
 
 
 @dataclass(frozen=True)
@@ -118,8 +118,8 @@ class FaissCorpusSearcher:
     def from_settings(cls) -> FaissCorpusSearcher:
         from langchain_community.vectorstores import FAISS
 
-        from hacienda_gpt import settings
-        from hacienda_gpt.llm.embeddings import create_embeddings
+        from asistente.conocimiento.llm.embeddings import create_embeddings
+        from asistente.plataforma import settings
 
         if not settings.FAISS_TRUSTED_INDEX:
             raise RuntimeError(
@@ -131,13 +131,13 @@ class FaissCorpusSearcher:
         )
         reranker = None
         if settings.RERANKER_ENABLED:
-            from hacienda_gpt.llm.reranker import MLXReranker
+            from asistente.conocimiento.llm.reranker import MLXReranker
 
             reranker = MLXReranker(model_path=settings.RERANKER_MODEL, top_k=settings.RERANKER_TOP_K)
         return cls(vectorstore, reranker=reranker, first_stage_k=settings.RERANKER_FIRST_STAGE_K)
 
     def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
-        from hacienda_gpt.llm.chain import _sanitize_context_documents
+        from asistente.conocimiento.llm.chain import _sanitize_context_documents
 
         first_stage_k = max(k, self._first_stage_k) if self._reranker is not None else k
         kwargs: dict[str, Any] = {"k": first_stage_k}

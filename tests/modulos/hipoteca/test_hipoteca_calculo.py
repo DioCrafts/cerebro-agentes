@@ -14,7 +14,7 @@ import decimal
 from hipoteca_util import serie_basica, serie_sintetica
 import pytest
 
-from hacienda_gpt.modulos.hipoteca.calculo import (
+from asistente.ambitos.hipoteca.calculo import (
     Supuestos,
     calcular_cuadro,
     comparar_con_banco,
@@ -26,7 +26,7 @@ from hacienda_gpt.modulos.hipoteca.calculo import (
     mes_menos,
     sumar_meses,
 )
-from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo, validar_prestamo
+from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo, validar_prestamo
 
 D = decimal.Decimal
 

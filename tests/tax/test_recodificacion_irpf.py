@@ -21,9 +21,8 @@ from typing import Any
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.tax.params import DATA_DIR, Comunidad, IRPFParams
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, Comunidad, IRPFParams
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     Objetivo,
     Propuesta,
@@ -41,7 +40,7 @@ from hacienda_gpt.tax.recodificacion import (
     recodificar,
     todos_los_objetivos,
 )
-from hacienda_gpt.tax.recodificacion.adaptadores import (
+from asistente.conocimiento.recodificacion.adaptadores import (
     CIFRAS,
     DEDUCCIONES,
     NO_SON_GRUPOS,
@@ -50,7 +49,7 @@ from hacienda_gpt.tax.recodificacion.adaptadores import (
     _reconocer,
     _subgrupos_que_fallan,
 )
-from hacienda_gpt.tax.verificacion import (
+from asistente.conocimiento.verificacion import (
     Comprobacion,
     Resultado,
     _formas,
@@ -60,6 +59,7 @@ from hacienda_gpt.tax.verificacion import (
     url_de,
     verificar,
 )
+from asistente.plataforma.cli import proactive as cli_module
 
 D = Decimal
 HOY = date(2026, 11, 12)
@@ -1449,7 +1449,7 @@ def test_cli_eval_and_gate(cli: Any, monkeypatch) -> None:
 
 
 def test_a_summary_that_is_not_json_reaches_the_format_watch(monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt.ops import formatos
+    from asistente.conocimiento import formatos
 
     vistos: list[tuple[str, str, str]] = []
     monkeypatch.setattr(formatos, "observar", lambda clave, crudo, **kw: vistos.append((clave, crudo, kw["contexto"])))

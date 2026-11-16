@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from hacienda_gpt.planificador.fiscal import OraculoFiscal
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.optimizador import Restricciones, _Punto
-from hacienda_gpt.tax.params import load_params
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.optimizador import Restricciones, _Punto
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.nucleo.planificador.fiscal import OraculoFiscal
 
 D = Decimal
 NOV = date(2026, 11, 16)

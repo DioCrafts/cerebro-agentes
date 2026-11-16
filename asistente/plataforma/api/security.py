@@ -246,7 +246,7 @@ def require_operator(
     endpoints need ``HACIENDA_OPERATOR_KEY`` in ``X-Operator-Key``; while it is not configured they answer 404.
     """
     require_api_key(x_api_key)
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     if settings.AUTH_MODE != "required":
         return
@@ -330,7 +330,7 @@ def recortar_historial(historial: list[Any]) -> list[Any]:
 def docs_publicas() -> bool:
     """Whether ``/docs``, ``/redoc`` and ``/openapi.json`` answer: ``API_DOCS_PUBLICAS`` (true/false) when set;
     otherwise only without accounts (with ``AUTH_MODE=required`` they describe every route to anyone)."""
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     valor = os.environ.get("API_DOCS_PUBLICAS", "").strip().lower()
     if valor in ("1", "true", "yes", "si", "sí", "on"):
@@ -351,7 +351,7 @@ def require_docs_publicas() -> None:
 def require_qa_legado() -> None:
     """``/qa`` (the LangChain chain, unmetered and outside the daily budgets) only answers without accounts:
     with ``AUTH_MODE=required`` it is a 404, before the API key, the session or the chain are looked at."""
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     if settings.AUTH_MODE == "required":
         raise HTTPException(status_code=404, detail="Not Found")

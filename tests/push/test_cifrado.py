@@ -14,7 +14,7 @@ import json
 from cryptography.hazmat.primitives.asymmetric import ec
 import pytest
 
-from hacienda_gpt.push.cifrado import (
+from asistente.plataforma.push.cifrado import (
     CifradoError,
     b64url_decode,
     b64url_encode,
@@ -24,7 +24,7 @@ from hacienda_gpt.push.cifrado import (
     descifrar,
     publica_cruda,
 )
-from hacienda_gpt.push.vapid import (
+from asistente.plataforma.push.vapid import (
     ClavesVapid,
     ConfiguracionVapidError,
     audiencia,

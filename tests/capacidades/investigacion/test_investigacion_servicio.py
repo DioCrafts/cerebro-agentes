@@ -8,14 +8,14 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.capacidades.investigacion.almacen import AlmacenInvestigacion
-from hacienda_gpt.capacidades.investigacion.dominios import OFICIALES_POR_DEFECTO
-from hacienda_gpt.capacidades.investigacion.modelo import PeticionInvestigacion
-from hacienda_gpt.capacidades.investigacion.servicio import SIN_RESPUESTA, Investigador
-from hacienda_gpt.capacidades.investigacion.web import DocumentoWeb, WebNoDisponibleError
-from hacienda_gpt.ops import consumo
+from asistente.capacidades.investigacion.almacen import AlmacenInvestigacion
+from asistente.capacidades.investigacion.dominios import OFICIALES_POR_DEFECTO
+from asistente.capacidades.investigacion.modelo import PeticionInvestigacion
+from asistente.capacidades.investigacion.servicio import SIN_RESPUESTA, Investigador
+from asistente.capacidades.investigacion.web import DocumentoWeb, WebNoDisponibleError
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.plataforma import settings
+from asistente.plataforma.ops import consumo
 from .conftest import (
     AHORA,
     PLAN,
@@ -219,7 +219,7 @@ def test_a_blocked_or_unlisted_page_never_becomes_a_source(
     investigador: Investigador, almacen: AlmacenInvestigacion, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """The provider applies the lists; the gate applies them again on what comes back."""
-    from hacienda_gpt.capacidades.investigacion.web import ResultadoWeb, leer_bloques
+    from asistente.capacidades.investigacion.web import ResultadoWeb, leer_bloques
 
     resultado = ResultadoWeb()
     bloques = [
@@ -248,7 +248,7 @@ def test_a_blocked_or_unlisted_page_never_becomes_a_source(
 
 
 def test_the_call_cap_reserves_the_synthesis(investigador: Investigador, monkeypatch: pytest.MonkeyPatch) -> None:
-    from hacienda_gpt.capacidades.investigacion import ajustes as ajustes_mod
+    from asistente.capacidades.investigacion import ajustes as ajustes_mod
 
     monkeypatch.setitem(ajustes_mod.LIMITES, "rapida", ajustes_mod.LimitesProfundidad(1, 3, 1, 2, 2, 1, 8))
     proveedor = _proveedor()
@@ -347,7 +347,7 @@ def test_withdrawing_consent_drops_the_reports_that_used_the_web(
 
 
 def test_web_para_refuses_providers_without_a_web_tool() -> None:
-    from hacienda_gpt.capacidades.investigacion.web import WebAnthropic, web_para
+    from asistente.capacidades.investigacion.web import WebAnthropic, web_para
 
     with pytest.raises(WebNoDisponibleError):
         web_para(FakeProvider(name="local"))

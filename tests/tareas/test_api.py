@@ -8,11 +8,11 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.api.api import app
-from hacienda_gpt.api.routers.tareas import proveedor_planificador
-from hacienda_gpt.modulos import registro as registro_mod
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app
+from asistente.plataforma.api.routers.tareas import proveedor_planificador
 from tests.auth.conftest import PASSWORD, Env, env, fast_scrypt  # noqa: F401
 from .conftest import Entorno
 

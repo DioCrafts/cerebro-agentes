@@ -24,10 +24,9 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion.adaptadores import es_del_tipo
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion.adaptadores import es_del_tipo
+from asistente.conocimiento.recodificacion.nucleo import (
     MAX_ITER,
     Objetivo,
     RecodificacionError,
@@ -35,7 +34,8 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     ficheros_de,
     recodificar,
 )
-from hacienda_gpt.tax.verificacion import TextoDe
+from asistente.conocimiento.verificacion import TextoDe
+from asistente.nucleo.agent.providers.base import ProviderError
 
 # Never compared: written by the program, or dated by it.
 _PROCEDENCIA = frozenset({"fuente", "evidencia", "avisos", "recodificada_el", "en_vigor_desde"})
@@ -184,7 +184,7 @@ def evaluar(
     usd_por_millon_de_tokens: float | None = None,
 ) -> Evaluacion:
     """Re-encode each group from the law with its shipped encoding hidden, and compare. Writes nothing."""
-    from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
+    from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
     evaluacion = Evaluacion()
     acuerdos: list[float] = []

@@ -8,8 +8,8 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.modulos.suscripciones import etiquetador
-from hacienda_gpt.modulos.suscripciones.deteccion import (
+from asistente.ambitos.suscripciones import etiquetador
+from asistente.ambitos.suscripciones.deteccion import (
     Analisis,
     ServicioDetectado,
     ajustar_periodo,
@@ -17,9 +17,9 @@ from hacienda_gpt.modulos.suscripciones.deteccion import (
     posible_olvido,
     proxima_fecha,
 )
-from hacienda_gpt.modulos.suscripciones.importadores import importar
-from hacienda_gpt.modulos.suscripciones.modelos import Extracto, Movimiento
-from hacienda_gpt.modulos.suscripciones.normalizacion import clave_comercio, identificar
+from asistente.ambitos.suscripciones.importadores import importar
+from asistente.ambitos.suscripciones.modelos import Extracto, Movimiento
+from asistente.ambitos.suscripciones.normalizacion import clave_comercio, identificar
 from tests.modulos.suscripciones.sintetico import ESPERADOS, FIXTURES
 from tests.modulos.suscripciones.test_importadores import FORMATOS
 

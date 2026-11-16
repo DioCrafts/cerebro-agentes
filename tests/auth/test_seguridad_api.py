@@ -10,12 +10,12 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.api.api import app, get_agent, get_document_provider, get_fact_extractor
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
-from hacienda_gpt.ops import consumo
-from hacienda_gpt.ops.consumo import ConsumoStore, Usage
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_document_provider, get_fact_extractor
+from asistente.plataforma.ops import consumo
+from asistente.plataforma.ops.consumo import ConsumoStore, Usage
 from .conftest import CONSENTS, Env
 
 # Routes that answer without a session on purpose. Everything else needs one when AUTH_MODE=required.
@@ -230,8 +230,8 @@ def test_document_and_turn_model_calls_are_charged_to_the_user(env: Env) -> None
 
 
 def test_an_exhausted_budget_on_a_turn_is_a_429(env: Env, monkeypatch) -> None:
-    from hacienda_gpt.decision.fact_extractor import FactExtractionError
-    from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
+    from asistente.nucleo.decision.fact_extractor import FactExtractionError
+    from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
     ana = env.register("ana@example.com")
     case_id = env.new_case(ana)
@@ -320,7 +320,7 @@ def test_deleting_the_account_detaches_the_usage_log(env: Env) -> None:
 def test_made_up_api_keys_do_not_get_a_fresh_rate_limit_each(monkeypatch) -> None:
     from fastapi.testclient import TestClient
 
-    from hacienda_gpt.api import api
+    from asistente.plataforma.api import api
 
     monkeypatch.setattr(api._rate_limiter, "limit", 2)
     monkeypatch.setattr(api._rate_limiter, "_windows", {})
@@ -334,7 +334,7 @@ def test_password_derivations_run_a_few_at_a_time(monkeypatch) -> None:
     import threading
     import time
 
-    from hacienda_gpt.auth import passwords
+    from asistente.plataforma.auth import passwords
 
     activos, maximo, cerrojo = 0, 0, threading.Lock()
 

@@ -6,7 +6,7 @@ from __future__ import annotations
 from datetime import date
 from pathlib import Path
 
-from hacienda_gpt.modulos.hipoteca.indices import SerieIndices, serie_desde_json
+from asistente.ambitos.hipoteca.indices import SerieIndices, serie_desde_json
 
 FIXTURES = Path(__file__).resolve().parents[2] / "fixtures" / "modulos" / "hipoteca"
 RESOLUCIONES = FIXTURES / "resoluciones"

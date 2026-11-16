@@ -12,8 +12,8 @@ from datetime import date, time
 import logging
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.procesos import ContextoServicio, Programacion, Registro, Servicio, Trabajo
+from asistente.plataforma import settings
+from asistente.plataforma.procesos import ContextoServicio, Programacion, Registro, Servicio, Trabajo
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +29,20 @@ TRABAJOS: tuple[Trabajo, ...] = (
         "hipoteca-indices",
         "Índices de referencia hipotecarios publicados en el BOE (módulo hipoteca).",
         Programacion(hora=time(6, 20), dias_mes=frozenset({4, 19})),
-        orden=("hacienda_gpt.modulos.hipoteca.indices", "actualizar"),
+        orden=("asistente.ambitos.hipoteca.indices", "actualizar"),
     ),
     Trabajo(
         "boe-watch",
         "Normas del catálogo que han cambiado en el BOE.",
         _diario(6, 30),
-        orden=("hacienda_gpt.cli.boe_watch",),
+        orden=("asistente.plataforma.cli.boe_watch",),
     ),
     Trabajo(
         "boe-impact",
         "Aviso a los usuarios afectados por los cambios del BOE.",
         _diario(6, 45),
         orden=(
-            "hacienda_gpt.cli.proactive",
+            "asistente.plataforma.cli.proactive",
             "boe-impact",
             "--changes-log",
             "data/html/_boe_changes.jsonl",
@@ -55,26 +55,26 @@ TRABAJOS: tuple[Trabajo, ...] = (
         "boe-novedades",
         "Normas nuevas con contenido tributario en el BOE del día.",
         _diario(6, 50),
-        orden=("hacienda_gpt.cli.proactive", "boe-novedades"),
+        orden=("asistente.plataforma.cli.proactive", "boe-novedades"),
     ),
     Trabajo(
         "params-autopilot",
-        "Piloto de parámetros (escribe en hacienda_gpt/tax/data; desactivado por defecto).",
+        "Piloto de parámetros (escribe en asistente/ambitos/fiscal/data; desactivado por defecto).",
         _diario(6, 55),
-        orden=("hacienda_gpt.cli.proactive", "params-autopilot", "--no-detect"),
+        orden=("asistente.plataforma.cli.proactive", "params-autopilot", "--no-detect"),
         por_defecto=False,
     ),
     Trabajo(
         "run-daily",
         "Recordatorios de plazos, plan de fin de ejercicio y avisos de los módulos activados.",
         _diario(7, 0),
-        orden=("hacienda_gpt.cli.proactive", "run-daily"),
+        orden=("asistente.plataforma.cli.proactive", "run-daily"),
     ),
     Trabajo(
         "deliver",
         "Entrega de los avisos fuera de la aplicación (webhook, correo, push).",
         _diario(7, 15),
-        orden=("hacienda_gpt.cli.ops", "deliver"),
+        orden=("asistente.plataforma.cli.ops", "deliver"),
         # ``ops deliver`` records itself under this name.
         vigilado=False,
     ),
@@ -82,25 +82,25 @@ TRABAJOS: tuple[Trabajo, ...] = (
         "run-weekly",
         "Resumen semanal de cada caso (los lunes).",
         Programacion(hora=time(7, 30), dias_semana=frozenset({LUNES})),
-        orden=("hacienda_gpt.cli.proactive", "run-weekly"),
+        orden=("asistente.plataforma.cli.proactive", "run-weekly"),
     ),
     Trabajo(
         "doctor",
         "Revisión: ¿ha corrido todo? Avisa al operador si algo falta o falló.",
         _diario(9, 0),
-        orden=("hacienda_gpt.cli.ops", "doctor"),
+        orden=("asistente.plataforma.cli.ops", "doctor"),
     ),
     Trabajo(
         "correo-sincronizar",
         "Sincroniza Gmail de los casos conectados con el módulo de correo activado.",
         Programacion(cada_minutos=30),
-        orden=("hacienda_gpt.modulos.correo", "sincronizar"),
+        orden=("asistente.capacidades.correo", "sincronizar"),
     ),
     Trabajo(
         "indice-corpus",
         "Actualización incremental del índice de búsqueda del corpus (necesita el corpus y los modelos).",
         _diario(3, 40),
-        orden=("hacienda_gpt.cli.processor", "--incremental"),
+        orden=("asistente.plataforma.cli.processor", "--incremental"),
         por_defecto=False,
     ),
 )
@@ -111,7 +111,7 @@ DIAS_RETENCION_EVENTOS = 30
 
 def pasada_de_eventos(db_path: str, nombre: str) -> dict[str, Any]:
     """One full pass of the event bus (what ``cli.eventos worker --una-vez`` does)."""
-    from hacienda_gpt.eventos.bus import Bus, consumidores_del_trabajador
+    from asistente.nucleo.eventos.bus import Bus, consumidores_del_trabajador
 
     bus = Bus(db_path, consumidores=consumidores_del_trabajador())
     try:
@@ -123,8 +123,8 @@ def pasada_de_eventos(db_path: str, nombre: str) -> dict[str, Any]:
 
 
 def servicio_eventos(contexto: ContextoServicio) -> None:
-    """The event bus worker loop (the same as ``python -m hacienda_gpt.cli.eventos worker``)."""
-    from hacienda_gpt.eventos.bus import Bus, consumidores_del_trabajador
+    """The event bus worker loop (the same as ``python -m asistente.plataforma.cli.eventos worker``)."""
+    from asistente.nucleo.eventos.bus import Bus, consumidores_del_trabajador
 
     # The tasks' consumer runs here too, so its cursor never holds the purge back (``consumidores_del_trabajador``).
     bus = Bus(contexto.db_path, consumidores=consumidores_del_trabajador())

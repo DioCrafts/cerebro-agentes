@@ -22,13 +22,12 @@ from decimal import Decimal, InvalidOperation
 import json
 from typing import Any
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.agent.tools import ExtraTool, ToolOutcome
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.ambitos import CATALOGO, etiqueta
-from hacienda_gpt.memoria.modelo import (
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.agent.tools import ExtraTool, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria.ambitos import CATALOGO, etiqueta
+from asistente.nucleo.memoria.modelo import (
     TIPOS,
     Decision,
     Evaluacion,
@@ -39,8 +38,9 @@ from hacienda_gpt.memoria.modelo import (
     modulo_de_ambito,
     normalizar_texto,
 )
-from hacienda_gpt.memoria.prompt import ESPECIALISTA_MEMORIA
-from hacienda_gpt.memoria.servicio import DecisionInvalidaError, decisiones_del_caso, describir, registrar
+from asistente.nucleo.memoria.prompt import ESPECIALISTA_MEMORIA
+from asistente.nucleo.memoria.servicio import DecisionInvalidaError, decisiones_del_caso, describir, registrar
+from asistente.plataforma import settings
 
 MAX_LINEAS_CONTEXTO = 15
 # A quote shorter than this (once normalised) says too little to be a decision («no», «vale»).
@@ -321,7 +321,7 @@ class MemoriaAgente:
 
 def _modulo_registrado(clave: str) -> bool:
     try:
-        from hacienda_gpt.modulos.registro import registro
+        from asistente.nucleo.modulos.registro import registro
 
         return clave in registro().modulos
     except Exception:

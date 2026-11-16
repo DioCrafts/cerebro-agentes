@@ -10,14 +10,14 @@ from click.testing import CliRunner
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli.proactive import cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
-from hacienda_gpt.proactive.bandeja import avisos_de_modulos, clave_semana, resumen_semanal
-from hacienda_gpt.proactive.jobs import ejecutar_para_todos
-from hacienda_gpt.proactive.store import Notification, NotificationStore, modulo_de
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
+from asistente.nucleo.proactive.bandeja import avisos_de_modulos, clave_semana, resumen_semanal
+from asistente.nucleo.proactive.jobs import ejecutar_para_todos
+from asistente.nucleo.proactive.store import Notification, NotificationStore, modulo_de
+from asistente.plataforma import settings
+from asistente.plataforma.cli.proactive import cli
 from tests.proactive import SALARIED, make_case
 from .fakes import Llamadas, agua, aviso, instalar, seguros
 
@@ -184,7 +184,7 @@ def test_run_weekly_cli(tmp_path, monkeypatch) -> None:
 
 
 def test_a_module_fact_does_not_rewrite_the_year_end_plan(store) -> None:
-    from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
+    from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
 
     instalar(agua(Llamadas()))
     assert plan_fin_de_ejercicio(make_case("c1", **SALARIED), hoy=date(2026, 11, 12), store=store) == 1

@@ -13,11 +13,14 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.agent.providers.lotes import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion import AlmacenPropuestas, ejecutar, prompts
+from asistente.conocimiento.recodificacion import lotes as recod_lotes
+from asistente.conocimiento.recodificacion.evaluacion import evaluar
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.providers.lotes import (
     ColaDeLotes,
     LoteSinTerminarError,
     PendienteDeLoteError,
@@ -25,12 +28,15 @@ from hacienda_gpt.agent.providers.lotes import (
     clave_de_peticion,
     ejecutar_en_lotes,
 )
-from hacienda_gpt.ops import consumo
-from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider, Presupuesto, PresupuestoAgotadoError, cargar_precios
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion import AlmacenPropuestas, ejecutar, prompts
-from hacienda_gpt.tax.recodificacion import lotes as recod_lotes
-from hacienda_gpt.tax.recodificacion.evaluacion import evaluar
+from asistente.plataforma import settings
+from asistente.plataforma.ops import consumo
+from asistente.plataforma.ops.consumo import (
+    ConsumoStore,
+    MeteredProvider,
+    Presupuesto,
+    PresupuestoAgotadoError,
+    cargar_precios,
+)
 from tests.agent.fakes_http import FakeAnthropicAPI
 from tests.tax import test_recodificacion as recod
 from tests.tax.test_recodificacion import HOY, NUEVA, Guion, _objetivo, lectura, revision, texto_de_ley

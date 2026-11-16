@@ -33,9 +33,8 @@ from typing import Any, Protocol
 from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.evidence import EvidenceLedger, Fragment
-from hacienda_gpt.agent.prompts import (
+from asistente.nucleo.agent.evidence import EvidenceLedger, Fragment
+from asistente.nucleo.agent.prompts import (
     CRITIC_SYSTEM_PROMPT,
     PLANNER_SCHEMA,
     PLANNER_SYSTEM_PROMPT,
@@ -43,10 +42,11 @@ from hacienda_gpt.agent.prompts import (
     RESEARCHER_NORMATIVA_PROMPT,
     TEAM_BRIEFING_HEADER,
 )
-from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError, ToolCall, ToolResult, ToolSpec
-from hacienda_gpt.agent.search import CorpusSearcher, SearchFilters
-from hacienda_gpt.agent.tools import Toolbox, ToolOutcome
-from hacienda_gpt.decision.schemas import CaseState
+from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError, ToolCall, ToolResult, ToolSpec
+from asistente.nucleo.agent.search import CorpusSearcher, SearchFilters
+from asistente.nucleo.agent.tools import Toolbox, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

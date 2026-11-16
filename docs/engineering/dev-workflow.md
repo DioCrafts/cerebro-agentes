@@ -6,7 +6,7 @@ Estandarizar un pipeline local de calidad para cambios en HaciendaGPT, con foco 
 ## Herramientas habilitadas
 - **Format**: `black`.
 - **Lint**: `ruff` (incluye import sorting con reglas de isort).
-- **Type-check**: `mypy` sobre `hacienda_gpt`.
+- **Type-check**: `mypy` sobre `asistente`.
 - **Test**: `pytest`.
 
 ## Comandos disponibles

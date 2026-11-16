@@ -1,4 +1,4 @@
-"""«Investigar»: research with sources over HTTP (``hacienda_gpt/capacidades/investigacion``).
+"""«Investigar»: research with sources over HTTP (``asistente/capacidades/investigacion``).
 
 * ``GET  /investigacion/estado`` — which sources this server offers (corpus, BOE, web), whether the web is on
   for the operator and consented by the user, the allow / block lists, the caps, and the privacy note.
@@ -22,15 +22,15 @@ from typing import Annotated, Any
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access
-from hacienda_gpt.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
-from hacienda_gpt.capacidades.investigacion import capacidad
-from hacienda_gpt.capacidades.investigacion.ajustes import LIMITES, PRECIO_BUSQUEDA_FUENTE, ajustes
-from hacienda_gpt.capacidades.investigacion.almacen import VERSION_TEXTO_CONSENTIMIENTO, AlmacenInvestigacion
-from hacienda_gpt.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
-from hacienda_gpt.capacidades.investigacion.web import NO_DISPONIBLE_OPENAI
-from hacienda_gpt.proactive.jobs import hoy_en_espana
+from asistente.capacidades.contrato import ContextoPeticion, PeticionDenegada, pedir
+from asistente.capacidades.investigacion import capacidad
+from asistente.capacidades.investigacion.ajustes import LIMITES, PRECIO_BUSQUEDA_FUENTE, ajustes
+from asistente.capacidades.investigacion.almacen import VERSION_TEXTO_CONSENTIMIENTO, AlmacenInvestigacion
+from asistente.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
+from asistente.capacidades.investigacion.web import NO_DISPONIBLE_OPENAI
+from asistente.nucleo.proactive.jobs import hoy_en_espana
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +90,8 @@ def get_almacen() -> AlmacenInvestigacion:
 
 @functools.lru_cache(maxsize=1)
 def _proveedor() -> Any | None:
-    from hacienda_gpt.agent.providers import create_provider
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma.ops.consumo import medir
 
     try:
         return medir(create_provider(), "investigacion:sintetizar")

@@ -1,4 +1,4 @@
-"""Capabilities (``hacienda_gpt/capacidades``): what each one does, its operations and the caller's consent.
+"""Capabilities (``asistente/capacidades``): what each one does, its operations and the caller's consent.
 
 * ``GET /capacidades`` — every capability the operator offers: its operations (effect, metering purpose, whether
   their results are third-party data), whether it needs the user's consent and whether the caller gave it, and
@@ -17,9 +17,9 @@ from typing import Annotated, Literal
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.api.security import require_api_key
-from hacienda_gpt.auth.deps import CaseAccess, get_case_access, require_session
-from hacienda_gpt.capacidades.consentimiento import EstadoCapacidad, estado_para_usuario
+from asistente.capacidades.consentimiento import EstadoCapacidad, estado_para_usuario
+from asistente.plataforma.api.security import require_api_key
+from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_session
 
 
 class OperacionInfo(BaseModel):
@@ -65,8 +65,8 @@ class CapacidadUpdate(BaseModel):
 
 
 def _usos() -> dict[str, list[str]]:
-    from hacienda_gpt.modulos.ganchos import ganchos_de
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.ganchos import ganchos_de
+    from asistente.nucleo.modulos.registro import registro
 
     usos: dict[str, list[str]] = {}
     for modulo in registro().activos():
@@ -78,7 +78,7 @@ def _usos() -> dict[str, list[str]]:
 
 
 def _modulos() -> set[str]:
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     return set(registro().modulos)
 

@@ -1,10 +1,10 @@
 """Platform commands: schema migrations, the worker process, health, backups and key rotation.
 
-    uv run python -m hacienda_gpt.cli.plataforma migrar [--estado] [--dry-run]
-    uv run python -m hacienda_gpt.cli.plataforma worker [--una-vez]
-    uv run python -m hacienda_gpt.cli.plataforma procesos
-    uv run python -m hacienda_gpt.cli.plataforma salud [--exigir-worker]
-    uv run python -m hacienda_gpt.cli.plataforma copia --destino /var/backups/hacienda
+    uv run python -m asistente.plataforma.cli.plataforma migrar [--estado] [--dry-run]
+    uv run python -m asistente.plataforma.cli.plataforma worker [--una-vez]
+    uv run python -m asistente.plataforma.cli.plataforma procesos
+    uv run python -m asistente.plataforma.cli.plataforma salud [--exigir-worker]
+    uv run python -m asistente.plataforma.cli.plataforma copia --destino /var/backups/hacienda
 
 See docs/despliegue.md.
 """
@@ -20,8 +20,8 @@ from typing import Any
 
 import click
 
-from hacienda_gpt import settings
-from hacienda_gpt.plataforma.migraciones import BASE_CASOS, BASE_DOCTRINA, estado, migrar
+from asistente.plataforma import settings
+from asistente.plataforma.migraciones import BASE_CASOS, BASE_DOCTRINA, estado, migrar
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +106,7 @@ def migrar_cmd(
 @click.option("--sin-trabajos", is_flag=True, help="Sin tareas programadas.")
 def worker_cmd(db_path: str | None, nombre: str | None, una_vez: bool, sin_servicios: bool, sin_trabajos: bool) -> None:
     """El proceso worker: bus de eventos, tareas programadas y los servicios que registren otros paquetes."""
-    from hacienda_gpt.plataforma.procesos import Worker
+    from asistente.plataforma.procesos import Worker
 
     worker = Worker(_ruta(BASE_CASOS, db_path), nombre=nombre, servicios=not sin_servicios, trabajos=not sin_trabajos)
     informe = worker.preparar()
@@ -127,7 +127,7 @@ def worker_cmd(db_path: str | None, nombre: str | None, una_vez: bool, sin_servi
 @cli.command("procesos")
 def procesos_cmd() -> None:
     """El modelo de procesos: qué hace la API, qué hace el worker, y cuándo corre cada tarea."""
-    from hacienda_gpt.plataforma.procesos import describir
+    from asistente.plataforma.procesos import describir
 
     _echo(describir())
 
@@ -137,7 +137,7 @@ def procesos_cmd() -> None:
 @click.option("--exigir-worker", is_flag=True, help="Fallar (código 1) si ningún worker ha latido hace poco.")
 def salud_cmd(db_path: str | None, exigir_worker: bool) -> None:
     """Migraciones pendientes, workers vivos y última ejecución de cada tarea. Código 1 si algo falla."""
-    from hacienda_gpt.plataforma.procesos import salud
+    from asistente.plataforma.procesos import salud
 
     datos = salud(_ruta(BASE_CASOS, db_path))
     _echo(datos)
@@ -162,7 +162,7 @@ def _clave(obligatoria: bool) -> str | None:
 @click.option("--sin-cifrar", is_flag=True, help="Copia sin cifrar (solo hacia un disco ya cifrado).")
 def copia_cmd(db_path: str | None, base: str, destino: str, sin_cifrar: bool) -> None:
     """Copia en caliente y consistente (API de copia de SQLite), comprobada y cifrada con PLATAFORMA_CLAVE_COPIAS."""
-    from hacienda_gpt.plataforma.operaciones import CopiaError, copiar
+    from asistente.plataforma.operaciones import CopiaError, copiar
 
     try:
         ruta = copiar(_ruta(base, db_path), destino, clave=None if sin_cifrar else _clave(True))
@@ -176,7 +176,7 @@ def copia_cmd(db_path: str | None, base: str, destino: str, sin_cifrar: bool) ->
 @click.argument("destino", type=click.Path(dir_okay=False))
 def descifrar_cmd(fichero: str, destino: str) -> None:
     """Descifra una copia (con cualquiera de las claves de PLATAFORMA_CLAVE_COPIAS) en DESTINO."""
-    from hacienda_gpt.plataforma.operaciones import CopiaError, descifrar
+    from asistente.plataforma.operaciones import CopiaError, descifrar
 
     clave = _clave(True)
     assert clave is not None
@@ -190,7 +190,7 @@ def descifrar_cmd(fichero: str, destino: str) -> None:
 @click.argument("ficheros", nargs=-1, type=click.Path(exists=True, dir_okay=False))
 def recifrar_cmd(ficheros: tuple[str, ...]) -> None:
     """Rotación: vuelve a cifrar las copias con la PRIMERA clave de PLATAFORMA_CLAVE_COPIAS."""
-    from hacienda_gpt.plataforma.operaciones import CopiaError, recifrar
+    from asistente.plataforma.operaciones import CopiaError, recifrar
 
     clave = _clave(True)
     assert clave is not None
@@ -205,7 +205,7 @@ def recifrar_cmd(ficheros: tuple[str, ...]) -> None:
 @cli.command("nueva-clave")
 def nueva_clave_cmd() -> None:
     """Imprime una clave Fernet nueva (para PLATAFORMA_CLAVE_COPIAS o CORREO_CLAVE_CIFRADO)."""
-    from hacienda_gpt.plataforma.operaciones import nueva_clave
+    from asistente.plataforma.operaciones import nueva_clave
 
     click.echo(nueva_clave())
 
@@ -215,7 +215,7 @@ def nueva_clave_cmd() -> None:
 @click.option("--yes", "confirmado", is_flag=True, help="No preguntar.")
 def revocar_cmd(db_path: str | None, confirmado: bool) -> None:
     """Cierra todas las sesiones abiertas: todos los usuarios tendrán que volver a entrar."""
-    from hacienda_gpt.plataforma.operaciones import revocar_sesiones
+    from asistente.plataforma.operaciones import revocar_sesiones
 
     if not confirmado:
         click.confirm("¿Cerrar TODAS las sesiones abiertas?", abort=True)

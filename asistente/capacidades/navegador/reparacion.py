@@ -28,7 +28,7 @@ import json
 import logging
 from typing import Any, Protocol
 
-from hacienda_gpt.capacidades.navegador.guion import (
+from asistente.capacidades.navegador.guion import (
     Paso,
     PasoDetener,
     PasoPulsar,
@@ -36,7 +36,7 @@ from hacienda_gpt.capacidades.navegador.guion import (
     PasoSeleccionar,
     comprobar_selector,
 )
-from hacienda_gpt.capacidades.navegador.seguridad import problemas_campo, problemas_pulsable
+from asistente.capacidades.navegador.seguridad import problemas_campo, problemas_pulsable
 
 logger = logging.getLogger(__name__)
 
@@ -114,7 +114,7 @@ def puerta(
         return problemas_pulsable(info, texto=paso.texto, origenes=origenes, es_parada=isinstance(paso, PasoDetener))
     texto = getattr(paso, "texto", None)
     if texto:
-        from hacienda_gpt.capacidades.navegador.seguridad import contiene_literal
+        from asistente.capacidades.navegador.seguridad import contiene_literal
 
         if not contiene_literal(texto, str(info.get("texto") or "")):
             return [f"su texto no contiene «{texto}»"]

@@ -6,11 +6,11 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.tareas import servicio
-from hacienda_gpt.tareas.modelo import Paso
-from hacienda_gpt.tareas.planificacion import proponer_con_modelo
-from hacienda_gpt.tareas.validacion import PlanInvalidoError, validar_plan
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.tareas import servicio
+from asistente.nucleo.tareas.modelo import Paso
+from asistente.nucleo.tareas.planificacion import proponer_con_modelo
+from asistente.nucleo.tareas.validacion import PlanInvalidoError, validar_plan
 from .conftest import Entorno
 
 BUENO = {"id": "leer", "titulo": "Lee el contador", "tipo": "calculo", "herramienta": "agua_lectura"}

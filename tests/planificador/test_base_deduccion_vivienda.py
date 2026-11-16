@@ -9,11 +9,11 @@ from __future__ import annotations
 from datetime import date
 from decimal import Decimal
 
-from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.modulos.hipoteca.deduccion import base_deducible, cargar_fundamento, pagos_del_ano
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.modulos.puentes import _hipoteca
-from hacienda_gpt.planificador.hipoteca import Crecimiento, PalancaHipoteca
+from asistente.ambitos.hipoteca.deduccion import base_deducible, cargar_fundamento, pagos_del_ano
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.nucleo.modulos.puentes import _hipoteca
+from asistente.nucleo.planificador.hipoteca import Crecimiento, PalancaHipoteca
 
 D = Decimal
 HOY = date(2026, 6, 1)

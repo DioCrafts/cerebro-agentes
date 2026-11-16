@@ -14,8 +14,8 @@ import json
 from pathlib import Path
 import re
 
-from hacienda_gpt.modulos.suscripciones.lectura import sin_acentos
-from hacienda_gpt.modulos.suscripciones.modelos import Movimiento
+from asistente.ambitos.suscripciones.lectura import sin_acentos
+from asistente.ambitos.suscripciones.modelos import Movimiento
 
 DATA = Path(__file__).parent / "data" / "comercios.json"
 

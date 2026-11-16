@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.cli.boe_watch import _resolve_target
+from asistente.plataforma.cli.boe_watch import _resolve_target
 
 
 def test_resolve_target_reuses_recorded_path(tmp_path: Path) -> None:

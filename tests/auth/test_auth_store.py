@@ -6,10 +6,10 @@ import sqlite3
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.auth.passwords import PasswordPolicyError, hash_password, verify_password
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import (
+from asistente.plataforma import settings
+from asistente.plataforma.auth.passwords import PasswordPolicyError, hash_password, verify_password
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import (
     CONSENT_TEXT_VERSION,
     AuthStore,
     EmailAlreadyRegisteredError,

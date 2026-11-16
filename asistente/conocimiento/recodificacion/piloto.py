@@ -19,11 +19,11 @@ One run does, in order:
    from today's text.
 3. **Verification** — every group of every parameter file is checked against the current text of its law (no
    model): what no longer matches becomes a target too, whatever caused it.
-4. **Re-encoding** — the loop of :mod:`~hacienda_gpt.tax.recodificacion.nucleo` for each target, under the caps of
+4. **Re-encoding** — the loop of :mod:`~asistente.conocimiento.recodificacion.nucleo` for each target, under the caps of
    the run and of the daily budget; proposals that need nobody are applied when auto-application is on.
 5. **Provenance** — a stale law whose every check matches, with nothing open about it (no norm still followed, no
    group left to re-read, no proposal waiting or that did not converge), has today's reading recorded in every
-   parameter file that cites it (:mod:`~hacienda_gpt.tax.recodificacion.procedencia`), so that ``params-check``
+   parameter file that cites it (:mod:`~asistente.conocimiento.recodificacion.procedencia`), so that ``params-check``
    stops reporting it.
 6. **Report** — what was found, done and left, for the operator.
 
@@ -44,14 +44,13 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.tax.params import DATA_DIR
-from hacienda_gpt.tax.recodificacion.adaptadores import (
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR
+from asistente.conocimiento.recodificacion.adaptadores import (
     objetivos_de_desglose,
     objetivos_de_verificacion,
     todos_los_objetivos,
 )
-from hacienda_gpt.tax.recodificacion.control import (
+from asistente.conocimiento.recodificacion.control import (
     _sin_acentos,
     articulos_que_modifica,
     bloques_anotados,
@@ -59,7 +58,7 @@ from hacienda_gpt.tax.recodificacion.control import (
     partir_base,
     preceptos_de_analisis,
 )
-from hacienda_gpt.tax.recodificacion.nucleo import (
+from asistente.conocimiento.recodificacion.nucleo import (
     MAX_ITER,
     AlmacenPropuestas,
     Informe,
@@ -74,7 +73,7 @@ from hacienda_gpt.tax.recodificacion.nucleo import (
     resumen_de,
     texto_del_aviso,
 )
-from hacienda_gpt.tax.recodificacion.procedencia import (
+from asistente.conocimiento.recodificacion.procedencia import (
     FechaBoe,
     bloques_del_grupo,
     grupos_de_los_bloques,
@@ -82,7 +81,8 @@ from hacienda_gpt.tax.recodificacion.procedencia import (
     refrescar_lo_que_se_pueda,
     releido_contra,
 )
-from hacienda_gpt.tax.verificacion import VERSION_DIARIO, TextoDe
+from asistente.conocimiento.verificacion import VERSION_DIARIO, TextoDe
+from asistente.nucleo.agent.providers.base import ProviderError
 
 Etapa = Literal["sin_consolidar", "consolidada", "cerrada"]
 # What to do with the provenance of a law that is up to date again: record it, only say so, or neither.
@@ -282,7 +282,7 @@ def articulos_en_el_consolidado(pagina: str, norma: NormaModificadora) -> dict[s
     notes name it (an older version date, a "Téngase en cuenta…" announcing a future wording) is an "anotaciones
     del consolidado".
     """
-    from hacienda_gpt.proactive.impacto import articulos_modificados
+    from asistente.nucleo.proactive.impacto import articulos_modificados
 
     referencias = [norma.norma, *([corto] if (corto := nombre_corto(norma.titulo)) else [])]
     planas = [_plano(r) for r in referencias]
@@ -398,7 +398,7 @@ def pilotar(
     without it, the date its page shows. ``procedencia``: "anotar" records today's reading of the laws that are up to
     date again, "simular" only reports them (texts that were not read from the BOE today), "no" skips the step.
     ``ejecutor`` replaces :func:`ejecutar` for the loop (same signature), e.g. the batch one of
-    :mod:`~hacienda_gpt.tax.recodificacion.lotes`.
+    :mod:`~asistente.conocimiento.recodificacion.lotes`.
     """
     hoy = hoy or date.today()
     estado = leer_estado(estado_path)

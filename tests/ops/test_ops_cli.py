@@ -5,13 +5,13 @@ import sys
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import ops as ops_module
-from hacienda_gpt.cli.ops import ASUNTO_DOCTOR, MAX_HORAS_POR_DEFECTO, cli
-from hacienda_gpt.ops import vigia
-from hacienda_gpt.ops.vigia import leer_estado, registrar_ejecucion
-from hacienda_gpt.proactive.entrega import ConfiguracionCanalError, EntregaStore
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.nucleo.proactive.entrega import ConfiguracionCanalError, EntregaStore
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.cli import ops as ops_module
+from asistente.plataforma.cli.ops import ASUNTO_DOCTOR, MAX_HORAS_POR_DEFECTO, cli
+from asistente.plataforma.ops import vigia
+from asistente.plataforma.ops.vigia import leer_estado, registrar_ejecucion
 
 
 class FakeCanal:

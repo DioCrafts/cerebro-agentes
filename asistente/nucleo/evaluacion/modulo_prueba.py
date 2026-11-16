@@ -2,7 +2,7 @@
 
 No real module has an ``efecto="actua"`` tool yet, but the guarantee must be tested before one exists:
 calling such a tool never runs it — it becomes a pending action the user confirms — and the assistant must
-not say it was done. This module lives outside ``hacienda_gpt.modulos`` so the registry never discovers it:
+not say it was done. This module lives outside ``asistente.ambitos`` so the registry never discovers it:
 it is switched on only by suite cases that list ``prueba_actua`` in ``modulos``.
 """
 
@@ -11,8 +11,8 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from hacienda_gpt.agent.providers.base import ToolSpec
-from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ModuloBase, ResultadoHerramienta
+from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ModuloBase, ResultadoHerramienta
 
 CLAVE = "prueba_actua"
 

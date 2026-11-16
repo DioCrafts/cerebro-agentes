@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from langchain_core.retrievers import BaseRetriever
 import pytest
 
-from hacienda_gpt.llm import chain
+from asistente.conocimiento.llm import chain
 
 
 def test_create_retriever_raises_when_untrusted(monkeypatch: pytest.MonkeyPatch) -> None:

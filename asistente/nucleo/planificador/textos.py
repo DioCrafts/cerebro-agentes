@@ -13,9 +13,9 @@ read from the aid module's data (``modulos/ayudas/data``), where they are alread
 
 from __future__ import annotations
 
-from hacienda_gpt.conocimiento import CitaLegal, FicheroLegal, GrupoLegal, Ortografia
-from hacienda_gpt.tax.optimizador import TEXTOS_LEGALES as TEXTOS_OPTIMIZADOR
-from hacienda_gpt.tax.optimizador import TextoLegal
+from asistente.ambitos.fiscal.calculo.optimizador import TEXTOS_LEGALES as TEXTOS_OPTIMIZADOR
+from asistente.ambitos.fiscal.calculo.optimizador import TextoLegal
+from asistente.conocimiento import CitaLegal, FicheroLegal, GrupoLegal, Ortografia
 
 LIRPF = "BOE-A-2006-20764"
 LEY_IMV = "BOE-A-2021-21007"

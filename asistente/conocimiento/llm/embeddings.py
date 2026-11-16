@@ -1,7 +1,7 @@
 """Embedding model factory — MLX (Apple Silicon native, bf16) only.
 
-Both indexing (``hacienda_gpt.processor.document_loader``) and querying
-(``hacienda_gpt.llm.chain`` and ``hacienda_gpt.cli.benchmark_retrieval``) build
+Both indexing (``asistente.conocimiento.processor.document_loader``) and querying
+(``asistente.conocimiento.llm.chain`` and ``asistente.plataforma.cli.benchmark_retrieval``) build
 their embedder here so the FAISS index and the query path always share the
 same vector space.
 
@@ -27,7 +27,7 @@ from typing import Any
 
 from langchain_core.embeddings import Embeddings
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 

@@ -7,10 +7,10 @@ from pathlib import Path
 
 import click
 
-from hacienda_gpt.decision.fact_extractor import default_fact_extractor
-from hacienda_gpt.decision.interpreter import interpret_turn
-from hacienda_gpt.decision.rules_engine import evaluate_rules
-from hacienda_gpt.decision.schemas import CaseState
+from asistente.nucleo.decision.fact_extractor import default_fact_extractor
+from asistente.nucleo.decision.interpreter import interpret_turn
+from asistente.nucleo.decision.rules_engine import evaluate_rules
+from asistente.nucleo.decision.schemas import CaseState
 
 # Why this CLI runs the model instead of reading predictions from the dataset:
 # the critical-cases JSONL ships GOLD labels only. The previous implementation

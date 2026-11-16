@@ -8,10 +8,9 @@ from urllib.parse import unquote
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.capacidades.investigacion import plan
-from hacienda_gpt.capacidades.investigacion.ajustes import ajustes
-from hacienda_gpt.capacidades.investigacion.fuentes import (
+from asistente.capacidades.investigacion import plan
+from asistente.capacidades.investigacion.ajustes import ajustes
+from asistente.capacidades.investigacion.fuentes import (
     API_BOE,
     ClienteBOE,
     descargar_boe,
@@ -20,6 +19,7 @@ from hacienda_gpt.capacidades.investigacion.fuentes import (
     palabras_clave,
     sospechosa,
 )
+from asistente.plataforma import settings
 
 
 def test_the_boe_search_skips_repealed_norms_and_falls_back_to_the_text() -> None:

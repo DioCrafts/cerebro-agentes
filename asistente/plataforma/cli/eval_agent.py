@@ -1,14 +1,14 @@
 """Build and run the DGT golden-set evaluation.
 
     # 1) Build the golden set from downloaded consultas (one LLM call each):
-    uv run python -m hacienda_gpt.cli.eval_agent build \\
+    uv run python -m asistente.plataforma.cli.eval_agent build \\
         --dgt-dir data/html/<snapshot>/dgt-vinculantes --out eval_data/dgt_golden.jsonl \\
         --sample 200 --since-year 2022
 
     # 2) Evaluate the agent (and, for comparison, the legacy /qa chain):
-    uv run python -m hacienda_gpt.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
+    uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
         --system agent --out reports/eval_agent.json
-    uv run python -m hacienda_gpt.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
+    uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
         --system qa --out reports/eval_qa.json
 
 Both commands call paid LLM APIs (unless LLM_PROVIDER=local); each prints how
@@ -22,7 +22,7 @@ from pathlib import Path
 
 import click
 
-from hacienda_gpt.evals.agent_eval import (
+from asistente.nucleo.evals.agent_eval import (
     CaseResult,
     ExcludingSearcher,
     GoldenCase,
@@ -51,7 +51,7 @@ def cli() -> None:
 @click.option("--yes", is_flag=True, help="Do not ask for confirmation before calling the LLM.")
 def build(dgt_dir: Path, out_path: Path, sample: int, since_year: int, seed: int, yes: bool) -> None:
     """Turn sampled DGT consultas into (question, expected answer) cases."""
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.providers import create_provider
 
     files = sample_consulta_files(dgt_dir, sample=sample, since_year=since_year or None, seed=seed)
     if not files:
@@ -79,7 +79,7 @@ def build(dgt_dir: Path, out_path: Path, sample: int, since_year: int, seed: int
 
 
 def _agent_system(exclude_source: bool) -> SystemUnderTest:
-    from hacienda_gpt.agent.agent import AgentMode, TaxAgent, build_agent
+    from asistente.nucleo.agent.agent import AgentMode, TaxAgent, build_agent
 
     base = build_agent()
 
@@ -111,9 +111,9 @@ def _agent_system(exclude_source: bool) -> SystemUnderTest:
 
 
 def _qa_system() -> SystemUnderTest:
-    from hacienda_gpt.llm.chain import answer_with_grounding, create_openai_chain
-    from hacienda_gpt.llm.grounding import AnswerMode
-    from hacienda_gpt.utils import get_openai_api_key
+    from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
+    from asistente.conocimiento.llm.grounding import AnswerMode
+    from asistente.plataforma.utils import get_openai_api_key
 
     chain = create_openai_chain(openai_api_key=get_openai_api_key())
 
@@ -157,15 +157,15 @@ def run(
     yes: bool,
 ) -> None:
     """Run a system over the golden set and judge each answer against the DGT's."""
-    from hacienda_gpt.agent.providers import create_provider
+    from asistente.nucleo.agent.providers import create_provider
 
     cases = load_golden(dataset)
     if limit:
         cases = cases[:limit]
     if not cases:
         raise click.ClickException(f"{dataset} no contiene casos")
-    from hacienda_gpt.agent import enrutado
-    from hacienda_gpt.ops.consumo import medir
+    from asistente.nucleo.agent import enrutado
+    from asistente.plataforma.ops.consumo import medir
 
     # Metered (and routed) as purpose "evaluacion-juez"; a --judge-model is kept as chosen.
     ruta = (

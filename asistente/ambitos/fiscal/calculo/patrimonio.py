@@ -31,10 +31,10 @@ from decimal import ROUND_HALF_UP, Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.modulos.fiscal.calculo.actividad import Traza
-from hacienda_gpt.modulos.fiscal.calculo.irpf import Linea
-from hacienda_gpt.modulos.fiscal.calculo.params import normalizar_comunidad
-from hacienda_gpt.modulos.fiscal.calculo.patrimonio_params import (
+from asistente.ambitos.fiscal.calculo.actividad import Traza
+from asistente.ambitos.fiscal.calculo.irpf import Linea
+from asistente.ambitos.fiscal.calculo.params import normalizar_comunidad
+from asistente.ambitos.fiscal.calculo.patrimonio_params import (
     BonificacionGeneral,
     ComunidadPatrimonio,
     LimiteConjunto,
