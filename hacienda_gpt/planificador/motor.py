@@ -1297,12 +1297,20 @@ def planificar(
                 causas = [n for n in planif.oraculo.no_disponibles if n.id == palanca]
                 if causas:
                     causa = causas[0].causa
+                    detalle = causas[0].detalle
+                    propio = (
+                        planif.entrada.aportacion_maxima_pensiones
+                        if i == 0
+                        else planif.entrada.aportacion_maxima_pensiones_conyuge
+                    )
+                    if causa == "restricciones" and planif.utilizable <= 0 and propio is None:
+                        causa, detalle = "sin_margen", "No queda dinero que usar sin bajar del colchón de emergencia."
                     no_usadas.append(
                         PalancaNoUsada(
                             id=palanca,
                             nombre=nombre,
                             causa=causa if causa in ("restricciones", "faltan_datos", "sin_margen", "fecha") else "sin_margen",  # type: ignore[arg-type]
-                            detalle=causas[0].detalle,
+                            detalle=detalle,
                         )
                     )
                     continue
