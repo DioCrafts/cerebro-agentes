@@ -11,8 +11,10 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import StreamingResponse
+from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
+from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.requests import Request
 
 
 def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
@@ -69,6 +71,7 @@ from hacienda_gpt.api.observability import ApiMetrics, observability_middleware
 from hacienda_gpt.api.routers import auth as auth_router
 from hacienda_gpt.api.routers import autonomos as autonomos_router
 from hacienda_gpt.api.routers import consumo as consumo_router
+from hacienda_gpt.api.routers import correo as correo_router
 from hacienda_gpt.api.routers import evaluacion as evaluacion_router
 from hacienda_gpt.api.routers import eventos as eventos_router
 from hacienda_gpt.api.routers import memoria as memoria_router
@@ -78,8 +81,12 @@ from hacienda_gpt.api.routers import planificador as planificador_router
 from hacienda_gpt.api.security import (
     BodySizeLimitMiddleware,
     RateLimiter,
+    comprobar_pregunta,
     make_rate_limit_middleware,
+    recortar_historial,
     require_api_key,
+    require_docs_publicas,
+    require_qa_legado,
     security_headers_middleware,
 )
 from hacienda_gpt.auth.deps import (
@@ -127,7 +134,41 @@ from hacienda_gpt.tax.simulador import Simulacion, simular
 
 _logger = logging.getLogger(__name__)
 
-app = FastAPI(title="HaciendaGPT Decision API", version="1.0.0")
+# The documentation routes are declared below, behind ``require_docs_publicas`` (docs/seguridad.md, S-18).
+app = FastAPI(title="HaciendaGPT Decision API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+def _no_disponible(mensaje: str, exc: BaseException) -> HTTPException:
+    """A 503 with a fixed message for the user. The exception's text (configuration, paths, a provider's answer,
+    part of the model's output) goes to the log only (docs/seguridad.md, S-11)."""
+    _logger.error("%s (%s: %s)", mensaje, type(exc).__name__, exc)
+    return HTTPException(status_code=503, detail=mensaje)
+
+
+# What the user reads when the model provider fails (the provider's own message goes to the log).
+_PROVEEDOR_NO_RESPONDE = (
+    "No se pudo procesar la consulta: el modelo no ha respondido. Inténtalo de nuevo en unos minutos."
+)
+
+_OPENAPI_URL = "/openapi.json"
+
+
+@app.get(_OPENAPI_URL, include_in_schema=False, dependencies=[Depends(require_docs_publicas)])
+def openapi_json() -> JSONResponse:
+    return JSONResponse(app.openapi())
+
+
+@app.get("/docs", include_in_schema=False, dependencies=[Depends(require_docs_publicas)])
+def swagger_ui(request: Request) -> HTMLResponse:
+    raiz = str(request.scope.get("root_path", "")).rstrip("/")
+    return get_swagger_ui_html(openapi_url=raiz + _OPENAPI_URL, title=f"{app.title} - Swagger UI")
+
+
+@app.get("/redoc", include_in_schema=False, dependencies=[Depends(require_docs_publicas)])
+def redoc(request: Request) -> HTMLResponse:
+    raiz = str(request.scope.get("root_path", "")).rstrip("/")
+    return get_redoc_html(openapi_url=raiz + _OPENAPI_URL, title=f"{app.title} - ReDoc")
+
 
 # CORS: in dev the Vite frontend runs at http://localhost:5173 and
 # proxies /api/* to this server, which avoids preflight altogether. We
@@ -329,6 +370,7 @@ def post_turn(
     case = store.get_case(case_id)
     if case is None:
         raise HTTPException(status_code=404, detail="case not found")
+    comprobar_pregunta(payload.user_input)
 
     try:
         # Attributed to the user, so the per-user daily budget applies to the extractor's calls too.
@@ -337,7 +379,7 @@ def post_turn(
                 case=case,
                 user_input=payload.user_input,
                 extractor=extractor,
-                chat_history=payload.chat_history,
+                chat_history=recortar_historial(payload.chat_history),
             )
     except OpenAIExtractionError as exc:
         if isinstance(exc.__cause__, PresupuestoAgotadoError):
@@ -345,9 +387,8 @@ def post_turn(
         # The fact extractor (LLM) failed after its own retries. Surface a clean
         # 503 instead of an opaque 500 — and never silently fall back to the
         # weaker regex extractor, which could persist wrong fiscal facts.
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudieron extraer los hechos de la consulta: {exc}",
+        raise _no_disponible(
+            "No se pudieron extraer los hechos de la consulta. Inténtalo de nuevo en unos minutos.", exc
         ) from exc
 
     try:
@@ -423,28 +464,29 @@ def get_qa_chain():
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"El servicio de consulta no está disponible: {exc}",
-        ) from exc
+        raise _no_disponible("El servicio de consulta no está disponible.", exc) from exc
 
 
-@app.post("/qa", response_model=AnswerEnvelope, dependencies=[Depends(require_api_key), Depends(require_session)])
+# The legacy chain calls OpenAI through LangChain, outside the metered providers (no usage log, no daily
+# budget): only without accounts (docs/seguridad.md, S-14). The web app no longer calls it.
+@app.post(
+    "/qa",
+    response_model=AnswerEnvelope,
+    dependencies=[Depends(require_qa_legado), Depends(require_api_key), Depends(require_session)],
+)
 def post_qa(payload: QARequest, chain=Depends(get_qa_chain)) -> AnswerEnvelope:
     from hacienda_gpt.llm.chain import answer_with_grounding
 
+    comprobar_pregunta(payload.query)
     try:
-        return answer_with_grounding(chain, query=payload.query, chat_history=payload.chat_history)
+        return answer_with_grounding(chain, query=payload.query, chat_history=recortar_historial(payload.chat_history))
     except HTTPException:
         raise
     except Exception as exc:
         # The chain built fine but answering failed (retrieval, the OpenAI call,
         # grounding…). Surface a clean error instead of an opaque 500. This is
         # per-request, so — unlike a build failure — it is NOT cached.
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo procesar la consulta: {exc}",
-        ) from exc
+        raise _no_disponible("No se pudo procesar la consulta. Inténtalo de nuevo en unos minutos.", exc) from exc
 
 
 class AgentRequest(BaseModel):
@@ -489,10 +531,7 @@ def get_agent() -> TaxAgent:
     except HTTPException:
         raise
     except Exception as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"El agente no está disponible: {exc}",
-        ) from exc
+        raise _no_disponible("El agente no está disponible.", exc) from exc
 
 
 def _consumidor(access: CaseAccess, case: CaseState | None) -> str | None:
@@ -605,6 +644,7 @@ def post_agent(
     against the fragment it cites before the response is labelled ``verified``.
     """
     case = _load_agent_case(payload.case_id, store, access)
+    comprobar_pregunta(payload.query)
     try:
         with contexto_consumo(
             user_id=access.user.id if access.user is not None else (case.user_id if case is not None else None),
@@ -612,17 +652,14 @@ def post_agent(
         ):
             result = agent.run(
                 payload.query,
-                chat_history=payload.chat_history,
+                chat_history=recortar_historial(payload.chat_history),
                 case=case,
                 **_modulos_del_turno(payload.case_id, access),
             )
     except PresupuestoAgotadoError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except ProviderError as exc:
-        raise HTTPException(
-            status_code=503,
-            detail=f"No se pudo procesar la consulta: {exc}",
-        ) from exc
+        raise _no_disponible(_PROVEEDOR_NO_RESPONDE, exc) from exc
     return _finish_agent_turn(payload, case, result, store, acciones)
 
 
@@ -649,6 +686,8 @@ def post_agent_stream(
     agent unavailable, 401) are still plain HTTP errors.
     """
     case = _load_agent_case(payload.case_id, store, access)
+    comprobar_pregunta(payload.query)
+    historial = recortar_historial(payload.chat_history)
     modulos = _modulos_del_turno(payload.case_id, access)
     events: queue.Queue[dict] = queue.Queue()
 
@@ -661,7 +700,7 @@ def post_agent_stream(
             ):
                 result = agent.run(
                     payload.query,
-                    chat_history=payload.chat_history,
+                    chat_history=historial,
                     case=case,
                     on_event=lambda event: events.put({"event": "progress", "data": event}),
                     **modulos,
@@ -671,7 +710,8 @@ def post_agent_stream(
         except PresupuestoAgotadoError as exc:
             events.put({"event": "error", "data": {"status": 429, "detail": str(exc)}})
         except ProviderError as exc:
-            events.put({"event": "error", "data": {"status": 503, "detail": f"No se pudo procesar la consulta: {exc}"}})
+            fallo = _no_disponible(_PROVEEDOR_NO_RESPONDE, exc)
+            events.put({"event": "error", "data": {"status": 503, "detail": fallo.detail}})
         except HTTPException as exc:
             events.put({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
         except Exception:  # the stream must always end with a terminal line
@@ -1032,7 +1072,7 @@ def get_document_provider() -> LLMProvider:
     try:
         return _build_document_provider()
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"El lector de documentos no está disponible: {exc}") from exc
+        raise _no_disponible("El lector de documentos no está disponible.", exc) from exc
 
 
 @app.post(
@@ -1069,7 +1109,7 @@ def post_case_document(
     except PresupuestoAgotadoError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except ProviderError as exc:
-        raise HTTPException(status_code=503, detail=f"No se pudo analizar el documento: {exc}") from exc
+        raise _no_disponible("No se pudo analizar el documento. Inténtalo de nuevo en unos minutos.", exc) from exc
     store.append_audit_event(
         case_id,
         {
@@ -1211,4 +1251,5 @@ app.include_router(eventos_router.build_router(get_case_store=get_case_store))
 app.include_router(navegador_router.build_router(get_case_store=get_case_store, get_accion_store=get_accion_store))
 app.include_router(evaluacion_router.build_router(get_case_store=get_case_store))
 app.include_router(planificador_router.build_router(get_case_store=get_case_store))
+app.include_router(correo_router.build_router(get_case_store=get_case_store))
 # --- /routers ---

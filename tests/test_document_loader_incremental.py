@@ -18,8 +18,15 @@ from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 import pytest
 
+from hacienda_gpt import settings
 from hacienda_gpt.processor import document_loader as dl
 from hacienda_gpt.processor import manifest as mf
+
+
+@pytest.fixture(autouse=True)
+def indice_de_confianza(monkeypatch: pytest.MonkeyPatch) -> None:
+    """These tests build their own index, so they may load it back (docs/seguridad.md, S-17)."""
+    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", True)
 
 
 class _DeterministicEmbed(Embeddings):
@@ -496,3 +503,28 @@ def test_batch_size_one_still_works(corpus, patch_docling) -> None:
     assert set(final.files.keys()) == {"a.html", "b.html", "c.html"}
     # All chunks present.
     assert final.total_chunks == 6  # 3 files × 2 chunks/file (stub default)
+
+
+# --------------------------------------------------------------------------- #
+# The existing index is a pickle: never loaded unless the operator trusts it
+# --------------------------------------------------------------------------- #
+
+
+def test_an_incremental_run_refuses_to_unpickle_an_untrusted_index(corpus, patch_docling, monkeypatch) -> None:
+    content_dir, output_dir = corpus
+    _write(content_dir / "a.html")
+    _make_processor(content_dir, output_dir).process_documents()
+    _write(content_dir / "b.html")
+    antes = (output_dir / "index.pkl").read_bytes()
+
+    from langchain_community.vectorstores import FAISS
+
+    def no_cargar(*_a, **_k):
+        raise AssertionError("the index was unpickled")
+
+    monkeypatch.setattr(FAISS, "load_local", no_cargar)
+    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)
+    with pytest.raises(RuntimeError, match="FAISS_TRUSTED_INDEX"):
+        _make_processor(content_dir, output_dir).process_documents()
+    # Not silently rebuilt either: the index is as it was.
+    assert (output_dir / "index.pkl").read_bytes() == antes

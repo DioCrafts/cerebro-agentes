@@ -2,9 +2,9 @@
 
 Everything comes from the mortgage module: the schedule (:func:`calculo.calcular_cuadro`, the same conventions
 and published indices), the fee cap (:func:`comisiones.comision_maxima`, Ley 5/2019 and earlier laws) and the
-module's rule for what the household pays in a year (``pagos_del_ejercicio``: ordinary instalments plus early
-repayments), which is what the pre-2013 housing deduction bridge (``modulos/puentes.py``) proposes to the tax
-module.
+module's rule for what the household pays in a year (``deduccion.pagos_del_ano`` and ``deduccion.base_deducible``:
+ordinary instalments, early repayments and their fees, the concepts the law counts and the module knows), which is
+what the pre-2013 housing deduction bridge (``modulos/puentes.py``) proposes to the tax module.
 
 Net position at the horizon ``T`` of repaying ``A`` on ``t0`` with fee ``c``, against keeping the money liquid at
 the household's alternative return ``r`` (monthly ``(1+r)^(1/12)-1``, whole months as the module's own
@@ -29,6 +29,7 @@ from typing import Literal
 
 from hacienda_gpt.modulos.hipoteca.calculo import Cuadro, Supuestos, calcular_cuadro, cuotas_necesarias, euros
 from hacienda_gpt.modulos.hipoteca.comisiones import Comision, comision_maxima
+from hacienda_gpt.modulos.hipoteca.deduccion import base_deducible, pagos_del_ano
 from hacienda_gpt.modulos.hipoteca.indices import SerieIndices, cargar_serie
 from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo
 from hacienda_gpt.modulos.hipoteca.normativa import Normativa, cargar_normativa
@@ -176,13 +177,12 @@ class PalancaHipoteca:
         return sorted(out)
 
     def pagos_por_ano(self, cuadro: Cuadro, extra: AmortizacionRealizada | None) -> dict[int, Decimal]:
+        """The base of the pre-2013 housing deduction each year: the mortgage module's own definition
+        (``deduccion.pagos_del_ano`` and ``deduccion.base_deducible``, the same as the bridge to the tax module),
+        with ``extra`` (carrying its fee) among the early repayments."""
         extras = [*self.prestamo.amortizaciones_realizadas, *([extra] if extra is not None else [])]
         anos = range(self.fecha.year, self.crecimiento.horizonte.year + 1)
-        out: dict[int, Decimal] = {}
-        for ano in anos:
-            capital, intereses = cuadro.pagos_del_ano(ano)
-            out[ano] = capital + intereses + sum((a.importe for a in extras if a.fecha.year == ano), ZERO)
-        return out
+        return {ano: base_deducible(pagos_del_ano(cuadro, extras, ano)) for ano in anos}
 
     def calculado(self, importe: Decimal, modalidad: str | None) -> bool:
         return (importe, modalidad if importe > 0 else None) in self._cache
@@ -242,10 +242,12 @@ class PalancaHipoteca:
         else:
             raise ValueError("modalidad de amortización desconocida")
         importe = min(importe, self.capital_pendiente)
-        extra = AmortizacionRealizada(fecha=self.fecha, importe=importe, modalidad=modo)
+        comision = self.comision(importe)
+        extra = AmortizacionRealizada(
+            fecha=self.fecha, importe=importe, modalidad=modo, comision_pagada=comision.importe
+        )
         cuadro = calcular_cuadro(self.prestamo, self.serie, Supuestos(hoy=self.hoy, amortizaciones=(extra,)))
         self.cuadros_calculados += 1
-        comision = self.comision(importe)
         horizonte = self.crecimiento.horizonte
         dentro = [f for f in self.base.filas if self.fecha < f.fecha <= horizonte]
         nuevas = {f.fecha: f for f in cuadro.filas}

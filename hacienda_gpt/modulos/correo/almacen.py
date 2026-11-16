@@ -248,7 +248,9 @@ def borrar_conexion(case_id: str, db_path: str | None = None) -> bool:
         return conn.execute("DELETE FROM correo_conexiones WHERE case_id = ?", (case_id,)).rowcount > 0
 
 
-def guardar_estado_oauth(estado: str, *, case_id: str, user_id: str | None, verificador_cifrado: str, db_path: str | None = None) -> None:
+def guardar_estado_oauth(
+    estado: str, *, case_id: str, user_id: str | None, verificador_cifrado: str, db_path: str | None = None
+) -> None:
     ahora = datetime.now(UTC)
     with conectar(db_path) as conn:
         conn.execute("DELETE FROM correo_oauth_estados WHERE creado < ?", ((ahora - VIDA_ESTADO_OAUTH).isoformat(),))
@@ -400,7 +402,9 @@ def contactos(case_id: str, db_path: str | None = None) -> list[str]:
     with conectar(db_path) as conn:
         return [
             f["direccion"]
-            for f in conn.execute("SELECT direccion FROM correo_contactos WHERE case_id = ? ORDER BY direccion", (case_id,))
+            for f in conn.execute(
+                "SELECT direccion FROM correo_contactos WHERE case_id = ? ORDER BY direccion", (case_id,)
+            )
         ]
 
 

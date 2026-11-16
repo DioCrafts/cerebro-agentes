@@ -12,6 +12,7 @@ from hacienda_gpt.decision.fact_extractor import (
     default_fact_extractor,
 )
 from hacienda_gpt.decision.schemas import CaseState
+from hacienda_gpt.ops.consumo import MeteredProvider
 
 
 class _JsonProvider:
@@ -85,8 +86,16 @@ def test_default_extractor_follows_llm_provider(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(settings, "LOCAL_LLM_MODEL", "")
     assert isinstance(default_fact_extractor(), RegexFactExtractor)
 
+    # Only an OpenAI key: OpenAI through the metered provider layer, never the unmetered SDK extractor (S-14).
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    assert isinstance(default_fact_extractor(), OpenAIFactExtractor)
+    solo_openai = default_fact_extractor()
+    assert isinstance(solo_openai, ProviderFactExtractor) and not isinstance(solo_openai, OpenAIFactExtractor)
+    assert solo_openai._provider.name == "openai" and isinstance(solo_openai._provider, MeteredProvider)
+    assert solo_openai._provider.model == settings.OPENAI_MODEL
+    monkeypatch.setenv("DECISION_EXTRACTOR", "openai")
+    forzado = default_fact_extractor()
+    assert isinstance(forzado, ProviderFactExtractor) and isinstance(forzado._provider, MeteredProvider)
+    monkeypatch.delenv("DECISION_EXTRACTOR")
 
     # A configured Claude wins over a stray OpenAI key: LLM_PROVIDER decides.
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")

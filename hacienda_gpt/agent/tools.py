@@ -18,6 +18,7 @@ from typing import Any, get_args
 from pydantic import ValidationError
 
 from hacienda_gpt.agent.evidence import SOURCE_TYPES, EvidenceLedger, Fragment
+from hacienda_gpt.agent.procedencia import AVISO_SIN_RESPALDO, sin_respaldo
 from hacienda_gpt.agent.providers.base import ToolCall, ToolSpec
 from hacienda_gpt.agent.search import CorpusSearcher, SearchFilters, normalize_date
 from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE, KNOWN_FACT_NAMES, _coerce_value
@@ -136,7 +137,10 @@ RECORD_FACTS_TOOL = ToolSpec(
     name="registrar_hechos",
     description=(
         "Guarda en el expediente hechos que el usuario ha declarado expresamente en esta conversación (o que ha "
-        "corregido). No registres inferencias ni supuestos tuyos. Valores esperados: residencia_fiscal 'ES' o "
+        "corregido). No registres inferencias ni supuestos tuyos. Se comprueba contra los mensajes del usuario: "
+        "cada cifra tiene que ser una que él haya escrito, y un sí/no o un texto (y los JSON de abajo) necesitan "
+        "`cita_del_usuario` con sus palabras literales que lo dicen; lo que salga de una fuente, un documento o un "
+        "módulo se rechaza (pregúntaselo). Valores esperados: residencia_fiscal 'ES' o "
         "código ISO del país; periodo_fiscal año de 4 dígitos; importes en euros como número; booleanos true/false. "
         "`descendientes` (detalle de cada hijo) se guarda como texto JSON: una lista con un objeto por hijo, con "
         "`edad` (a 31 de diciembre) o `fecha_nacimiento` (AAAA-MM-DD) y, si constan, grado_discapacidad, "
@@ -167,6 +171,7 @@ RECORD_FACTS_TOOL = ToolSpec(
                     "properties": {
                         "nombre": {"type": "string", "enum": list(KNOWN_FACT_NAMES)},
                         "valor": {"type": ["string", "number", "boolean"]},
+                        "cita_del_usuario": {"type": "string"},
                     },
                     "required": ["nombre", "valor"],
                 },
@@ -1139,9 +1144,15 @@ class Toolbox:
         graph: DoctrineGraph | None = None,
         allowed: frozenset[str] | None = None,
         extra: Sequence[ExtraTool] = (),
+        mensajes_usuario: Sequence[str] | None = None,
     ) -> None:
         # Subagents get a subset of the tools (a researcher must not edit the case).
         self._allowed = allowed
+        # The user's own messages of this conversation: what registrar_hechos may record (agent/procedencia.py).
+        # None (a toolbox outside a conversation) records nothing.
+        self.mensajes_usuario = (
+            [m for m in mensajes_usuario if isinstance(m, str)] if mensajes_usuario is not None else None
+        )
         # Tools added by the core for this run (``consultar_<modulo>``), after the tax ones.
         self._extra = tuple(extra)
         self._graph = graph
@@ -1789,6 +1800,7 @@ class Toolbox:
 
         accepted: list[Fact] = []
         rejected: list[str] = []
+        sin_palabras = False
         for item in raw_facts:
             name = item.get("nombre") if isinstance(item, dict) else None
             value = item.get("valor") if isinstance(item, dict) else None
@@ -1812,6 +1824,18 @@ class Toolbox:
             )
             if coerced is None:
                 rejected.append(f"{name}: valor {value!r} no es de tipo {expected.value}")
+                continue
+            # Only what the user said (docs/seguridad.md, S-16): text the model read cannot write the case.
+            motivo = sin_respaldo(
+                coerced,
+                expected,
+                item.get("cita_del_usuario"),
+                self.mensajes_usuario,
+                detalle=name in DETALLE_FACT_TYPES,
+            )
+            if motivo is not None:
+                rejected.append(f"{name}: no se ha guardado, {motivo}")
+                sin_palabras = True
                 continue
             accepted.append(
                 Fact(
@@ -1842,6 +1866,8 @@ class Toolbox:
         lines = [f"Registrados: {', '.join(f'{fact.name}={fact.value}' for fact in accepted) or 'ninguno'}."]
         if rejected:
             lines.append("Rechazados: " + "; ".join(rejected) + ".")
+        if sin_palabras:
+            lines.append(AVISO_SIN_RESPALDO)
         return ToolOutcome(
             content=" ".join(lines),
             summary=f"{len(accepted)} registrados, {len(rejected)} rechazados",

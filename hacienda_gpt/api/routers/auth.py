@@ -38,6 +38,8 @@ from hacienda_gpt.auth.store import (
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.memoria.almacen import exportar_decisiones
 from hacienda_gpt.modulos.acciones import AccionStore
+from hacienda_gpt.modulos.correo import almacen as correo_almacen
+from hacienda_gpt.modulos.correo import oauth as correo_oauth
 from hacienda_gpt.navegador import tareas as tareas_navegador
 from hacienda_gpt.navegador import vigilancia
 from hacienda_gpt.ops.consumo import anonimizar_consumo
@@ -328,6 +330,8 @@ def build_router(
                     "pending_actions": acciones.exportar(case_id) if acciones is not None else [],
                     # What the user decided or prefers (hacienda_gpt/memoria), with its redacted history.
                     "decisiones": exportar_decisiones(cases.db_path, case_id),
+                    # The Gmail module: connection (without the token), derived items, proposals, pinned contacts.
+                    "correo": correo_almacen.exportar(case_id, cases.db_path),
                 }
             )
         return {
@@ -367,6 +371,8 @@ def build_router(
         # exists and the user can simply ask again.
         # The usage log keeps the operator's totals but no longer says whose they were.
         anonimizar_consumo(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
+        # Revoke the Gmail grants at Google now (the rows go with each case through the store's erasure hook).
+        correo_oauth.revocar_de_usuario(store.case_ids_of(user.id), db_path=cases.db_path)
         for case_id in store.case_ids_of(user.id):
             notifications.delete_for_case(case_id)
             if acciones is not None:

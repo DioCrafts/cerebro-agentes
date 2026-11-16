@@ -373,9 +373,10 @@ def build_router(
             texto, es_error = resultado.contenido, resultado.es_error
         except HechoInvalidoError as exc:
             texto, es_error = f"No se pudo completar: {exc}", True
-        except Exception as exc:  # the action failed: recorded, never retried silently
+        except Exception:  # the action failed: recorded, never retried silently
+            # The exception's text stays in the log (docs/seguridad.md, S-11): what is stored is shown to the user.
             logger.exception("action %s failed", accion_id)
-            texto, es_error = f"La acción falló: {type(exc).__name__}: {exc}", True
+            texto, es_error = "La acción falló por un error interno. No se ha cambiado nada; inténtalo más tarde.", True
         if escrito["cambiado"] and not es_error:
             cases.save_case(escrito["case"])
         final = acciones.transicion(
@@ -559,7 +560,11 @@ def build_router(
         except PresupuestoAgotadoError as exc:
             raise HTTPException(status_code=429, detail=str(exc)) from exc
         except ProviderError as exc:
-            raise HTTPException(status_code=503, detail=f"No se pudo leer el documento: {exc}") from exc
+            # The provider's text goes to the log only (docs/seguridad.md, S-11).
+            logger.error("module document reader failed (%s: %s)", type(exc).__name__, exc)
+            raise HTTPException(
+                status_code=503, detail="No se pudo leer el documento. Inténtalo de nuevo en unos minutos."
+            ) from exc
         if isinstance(propuesta, BaseModel):
             datos: dict[str, Any] = propuesta.model_dump(mode="json")
         elif isinstance(propuesta, dict):

@@ -130,7 +130,13 @@ def senales(mensaje: Mensaje, remitentes: Remitentes) -> list[Senal]:
 
     auth = autenticacion(mensaje)
     if auth.dmarc == "fail":
-        salida.append(Senal("dmarc_fallido", 3, f"El servidor de Gmail no pudo verificar que venga de {dominio or 'su remitente'} (DMARC fallido)."))
+        salida.append(
+            Senal(
+                "dmarc_fallido",
+                3,
+                f"El servidor de Gmail no pudo verificar que venga de {dominio or 'su remitente'} (DMARC fallido).",
+            )
+        )
     elif auth.dmarc in (None, "none") and auth.spf in ("fail", "softfail") and auth.dkim in (None, "fail", "none"):
         salida.append(Senal("spf_dkim_fallidos", 2, "Ni SPF ni DKIM confirman al remitente."))
 
@@ -144,12 +150,25 @@ def senales(mensaje: Mensaje, remitentes: Remitentes) -> list[Senal]:
             )
         )
     otra = _HOST_EN_TEXTO.search(mensaje.remitente_nombre or "")
-    if "@" in (mensaje.remitente_nombre or "") and otra and dominio and registrable(otra.group(1).lower()) != registrable(dominio):
-        salida.append(Senal("nombre_otra_direccion", 2, f"El nombre del remitente muestra otra dirección distinta de la real ({dominio})."))
+    if (
+        "@" in (mensaje.remitente_nombre or "")
+        and otra
+        and dominio
+        and registrable(otra.group(1).lower()) != registrable(dominio)
+    ):
+        salida.append(
+            Senal(
+                "nombre_otra_direccion",
+                2,
+                f"El nombre del remitente muestra otra dirección distinta de la real ({dominio}).",
+            )
+        )
 
     parecida = parecido_a(dominio, remitentes) if dominio else None
     if parecida is not None:
-        salida.append(Senal("dominio_parecido", 2, f"El dominio del remitente ({dominio}) imita al de {parecida.nombre}."))
+        salida.append(
+            Senal("dominio_parecido", 2, f"El dominio del remitente ({dominio}) imita al de {parecida.nombre}.")
+        )
 
     reg_remitente = registrable(dominio) if dominio else ""
     externos: set[str] = set()
@@ -159,15 +178,19 @@ def senales(mensaje: Mensaje, remitentes: Remitentes) -> list[Senal]:
         reg = registrable(enlace.host)
         imitado = parecido_a(enlace.host, remitentes)
         if imitado is not None and not any(s.codigo == "enlace_parecido" for s in salida):
-            salida.append(Senal("enlace_parecido", 2, f"Un enlace lleva a {reg}, que imita al dominio de {imitado.nombre}."))
+            salida.append(
+                Senal("enlace_parecido", 2, f"Un enlace lleva a {reg}, que imita al dominio de {imitado.nombre}.")
+            )
         mostrado = _HOST_EN_TEXTO.search(enlace.texto or "")
         if mostrado and "." in mostrado.group(1):
             reg_mostrado = registrable(mostrado.group(1).lower())
             if reg_mostrado != reg and not any(s.codigo == "enlace_enganoso" for s in salida):
-                salida.append(
-                    Senal("enlace_enganoso", 2, f"Un enlace muestra {reg_mostrado} pero lleva a {reg}.")
-                )
-        if reg != reg_remitente and marca_oficial_de(enlace.host, remitentes) is None and not es_sede_estatal(enlace.host):
+                salida.append(Senal("enlace_enganoso", 2, f"Un enlace muestra {reg_mostrado} pero lleva a {reg}."))
+        if (
+            reg != reg_remitente
+            and marca_oficial_de(enlace.host, remitentes) is None
+            and not es_sede_estatal(enlace.host)
+        ):
             externos.add(reg)
 
     if externos and _URGENTE.search(texto) and _PAGO.search(texto):
@@ -181,7 +204,9 @@ def senales(mensaje: Mensaje, remitentes: Remitentes) -> list[Senal]:
             )
         )
     marca_remitente = marca_oficial_de(dominio, remitentes) if dominio else None
-    pretende_admin = (nombrada is not None and nombrada.es_administracion) or bool(_ADMIN.search(_plano(mensaje.asunto)))
+    pretende_admin = (nombrada is not None and nombrada.es_administracion) or bool(
+        _ADMIN.search(_plano(mensaje.asunto))
+    )
     if pretende_admin and (marca_remitente is None or not marca_remitente.es_administracion):
         fuera = sorted(
             registrable(e.host)
@@ -200,10 +225,20 @@ def senales(mensaje: Mensaje, remitentes: Remitentes) -> list[Senal]:
             )
     if mensaje.responder_a_dominio and reg_remitente and registrable(mensaje.responder_a_dominio) != reg_remitente:
         if nombrada is not None or marca_remitente is not None:
-            salida.append(Senal("responder_a_distinto", 1, f"Las respuestas irían a {registrable(mensaje.responder_a_dominio)}, no a {reg_remitente}."))
+            salida.append(
+                Senal(
+                    "responder_a_distinto",
+                    1,
+                    f"Las respuestas irían a {registrable(mensaje.responder_a_dominio)}, no a {reg_remitente}.",
+                )
+            )
     if any(_PELIGROSOS.search(a.nombre.strip()) for a in mensaje.adjuntos):
-        salida.append(Senal("adjunto_peligroso", 2, "Trae un adjunto de un tipo que puede ejecutar código o abrir una web."))
-    if tiene_instrucciones_al_asistente(mensaje.asunto, mensaje.texto, mensaje.texto_oculto, *(a.nombre for a in mensaje.adjuntos)):
+        salida.append(
+            Senal("adjunto_peligroso", 2, "Trae un adjunto de un tipo que puede ejecutar código o abrir una web.")
+        )
+    if tiene_instrucciones_al_asistente(
+        mensaje.asunto, mensaje.texto, mensaje.texto_oculto, *(a.nombre for a in mensaje.adjuntos)
+    ):
         salida.append(
             Senal(
                 "instrucciones_al_asistente",
@@ -239,7 +274,7 @@ def citar(texto: str, maximo: int = 200) -> str:
     """``texto`` as a short, inert quotation: one line, no markup, injection bait redacted, «quoted»."""
     limpio = " ".join(_CONTROL.sub(" ", texto or "").split())
     limpio = _redactar(sanitize_retrieved_context(limpio))
-    limpio = " ".join(limpio.replace("<", "‹").replace(">", "›").replace("«", "\"").replace("»", "\"").split())
+    limpio = " ".join(limpio.replace("<", "‹").replace(">", "›").replace("«", '"').replace("»", '"').split())
     if len(limpio) > maximo:
         limpio = limpio[: maximo - 1].rstrip() + "…"
     return f"«{limpio}»"

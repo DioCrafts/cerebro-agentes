@@ -31,14 +31,12 @@ PUBLIC = {
     "/autonomos/actividad",
     "/autonomos/modelo-130",
     "/autonomos/modelo-303",
-    # FastAPI's own documentation (see docs/seguridad.md: hide it at the proxy in production).
-    "/openapi.json",
-    "/docs",
-    "/docs/oauth2-redirect",
-    "/redoc",
 }
 # Service-wide figures: the operator's, never a user's (404 without the operator key).
 OPERATOR = {"/usage", "/eventos/salud"}
+# Gone with accounts on (404 to everyone): the API's documentation (S-18, unless API_DOCS_PUBLICAS=true) and the
+# legacy /qa chain, which calls the model unmetered (S-14).
+DISABLED = {"/openapi.json", "/docs", "/redoc", "/qa"}
 
 
 def _routes() -> list[tuple[str, str]]:
@@ -80,12 +78,12 @@ def test_every_route_is_public_by_design_operator_only_or_needs_a_session(
     monkeypatch.setattr(settings, "NAVEGADOR_ACTIVO", True)  # otherwise its routes answer 503 before anything
     monkeypatch.delenv("HACIENDA_OPERATOR_KEY", raising=False)
     declared = {path for _, path in _routes()}
-    assert PUBLIC | OPERATOR <= declared, (PUBLIC | OPERATOR) - declared  # the lists are not stale
+    assert PUBLIC | OPERATOR | DISABLED <= declared, (PUBLIC | OPERATOR | DISABLED) - declared  # not stale
     for method, path in _routes():
         if path in PUBLIC:
             continue
         response = env.client.request(method, _fill(path), json={})
-        expected = 404 if path in OPERATOR else 401
+        expected = 404 if path in OPERATOR | DISABLED else 401
         assert response.status_code == expected, (method, path, response.status_code, response.text[:200])
 
 

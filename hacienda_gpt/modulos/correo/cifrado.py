@@ -24,7 +24,9 @@ def _fernet(clave: str | None = None) -> MultiFernet:
     texto = clave if clave is not None else configuracion().clave_cifrado
     claves = [c.strip() for c in texto.split(",") if c.strip()]
     if not claves:
-        raise CifradoNoDisponibleError("El servicio no tiene configurada la clave de cifrado del correo (CORREO_CLAVE_CIFRADO).")
+        raise CifradoNoDisponibleError(
+            "El servicio no tiene configurada la clave de cifrado del correo (CORREO_CLAVE_CIFRADO)."
+        )
     try:
         return MultiFernet([Fernet(c.encode("ascii")) for c in claves])
     except (ValueError, UnicodeError) as exc:
@@ -50,7 +52,12 @@ def descifrar(cifrado: str, *, case_id: str, user_id: str | None, proposito: str
         datos: Any = json.loads(_fernet().decrypt(cifrado.encode("ascii")).decode("utf-8"))
     except (InvalidToken, ValueError, UnicodeError) as exc:
         raise ValueError("no se pudo descifrar el token") from exc
-    if not isinstance(datos, dict) or datos.get("p") != proposito or datos.get("c") != case_id or datos.get("u") != user_id:
+    if (
+        not isinstance(datos, dict)
+        or datos.get("p") != proposito
+        or datos.get("c") != case_id
+        or datos.get("u") != user_id
+    ):
         raise ValueError("el token cifrado no pertenece a este expediente")
     secreto = datos.get("s")
     if not isinstance(secreto, str) or not secreto:

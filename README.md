@@ -316,8 +316,10 @@ curl -X POST http://127.0.0.1:8000/qa \
 
 Motor de decisión conversacional con estado (case + facts + obligations).
 
-- Cada `/turn` extrae hechos del usuario vía `OpenAIFactExtractor`
-  (structured output con JSON-schema; ver `decision/fact_extractor.py`).
+- Cada `/turn` extrae hechos del usuario con `ProviderFactExtractor` sobre el
+  proveedor de `LLM_PROVIDER` (o OpenAI con `DECISION_EXTRACTOR=openai`), siempre
+  medido y con presupuesto (salida estructurada con JSON-schema; ver
+  `decision/fact_extractor.py`).
 - Mantiene `missing_facts` y `next_questions`. La `QuestionPolicy`
   reformula la pregunta después de 1-2 intentos sin respuesta.
 - Tras `MAX_ASKS_PER_FACT = 3` intentos seguidos sin que el usuario aporte
@@ -425,6 +427,17 @@ Ganchos opcionales que el núcleo ya entiende (propuestos para la próxima versi
 En la web, el panel **Módulos** lista los módulos, permite activarlos, editar sus datos con un formulario
 construido a partir de sus `HechoModulo` (los `json` en un área de texto con los errores de validación a la
 vista) y confirmar o rechazar las acciones pendientes; los avisos se agrupan por módulo.
+
+### Correo (Gmail, solo lectura)
+
+| Módulo | Qué hace | Documentación |
+|---|---|---|
+| `correo` | Lee el Gmail del usuario **en solo lectura** (OAuth 2.0 + PKCE, permiso `gmail.readonly`, token cifrado y revocable): resume lo importante, avisa de notificaciones de la Administración con su plazo, de lo que vence y de posibles fraudes (con el motivo), y propone datos a otros módulos (compras → caducidades, potencia → luz…) que solo se guardan si el usuario los confirma. Nunca envía, borra ni mueve correos; solo guarda datos derivados, nunca los cuerpos. | [docs/modulos/correo.md](docs/modulos/correo.md) |
+
+El contenido de un correo es un **dato no confiable**: sus herramientas son de solo lectura, lo que llega al
+modelo va citado, recortado y sin instrucciones, y nada de un correo escribe en el expediente sin el botón
+«Confirmar» del panel (`tests/modulos/correo/test_adversarial.py`). La conexión con Google no se ha probado
+contra Google (solo con un servidor falso local); en producción `gmail.readonly` exige la verificación de Google.
 
 ### Memoria de decisiones
 
@@ -645,7 +658,8 @@ Claude. Otros ajustes: `AGENT_MAX_STEPS` (8), `AGENT_MAX_REVISIONS` (1),
 El frontend React usa `/agent` (una llamada por turno, con el expediente
 adjunto) y el extractor de hechos de `/cases` sigue a `LLM_PROVIDER`
 (`DECISION_EXTRACTOR=regex|openai|provider` para forzarlo). Solo la cadena
-legacy `/qa` y la UI de Streamlit siguen dependiendo de OpenAI.
+legacy `/qa` y la UI de Streamlit siguen dependiendo de OpenAI; `/qa` no se mide
+y por eso responde 404 con `AUTH_MODE=required` (`docs/seguridad.md`, S-14).
 
 ---
 
@@ -1192,6 +1206,7 @@ se repite.
 | `boe.norma_nueva` | `boe-novedades` (las de relevancia alta) | Fiscal, en cada expediente abierto (mismo aviso y mismos criterios de perfil que ya usaba) |
 | `boe.cambio_normativo` | `boe-impact` (`procesar_eventos`, uno por cambio analizado, después del aviso directo de siempre) | Fiscal (`impacto.notificar_cambio`) |
 | `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
+| `correo.clasificado` | Una sincronización de Gmail con correo nuevo (módulo `correo`; solo recuentos por categoría) | `correo` y los módulos que se suscriban |
 
 **Cómo funciona** (`hacienda_gpt/eventos/`, todo en el mismo SQLite que los
 expedientes, sin broker externo):
@@ -1341,12 +1356,15 @@ cifras del IRPF, el caso es un contribuyente y **una línea del resultado de
 descendientes», «Compensación entre rendimientos y ganancias del ahorro»…), y
 se compara su importe; el reparto de las deducciones estatales entre las dos
 cuotas, que no tiene línea propia, se prueba con **la misma función de la
-calculadora** (`repartir_deducciones_estatales`). Solo la obligación de
-declarar no tiene casos, porque **ninguna calculadora usa esas cifras**: pasa
-el control de cifras y la lectura del revisor y **siempre queda para
-confirmación humana**, igual que un grupo con cifras que imprime otra ley (el
-límite del 10 % de los donativos) o un mínimo autonómico que deja importes al
-Estado.
+calculadora** (`repartir_deducciones_estatales`). Los límites de la obligación
+de declarar (`obligacion_declarar`) también tienen casos ejecutables: cada caso
+es un contribuyente que pasa por **la misma función que responde «¿tengo que
+declarar?»** (`obligado_a_declarar`, `tax/obligacion.py`) con las cifras
+propuestas, y se compara su respuesta («1» si la ley le obliga, «0» si no); un
+caso que el programa no puede decidir (faltan datos) no cuenta como superado.
+Quedan **siempre para confirmación humana** un grupo con cifras que imprime
+otra ley (el límite del 10 % de los donativos) o un mínimo autonómico que deja
+importes al Estado.
 Si la nueva redacción cambia la *estructura* de la regla (otro tramo, otra
 fórmula), el lector debe responder «no calculable»: eso exige cambiar la
 calculadora y lo decide una persona. Lo que procede de un real decreto-ley

@@ -45,6 +45,7 @@ import { AutonomosPanel } from "./components/AutonomosPanel";
 import { OptimizerPanel } from "./components/OptimizerPanel";
 import { PlanificadorPanel } from "./components/PlanificadorPanel";
 import { NavegadorPanel } from "./components/NavegadorPanel";
+import { conversacionDeVuelta } from "./lib/correo";
 import { useNavegadorActivo } from "./lib/navegador";
 import { type SimulatorSeed, SimulatorPanel } from "./components/SimulatorPanel";
 import { Sidebar } from "./components/Sidebar";
@@ -113,7 +114,8 @@ interface AccountControls {
 function Advisor({ account }: { account?: AccountControls }) {
   const [theme, toggleTheme] = useTheme();
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
-  const [activeId, setActiveId] = useState<string>(() => newId());
+  // Back from Google's consent screen (mail module): reopen the conversation whose case was connecting.
+  const [activeId, setActiveId] = useState<string>(() => conversacionDeVuelta(conversations) ?? newId());
   const [pending, setPending] = useState<PendingTurn | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
   const [caseOpen, setCaseOpen] = useState(false);
@@ -129,7 +131,14 @@ function Advisor({ account }: { account?: AccountControls }) {
   const [simulatorSeed, setSimulatorSeed] = useState<{ id: number; conversationId: string; seed: SimulatorSeed } | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   // Household modules: what exists and is on for this user, and the actions waiting for confirmation.
-  const [modulosOpen, setModulosOpen] = useState(false);
+  // Back from Google's consent screen (mail module, `?correo=…`): open «Módulos», where the result is shown.
+  const [modulosOpen, setModulosOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).has("correo");
+    } catch {
+      return false;
+    }
+  });
   const [modulos, setModulos] = useState<ModulosResponse | null>(null);
   const [modulosError, setModulosError] = useState<string | null>(null);
   const [modulosTick, setModulosTick] = useState(0);

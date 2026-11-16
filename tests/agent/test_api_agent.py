@@ -48,7 +48,16 @@ def test_agent_endpoint_persists_case_changes_and_audits() -> None:
     _override(
         ScriptedProvider(
             [
-                tool_turn(("registrar_hechos", {"hechos": [{"nombre": "residencia_fiscal", "valor": "ES"}]})),
+                tool_turn(
+                    (
+                        "registrar_hechos",
+                        {
+                            "hechos": [
+                                {"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Vivo en Madrid"}
+                            ]
+                        },
+                    )
+                ),
                 text_turn("¿Qué tipo de ingresos has tenido?"),
             ],
             [verdict("pregunta_aclaratoria")],
@@ -81,7 +90,9 @@ def test_agent_endpoint_errors() -> None:
 
     _override(Failing([]))
     failed = client.post("/agent", json={"query": "¿IVA?"})
-    assert failed.status_code == 503 and "credenciales" in failed.json()["detail"]
+    # The provider's own text goes to the log, the user reads a fixed message (docs/seguridad.md, S-11).
+    assert failed.status_code == 503 and "credenciales" not in failed.json()["detail"]
+    assert "el modelo no ha respondido" in failed.json()["detail"]
 
 
 def test_agent_endpoint_returns_case_obligations_after_rules_run() -> None:
@@ -89,10 +100,10 @@ def test_agent_endpoint_returns_case_obligations_after_rules_run() -> None:
         "case_id"
     ]
     facts = [
-        {"nombre": "residencia_fiscal", "valor": "ES"},
-        {"nombre": "periodo_fiscal", "valor": "2025"},
-        {"nombre": "tipo_renta", "valor": "trabajo"},
-        {"nombre": "menciona_ingresos", "valor": True},
+        {"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Trabajo en España"},
+        {"nombre": "periodo_fiscal", "valor": "2025", "cita_del_usuario": "Trabajo en España en 2025"},
+        {"nombre": "tipo_renta", "valor": "trabajo", "cita_del_usuario": "Trabajo en España"},
+        {"nombre": "menciona_ingresos", "valor": True, "cita_del_usuario": "Trabajo en España"},
     ]
     _override(
         ScriptedProvider(
@@ -169,7 +180,8 @@ def test_agent_stream_reports_provider_failure_as_terminal_error_line() -> None:
     _override(Failing([]))
     events = _stream({"query": "¿IVA?"})
     assert events[-1]["event"] == "error"
-    assert events[-1]["data"]["status"] == 503 and "límite" in events[-1]["data"]["detail"]
+    assert events[-1]["data"]["status"] == 503 and "límite" not in events[-1]["data"]["detail"]
+    assert "el modelo no ha respondido" in events[-1]["data"]["detail"]
     # A missing case is still a plain HTTP error, before any streaming starts.
     assert client.post("/agent/stream", json={"query": "x", "case_id": "case_nope"}).status_code == 404
 
@@ -179,10 +191,10 @@ def test_agent_response_exposes_case_facts_and_user_can_delete_one() -> None:
         "case_id"
     ]
     facts = [
-        {"nombre": "residencia_fiscal", "valor": "ES"},
-        {"nombre": "periodo_fiscal", "valor": "2025"},
-        {"nombre": "tipo_renta", "valor": "trabajo"},
-        {"nombre": "menciona_ingresos", "valor": True},
+        {"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Trabajo en España"},
+        {"nombre": "periodo_fiscal", "valor": "2025", "cita_del_usuario": "Trabajo en España en 2025"},
+        {"nombre": "tipo_renta", "valor": "trabajo", "cita_del_usuario": "Trabajo en España"},
+        {"nombre": "menciona_ingresos", "valor": True, "cita_del_usuario": "Trabajo en España"},
     ]
     _override(
         ScriptedProvider(
@@ -194,7 +206,7 @@ def test_agent_response_exposes_case_facts_and_user_can_delete_one() -> None:
             [verdict("pregunta_aclaratoria")],
         )
     )
-    body = client.post("/agent", json={"query": "Trabajo en España", "case_id": case_id}).json()
+    body = client.post("/agent", json={"query": "Trabajo en España en 2025", "case_id": case_id}).json()
     assert {f["name"] for f in body["facts"]} == {
         "residencia_fiscal",
         "periodo_fiscal",

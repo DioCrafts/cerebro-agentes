@@ -185,7 +185,12 @@ def test_case_tools_update_the_case_and_surface_it_to_the_caller() -> None:
     case = CaseState(case_id="case_1", user_id="u1", jurisdiction="ES", tax_period="2025")
     provider = ScriptedProvider(
         [
-            tool_turn(("registrar_hechos", {"hechos": [{"nombre": "residencia_fiscal", "valor": "ES"}]})),
+            tool_turn(
+                (
+                    "registrar_hechos",
+                    {"hechos": [{"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Vivo en Madrid"}]},
+                )
+            ),
             text_turn("¿Qué tipo de ingresos has tenido?"),
         ],
         [verdict("pregunta_aclaratoria")],

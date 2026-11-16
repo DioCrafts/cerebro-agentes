@@ -340,7 +340,8 @@ def test_endpoints_without_a_case_still_need_a_session(env: Env, no_model) -> No
     assert env.client.post("/agent/stream", json={"query": "hola"}).status_code == 401
     assert env.client.post("/simulate", json={"datos": {}}).status_code == 401
     assert env.client.post("/optimize", json={"datos": {}}).status_code == 401
-    assert env.client.post("/qa", json={"query": "hola"}).status_code == 401
+    # The legacy /qa chain (unmetered) does not exist with accounts on, not even with a session (S-14).
+    assert env.client.post("/qa", json={"query": "hola"}).status_code == 404
     # Liveness and metrics stay open.
     assert env.client.get("/health").status_code == 200
     assert env.client.get("/metrics").status_code == 200

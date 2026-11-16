@@ -36,6 +36,9 @@ NORMA_BOE: Final = "boe.norma_nueva"
 CAMBIO_NORMATIVO: Final = "boe.cambio_normativo"
 # Global: new official mortgage reference indices (euríbor…) were read from the BOE. Payload: {"boe_ids": [...]}.
 INDICE_PUBLICADO: Final = "indice.publicado"
+# A mail sync classified new messages of a case (module ``correo``). Payload: {"nuevos": n, "categorias":
+# {categoria: n}} — counts only, never a subject, an address or a message id.
+CORREO_CLASIFICADO: Final = "correo.clasificado"
 
 TIPOS: Final = frozenset(
     {
@@ -47,6 +50,7 @@ TIPOS: Final = frozenset(
         NORMA_BOE,
         CAMBIO_NORMATIVO,
         INDICE_PUBLICADO,
+        CORREO_CLASIFICADO,
     }
 )
 # Events that concern every case (fanned out to the cases whose owner has a subscribed module on).
@@ -107,6 +111,7 @@ def validar(tipo: str, case_id: str | None, payload: Mapping[str, Any]) -> str:
 __all__ = [
     "CAMBIO_NORMATIVO",
     "CARGOS_IMPORTADOS",
+    "CORREO_CLASIFICADO",
     "DIRIGIDOS",
     "FECHA_UMBRAL",
     "GLOBALES",

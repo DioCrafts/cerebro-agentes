@@ -3,6 +3,7 @@
 
 import type { AnswerMode, Citation, ClaimCheck, ClaimVerdict, Fact, ProgressEvent, RiskLevel } from "../api";
 import { DATOS_CONYUGE, PREFERENCIAS_OPTIMIZACION, preferencesSummary, spouseSummary } from "./expediente";
+import { OBLIGACION_FIELDS } from "./obligacion";
 
 export type SourceKind = "boe" | "manual" | "dgt" | "court" | "calc" | "other";
 
@@ -291,6 +292,11 @@ const FACT_LABEL: Record<string, string> = {
   gastos_veterinarios: "Gastos veterinarios",
   adquisicion_vehiculo_electrico: "Compra de vehículo eléctrico",
   inversion_economia_social: "Inversión en entidades de economía social",
+  // Whether the user must file (art. 96 LIRPF): the simulator card's labels, plus three it does not ask.
+  ...Object.fromEntries(OBLIGACION_FIELDS.map((f) => [f.name, f.label])),
+  deduccion_doble_imposicion_internacional: "Derecho a la deducción por doble imposición internacional",
+  aportaciones_patrimonio_protegido: "Aportaciones a un patrimonio protegido de una persona con discapacidad",
+  beneficiario_ingreso_minimo_vital: "Cobro el ingreso mínimo vital o vivo en una unidad que lo cobra",
 };
 
 /** Educational stages of a child (`descendientes[].etapa_educativa`), in school order. */
@@ -372,6 +378,7 @@ const MONEY_FACTS = new Set([
   "gastos_veterinarios",
   "adquisicion_vehiculo_electrico",
   "inversion_economia_social",
+  "importe_segundo_y_restantes_pagadores",
 ]);
 // Cents are kept when present: showing 6.502,57 € as "6503 €" would misstate the figure.
 const EUR = new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", minimumFractionDigits: 0, maximumFractionDigits: 2 });

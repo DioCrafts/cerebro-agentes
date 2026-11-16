@@ -180,12 +180,25 @@ def _palabras(html: str) -> set[str]:
     return set(re.findall(r"[^\W\d_]+", texto))
 
 
-def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia) -> None:
+class _RelojParado(datetime):
+    """``datetime`` with the clock stopped at ``T0``, whose digits hold none of the ruling's figures."""
+
+    @classmethod
+    def now(cls, tz=None):  # type: ignore[no-untyped-def,override]
+        return T0.astimezone(tz) if tz is not None else T0.replace(tzinfo=None)
+
+
+def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia, monkeypatch) -> None:
     import re
 
     from hacienda_gpt.ops import formatos_fuentes
     from hacienda_gpt.ops.formatos_esqueleto import plano
 
+    # Our own timestamps go to disk (ISO and «%Y%m%dT%H%M%S» file stamps): with a running clock, a run at 12:34 or
+    # 20:24 would write «1234» or «2024» and look like a figure of the ruling. The clock is stopped instead.
+    for modulo in (formatos, formatos_agente, formatos_fuentes, vigia, cendoj, cli_formatos):
+        if isinstance(getattr(modulo, "datetime", None), type):
+            monkeypatch.setattr(modulo, "datetime", _RelojParado)
     tributaria = (CENDOJ / "sentencia_tributaria.html").read_text(encoding="utf-8")
     otra = (CENDOJ / "sentencia_no_tributaria.html").read_text(encoding="utf-8")
     cendoj.observar_documento(otra, contexto="https://www.poderjudicial.es/a")
@@ -213,8 +226,8 @@ def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia) -> None:
     assert informe.tipo == "informe" and informe.informe and Path(informe.informe).exists()
     assert propuesta.tipo == "spec" and propuesta.ensayo is not None and propuesta.ensayo.ok
     en_disco = "".join(p.read_text(encoding="utf-8") for p in vigilancia.rglob("*") if p.is_file())
-    # Timestamps and hashes are ours; by chance they may contain a run of digits like "1234".
-    en_disco = re.sub(r"\d{4}-\d{2}-\d{2}T[\d:.+]+|\b[0-9a-f]{16,64}\b", "", en_disco)
+    # Hashes are ours; by chance they may contain a run of digits like "1234".
+    en_disco = re.sub(r"\b[0-9a-f]{16,64}\b", "", en_disco)
     enviado = proveedor.texto_recibido
     # Every word of the rulings outside the allow-list, except those our own code also writes (prompts,
     # expectations, canaries): what is left can only have come from a ruling.

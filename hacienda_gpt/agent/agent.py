@@ -21,6 +21,7 @@ from hacienda_gpt import settings
 from hacienda_gpt.agent import enrutado
 from hacienda_gpt.agent.especialistas import Coordinador
 from hacienda_gpt.agent.evidence import EvidenceLedger, Fragment, extract_cited_ids
+from hacienda_gpt.agent.procedencia import mensajes_del_usuario
 from hacienda_gpt.agent.prompts import (
     CASE_TOOLS_ADDENDUM,
     CRITIC_REVISION_MESSAGE,
@@ -261,6 +262,8 @@ class TaxAgent:
             case=case,
             default_k=self._default_k,
             graph=self._graph,
+            # What registrar_hechos may record: the user's own words, never a tool's or a document's.
+            mensajes_usuario=mensajes_del_usuario(query, chat_history),
             extra=[
                 *(especialistas.herramientas() if especialistas is not None else ()),
                 *(memoria.herramientas() if memoria is not None else ()),

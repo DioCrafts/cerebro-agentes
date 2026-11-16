@@ -18,6 +18,7 @@ superseded version: ``act.php?id=BOE-A-2006-20764&tn=1&p=20121031``).
 
 from __future__ import annotations
 
+from collections.abc import Iterable, Mapping
 from datetime import date
 from decimal import Decimal
 from functools import lru_cache
@@ -28,6 +29,8 @@ import unicodedata
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from hacienda_gpt.modulos.hipoteca.calculo import Cuadro
+from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada
 from hacienda_gpt.modulos.hipoteca.normativa import leer_cifra
 from hacienda_gpt.tax.verificacion import texto_plano
 
@@ -95,6 +98,38 @@ def cargar_fundamento() -> FundamentoPuente:
     return FundamentoPuente.model_validate(json.loads(DEDUCCION_PATH.read_text(encoding="utf-8")))
 
 
+def pagos_del_ano(
+    cuadro: Cuadro, amortizaciones: Iterable[AmortizacionRealizada], ejercicio: int
+) -> dict[str, Decimal]:
+    """What the loan costs in ``ejercicio``, by concept (keys of :class:`Concepto`): capital and interest of the
+    ordinary instalments due that year (from ``cuadro``), the early repayments made that year and their fees."""
+    capital, intereses = cuadro.pagos_del_ano(ejercicio)
+    del_ano = [a for a in amortizaciones if a.fecha.year == ejercicio]
+    return {
+        "capital": capital,
+        "intereses": intereses,
+        "amortizaciones_anticipadas": sum((a.importe for a in del_ano), Decimal(0)),
+        "comisiones_amortizacion_anticipada": sum((a.comision_pagada for a in del_ano), Decimal(0)),
+    }
+
+
+def importes_deducibles(
+    pagos: Mapping[str, Decimal | float | int | None], fundamento: FundamentoPuente | None = None
+) -> dict[str, Decimal]:
+    """The concepts of ``pagos`` that enter the transitional deduction's base: those the law counts and the module
+    knows (``incluido``), in the data's order. The single definition used by the bridge to the tax module
+    (``modulos/puentes.py``) and by the household planner (``planificador/hipoteca.py``)."""
+    fundamento = fundamento or cargar_fundamento()
+    return {c.clave: Decimal(str(pagos.get(c.clave) or 0)) for c in fundamento.incluidos()}
+
+
+def base_deducible(
+    pagos: Mapping[str, Decimal | float | int | None], fundamento: FundamentoPuente | None = None
+) -> Decimal:
+    """Sum of :func:`importes_deducibles` to the cent (before the calculator's cap and rate)."""
+    return sum(importes_deducibles(pagos, fundamento).values(), Decimal(0)).quantize(Decimal("0.01"))
+
+
 def _comprimido(texto: str) -> str:
     """Like ``tax.verificacion``: NFKC, lower case, no whitespace or quotation marks (links add stray spaces)."""
     return re.sub(r"[\s«»\"“”]", "", unicodedata.normalize("NFKC", texto).lower())
@@ -154,7 +189,10 @@ __all__ = [
     "Cita",
     "Concepto",
     "FundamentoPuente",
+    "base_deducible",
     "cargar_fundamento",
     "comprobar",
+    "importes_deducibles",
+    "pagos_del_ano",
     "textos_de_directorio",
 ]

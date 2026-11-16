@@ -181,10 +181,11 @@ def test_qa_returns_503_when_chain_build_fails(monkeypatch) -> None:
     monkeypatch.setattr(api, "_build_qa_chain", _boom)
     r = client.post("/qa", json={"query": "¿IRPF?", "chat_history": []})
     assert r.status_code == 503
-    assert "missing FAISS index" in r.json()["detail"]
+    # A fixed message: the exception's text goes to the log only (docs/seguridad.md, S-11).
+    assert r.json()["detail"] == "El servicio de consulta no está disponible."
 
 
-def test_qa_returns_503_when_answering_fails() -> None:
+def test_qa_returns_503_when_answering_fails(caplog) -> None:
     class _BoomChain:
         def invoke(self, inputs: dict):
             raise RuntimeError("OpenAI unavailable")
@@ -196,7 +197,8 @@ def test_qa_returns_503_when_answering_fails() -> None:
         app.dependency_overrides.pop(get_qa_chain, None)
 
     assert r.status_code == 503
-    assert "OpenAI unavailable" in r.json()["detail"]
+    assert "OpenAI unavailable" not in r.json()["detail"] and "Inténtalo de nuevo" in r.json()["detail"]
+    assert "OpenAI unavailable" in caplog.text
 
 
 def test_thread_safe_singleton_caches_build_failure() -> None:

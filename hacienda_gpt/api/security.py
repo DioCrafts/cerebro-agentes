@@ -253,3 +253,105 @@ def require_operator(
     esperado = os.environ.get("HACIENDA_OPERATOR_KEY", "")
     if not esperado or not x_operator_key or not hmac.compare_digest(x_operator_key, esperado):
         raise HTTPException(status_code=404, detail="Not Found")
+
+
+# --- size of what reaches the model (S-15) -----------------------------------------------------------------
+
+# The question itself: far above any real question (a long one is ~2 000 characters), far below a context window.
+DEFAULT_MAX_QUERY_CHARS = 20_000
+# The prior conversation sent with each question: the newest messages are kept, the oldest dropped first. The
+# whole history is re-sent on every step of the agent, so it is what multiplies the cost of one question.
+DEFAULT_MAX_HISTORY_CHARS = 60_000
+DEFAULT_MAX_HISTORY_MESSAGES = 40
+
+
+def _entero_positivo(nombre: str, defecto: int) -> int:
+    """An environment variable read per call; a value that is not a positive integer keeps the default."""
+    try:
+        valor = int(os.environ.get(nombre, ""))
+    except ValueError:
+        return defecto
+    return valor if valor > 0 else defecto
+
+
+def max_query_chars() -> int:
+    return _entero_positivo("API_MAX_QUERY_CHARS", DEFAULT_MAX_QUERY_CHARS)
+
+
+def max_history_chars() -> int:
+    return _entero_positivo("API_MAX_HISTORY_CHARS", DEFAULT_MAX_HISTORY_CHARS)
+
+
+def max_history_messages() -> int:
+    return _entero_positivo("API_MAX_HISTORY_MESSAGES", DEFAULT_MAX_HISTORY_MESSAGES)
+
+
+def comprobar_pregunta(texto: str) -> None:
+    """422 with a message for the user when the question alone is longer than ``API_MAX_QUERY_CHARS``."""
+    limite = max_query_chars()
+    if len(texto) > limite:
+        tiene, maximo = (f"{n:,}".replace(",", ".") for n in (len(texto), limite))
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"La pregunta es demasiado larga: tiene {tiene} caracteres y el máximo es {maximo}. "
+                "Resúmela o divídela en varias preguntas."
+            ),
+        )
+
+
+def _caracteres(mensaje: Any) -> int:
+    contenido = mensaje.get("content", "") if isinstance(mensaje, dict) else mensaje
+    return len(contenido) if isinstance(contenido, str) else len(str(contenido))
+
+
+def recortar_historial(historial: list[Any]) -> list[Any]:
+    """The newest messages of ``historial`` within ``API_MAX_HISTORY_MESSAGES`` and ``API_MAX_HISTORY_CHARS``.
+
+    Oldest first out; a message that does not fit whole is dropped, never cut. The result starts with a user
+    message (an answer whose question was dropped would be out of context)."""
+    max_mensajes, max_caracteres = max_history_messages(), max_history_chars()
+    conservados: list[Any] = []
+    total = 0
+    for mensaje in reversed(historial):
+        total += _caracteres(mensaje)
+        if len(conservados) >= max_mensajes or total > max_caracteres:
+            break
+        conservados.append(mensaje)
+    conservados.reverse()
+    while conservados and not (isinstance(conservados[0], dict) and conservados[0].get("role") == "user"):
+        conservados.pop(0)
+    return conservados
+
+
+# --- the API's own documentation (S-18) ----------------------------------------------------------------------
+
+
+def docs_publicas() -> bool:
+    """Whether ``/docs``, ``/redoc`` and ``/openapi.json`` answer: ``API_DOCS_PUBLICAS`` (true/false) when set;
+    otherwise only without accounts (with ``AUTH_MODE=required`` they describe every route to anyone)."""
+    from hacienda_gpt import settings
+
+    valor = os.environ.get("API_DOCS_PUBLICAS", "").strip().lower()
+    if valor in ("1", "true", "yes", "si", "sí", "on"):
+        return True
+    if valor in ("0", "false", "no", "off"):
+        return False
+    return settings.AUTH_MODE != "required"
+
+
+def require_docs_publicas() -> None:
+    if not docs_publicas():
+        raise HTTPException(status_code=404, detail="Not Found")
+
+
+# --- the legacy /qa chain (S-14) -----------------------------------------------------------------------------
+
+
+def require_qa_legado() -> None:
+    """``/qa`` (the LangChain chain, unmetered and outside the daily budgets) only answers without accounts:
+    with ``AUTH_MODE=required`` it is a 404, before the API key, the session or the chain are looked at."""
+    from hacienda_gpt import settings
+
+    if settings.AUTH_MODE == "required":
+        raise HTTPException(status_code=404, detail="Not Found")

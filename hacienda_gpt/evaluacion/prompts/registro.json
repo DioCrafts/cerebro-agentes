@@ -18,6 +18,12 @@
       "huella": "10a285e99cd58878870c0a25c63fc6e9c5e08109c80b4b878250bf4705db1e86",
       "registrado_el": "2026-11-16",
       "nota": "Sin evaluar: Integración de la fase 2 (memoria, planificador, eventos); sin evaluar: no hay clave de modelo"
+    },
+    {
+      "version": "agente@4",
+      "huella": "18dce77ac1e149584df91a231d004d4c28acb10017c1e25d211632e882f6b4b0",
+      "registrado_el": "2026-11-16",
+      "nota": "Sin evaluar: Integración: obligación de declarar; sin evaluar: no hay clave de modelo"
     }
   ],
   "modulos": [

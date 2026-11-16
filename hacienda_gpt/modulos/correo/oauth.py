@@ -90,7 +90,9 @@ def _token(conf: Configuracion, datos: dict[str, str], http: Transporte) -> dict
     return cuerpo
 
 
-def completar(estado: str, codigo: str, *, db_path: str | None = None, http: Transporte | None = None) -> almacen.Conexion:
+def completar(
+    estado: str, codigo: str, *, db_path: str | None = None, http: Transporte | None = None
+) -> almacen.Conexion:
     """Finish the flow for a ``state`` this service issued. Raises CorreoError (Spanish) otherwise."""
     conf = configuracion()
     _exigir(conf)
@@ -100,7 +102,9 @@ def completar(estado: str, codigo: str, *, db_path: str | None = None, http: Tra
         raise CorreoError("La solicitud de conexión no es válida o ha caducado. Vuelve a pulsar «Conectar Gmail».")
     case_id, user_id = pendiente["case_id"], pendiente["user_id"]
     try:
-        verificador = cifrado.descifrar(pendiente["verificador_cifrado"], case_id=case_id, user_id=user_id, proposito="pkce")
+        verificador = cifrado.descifrar(
+            pendiente["verificador_cifrado"], case_id=case_id, user_id=user_id, proposito="pkce"
+        )
     except ValueError as exc:
         raise CorreoError("La solicitud de conexión no es válida. Vuelve a empezar.") from exc
     cuerpo = _token(
@@ -121,7 +125,9 @@ def completar(estado: str, codigo: str, *, db_path: str | None = None, http: Tra
         _revocar(conf, str(refresco or cuerpo["access_token"]), http)
         raise CorreoError("No se concedió el permiso de lectura de Gmail; no se ha conectado nada.")
     if not isinstance(refresco, str) or not refresco:
-        raise CorreoError("Google no entregó un permiso duradero. Quita el acceso de esta aplicación en tu cuenta de Google y vuelve a conectar.")
+        raise CorreoError(
+            "Google no entregó un permiso duradero. Quita el acceso de esta aplicación en tu cuenta de Google y vuelve a conectar."
+        )
     acceso = str(cuerpo["access_token"])
     _guardar_en_cache(case_id, acceso, int(cuerpo.get("expires_in") or 3600))
     cuenta: str | None = None
@@ -181,7 +187,9 @@ def token_de_acceso(conexion: almacen.Conexion, *, db_path: str | None = None, h
             http or transporte(),
         )
     except ConexionCaducadaError:
-        almacen.actualizar_conexion(conexion.case_id, db_path, estado="reconectar", ultimo_error="permiso revocado o caducado")
+        almacen.actualizar_conexion(
+            conexion.case_id, db_path, estado="reconectar", ultimo_error="permiso revocado o caducado"
+        )
         raise
     acceso = str(cuerpo["access_token"])
     _guardar_en_cache(conexion.case_id, acceso, int(cuerpo.get("expires_in") or 3600))
@@ -204,7 +212,9 @@ def _revocar_conexion(conf: Configuracion, conexion: almacen.Conexion, http: Tra
     return _revocar(conf, refresco, http)
 
 
-def revocar_token_cifrado(token_cifrado: str, *, case_id: str, user_id: str | None, http: Transporte | None = None) -> bool:
+def revocar_token_cifrado(
+    token_cifrado: str, *, case_id: str, user_id: str | None, http: Transporte | None = None
+) -> bool:
     """Revoke a stored grant at Google (used after an erasure). False when not configured or refused."""
     conf = configuracion()
     if not conf.completa:

@@ -71,12 +71,12 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
     pagos = pagos_del_ejercicio(ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id), ejercicio)
     if not pagos:
         return None
-    from hacienda_gpt.modulos.hipoteca.deduccion import cargar_fundamento
+    from hacienda_gpt.modulos.hipoteca.deduccion import base_deducible, cargar_fundamento, importes_deducibles
 
     fundamento = cargar_fundamento()
     # Only what the law puts in the base and the module knows (``incluido`` concepts), each one with its quote.
-    importes = {c.clave: Decimal(pagos.get(c.clave) or 0) for c in fundamento.incluidos()}
-    total = sum(importes.values(), Decimal(0)).quantize(Decimal("0.01"))
+    importes = importes_deducibles(pagos, fundamento)
+    total = base_deducible(pagos, fundamento)
     if total <= 0:
         return None
     hasta = " (las cuotas que vencen hasta el 31 de diciembre, según el cuadro)" if ejercicio >= hoy.year else ""

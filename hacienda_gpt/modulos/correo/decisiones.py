@@ -43,11 +43,7 @@ def vigentes(db_path: str, case_id: str, hoy: date) -> list[Decision]:
     except Exception:  # noqa: BLE001 - the memory must never break the mail module
         logger.exception("Could not read the decisions of case %s", case_id)
         return []
-    return [
-        d
-        for d in decisiones
-        if d.modulo == "correo" and d.tipo in BLOQUEAN_AVISOS and evaluar(d, hoy=hoy).vigente
-    ]
+    return [d for d in decisiones if d.modulo == "correo" and d.tipo in BLOQUEAN_AVISOS and evaluar(d, hoy=hoy).vigente]
 
 
 def suprimido(elemento: Elemento, decisiones: Iterable[Decision]) -> bool:

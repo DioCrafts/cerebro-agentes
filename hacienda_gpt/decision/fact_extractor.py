@@ -1,10 +1,12 @@
 """Pluggable fact extractors for the decision engine.
 
 The interpreter delegates intent + fact extraction to a `FactExtractor`. The
-production default is `OpenAIFactExtractor`, which leverages OpenAI's structured
-output to return strongly typed facts. `RegexFactExtractor` keeps the legacy
-heuristic behaviour for tests, offline development, and fallback when the LLM
-is unavailable.
+production default is `ProviderFactExtractor` on the provider layer (Claude,
+OpenAI or a local model), metered like every other model call
+(:func:`default_fact_extractor`). `OpenAIFactExtractor` (OpenAI structured
+output, unmetered) is kept for direct use and holds the shared prompt helpers.
+`RegexFactExtractor` keeps the legacy heuristic behaviour for tests, offline
+development, and fallback when the LLM is unavailable.
 """
 
 from __future__ import annotations
@@ -311,6 +313,8 @@ PERFIL FISCAL (mismos slots; emítelos solo si el usuario da el dato):
     actividad_otros_gastos              → autónomos: resto de gastos anuales de la actividad, sin IVA
     actividad_amortizaciones            → autónomos: amortización anual de equipos, vehículos y otros bienes de la actividad
     actividad_rendimientos_irregulares  → autónomos: parte del beneficio del año generada en más de dos años o por indemnización por cese, subvención de capital o premio (solo si el usuario lo dice así)
+    num_pagadores_trabajo               → número de pagadores de rendimientos del trabajo en el año
+    importe_segundo_y_restantes_pagadores → cobrado en bruto de todos los pagadores salvo el principal
 
   value_boolean:
     necesita_asistencia                 → true si el usuario, con discapacidad reconocida, necesita ayuda de terceras personas o tiene movilidad reducida
@@ -344,6 +348,15 @@ PERFIL FISCAL (mismos slots; emítelos solo si el usuario da el dato):
     actividad_profesional               → true si su actividad es profesional (abogado, médico, programador, diseñador…); false si es empresarial (comercio, hostelería, taller…)
     actividad_cumple_requisitos_dependiente → true SOLO si el usuario afirma que factura todo a un único cliente no vinculado (o es TRADE), sin sueldo aparte y con retención en casi todos sus ingresos
     actividad_reduccion_inicio          → true SOLO si el usuario afirma que empezó la actividad sin haber ejercido ninguna el año anterior y este es su primer año con beneficio o el siguiente
+    pension_compensatoria_o_anualidades → true si cobra pensión compensatoria o anualidades por alimentos no exentas
+    pagador_no_obligado_a_retener       → true si algún pagador no estaba obligado a retener
+    trabajo_tipo_fijo_retencion         → true si cobró rendimientos del trabajo con tipo fijo de retención (consejero, cursos…)
+    pensiones_procedimiento_especial    → true si solo cobra pensiones con retención fijada por el procedimiento especial
+    ganancias_sometidas_a_retencion     → true si sus ganancias patrimoniales tenían retención (fondos)
+    alta_autonomo_en_el_ejercicio       → true si estuvo de alta como autónomo en algún momento del año
+    deduccion_doble_imposicion_internacional → true si tiene derecho a la deducción por doble imposición internacional
+    aportaciones_patrimonio_protegido   → true si aportó a un patrimonio protegido de una persona con discapacidad
+    beneficiario_ingreso_minimo_vital   → true si cobra el IMV o vive en una unidad de convivencia que lo cobra
 
   value_string:
     actividad_ceuta_melilla             → "ceuta" o "melilla" si desarrolla su actividad en una de esas ciudades
@@ -421,7 +434,8 @@ class OpenAIExtractionError(RuntimeError):
 
 
 class OpenAIFactExtractor:
-    """Production extractor backed by OpenAI structured output."""
+    """Extractor backed by OpenAI structured output. It calls the SDK directly, outside the metered provider
+    layer, so :func:`default_fact_extractor` never returns it (docs/seguridad.md, S-14)."""
 
     def __init__(self, client: Any | None = None, model: str | None = None) -> None:
         self._client = client
@@ -807,16 +821,25 @@ def _coerce_value(
 # --------------------------------------------------------------------------- #
 
 
-def _provider_extractor() -> FactExtractor:
+def _provider_extractor(name: str | None = None) -> FactExtractor:
+    """The extractor on the provider layer, metered (usage log and daily budgets) as purpose «hechos».
+
+    ``name`` "openai" builds it on OpenAI whatever ``LLM_PROVIDER`` says (``DECISION_EXTRACTOR=openai``, or only
+    an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_MODEL``).
+    """
     from hacienda_gpt import settings
     from hacienda_gpt.agent.providers import create_provider
     from hacienda_gpt.ops.consumo import medir
 
+    model = os.environ.get("DECISION_EXTRACTOR_MODEL") or None
+    if name == "openai":
+        model = model or settings.OPENAI_MODEL
     # Metered (and routed) as purpose "hechos"; DECISION_EXTRACTOR_MODEL, when set, is kept by the routing.
     return ProviderFactExtractor(
         medir(
             create_provider(
-                model=os.environ.get("DECISION_EXTRACTOR_MODEL") or None,
+                name,
+                model=model,
                 # Extraction is a constrained, low-ambiguity task: it does not need
                 # the reasoning depth the advisor runs at.
                 effort=settings.DECISION_EXTRACTOR_EFFORT,
@@ -834,7 +857,7 @@ def _provider_credentials_available() -> bool:
         return bool(os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN"))
     if provider == "local":
         return bool(settings.LOCAL_LLM_MODEL)
-    return False  # "openai" keeps using the dedicated OpenAIFactExtractor below
+    return False  # "openai" is chosen below by its key, with the extractor's own OpenAI model
 
 
 def default_fact_extractor() -> FactExtractor:
@@ -852,15 +875,17 @@ def default_fact_extractor() -> FactExtractor:
     choice = os.environ.get("DECISION_EXTRACTOR", "").strip().lower()
     if choice == "regex":
         return RegexFactExtractor()
+    # Every model-backed choice goes through the metered provider layer: no extractor call escapes the usage log
+    # and the daily budgets (docs/seguridad.md, S-14). OpenAIFactExtractor is kept for direct use only.
     if choice in ("openai", "llm"):
-        return OpenAIFactExtractor()
+        return _provider_extractor("openai")
     if choice == "provider":
         return _provider_extractor()
 
     if _provider_credentials_available():
         return _provider_extractor()
     if os.environ.get("OPENAI_API_KEY"):
-        return OpenAIFactExtractor()
+        return _provider_extractor("openai")
 
     logger.warning(
         "No LLM credentials found (ANTHROPIC_API_KEY / OPENAI_API_KEY / LOCAL_LLM_MODEL) — falling back to "

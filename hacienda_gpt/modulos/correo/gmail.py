@@ -48,7 +48,9 @@ class ClienteGmail:
         self._http = http
 
     def _get(self, ruta: str, params: dict[str, Any] | None = None) -> Any:
-        respuesta = self._http("GET", f"{self._base}{ruta}", params=params, cabeceras={"Authorization": f"Bearer {self._token()}"})
+        respuesta = self._http(
+            "GET", f"{self._base}{ruta}", params=params, cabeceras={"Authorization": f"Bearer {self._token()}"}
+        )
         if respuesta.estado == 404 and ruta == "/history":
             raise HistorialCaducadoError("El historial de Gmail ha caducado.")
         if respuesta.estado == 401:

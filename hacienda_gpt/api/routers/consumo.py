@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from decimal import Decimal
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, ConfigDict
@@ -18,6 +19,8 @@ from hacienda_gpt.ops.consumo import (
     almacen_por_defecto,
     hoy_madrid,
 )
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["consumo"])
 
@@ -50,7 +53,9 @@ def get_consumo_store() -> ConsumoStore:
     try:
         return almacen_por_defecto()
     except Exception as exc:
-        raise HTTPException(status_code=503, detail=f"El registro de consumo no está disponible: {exc}") from exc
+        # The detail (paths, SQL) goes to the log only (docs/seguridad.md, S-11).
+        logger.error("usage store unavailable (%s: %s)", type(exc).__name__, exc)
+        raise HTTPException(status_code=503, detail="El registro de consumo no está disponible.") from exc
 
 
 @router.get("/usage", response_model=UsageResponse, dependencies=[Depends(require_operator)])

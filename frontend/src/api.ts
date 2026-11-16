@@ -6,6 +6,7 @@
 //   hacienda_gpt/api/api.py              -> QARequest, TurnResponse
 // so if the backend grows a new field, only this file changes.
 
+import { trimHistory } from "./lib/historial";
 import { type AuthMode, getSessionToken } from "./lib/session";
 
 // "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
@@ -331,7 +332,7 @@ interface QAOptions {
 }
 
 export function postQA({ query, chatHistory = [], signal }: QAOptions): Promise<AnswerEnvelope> {
-  return request("/qa", { query, chat_history: chatHistory }, isAnswerEnvelope, { signal });
+  return request("/qa", { query, chat_history: trimHistory(chatHistory) }, isAnswerEnvelope, { signal });
 }
 
 export function createCase(opts: {
@@ -356,7 +357,7 @@ export function postTurn(opts: {
 }): Promise<TurnResponse> {
   return request(
     `/cases/${encodeURIComponent(opts.caseId)}/turn`,
-    { user_input: opts.userInput, chat_history: opts.chatHistory ?? [] },
+    { user_input: opts.userInput, chat_history: trimHistory(opts.chatHistory ?? []) },
     isTurnResponse,
     { signal: opts.signal },
   );
@@ -370,7 +371,7 @@ export function postAgent(opts: {
   caseId?: string | null;
   signal?: AbortSignal;
 }): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: opts.chatHistory ?? [] };
+  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
   return request("/agent", body, isAgentResponse, { signal: opts.signal, timeoutMs: AGENT_TIMEOUT_MS });
 }
@@ -400,7 +401,7 @@ export async function streamAgent(
   },
   onProgress: (event: ProgressEvent) => void,
 ): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: opts.chatHistory ?? [] };
+  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
 
   const idle = new AbortController();

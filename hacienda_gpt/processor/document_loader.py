@@ -865,6 +865,15 @@ class DocumentProcessor:
         db: Any | None = None
         existing_manifest: Manifest | None = None
         if diff is not None:
+            from hacienda_gpt import settings as _settings
+
+            # Loading the index unpickles it: only an index the operator trusts (docs/seguridad.md, S-17), like
+            # agent/search.py and llm/chain.py. Checked before the fallback below, which would hide it.
+            if not _settings.FAISS_TRUSTED_INDEX:
+                raise RuntimeError(
+                    f"Refusing to load the FAISS index at {self.output_dir!r} with dangerous deserialization. "
+                    "Set FAISS_TRUSTED_INDEX=true only for an index you built yourself, or rebuild it with --full."
+                )
             try:
                 db = FAISS.load_local(self.output_dir, self.embeddings, allow_dangerous_deserialization=True)
                 existing_manifest = load_manifest(self.output_dir)

@@ -116,7 +116,11 @@ def fechas(texto: str, referencia: date) -> Iterator[tuple[date, re.Match[str]]]
 def importe_decimal(literal: str) -> Decimal | None:
     numero = re.sub(r"[^\d.,]", "", literal)
     if "." in numero and "," in numero:
-        numero = numero.replace(".", "").replace(",", ".") if numero.rfind(",") > numero.rfind(".") else numero.replace(",", "")
+        numero = (
+            numero.replace(".", "").replace(",", ".")
+            if numero.rfind(",") > numero.rfind(".")
+            else numero.replace(",", "")
+        )
     elif "," in numero:
         entero, _, dec = numero.rpartition(",")
         numero = f"{entero.replace(',', '')}.{dec}" if len(dec) <= 2 else numero.replace(",", "")
@@ -176,7 +180,9 @@ def fecha_tras(texto: str, referencia: date, patron: str, campo: str) -> Extraid
         tramo = texto[etiqueta.end() : etiqueta.end() + 40]
         for dia, m in fechas(tramo, referencia):
             inicio = etiqueta.end() + m.start()
-            return Extraido(campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0))))
+            return Extraido(
+                campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0)))
+            )
     return None
 
 
@@ -190,7 +196,9 @@ def periodo(texto: str, referencia: date) -> tuple[Extraido, Extraido] | None:
             for campo, (dia, m) in zip(("periodo_inicio", "periodo_fin"), encontradas[:2], strict=True):
                 inicio = etiqueta.end() + m.start()
                 salida.append(
-                    Extraido(campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0))))
+                    Extraido(
+                        campo, dia.isoformat(), m.group(0).strip(), fragmento(texto, inicio, inicio + len(m.group(0)))
+                    )
                 )
             return salida[0], salida[1]
     return None
@@ -210,6 +218,27 @@ def potencia_kw(texto: str) -> Extraido | None:
     return Extraido("potencia_kw", f"{valor.normalize():f}", literal, fragmento(texto, m.start(), m.end()))
 
 
+_NUMERO_LARGO = re.compile(r"\d{4,}")
+_CODIGO = re.compile(r"\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{5,}\b")
+_ANIO = re.compile(r"(19|20)\d\d")
+
+
+def enmascarar(fragmento: str, literal: str) -> str:
+    """The snippet with identifiers masked (card or account digits, references, booking codes), except the
+    extracted literal itself and years: what is stored is the value and its context, not third-party ids."""
+    inicio = fragmento.find(literal) if literal else -1
+    fin = inicio + len(literal) if inicio >= 0 else -1
+
+    def _tapar(m: re.Match[str]) -> str:
+        if inicio >= 0 and m.start() < fin and m.end() > inicio:
+            return m.group(0)
+        if _ANIO.fullmatch(m.group(0)):
+            return m.group(0)
+        return "•" * len(m.group(0))
+
+    return _CODIGO.sub(_tapar, _NUMERO_LARGO.sub(_tapar, fragmento))
+
+
 def aparece(literal: str, texto: str) -> bool:
     """Whether ``literal`` is in ``texto`` (whitespace-insensitive): the gate for any extracted value."""
     return bool(literal.strip()) and " ".join(literal.split()) in " ".join(texto.split())
@@ -219,6 +248,7 @@ __all__ = [
     "MAX_FRAGMENTO",
     "Extraido",
     "aparece",
+    "enmascarar",
     "fecha_tras",
     "fechas",
     "fragmento",

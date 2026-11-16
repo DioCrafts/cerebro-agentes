@@ -296,7 +296,13 @@ def test_calculate_tool_takes_the_detail_and_turns_contradictions_into_tool_erro
 
 
 def test_record_facts_validates_and_canonicalises_the_children_detail() -> None:
-    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(num_descendientes=1.0))
+    dicho = (
+        "Tengo dos hijos: uno de 2 años en la guardería (1.800 € al año) y otra nacida en 2018, en primaria, "
+        "con 120,50 € de libros."
+    )
+    toolbox = Toolbox(
+        searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(num_descendientes=1.0), mensajes_usuario=[dicho]
+    )
 
     rechazado = toolbox.execute(
         _call("registrar_hechos", hechos=[{"nombre": DESCENDIENTES, "valor": "dos hijos de 2 y 8 años"}])
@@ -307,8 +313,9 @@ def test_record_facts_validates_and_canonicalises_the_children_detail() -> None:
 
     # As JSON text (what the schema asks for) or as a list: stored as the same canonical text.
     for valor in (json.dumps(HIJOS), HIJOS):
-        ok = toolbox.execute(_call("registrar_hechos", hechos=[{"nombre": DESCENDIENTES, "valor": valor}]))
-        assert not ok.is_error
+        hecho = {"nombre": DESCENDIENTES, "valor": valor, "cita_del_usuario": "Tengo dos hijos"}
+        ok = toolbox.execute(_call("registrar_hechos", hechos=[hecho]))
+        assert not ok.is_error, ok.content
         guardado = next(f for f in toolbox.case.facts if f.name == DESCENDIENTES)
         assert guardado.value == descendientes_a_texto(HIJOS) and guardado.value_type.value == "string"
 

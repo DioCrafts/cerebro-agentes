@@ -12,6 +12,7 @@ import { ApiError, deleteCaseFact, getCase, updateCaseFact } from "../api";
 import type { AccionPendiente, CampoPropuesto, HechoInfo, HerramientaInfo, ModuloInfo, ModulosResponse, PropuestaHecho } from "../apiModulos";
 import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos";
 import { fileToBase64, relativeTime } from "../lib/presentation";
+import { CorreoSeccion } from "./CorreoSeccion";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
@@ -379,6 +380,8 @@ function ModuloCard({
       {modulo.activo && modulo.lee_documentos && caseId && (
         <DocumentReader modulo={modulo} caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />
       )}
+
+      {modulo.activo && modulo.clave === "correo" && caseId && <CorreoSeccion caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />}
 
       {modulo.fuentes.length > 0 && (
         <details className="mt-3">

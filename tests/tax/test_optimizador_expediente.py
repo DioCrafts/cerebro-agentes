@@ -540,7 +540,8 @@ def test_the_joint_tool_uses_the_stored_spouse_when_the_agent_gives_none() -> No
 
 
 def test_record_facts_validates_and_canonicalises_both() -> None:
-    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(USUARIO))
+    dicho = "Mi mujer tiene 44 años y gana 4.000 € al año; yo puedo aportar como mucho 1.000 € al plan."
+    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(USUARIO), mensajes_usuario=[dicho])
     mal = toolbox.execute(
         _call(
             "registrar_hechos",
@@ -557,12 +558,20 @@ def test_record_facts_validates_and_canonicalises_both() -> None:
         _call(
             "registrar_hechos",
             hechos=[
-                {"nombre": DATOS_CONYUGE, "valor": {"rendimiento_trabajo_bruto": 4000.0, "edad": 44}},
-                {"nombre": PREFERENCIAS_OPTIMIZACION, "valor": json.dumps({"aportacion_maxima_pensiones": 1000})},
+                {
+                    "nombre": DATOS_CONYUGE,
+                    "valor": {"rendimiento_trabajo_bruto": 4000.0, "edad": 44},
+                    "cita_del_usuario": "Mi mujer tiene 44 años y gana 4.000 €",
+                },
+                {
+                    "nombre": PREFERENCIAS_OPTIMIZACION,
+                    "valor": json.dumps({"aportacion_maxima_pensiones": 1000}),
+                    "cita_del_usuario": "puedo aportar como mucho 1.000 €",
+                },
             ],
         )
     )
-    assert not bien.is_error
+    assert not bien.is_error and "Rechazados" not in bien.content, bien.content
     hechos = {f.name: f.value for f in toolbox.case.facts}
     assert hechos[DATOS_CONYUGE] == '{"edad":44,"rendimiento_trabajo_bruto":"4000"}'
     assert hechos[PREFERENCIAS_OPTIMIZACION] == '{"aportacion_maxima_pensiones":"1000"}'

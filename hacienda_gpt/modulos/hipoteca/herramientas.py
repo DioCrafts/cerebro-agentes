@@ -32,6 +32,7 @@ from hacienda_gpt.modulos.hipoteca.calculo import (
     tipo_revisado,
 )
 from hacienda_gpt.modulos.hipoteca.comisiones import Comision, Operacion, comision_maxima, tramo_en
+from hacienda_gpt.modulos.hipoteca.deduccion import pagos_del_ano
 from hacienda_gpt.modulos.hipoteca.indices import BOE_DOC_URL, INDICES, Dato, SerieIndices, cargar_serie
 from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada, Prestamo
 from hacienda_gpt.modulos.hipoteca.normativa import Normativa, cargar_normativa
@@ -164,15 +165,7 @@ def pagos_del_ejercicio(contexto: ContextoModulo, ejercicio: int) -> dict[str, D
     if contexto.perfil.get("hipoteca_prestamo") is None:
         return None
     entorno = _Entorno(contexto)
-    cuadro = entorno.cuadro()
-    capital, intereses = cuadro.pagos_del_ano(ejercicio)
-    del_ano = [a for a in entorno.prestamo.amortizaciones_realizadas if a.fecha.year == ejercicio]
-    return {
-        "capital": capital,
-        "intereses": intereses,
-        "amortizaciones_anticipadas": sum((a.importe for a in del_ano), ZERO),
-        "comisiones_amortizacion_anticipada": sum((a.comision_pagada for a in del_ano), ZERO),
-    }
+    return pagos_del_ano(entorno.cuadro(), entorno.prestamo.amortizaciones_realizadas, ejercicio)
 
 
 @_ejecutar

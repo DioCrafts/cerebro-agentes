@@ -60,7 +60,6 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
     """The proposal a derived item gives rise to, or None."""
     if elemento.sospechoso or elemento.categoria == "phishing":
         return None
-    comun = {"case_id": case_id, "elemento_id": elemento.id, "origen": _origen(elemento)}
     importe = elemento.campo("importe")
     if elemento.categoria == "compra" and (importe is not None or elemento.campo("fecha_compra") is not None):
         fecha = elemento.campo("fecha_compra")
@@ -83,7 +82,9 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
             partes.append("Es un pedido, así que se registra como compra a distancia (14 días para devolverla).")
         partes.append("Caducidades calculará los plazos de devolución y garantía y te avisará antes de que acaben.")
         return Propuesta(
-            **comun,
+            case_id=case_id,
+            elemento_id=elemento.id,
+            origen=_origen(elemento),
             destino="caducidades",
             tipo="herramienta",
             herramienta=HERRAMIENTA_COMPRAS,
@@ -104,7 +105,9 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
         resumen = f"Factura de la luz{': ' + ', '.join(detalle) if detalle else ''}"
         if potencia is not None:
             return Propuesta(
-                **comun,
+                case_id=case_id,
+                elemento_id=elemento.id,
+                origen=_origen(elemento),
                 destino="luz",
                 tipo="hechos",
                 hechos={HECHO_POTENCIA: float(Decimal(potencia.valor))},
@@ -119,7 +122,9 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
         if not detalle:
             return None
         return Propuesta(
-            **comun,
+            case_id=case_id,
+            elemento_id=elemento.id,
+            origen=_origen(elemento),
             destino="luz",
             tipo="nota",
             titulo=resumen,
@@ -131,7 +136,9 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
         )
     if elemento.categoria == "cargo" and importe is not None:
         return Propuesta(
-            **comun,
+            case_id=case_id,
+            elemento_id=elemento.id,
+            origen=_origen(elemento),
             destino="suscripciones",
             tipo="nota",
             titulo=f"Cargo de {eur(importe.valor)}" + (f" ({elemento.organismo})" if elemento.organismo else ""),
@@ -144,7 +151,9 @@ def generar(case_id: str, elemento: Elemento) -> Propuesta | None:
     if elemento.categoria == "administracion" and elemento.area in NOMBRES_DESTINO:
         quien = elemento.organismo or "la Administración"
         return Propuesta(
-            **comun,
+            case_id=case_id,
+            elemento_id=elemento.id,
+            origen=_origen(elemento),
             destino=elemento.area,
             tipo="nota",
             titulo=f"Aviso de {quien}" + (f": ábrelo antes del {fecha_es(elemento.plazo)}" if elemento.plazo else ""),
@@ -200,7 +209,8 @@ def aplicar(
 
     try:
         resultado = herramienta.ejecutar(
-            dict(propuesta.argumentos), ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id, registrar=registrar)
+            dict(propuesta.argumentos),
+            ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id, registrar=registrar),
         )
     except ValueError as exc:
         return Aplicacion(f"No se pudo guardar: {exc}", True, None)
@@ -211,4 +221,13 @@ def aplicar(
     return Aplicacion(resultado.contenido, False, escrito["case"] if escrito["cambiado"] else None)
 
 
-__all__ = ["HECHO_POTENCIA", "HERRAMIENTA_COMPRAS", "NOMBRES_DESTINO", "Aplicacion", "aplicar", "eur", "fecha_es", "generar"]
+__all__ = [
+    "HECHO_POTENCIA",
+    "HERRAMIENTA_COMPRAS",
+    "NOMBRES_DESTINO",
+    "Aplicacion",
+    "aplicar",
+    "eur",
+    "fecha_es",
+    "generar",
+]

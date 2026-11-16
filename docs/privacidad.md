@@ -216,6 +216,48 @@ usuario (descargar su consumo de Datadis, preparar un trámite sin presentarlo).
   identificación): cualquier otra petición (rastreadores, analítica) se bloquea. Esos sitios tratan los datos
   como responsables propios; la aplicación no les envía nada en nombre del usuario (no presenta, no firma, no paga).
 
+### Correo (Gmail, solo lectura)
+
+El módulo `correo` (`hacienda_gpt/modulos/correo/`, detalle en [`docs/modulos/correo.md`](modulos/correo.md)) lee el
+Gmail del usuario **solo si él lo conecta** («Conectar Gmail») y con un único permiso de Google,
+`gmail.readonly`: no puede enviar, borrar, mover ni marcar nada.
+
+- **Qué se lee.** El correo recibido de los últimos 30 días al conectar (configurable, máximo 90) y después solo
+  el nuevo; no spam, papelera, borradores, enviados ni chats. De las promociones y redes sociales solo las
+  cabeceras. Cada mensaje se procesa **en memoria** y se descarta: el cuerpo, el HTML, los adjuntos (ni siquiera
+  se descargan) y los enlaces (nunca se abren) no se guardan.
+- **Qué se guarda** (tablas `correo_*` del mismo SQLite que los expedientes): la cuenta de Gmail conectada, el
+  permiso de Google **cifrado** (Fernet, clave del operador, ligado al expediente y al usuario) y, por mensaje,
+  solo datos derivados: identificador, fecha, **dominio** del remitente (la dirección completa solo de los
+  contactos que el usuario fija), categoría, motivos de una sospecha de fraude, importes y fechas con su
+  fragmento literal (≤ 200 caracteres, con números de tarjeta, referencias y localizadores enmascarados), plazo
+  y, en los mensajes que importan, el asunto recortado. Se purgan a los 180 días (`CORREO_CONSERVACION_DIAS`).
+- **Datos de terceros.** Los remitentes son terceros: de ellos solo se guarda el dominio. Los fragmentos pueden
+  contener datos de terceros que estaban en la misma línea que la cifra; por eso se recortan y enmascaran.
+- **Qué se envía a un modelo.** Nada al conectar ni al sincronizar: la clasificación es determinista. Cuando el
+  usuario pregunta por su correo, el especialista recibe el **resumen derivado** (no los correos), marcado como
+  datos no confiables. El clasificador opcional por LLM (`CORREO_CLASIFICADOR_LLM=1`, apagado por defecto) envía
+  el asunto y hasta 4 000 caracteres del texto visible de los mensajes que las reglas no saben clasificar, solo
+  si el usuario aceptó `envio_documentos_a_proveedor_llm`.
+- **Proponer no es guardar.** Lo que el correo propone a otros módulos (una compra para las garantías, la potencia
+  de la luz…) solo se escribe en el expediente cuando el usuario pulsa «Confirmar», con el correo de origen a la
+  vista; queda en la auditoría solo con los **nombres** de los datos.
+- **Exportar y borrar.** `GET /correo/exportar?case_id=…` devuelve todo lo guardado (sin el token). Todo se borra
+  con el expediente y con la cuenta (en la misma transacción que borra el expediente; el permiso se revoca
+  además en Google en segundo plano), y al pulsar «Desconectar y borrar». «Desconectar» revoca el permiso en
+  Google y borra el token aunque Google no responda.
+- **Política de uso limitado de Google.** `gmail.readonly` es un permiso *restringido*. El operador que publique la
+  aplicación debe cumplir la *Google API Services User Data Policy* y sus requisitos de **uso limitado**: usar los
+  datos de Gmail solo para dar al usuario las funciones que ve en la aplicación; no transferirlos a terceros salvo
+  para esas funciones, por obligación legal o en una fusión o adquisición con aviso; no usarlos para publicidad; no
+  permitir que personas los lean salvo con consentimiento expreso del usuario para mensajes concretos, por
+  seguridad o por obligación legal; y no usarlos para entrenar modelos generales. Una aplicación en producción con
+  este permiso necesita además la **verificación de Google** y una **evaluación de seguridad anual por un tercero**
+  (CASA). Este resumen está escrito de memoria, sin poder consultar las páginas de Google desde la máquina de
+  desarrollo: el operador debe leer la versión vigente. El operador también debe declarar en su política de
+  privacidad qué datos de Gmail trata, para qué y cuánto tiempo, y el encargado del tratamiento si usa un
+  proveedor de modelo con el clasificador opcional.
+
 ## Memoria de decisiones («Lo que sé de tus preferencias»)
 
 El asistente guarda lo que el usuario **decide** sobre lo que se le propone (no quiere planes de pensiones

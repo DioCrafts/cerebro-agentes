@@ -78,14 +78,14 @@ usuarios se sostiene en todas las rutas probadas.
 | S-08 | baja | corregido | `/usage` y `/eventos/salud` (cifras de todo el servicio) abiertas a cualquiera con `AUTH_MODE=required` | `routers/consumo.py`, `routers/eventos.py` |
 | S-09 | baja | corregido | Respuestas sin cabeceras de seguridad ni `Cache-Control: no-store` | `hacienda_gpt/api/security.py` |
 | S-10 | media | **abierto** (producto) | El consentimiento «avisos por correo» envía los avisos del usuario al buzón o *webhook* **del operador** | `hacienda_gpt/cli/ops.py:85`, `proactive/entrega.py` |
-| S-11 | baja | corregido en parte | Mensajes de error con el texto de la excepción | `api.py` (flujo NDJSON corregido; 503 abiertos) |
+| S-11 | baja | corregido | Mensajes de error con el texto de la excepción | `api.py`, `routers/modulos.py`, `routers/consumo.py` |
 | S-12 | baja | corregido | `llm_usage` conservaba usuario y expediente tras borrar la cuenta y no estaba documentada | `hacienda_gpt/ops/consumo.py`, `routers/auth.py` |
-| S-13 | baja | corregido en parte | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA | `.github/workflows/*.yml` |
-| S-14 | media | **abierto** | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py:433`, `llm/chain.py:261`, `decision/fact_extractor.py:423` |
-| S-15 | media | **abierto** (producto) | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api.py:232`, `api.py:392-393`, `api.py:453-454` |
-| S-16 | baja | **abierto** (fichero de otro agente) | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `hacienda_gpt/agent/tools.py:135` |
-| S-17 | baja | **abierto** | El indexador incremental deserializa FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `hacienda_gpt/processor/document_loader.py:869` |
-| S-18 | baja | **abierto** (producto) | `/docs`, `/redoc` y `/openapi.json` públicos | `api.py:130` |
+| S-13 | baja | corregido | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA | `.github/workflows/*.yml` |
+| S-14 | media | corregido | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py`, `decision/fact_extractor.py` |
+| S-15 | media | corregido | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api/security.py`, `api.py`, `frontend/src/lib/historial.ts` |
+| S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `hacienda_gpt/agent/procedencia.py`, `agent/tools.py` |
+| S-17 | baja | corregido | El indexador incremental deserializa FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `hacienda_gpt/processor/document_loader.py` |
+| S-18 | baja | corregido | `/docs`, `/redoc` y `/openapi.json` públicos | `api.py`, `api/security.py` |
 
 ### S-01 (alta, corregido): el lector de XLSX se podía tumbar con ficheros diminutos
 
@@ -216,19 +216,20 @@ cuenta (con verificación de correo previa, que hoy no existe), o, hasta entonce
 con `AUTH_MODE=required` se niegue a entregar a un destino único y que la casilla diga «cuando el
 servicio los ofrezca» sin efecto alguno. Ambas cambian el producto: no se ha tocado el código.
 
-### S-11 (baja, corregido en parte): errores con el texto de la excepción
+### S-11 (baja, corregido): errores con el texto de la excepción
 
 El flujo NDJSON de `/agent/stream` devolvía `Error interno: {exc}` para cualquier fallo inesperado
 (rutas, SQL o datos del expediente pueden ir en ese texto). **Corrección**: al registro, y al
 cliente solo «Error interno.». **Prueba**: `test_an_unexpected_failure_in_the_stream_does_not_leak_its_text`.
-**Abierto**: los 503 de construcción (`api.py`: «El agente no está disponible: {exc}» y similares
-del lector de documentos, del flujo `/qa` y del registro de consumo) y `/cases/{id}/turn` («No se
-pudieron extraer los hechos…: {exc}», que puede incluir 200 caracteres de la salida del modelo)
-muestran detalles de configuración al usuario. No hay secretos en esos textos (se revisaron los
-mensajes de los proveedores), pero lo correcto es registrar el detalle y mostrar un mensaje fijo;
-se deja al criterio de quien mantiene `api.py` porque esos mensajes también los ve el operador.
-`POST /acciones/{id}/confirmar` guarda y devuelve `La acción falló: {tipo}: {exc}`
-(`routers/modulos.py:378`): mismo criterio.
+**Corregido después**: los 503 de construcción y de proveedor (`api.py`: el agente, `/agent` y
+`/agent/stream`, `/cases/{id}/turn` —que podía incluir 200 caracteres de la salida del modelo—, el
+lector de documentos, el flujo `/qa`; `routers/modulos.py`: el lector de documentos de un módulo;
+`routers/consumo.py`: el registro de consumo) muestran un mensaje fijo en español y el detalle va
+al registro (`_no_disponible`). `POST /acciones/{id}/confirmar` guarda y devuelve «La acción falló
+por un error interno…» en lugar de `{tipo}: {exc}` (el detalle sigue en el registro con la traza).
+**Pruebas**: `test_provider_failures_show_a_fixed_message_and_log_the_detail`
+(`tests/auth/test_seguridad_cierre.py`), `test_qa_returns_503_when_answering_fails`,
+`test_agent_endpoint_errors`.
 
 ### S-12 (baja, corregido): registro de consumo tras borrar la cuenta
 
@@ -237,7 +238,7 @@ anonimizaba con la cuenta y no figuraba en `docs/privacidad.md`. **Corrección**
 `anonimizar_consumo` deja las filas (los totales del operador) sin usuario ni expediente al
 eliminar la cuenta; tabla documentada. **Prueba**: `test_deleting_the_account_detaches_the_usage_log`.
 
-### S-13 (baja, corregido en parte): *workflows* de GitHub
+### S-13 (baja, corregido): *workflows* de GitHub
 
 `ci.yml`, `critical-regression.yml`, `evaluacion.yml` y `nightly-eval.yml` no declaraban
 `permissions:`, así que el `GITHUB_TOKEN` tenía los permisos por defecto del repositorio (de escritura
@@ -245,11 +246,15 @@ en repositorios antiguos). Ahora declaran `contents: read`. Lo demás está bien
 no reciben secretos (`evaluacion.yml` comprueba que la clave existe antes de usarla); el único trabajo
 con escritura (`vigilancia.yml`, `lecturas-pr`) no ejecuta modelos ni descarga nada, vuelve a comprobar
 que solo cambian lecturas y limita `add-paths` a `hacienda_gpt/tax/data/*.json`; ningún `run:`
-interpola datos de la PR (`github.event.*`). **Abierto**: las acciones van fijadas por etiqueta
-(`@v4`, `peter-evans/create-pull-request@v7` con un token de escritura); fijarlas por SHA protege
-de una etiqueta movida.
+interpola datos de la PR (`github.event.*`). **Corregido después**: todas las acciones (también
+`peter-evans/create-pull-request`, la que usa un token de escritura) van fijadas por el SHA completo
+del *commit* al que apuntaba su etiqueta, con la versión en un comentario (`@<sha> # v4.4.0`). Los
+SHA se leyeron con `git ls-remote https://github.com/<dueño>/<acción>` (etiqueta principal → versión
+exacta con el mismo *commit*), no de memoria. Actualizarlas es ahora un cambio explícito (p. ej.
+con Dependabot para `github-actions`). **Prueba**: `tests/test_workflows_fijados.py` falla si una
+acción no está fijada por SHA con su versión.
 
-### S-14 (media, abierto): llamadas al modelo sin medir
+### S-14 (media, corregido): llamadas al modelo sin medir
 
 `POST /qa` construye la cadena de LangChain con `ChatOpenAI` (`llm/chain.py:261`), que no pasa por
 `MeteredProvider`: ni se registra ni se aplica ningún presupuesto, y cualquier usuario con sesión
@@ -257,9 +262,16 @@ puede llamarla (la aplicación web ya no la usa: `postQA` en `frontend/src/api.t
 Lo mismo con `OpenAIFactExtractor` (`decision/fact_extractor.py:423`), que se usa en `/turn` cuando
 `DECISION_EXTRACTOR=openai` o solo hay `OPENAI_API_KEY`. **Propuesta**: retirar `/qa` cuando
 `AUTH_MODE=required` (o del todo) y pasar el extractor de OpenAI por el proveedor medido
-(`_provider_extractor`). No se ha cambiado porque retirar una ruta pública es decisión de producto.
+(`_provider_extractor`). **Corrección**: con `AUTH_MODE=required`, `POST /qa` responde 404 a todos
+(`require_qa_legado`, antes de mirar la clave, la sesión o construir la cadena); sin cuentas sigue
+como estaba. `default_fact_extractor` ya no devuelve nunca `OpenAIFactExtractor`: con
+`DECISION_EXTRACTOR=openai` o solo `OPENAI_API_KEY` usa `ProviderFactExtractor` sobre el proveedor
+OpenAI envuelto en `medir(…, "hechos")` (registro de consumo y presupuestos), con el modelo propio del
+extractor (`DECISION_EXTRACTOR_MODEL` u `OPENAI_MODEL`). La clase queda para uso directo. **Pruebas**:
+`test_qa_is_gone_with_accounts_even_for_a_session_and_never_builds_the_chain`,
+`test_default_extractor_follows_llm_provider`.
 
-### S-15 (media, abierto, decisión de producto): tamaño de pregunta e historial
+### S-15 (media, corregido): tamaño de pregunta e historial
 
 `AgentRequest.query`/`chat_history` (`api.py:453-454`), `QARequest` (`392-393`) y
 `TurnRequest.user_input` (`232`) no tienen longitud máxima, y el historial entero se reenvía en cada
@@ -268,10 +280,19 @@ lo ya gastado, así que una pregunta con un historial cercano a la ventana de co
 el límite diario por usuario en el coste de una o dos llamadas completas. El límite de cuerpo (S-03)
 acota el tamaño, no el coste. **Propuesta**: tope de caracteres para la pregunta (p. ej. 20 000) y para
 el historial total, que el frontend recorte el historial (hoy envía la conversación entera) y una
-estimación de tokens antes de llamar. Los números afectan a conversaciones largas legítimas: no se
-han fijado.
+estimación de tokens antes de llamar. **Corrección** (`api/security.py`): la pregunta (`query`,
+`user_input`) de `/agent`, `/agent/stream`, `/cases/{id}/turn` y `/qa` tiene como máximo
+`API_MAX_QUERY_CHARS` caracteres (20 000 por defecto): por encima, 422 con «La pregunta es demasiado
+larga…» antes de llamar al modelo. Del historial se envían al modelo los mensajes más recientes que
+quepan en `API_MAX_HISTORY_MESSAGES` (40) y `API_MAX_HISTORY_CHARS` (60 000), descartando primero los
+más antiguos, sin cortar ningún mensaje y empezando por una pregunta del usuario (`recortar_historial`);
+la aplicación web recorta igual antes de enviar (`frontend/src/lib/historial.ts`). Una conversación
+más larga pierde el contexto más antiguo, no falla. La estimación de tokens no se ha hecho: el tope de
+caracteres acota lo mismo de forma más simple. **Pruebas**: `tests/auth/test_seguridad_cierre.py`
+(`test_a_question_over_the_limit_is_a_422_in_spanish_before_any_model_call`,
+`test_the_history_sent_to_the_model_is_trimmed_oldest_first`).
 
-### S-16 (baja, abierto, `agent/tools.py` lo edita otro agente): procedencia de `registrar_hechos`
+### S-16 (baja, corregido): procedencia de `registrar_hechos`
 
 `registrar_decision` exige que la cita y la razón sean palabras literales del usuario
 (`memoria/agente.py`, `_en_palabras_del_usuario`). `registrar_hechos` (`agent/tools.py:135`) solo lo
@@ -286,18 +307,43 @@ usuario (como `registrar_decision`), o guardar lo que no aparezca como propuesta
 que los documentos). El módulo de correo que se está construyendo será, con diferencia, la mayor
 superficie de este tipo: debe seguir la misma regla.
 
-### S-17 (baja, abierto): pickle de FAISS en el indexador
+**Corrección** (`hacienda_gpt/agent/procedencia.py`, llamada desde `Toolbox._record_facts`): el agente
+pasa a la caja de herramientas los mensajes **del usuario** de la conversación (la pregunta y los
+`role: user` del historial; nunca el bloque de contexto con los hechos del expediente, ni respuestas del
+asistente, ni resultados de herramientas). Cada valor se comprueba antes de guardarlo: una cifra tiene
+que ser una que el usuario haya escrito, en cualquier grafía habitual («23.456,78», «23456.78»,
+«23456,78», «23 456», «30 mil», «45k», números en letra hasta veinte; un cero, con «no tengo»,
+«ninguno»…; el signo no se comprueba, la magnitud sí); un sí/no o un texto exige `cita_del_usuario`
+literal en sus mensajes (la normalización y la longitud mínima de `registrar_decision`,
+`memoria/agente.py`); un año escrito como texto tiene que estar además entre sus números; los hechos
+estructurados (hijos, cónyuge, preferencias) exigen la cita y que cada cifra del JSON (y el año de cada
+fecha) sea suya. Lo que no pasa se rechaza con un mensaje que dice al modelo que lo pregunte y lo
+registre cuando el usuario lo confirme con sus palabras. Un toolbox sin mensajes del usuario no
+registra nada. Los hechos que proponen los documentos y los módulos siguen sus caminos confirmados
+(edición del usuario, `aceptar_propuesta`). Límite: se comprueba la **procedencia**, no la
+interpretación (qué significan las palabras citadas lo sigue leyendo el modelo); el hecho queda visible
+y editable. **Pruebas**: `tests/agent/test_procedencia_hechos.py` (un fragmento recuperado y la
+etiqueta de un cargo bancario guardada por suscripciones intentan escribir hechos; grafías de cifras).
+
+### S-17 (baja, corregido): pickle de FAISS en el indexador
 
 `agent/search.py` y `llm/chain.py` exigen `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
 el indexador incremental (`processor/document_loader.py:869`) no. Lo ejecuta el operador sobre su
 propio directorio de salida, así que solo es explotable si ese directorio lo puede escribir otro.
-**Propuesta**: la misma guarda, o comprobar la huella del índice antes de cargarlo.
+**Corrección**: la misma guarda que `agent/search.py`; sin `FAISS_TRUSTED_INDEX=true` una ejecución
+incremental se niega a cargar el índice existente (no lo reconstruye en silencio: el error dice que
+se use `--full`). **Prueba**: `test_an_incremental_run_refuses_to_unpickle_an_untrusted_index`.
 
-### S-18 (baja, abierto): documentación de la API pública
+### S-18 (baja, corregido): documentación de la API pública
 
 `/docs`, `/redoc` y `/openapi.json` describen todas las rutas a cualquiera. No dan acceso a nada, pero
 facilitan el reconocimiento. **Propuesta**: bloquearlas en el proxy o crear la aplicación con
-`docs_url=None, redoc_url=None, openapi_url=None` cuando `AUTH_MODE=required`.
+`docs_url=None, redoc_url=None, openapi_url=None` cuando `AUTH_MODE=required`. **Corrección**: la
+aplicación se crea sin ellas y las declara aparte tras `require_docs_publicas`: con
+`AUTH_MODE=required` responden 404 salvo `API_DOCS_PUBLICAS=true`; sin cuentas, 200 salvo
+`API_DOCS_PUBLICAS=false` (se decide en cada petición). **Pruebas**:
+`test_the_api_documentation_is_hidden_with_accounts_unless_the_operator_opens_it` y la prueba de
+inventario de rutas.
 
 ## Lo comprobado sin hallazgo
 
@@ -362,12 +408,15 @@ facilitan el reconocimiento. **Propuesta**: bloquearlas en el proxy o crear la a
    recalcularlo. La política importa especialmente porque el token de sesión está en `localStorage`.
 5. **Límites en el proxy**: `client_max_body_size 32m` (coherente con `API_MAX_BODY_BYTES`),
    limitación de peticiones por IP en `/api/auth/` y en las rutas del asesor, y tiempos de espera
-   largos (y sin *buffering*) solo para `/api/agent/stream`. Bloquear `/api/docs`, `/api/redoc` y
-   `/api/openapi.json` (S-18). `/metrics` y `/health` solo desde la red interna.
+   largos (y sin *buffering*) solo para `/api/agent/stream`. `/api/docs`, `/api/redoc` y
+   `/api/openapi.json` ya responden 404 con cuentas (S-18); bloquearlos también en el proxy no estorba.
+   `/metrics` y `/health` solo desde la red interna.
 6. **Variables**: `LLM_DAILY_BUDGET_USD` y `LLM_DAILY_BUDGET_USD_PER_USER` siempre (sin ellas no hay
    techo de gasto), `LLM_MAX_CALLS_PER_QUESTION`, `API_RATE_LIMIT_PER_MIN`, `HACIENDA_OPERATOR_KEY`
    (aleatoria, ≥ 32 bytes, solo para el operador; sin ella `/usage` y `/eventos/salud` responden 404),
    `PRIVACY_NOTICE_URL`. No activar `NOTIFY_*` con usuarios reales mientras siga abierto S-10.
+   Opcionales (S-15, S-18): `API_MAX_QUERY_CHARS` (20 000), `API_MAX_HISTORY_MESSAGES` (40),
+   `API_MAX_HISTORY_CHARS` (60 000) y `API_DOCS_PUBLICAS` (por defecto, no con cuentas).
    `FAISS_TRUSTED_INDEX=true` solo con un índice construido por el propio operador.
 7. **Secretos** (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `NOTIFY_SMTP_PASSWORD`, `NOTIFY_WEBHOOK_URL`,
    `HACIENDA_API_KEY`, `HACIENDA_OPERATOR_KEY`) en un gestor de secretos o un fichero `0600` del
@@ -388,8 +437,8 @@ facilitan el reconocimiento. **Propuesta**: bloquearlas en el proxy o crear la a
     Esta revisión no ha podido consultar bases de vulnerabilidades (sin red); hay que pasar
     `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y en
     CI de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
-12. **CI**: fijar por SHA las acciones de terceros con permisos de escritura (S-13) y restringir quién
-    puede lanzar `workflow_dispatch`.
+12. **CI**: las acciones ya van fijadas por SHA (S-13); actualizarlas con revisión (Dependabot) y
+    restringir quién puede lanzar `workflow_dispatch`.
 
 ## Lo que no se ha podido comprobar
 

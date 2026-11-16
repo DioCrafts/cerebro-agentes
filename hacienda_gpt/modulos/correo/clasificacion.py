@@ -56,7 +56,9 @@ _ADMIN_GENERAL = re.compile(
     r"carta de pago|liquidacion provisional|notificacion"
 )
 _FACTURA = re.compile(r"\bfactura\b")
-_LUZ = re.compile(r"\bkwh\b|electric|energia electrica|suministro electrico|potencia contratada|\bfactura de (la )?luz\b")
+_LUZ = re.compile(
+    r"\bkwh\b|electric|energia electrica|suministro electrico|potencia contratada|\bfactura de (la )?luz\b"
+)
 _COMPRA = re.compile(
     r"confirmacion de (tu |su )?pedido|tu pedido|su pedido|\bpedido\b|gracias por tu compra|gracias por su compra|"
     r"recibo de (tu |su )?compra|\bticket\b|factura simplificada|resumen de (tu |su )?compra"
@@ -67,7 +69,9 @@ _CARGO = re.compile(
     r"\bcargo\b|\badeudo\b|se ha cargado|hemos cargado|compra con (tu |su )?tarjeta|recibo domiciliado|"
     r"domiciliacion|movimiento en (tu |su )?cuenta|pago con tarjeta"
 )
-_VIAJE = re.compile(r"\bvuelo\b|\btren\b|tarjeta de embarque|\bembarque\b|\bhotel\b|\blocalizador\b|check-?in|\bbillete")
+_VIAJE = re.compile(
+    r"\bvuelo\b|\btren\b|tarjeta de embarque|\bembarque\b|\bhotel\b|\blocalizador\b|check-?in|\bbillete"
+)
 _VIAJE_RESERVA = re.compile(r"\breserva\b|tarjeta de embarque|billete|check-?in|retras|cancelad")
 _INCIDENCIA = re.compile(r"retrasad[oa]|retraso|cancelad[oa]|cancelaci[oó]n", re.IGNORECASE)
 _ACCION = re.compile(
@@ -130,7 +134,8 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
     nombrada: Marca | None = marca_nombrada(f"{mensaje.remitente_nombre} {mensaje.asunto}", remitentes)
 
     campos: list[Extraido] = []
-    plazo = extraccion.plazo(f"{mensaje.asunto}\n{texto}", referencia) if not mensaje.solo_metadatos else None
+    plazo_leido = extraccion.plazo(f"{mensaje.asunto}\n{texto}", referencia) if not mensaje.solo_metadatos else None
+    plazo: date | None = date.fromisoformat(plazo_leido.valor) if plazo_leido is not None else None
     requiere_accion = plazo is not None and bool(_ACCION.search(plano))
     categoria = "otro"
     organismo: str | None = None
@@ -138,8 +143,10 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
     area = ""
 
     es_admin_remitente = oficial is not None and oficial.es_administracion and auth.dmarc != "fail"
-    if es_admin_remitente or _ADMIN_NOTIFICACION.search(plano) or (
-        nombrada is not None and nombrada.es_administracion and _ADMIN_GENERAL.search(plano)
+    if (
+        es_admin_remitente
+        or _ADMIN_NOTIFICACION.search(plano)
+        or (nombrada is not None and nombrada.es_administracion and _ADMIN_GENERAL.search(plano))
     ):
         categoria = "administracion"
         marca = oficial if es_admin_remitente else nombrada
@@ -164,7 +171,9 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
             extraccion.fecha_tras(texto, referencia, r"fecha de (emisi[oó]n|(la )?factura)", "fecha_emision"),
             *(periodo or ()),
             extraccion.potencia_kw(texto),
-            extraccion.fecha_tras(texto, referencia, r"fecha de cargo|se (te |le )?cargar[aá] el|cargo el", "fecha_cargo"),
+            extraccion.fecha_tras(
+                texto, referencia, r"fecha de cargo|se (te |le )?cargar[aá] el|cargo el", "fecha_cargo"
+            ),
         )
     elif _COMPRA.search(plano) and not (oficial is not None and oficial.tipo == "banco"):
         categoria = "compra"
@@ -186,7 +195,9 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
         _mas(
             campos,
             extraccion.importe_total(texto),
-            extraccion.fecha_tras(texto, referencia, r"fecha( del cargo| de cargo| de la operaci[oó]n)?:", "fecha_cargo"),
+            extraccion.fecha_tras(
+                texto, referencia, r"fecha( del cargo| de cargo| de la operaci[oó]n)?:", "fecha_cargo"
+            ),
         )
         if oficial is not None:
             organismo, verificado = oficial.nombre, auth.dmarc != "fail"
@@ -196,14 +207,19 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
         if incidencia is not None:
             fragmento = extraccion.fragmento(texto, incidencia.start(), incidencia.end())
             _mas(campos, Extraido("incidencia", incidencia.group(0).lower(), incidencia.group(0), fragmento))
-        _mas(campos, extraccion.fecha_tras(texto, referencia, r"salida|fecha( del (vuelo|viaje))?:|ida:|llegada|entrada:?", "fecha_viaje"))
+        _mas(
+            campos,
+            extraccion.fecha_tras(
+                texto, referencia, r"salida|fecha( del (vuelo|viaje))?:|ida:|llegada|entrada:?", "fecha_viaje"
+            ),
+        )
     elif requiere_accion:
         categoria = "accion"
     elif mensaje.etiquetas & _PROMO_ETIQUETAS or mensaje.cabecera("list-unsubscribe") or _PROMO.search(plano):
         categoria = "promocion"
 
-    if plazo is not None and categoria != "administracion":
-        _mas(campos, extraccion.plazo(f"{mensaje.asunto}\n{texto}", referencia))
+    if plazo_leido is not None:
+        _mas(campos, plazo_leido)
     aparente = categoria
     if sospechoso:
         categoria = "phishing"
@@ -215,7 +231,8 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
         campos=[
             c
             for c in campos
-            if extraccion.aparece(c.fragmento, f"{mensaje.asunto}\n{texto}") and extraccion.aparece(c.literal, c.fragmento)
+            if extraccion.aparece(c.fragmento, f"{mensaje.asunto}\n{texto}")
+            and extraccion.aparece(c.literal, c.fragmento)
         ],
         plazo=plazo if (requiere_accion or categoria == "administracion") else None,
         requiere_accion=requiere_accion and not sospechoso,

@@ -42,7 +42,7 @@ _INVISIBLES = re.compile("[­​‌‍⁠﻿‪-‮⁦-⁩]")
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.IGNORECASE)
 _OMITIR = frozenset({"script", "style", "head", "title", "noscript", "template", "svg", "math"})
 _BLOQUES = frozenset(
-    {"p", "div", "br", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "section", "article", "hr", "td"}
+    {"p", "div", "br", "tr", "li", "h1", "h2", "h3", "h4", "h5", "h6", "table", "section", "article", "hr"}
 )
 _VACIOS = frozenset({"br", "img", "hr", "meta", "link", "input", "area", "base", "col", "source", "wbr"})
 _OCULTO_RE = re.compile(
@@ -113,6 +113,8 @@ class _Html(HTMLParser):
         atributos = {k.lower(): (v or "") for k, v in attrs}
         if tag in _BLOQUES:
             self.partes.append("\n")
+        elif tag in ("td", "th"):
+            self.partes.append(" ")
         if tag == "a" and "href" in atributos and not self._omitido():
             self._enlace = (atributos["href"], [])
         if tag in _VACIOS:
@@ -215,11 +217,15 @@ def _enlace(href: str, texto: str) -> Enlace | None:
         return None
     esquema = partes.scheme.lower()
     if esquema not in ("http", "https"):
-        return None if esquema in ("mailto", "tel", "cid", "") else Enlace(texto=texto[:200], host=None, esquema=esquema)
+        return (
+            None if esquema in ("mailto", "tel", "cid", "") else Enlace(texto=texto[:200], host=None, esquema=esquema)
+        )
     return Enlace(texto=texto[:200], host=host_valido(partes.hostname or ""), esquema=esquema)
 
 
-def _recorrer(parte: Mapping[str, Any], planos: list[str], htmls: list[str], adjuntos: list[Adjunto], n: list[int]) -> None:
+def _recorrer(
+    parte: Mapping[str, Any], planos: list[str], htmls: list[str], adjuntos: list[Adjunto], n: list[int]
+) -> None:
     n[0] += 1
     if n[0] > MAX_PARTES:
         return
