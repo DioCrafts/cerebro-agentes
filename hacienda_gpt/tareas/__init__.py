@@ -21,8 +21,35 @@ except the API router, the agent hook and the export.
 
 from __future__ import annotations
 
+from typing import Any
+
 from hacienda_gpt.tareas.almacen import TareaStore, exportar_tareas
 from hacienda_gpt.tareas.modelo import Paso, PasoSpec, Tarea
-from hacienda_gpt.tareas.motor import ConsumidorTareas, Motor, ciclo
+from hacienda_gpt.tareas.motor import ConsumidorTareas, Motor, ciclo, servicio_tareas
 
-__all__ = ["ConsumidorTareas", "Motor", "Paso", "PasoSpec", "Tarea", "TareaStore", "ciclo", "exportar_tareas"]
+
+def registrar_en_plataforma(registro: Any) -> None:
+    """The platform worker runs the task engine as a service (``hacienda_gpt.plataforma.procesos``)."""
+    from hacienda_gpt.plataforma.procesos import Servicio
+
+    registro.registrar_servicio(
+        Servicio(
+            "tareas",
+            "Tareas de larga duración: fechas, eventos del bus, acciones confirmadas y consultas a especialistas.",
+            servicio_tareas,
+        )
+    )
+
+
+__all__ = [
+    "ConsumidorTareas",
+    "Motor",
+    "Paso",
+    "PasoSpec",
+    "Tarea",
+    "TareaStore",
+    "ciclo",
+    "exportar_tareas",
+    "registrar_en_plataforma",
+    "servicio_tareas",
+]

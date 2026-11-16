@@ -807,6 +807,24 @@ class Motor:
             logger.exception("Timer of the tasks of a case could not be programmed")
 
 
+def servicio_tareas(contexto: Any) -> None:
+    """The platform worker's loop (``hacienda_gpt.plataforma``): one :meth:`Motor.ciclo` every
+    ``TAREAS_INTERVALO_SEGUNDOS`` (60) until ``contexto.parar`` is set. Specialist consultations run here."""
+    motor = Motor(contexto.db_path, trabajador=f"{contexto.nombre_proceso}-tareas")
+    pausa = max(1.0, _numero("TAREAS_INTERVALO_SEGUNDOS", 60))
+    try:
+        while not contexto.parar.is_set():
+            try:
+                resumen = motor.ciclo()
+                if resumen["eventos"] or resumen["temporizadores"]:
+                    logger.info("Task cycle: %s", resumen)
+            except Exception:
+                logger.exception("Task worker cycle failed; retrying after the pause")
+            contexto.parar.wait(pausa)
+    finally:
+        motor.close()
+
+
 def ciclo(db_path: str | None = None, **kwargs: Any) -> dict[str, int]:
     """One worker pass over ``db_path`` (default: the cases' database). For cron and the daily run."""
     motor = Motor(db_path or settings.DECISION_STATE_DB_PATH, **kwargs)
@@ -829,4 +847,5 @@ __all__ = [
     "coincide",
     "consultor_por_defecto",
     "id_accion",
+    "servicio_tareas",
 ]

@@ -307,3 +307,38 @@ def test_a_deleted_case_takes_its_tasks_with_it(entorno: Entorno) -> None:
     with sqlite3.connect(entorno.db) as conn:
         for tabla in ("tareas", "tareas_historial", "tareas_senales"):
             assert conn.execute(f"SELECT COUNT(*) FROM {tabla} WHERE case_id = ?", (tarea.case_id,)).fetchone()[0] == 0
+
+
+def test_the_platform_worker_runs_the_engine_as_a_service(entorno: Entorno, monkeypatch: pytest.MonkeyPatch) -> None:
+    import threading
+
+    from hacienda_gpt import settings
+    from hacienda_gpt.plataforma import procesos
+    from hacienda_gpt.tareas import registrar_en_plataforma
+
+    registro = procesos.Registro()
+    registrar_en_plataforma(registro)
+    servicio = registro.servicios["tareas"]
+    assert procesos.registro().servicios["tareas"].arrancar is servicio.arrancar  # found through EXTENSIONES
+
+    motor, tarea = _plan(entorno, ACCION)
+    with sqlite3.connect(entorno.db) as conn:  # accepted by hand: the service must advance it on its own
+        datos = conn.execute("SELECT payload_json FROM tareas WHERE id = ?", (tarea.id,)).fetchone()[0]
+        conn.execute(
+            "UPDATE tareas SET estado = 'activa', payload_json = ? WHERE id = ?",
+            (datos.replace('"estado":"propuesta"', '"estado":"activa"'), tarea.id),
+        )
+    monkeypatch.setattr(settings, "TAREAS_INTERVALO_SEGUNDOS", 1, raising=False)
+    parar = threading.Event()
+    contexto = procesos.ContextoServicio(db_path=entorno.db, nombre_proceso="prueba", parar=parar)
+    hilo = threading.Thread(target=servicio.arrancar, args=(contexto,))
+    hilo.start()
+    for _ in range(50):
+        if motor.store.get(tarea.id).paso("leer").estado != "pendiente":
+            break
+        time.sleep(0.05)
+    parar.set()
+    hilo.join(5)
+    assert not hilo.is_alive()
+    # Advanced by the service alone (with its default module switches the water module may be off: then it waits).
+    assert motor.store.get(tarea.id).paso("leer").estado in ("hecho", "esperando")
