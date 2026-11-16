@@ -487,6 +487,35 @@ rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `
 *trigger* sobre `case_states`) y con la cuenta; olvidar una decisión borra sus palabras del historial
 (`secure_delete`). Pruebas: `tests/memoria/`.
 
+### Propuestas de los módulos en el chat
+
+Un **puente** (`modulos/puentes.py`) propone el valor de un dato fiscal que falta con lo que sabe un módulo; no
+escribe nada. Hoy: `hipoteca` → `pagos_vivienda_habitual_pre2013`, para la deducción por vivienda habitual del
+régimen transitorio (disp. trans. 18.ª LIRPF), si el préstamo es de la vivienda habitual comprada antes de 2013.
+La cifra es lo que el art. 68.1.1.º LIRPF **en su redacción a 31-12-2012** cuenta de la financiación ajena y el
+módulo conoce en el ejercicio: la amortización (capital de las cuotas y amortizaciones anticipadas), los intereses
+y las comisiones de amortización anticipada («demás gastos derivados»). El fundamento, con citas literales de las
+dos redacciones (la vigente y la de 31-10-2012, la última antes de la Ley 16/2012), está en
+`modulos/hipoteca/data/deduccion_vivienda.json` con su autocomprobación (`modulos/hipoteca/deduccion.py`); dice
+también lo que el puente **no** sabe y no suma (gastos de la compra, coste y cobros de coberturas de tipo, otros
+gastos del préstamo) y lo que nadie comprueba (haberse aplicado la deducción antes de 2013, viviendas anteriores,
+el aumento de patrimonio del art. 70.1, préstamos de varios titulares). El 15 % (7,5 % estatal + 7,5 % autonómico
+supletorio, art. 78.2) y los 9.040 € los aplica la calculadora y están verificados contra esa redacción.
+
+- **En el chat** (`modulos/propuestas_chat.py`): con expediente y un módulo con puente activado, el asistente
+  recibe `<propuestas_de_modulos>` (cifra, desglose, fragmento citable `[F#]`, ámbito y si ya la ofreció en
+  esta conversación) y la ofrece cuando viene al caso o una vez por conversación: «Tu módulo de hipoteca calcula
+  que este año pagaste X (capital Y, intereses Z) — ¿lo uso para tu deducción por vivienda?».
+- **Aceptar** solo con `aceptar_propuesta`, que guarda la cifra que el puente calcula en ese momento (no recibe
+  importes) y **comprueba** que el mensaje anterior del asistente mostraba esa cifra y que `cita_del_usuario`
+  son palabras literales del mensaje actual del usuario con un «sí» y sin negación. Se eligió la confirmación
+  en el chat, comprobada como `registrar_decision`, y no una acción pendiente: las acciones ejecutan una
+  herramienta del módulo que escribe sus propios datos, y este dato es fiscal. El hecho se guarda con
+  `source = "puente:<módulo>"`.
+- **Rechazar**: el asistente registra el «no» con `registrar_decision` en `fiscal:propuesta:<puente>`; mientras
+  esa decisión (o una que la cubra, como `fiscal`) siga en vigor, no se ofrece más. En «Módulos» la propuesta
+  sigue visible con su botón «Usar esta cifra».
+
 ### Agente con navegador
 
 `hacienda_gpt/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
@@ -950,7 +979,7 @@ vistas, el valor de cada palanca **dentro del plan y sola** y por qué la combin
 acoplamiento fiscal calculado, colchón, forma de declarar, margen de las ayudas), escenarios de comparación (no hacer
 nada, todo a la hipoteca, pensiones al máximo), resumen de la hipoteca, efecto en cada ayuda con la cita de su
 norma, el plan fiscal del optimizador para el reparto elegido (`plan_fiscal`, con su traza y sus citas), supuestos,
-avisos (p. ej. que el 15 % y los 9.040 € de la deducción por vivienda no están verificados), lo no modelado y la
+avisos (p. ej. las condiciones de la deducción por vivienda anterior a 2013 que nadie comprueba), lo no modelado y la
 búsqueda.
 
 **Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas` —formas de amortizar: `plazo`,

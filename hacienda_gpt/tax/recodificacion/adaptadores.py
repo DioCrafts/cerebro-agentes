@@ -748,6 +748,9 @@ REGLAS_CIFRAS = Reglas(
             "limite_trabajo_varios_pagadores",
             "limite_segundo_pagador",
             "limite_capital_y_ganancias_con_retencion",
+            "limite_imputadas_letras_subvenciones",
+            "limite_conjunto_rentas_minimas",
+            "limite_perdidas_patrimoniales",
             "limite_base_individual",
             "limite_base_conjunta",
             "limite_base_unidad_familiar",
@@ -1256,6 +1259,53 @@ def _caso_de_reparto(modelo: BaseModel, datos: dict[str, Any]) -> tuple[Decimal,
     return (autonomica if parte == "autonomica" else estatal), nota
 
 
+GUIA_CASOS_OBLIGACION = (
+    '`datos_json` of a case: {"ejercicio": <tax year>, "contribuyente": {<inputs of the IRPF calculator>}}. The '
+    "program decides with the proposed figures whether that taxpayer must file the return (art. 96 LIRPF, "
+    'hacienda_gpt/tax/obligacion.py) and compares the answer with `importe_esperado`: "1" when THE LAW obliges '
+    'them to file, "0" when it does not. A case the program cannot decide is not run, so give every fact the rule '
+    "needs (a false boolean is a fact; an absent one is unknown).\n"
+    "- Inputs (annual euros, omit what is zero): rendimiento_trabajo_bruto (gross work income), "
+    "rendimiento_capital_mobiliario, ganancias_patrimoniales (negative: losses), num_pagadores_trabajo, "
+    "importe_segundo_y_restantes_pagadores (what all payers but the main one paid, together), and the booleans "
+    "pension_compensatoria_o_anualidades, pagador_no_obligado_a_retener, trabajo_tipo_fijo_retencion, "
+    "pensiones_procedimiento_especial, ganancias_sometidas_a_retencion, alta_autonomo_en_el_ejercicio.\n"
+    "- Build cases exactly at each limit and one cent above it: work income at the general limit with one payer; "
+    "work income between the two limits with two payers, the second ones at and just above their threshold; capital "
+    "income and withheld gains at their joint limit; total income at the minimum limit; losses just below and at "
+    "their limit."
+)
+
+
+def _caso_de_obligacion(modelo: BaseModel, datos: dict[str, Any]) -> tuple[Decimal, str | None]:
+    """A reviewer's case for the limits of the obligation to file, run through ``obligado_a_declarar``."""
+    from hacienda_gpt.tax.irpf import IRPFInput
+    from hacienda_gpt.tax.obligacion import obligado_a_declarar
+
+    assert isinstance(modelo, ObligacionDeclarar)
+    contribuyente = datos.get("contribuyente")
+    if not isinstance(contribuyente, dict):
+        raise ValueError("falta el objeto «contribuyente»")
+    ejercicio = datos.get("ejercicio", max(params_mod.ejercicios_disponibles()))
+    if not isinstance(ejercicio, int) or isinstance(ejercicio, bool):
+        raise ValueError("«ejercicio» debe ser un año")
+    try:
+        # The group under test with a verified source, so that the result is not littered with warnings.
+        verificado = Fuente(referencia="propuesta", en_vigor_desde="", verificado=True)
+        params = params_mod.load_params(ejercicio).model_copy(
+            update={"obligacion_declarar": modelo.model_copy(update={"fuente": verificado})}
+        )
+        resultado = obligado_a_declarar(IRPFInput(ejercicio=ejercicio, **contribuyente), params)
+    except params_mod.EjercicioNoDisponibleError as exc:
+        raise ValueError(str(exc)) from exc
+    except (ValidationError, TypeError) as exc:
+        raise ValueError(f"caso no válido ({type(exc).__name__}: {str(exc)[:160]})") from exc
+    if resultado.obligado == "no_se_sabe":
+        faltan = ", ".join(d.campo or d.pregunta for d in resultado.datos_que_faltan) or resultado.respuesta
+        raise ValueError(f"el programa no puede decidir este caso; falta: {faltan}")
+    return Decimal(1 if resultado.obligado == "si" else 0), resultado.respuesta
+
+
 def _cifras_del_irpf() -> list[Cifras]:
     arrendamiento = {
         campo: _modelo_del_campo(ReduccionArrendamiento, campo)
@@ -1347,7 +1397,8 @@ def _cifras_del_irpf() -> list[Cifras]:
             ("obligacion_declarar",),
             ObligacionDeclarar,
             "the income limits below which there is no obligation to file (art. 96 LIRPF)",
-            sin_caso="ninguna calculadora usa estas cifras: el programa no decide si hay obligación de declarar",
+            evaluador=_caso_de_obligacion,
+            guia_evaluador=GUIA_CASOS_OBLIGACION,
         ),
         Cifras(
             "compensacion_ahorro",

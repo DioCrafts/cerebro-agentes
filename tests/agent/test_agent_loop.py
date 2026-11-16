@@ -56,6 +56,7 @@ def test_search_then_answer_verified() -> None:
         "comparar_autonomo_vs_sociedad",
         "calcular_patrimonio",
         "calcular_sucesiones_donaciones",
+        "obligacion_declarar",
     }
 
     # The verifier got only the CITED fragments, not everything retrieved.

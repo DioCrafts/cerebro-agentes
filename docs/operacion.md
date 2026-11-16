@@ -1017,8 +1017,16 @@ Los módulos (`hacienda_gpt/modulos/<clave>/`) se descubren al arrancar; no hay 
   ninguno: cada módulo conserva su aviso en la bandeja.
 - **Propuestas para la declaración** (`GET /propuestas?case_id=`): cifras que un módulo conoce y que un
   dato fiscal necesita. Hoy: `hipoteca` → `pagos_vivienda_habitual_pre2013` (capital + intereses +
-  amortizaciones anticipadas del ejercicio según el cuadro), solo si el préstamo es de la vivienda habitual
-  comprada antes de 2013 y el dato falta. Nunca se escribe sola: el usuario la acepta en «Módulos».
+  amortizaciones anticipadas + sus comisiones del ejercicio según el cuadro: lo que el art. 68.1.1.º LIRPF en
+  su redacción a 31-12-2012 cuenta de la financiación ajena), solo si el préstamo es de la vivienda habitual
+  comprada antes de 2013 y el dato falta. Nunca se escribe sola: el usuario la acepta en «Módulos» o en el
+  chat (`aceptar_propuesta`, con su «sí» literal a la cifra mostrada); un «no» queda en la memoria de
+  decisiones (`fiscal:propuesta:<puente>`) y deja de ofrecerse. Fundamento y autocomprobación:
+  `modulos/hipoteca/data/deduccion_vivienda.json` (para comprobarlo contra las páginas completas del BOE,
+  `DEDUCCION_VIVIENDA_BOE_DIR=<carpeta con BOE-A-2006-20764.html y BOE-A-2006-20764_p20121031.html>
+  uv run pytest tests/modulos/hipoteca/test_hipoteca_deduccion.py`). `params-verify` comprueba el 15 % y los
+  9.040 € de `vivienda_habitual_transitoria` contra la redacción de 31-10-2012 (`--snapshot-dir` necesita
+  `BOE-A-2006-20764_p20121031.html`).
 
 ### Variables de entorno de los módulos
 

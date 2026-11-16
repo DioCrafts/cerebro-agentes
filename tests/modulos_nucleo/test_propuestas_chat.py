@@ -203,9 +203,7 @@ def test_accepting_needs_the_users_literal_yes_to_the_shown_figure(query, histor
 
 
 def test_a_figure_that_changed_since_the_offer_must_be_shown_again() -> None:
-    viejo = (
-        "Tu módulo de hipoteca calcula que este año pagaste 1.234,56 € — ¿lo uso para tu deducción por vivienda?"
-    )
+    viejo = "Tu módulo de hipoteca calcula que este año pagaste 1.234,56 € — ¿lo uso para tu deducción por vivienda?"
     provider = RecordingProvider([tool_turn(_aceptar("Sí")), text_turn("Vale.")], [verdict("pregunta_aclaratoria")])
     result = _agente(provider).run(
         "Sí", chat_history=[{"role": "assistant", "content": viejo}], case=_caso(), modulos=MODULOS

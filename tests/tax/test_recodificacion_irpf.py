@@ -390,9 +390,9 @@ def test_every_numeric_field_of_every_group_of_figures_has_a_rule() -> None:
         assert f"class {adaptador.cifras.modelo.__name__}" in adaptador.esquema()
         evaluable = bool(adaptador.cifras.lineas) or adaptador.cifras.evaluador is not None
         assert adaptador.casos_minimos(Objetivo.model_construct()) == (2 if evaluable else 0)
-    # Only the group no calculator uses is left without an executable case, and it says why.
-    assert [n for n, a in CIFRAS.items() if a.casos_minimos(Objetivo.model_construct()) == 0] == ["obligacion_declarar"]
-    assert "ninguna calculadora usa estas cifras" in CIFRAS["obligacion_declarar"].cifras.sin_caso
+    # Every group has an executable case (the limits of the obligation to file run through tax.obligacion).
+    assert [n for n, a in CIFRAS.items() if a.casos_minimos(Objetivo.model_construct()) == 0] == []
+    assert CIFRAS["obligacion_declarar"].cifras.evaluador is not None
 
 
 def test_every_shipped_group_is_located_in_its_law_or_said_to_be_out_of_reach() -> None:
@@ -620,18 +620,23 @@ def _objetivo_de(nombre: str, antes: dict[int, Any], ambito: str = "estado") -> 
 
 def test_groups_with_no_executable_case_or_with_figures_of_another_law_always_wait_for_a_person() -> None:
     raw = json.loads((DATA_DIR / "irpf_2026.json").read_text(encoding="utf-8"))
-    # No calculator uses the limits of the obligation to file: gate and reviewer only, and flagged with the reason.
+    # The limits of the obligation to file now have executable cases, run through tax.obligacion (more in
+    # tests/tax/test_obligacion_datos.py).
     obligacion = CIFRAS["obligacion_declarar"]
     objetivo = _objetivo_de("obligacion_declarar", {2026: raw["obligacion_declarar"]})
     actual = {k: v for k, v in raw["obligacion_declarar"].items() if k != "fuente"}
     citas = ["22.000 euros anuales", "15.876 euros anuales", "1.500 euros anuales", "1.600 euros anuales"]
+    citas += ["1.000 euros anuales", "inferior a 500 euros"]
     citas = [f"no tendrán que declarar quienes no superen {c} en este supuesto" for c in citas]
     modelo, visto = obligacion.controlar(actual, citas, objetivo, efectos_desde=None, datos={})
     assert modelo is not None and visto.ok
-    assert any("no tiene casos de prueba" in r and "ninguna calculadora usa" in r for r in visto.revisar)
-    assert obligacion.casos_minimos(objetivo) == 0 and "empty list" in obligacion.guia_casos(objetivo)
-    with pytest.raises(ValueError):
-        obligacion.evaluar_caso(modelo, {"contribuyente": {}}, objetivo)
+    assert not any("no tiene casos de prueba" in r for r in visto.revisar)
+    assert obligacion.casos_minimos(objetivo) == 2 and "importe_esperado" in obligacion.guia_casos(objetivo)
+    uno = {"rendimiento_trabajo_bruto": "22000.01", "num_pagadores_trabajo": 1}
+    assert obligacion.evaluar_caso(modelo, {"ejercicio": 2026, "contribuyente": uno}, objetivo)[0] == 1
+    assert obligacion.evaluar_caso(modelo, {"ejercicio": 2026, "contribuyente": {}}, objetivo)[0] == 0
+    with pytest.raises(ValueError, match="no puede decidir"):  # between the two limits, payers unknown
+        obligacion.evaluar_caso(modelo, {"contribuyente": {"rendimiento_trabajo_bruto": 18000}}, objetivo)
 
     # The 10 % ceiling of donations is printed by another law: kept as each file has it, never proposed.
     donativos = CIFRAS["donativos"]

@@ -35,6 +35,7 @@ from hacienda_gpt.tax.calendario import aviso_festivos, proximos_vencimientos
 from hacienda_gpt.tax.conjunta import comparar_tributacion
 from hacienda_gpt.tax.irpf import IRPFInput, IRPFResult
 from hacienda_gpt.tax.iva import Modelo303Input, calcular_modelo_303
+from hacienda_gpt.tax.obligacion import ResultadoObligacion, obligado_a_declarar
 from hacienda_gpt.tax.optimizador import PlanOptimo, detalle_a_texto, resumen_conyuge
 from hacienda_gpt.tax.pagos_fraccionados import Modelo130Input, calcular_modelo_130
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError, EtapaEducativa, ejercicios_disponibles, load_params
@@ -186,6 +187,16 @@ EVALUATE_RULES_TOOL = ToolSpec(
 )
 
 
+# Inputs that only decide whether the user must file (art. 96 LIRPF); the tax itself does not use them.
+_OBLIGACION_FIELDS_DOC = (
+    "Para saber si está obligado a declarar (no cambian el impuesto; sin dato = desconocido): "
+    "num_pagadores_trabajo, importe_segundo_y_restantes_pagadores (lo cobrado en bruto de todos los pagadores "
+    "menos el principal), y en bool: pension_compensatoria_o_anualidades, pagador_no_obligado_a_retener, "
+    "trabajo_tipo_fijo_retencion, pensiones_procedimiento_especial, ganancias_sometidas_a_retencion, "
+    "alta_autonomo_en_el_ejercicio, deduccion_doble_imposicion_internacional, aportaciones_patrimonio_protegido, "
+    "beneficiario_ingreso_minimo_vital"
+)
+
 _INPUT_FIELDS_DOC = (
     "comunidad_autonoma, tributacion ('individual' | 'conjunta_biparental' | 'conjunta_monoparental'), edad, "
     "grado_discapacidad (65 si la incapacidad está declarada judicialmente), necesita_asistencia (bool: con "
@@ -244,7 +255,7 @@ _INPUT_FIELDS_DOC = (
     "num_descendientes_menores_3, hijos_nacidos_en_el_ejercicio, hijos_nacidos_ultimos_3_ejercicios, "
     "hijos_adoptados_en_el_ejercicio, num_hijos_primer_ciclo_infantil, num_descendientes_discapacidad, "
     "num_descendientes_discapacidad_65 ni num_descendientes_asistencia, ni el total de los gastos que repartas por "
-    "hijo: se obtienen del detalle, y una cifra distinta se rechaza"
+    "hijo: se obtienen del detalle, y una cifra distinta se rechaza. " + _OBLIGACION_FIELDS_DOC
 )
 
 # One child of ``descendientes`` (hacienda_gpt.tax.irpf.Descendiente).
@@ -872,6 +883,30 @@ OPTIMIZE_TOOL = ToolSpec(
 )
 
 
+OBLIGACION_TOOL = ToolSpec(
+    name="obligacion_declarar",
+    description=(
+        "Dice de forma determinista si el usuario está obligado a presentar la declaración del IRPF de un ejercicio "
+        "(art. 96 LIRPF, con las cifras legales del ejercicio): «sí», «no» o «no se puede saber», con la regla que "
+        "lo decide y su cita literal, los datos que faltan y una recomendación (aunque no esté obligado, declarar "
+        "puede darle una devolución, que se calcula con la calculadora del IRPF). Devuelve un fragmento citable "
+        "[F#]. Úsala SIEMPRE ante «¿tengo que hacer la declaración?» o «¿estoy obligado a declarar?»: no lo decidas "
+        "de memoria. Parte del expediente del usuario si lo hay; `datos` añade o sustituye cifras con los mismos "
+        f"campos que calcular_irpf. {_OBLIGACION_FIELDS_DOC}. Si el resultado dice «no se puede saber», hazle al "
+        "usuario las preguntas de «Datos que faltan» (con un expediente, regístralas con registrar_hechos) y vuelve "
+        "a llamarla."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "datos": _datos_schema("Cifras del contribuyente que añadir o corregir sobre el expediente."),
+        },
+    },
+)
+
+
 CALENDAR_TOOL = ToolSpec(
     name="calendario_fiscal",
     description=(
@@ -948,10 +983,48 @@ def _render_result(nombre: str, result: IRPFResult) -> str:
         ref = f" [{line.referencia}]" if line.referencia else ""
         lines.append(f"- {line.concepto}: {_money(line.importe)}{ref}")
     lines.append(f"- Tipo medio efectivo: {result.tipo_medio_efectivo} %")
+    if result.obligacion_declarar is not None:
+        lines.append(
+            f"- ¿Obligado a declarar? {_obligado_texto(result.obligacion_declarar)} (detalle: obligacion_declarar)"
+        )
     if result.avisos:
         lines.append("Avisos (lo que este cálculo no cubre o da por supuesto):")
         lines.extend(f"  * {aviso}" for aviso in result.avisos)
     lines.append(f"Parámetros: {result.fuente}.")
+    return "\n".join(lines)
+
+
+_OBLIGADO = {"si": "sí", "no": "no", "no_se_sabe": "no se puede saber con estos datos"}
+
+
+def _obligado_texto(obligacion: ResultadoObligacion) -> str:
+    regla = f" [{obligacion.regla.referencia}]" if obligacion.regla is not None else ""
+    return _OBLIGADO[obligacion.obligado] + regla
+
+
+def _render_obligacion(r: ResultadoObligacion) -> str:
+    """The answer to «¿estoy obligado a declarar?» as a citable text."""
+    lines = [f"Obligación de declarar el IRPF {r.ejercicio}: {_OBLIGADO[r.obligado].upper()}", r.respuesta]
+    for titulo, reglas in (("Regla que lo decide", [r.regla] if r.regla else []), ("También aplica", r.otras_reglas)):
+        for regla in reglas:
+            lines.append(f"{titulo} [{regla.referencia}, {regla.boe_id}]: «{regla.cita}»")
+    if r.datos_que_faltan:
+        lines.append("Datos que faltan (pregúntaselos al usuario):")
+        lines.extend(f"  * {d.pregunta}" + (f" [dato: {d.campo}]" if d.campo else "") for d in r.datos_que_faltan)
+    if r.recomendacion:
+        lines.append(f"Recomendación: {r.recomendacion}")
+    if r.lineas:
+        lines.append("Cifras usadas:")
+        lines.extend(
+            f"- {linea.concepto}: {_money(linea.importe)}" + (f" [{linea.referencia}]" if linea.referencia else "")
+            for linea in r.lineas
+        )
+    if r.avisos:
+        lines.append("Avisos (lo que esta respuesta no cubre o da por supuesto):")
+        lines.extend(f"  * {aviso}" for aviso in r.avisos)
+    if r.parametros_no_verificados:
+        lines.append("Parámetros no contrastados: " + ", ".join(r.parametros_no_verificados) + ".")
+    lines.append(f"Fuente: {r.fuente}.")
     return "\n".join(lines)
 
 
@@ -1094,6 +1167,7 @@ class Toolbox:
             BENEFITS_TOOL,
             OPTIMIZE_TOOL,
             CALENDAR_TOOL,
+            OBLIGACION_TOOL,
         ]
         if self._graph is not None:
             specs.append(VALIDITY_TOOL)
@@ -1163,6 +1237,7 @@ class Toolbox:
             OPTIMIZE_TOOL.name: self._optimize,
             PLANIFICAR_TOOL.name: lambda a: ToolOutcome(*planificar_para_agente(a, case=self.case, ledger=self.ledger)),
             CALENDAR_TOOL.name: self._calendar,
+            OBLIGACION_TOOL.name: self._obligacion,
             VALIDITY_TOOL.name: self._validity,
             READ_CASE_TOOL.name: self._read_case,
             RECORD_FACTS_TOOL.name: self._record_facts,
@@ -1294,6 +1369,33 @@ class Toolbox:
         return ToolOutcome(
             content="\n\n".join(blocks),
             summary=f"{len(simulacion.escenarios)} cálculo(s): {', '.join(fragment_ids)}",
+        )
+
+    def _obligacion(self, arguments: dict[str, Any]) -> ToolOutcome:
+        try:
+            year, facts, datos = self._scenario_base(arguments)
+            inp, _actividad = build_input_con_actividad(ejercicio=year, facts=facts, datos=datos)
+            resultado = obligado_a_declarar(inp, load_params(year))
+        except (DatosInvalidosError, EjercicioNoDisponibleError) as exc:
+            return _error(str(exc))
+        text = _render_obligacion(resultado)
+        if facts.get("es_autonomo") is True and inp.alta_autonomo_en_el_ejercicio is None:
+            text += (
+                "\nEl expediente dice que trabaja por cuenta propia: si estuvo de alta como autónomo en algún momento "
+                "del año, está obligado a declarar (confírmalo y registra alta_autonomo_en_el_ejercicio)."
+            )
+        fragment = self.ledger.register(
+            text=text,
+            metadata={
+                "title": f"Obligación de declarar el IRPF {year}",
+                "source": f"calculadora://obligacion/{year}/{len(self.ledger) + 1}",
+                "source_authority": "CALCULADORA",
+                "section": "Obligación de declarar (art. 96 LIRPF)",
+            },
+        )
+        return ToolOutcome(
+            content=f"[{fragment.fragment_id}] {text}",
+            summary=f"obligado a declarar: {_OBLIGADO[resultado.obligado]} ({fragment.fragment_id})",
         )
 
     def _autonomo(self, arguments: dict[str, Any], modelo: Any, calcular: Any, titulo: str) -> ToolOutcome:

@@ -203,7 +203,7 @@ ILEGIBLES: dict[str, set[str]] = {}
         ("autonomos", 2025, "boe_autonomos/2025", 9),
         ("sociedades", 2026, "boe_sociedades", 7),
         ("patrimonio", 2026, "boe_patrimonio", 37),
-        ("isd", 2026, "boe_sucesiones", 177),
+        ("isd", 2026, "boe_sucesiones", 178),
     ],
 )
 def test_shipped_groups_pass_the_gate_with_their_own_quotes(

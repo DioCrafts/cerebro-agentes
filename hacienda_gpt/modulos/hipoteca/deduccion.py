@@ -132,10 +132,10 @@ def comprobar(fundamento: FundamentoPuente, textos: dict[str, str] | None = None
     if len(claves) != len(set(claves)):
         problemas.append("conceptos: hay claves repetidas")
     for concepto in fundamento.conceptos:
-        cita = fundamento.citas.get(concepto.cita)
-        if cita is None:
+        de_concepto = fundamento.citas.get(concepto.cita)
+        if de_concepto is None:
             problemas.append(f"concepto {concepto.clave}: la cita «{concepto.cita}» no existe")
-        elif _comprimido(concepto.termino) not in _comprimido(cita.cita):
+        elif _comprimido(concepto.termino) not in _comprimido(de_concepto.cita):
             problemas.append(f"concepto {concepto.clave}: «{concepto.termino}» no está en la cita {concepto.cita}")
     return problemas
 

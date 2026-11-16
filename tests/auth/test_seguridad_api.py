@@ -326,3 +326,31 @@ def test_made_up_api_keys_do_not_get_a_fresh_rate_limit_each(monkeypatch) -> Non
     client = TestClient(app)
     codes = [client.get("/auth/config", headers={"X-API-Key": f"inventada-{n}"}).status_code for n in range(3)]
     assert codes == [200, 200, 429]
+
+
+def test_password_derivations_run_a_few_at_a_time(monkeypatch) -> None:
+    """Each scrypt derivation holds 128 MB at the production work factor and logins need no session."""
+    import threading
+    import time
+
+    from hacienda_gpt.auth import passwords
+
+    activos, maximo, cerrojo = 0, 0, threading.Lock()
+
+    def scrypt_lento(*args, **kwargs):
+        nonlocal activos, maximo
+        with cerrojo:
+            activos += 1
+            maximo = max(maximo, activos)
+        time.sleep(0.05)
+        with cerrojo:
+            activos -= 1
+        return b"\x00" * 32
+
+    monkeypatch.setattr(passwords.hashlib, "scrypt", scrypt_lento)
+    hilos = [threading.Thread(target=passwords.burn_password_check, args=("una-clave-larga-1",)) for _ in range(12)]
+    for hilo in hilos:
+        hilo.start()
+    for hilo in hilos:
+        hilo.join()
+    assert 1 <= maximo <= passwords._KDF_CONCURRENCY

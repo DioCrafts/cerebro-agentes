@@ -144,9 +144,10 @@ class BeneficiarioISD(BaseModel):
             raise ValueError("valor_total_vivienda no puede ser menor que la parte de la vivienda que se adquiere")
         if self.fecha_devengo is not None and self.fecha_devengo.year != self.ejercicio:
             raise ValueError("la fecha de devengo no corresponde al ejercicio indicado")
-        if self.hay_descendientes_del_causante is False and (
-            self.grupo == "I" or (self.parentesco is not None and _CLASE_PARENTESCO[self.parentesco] == "descendiente")
-        ):
+        es_descendiente = (
+            _CLASE_PARENTESCO[self.parentesco] == "descendiente" if self.parentesco is not None else self.grupo == "I"
+        )
+        if self.hay_descendientes_del_causante is False and es_descendiente:
             raise ValueError("si el beneficiario es descendiente, el causante o donante sí tiene descendientes")
         return self
 
@@ -716,7 +717,10 @@ def _reduccion_bienes(
     del_estado, hay_estatal = None, False
     if propia is None or propia[0].estatal_si_mas_favorable:
         estatales = [r for r in estatal.reducciones_bienes if r.clase == clase_bienes]
-        del_estado, hay_estatal = _primera_admitida(estatales, vista.estatal, inp, etiqueta, t)
+        # Only compared with the community's rule: why it does not apply is then not news.
+        del_estado, hay_estatal = _primera_admitida(
+            estatales, vista.estatal, inp, etiqueta, t if propia is None else t.sub()
+        )
     elegidas = [(propia, caso_propio)] if propia is not None else []
     if del_estado is not None:
         elegidas.append((del_estado, vista.estatal))

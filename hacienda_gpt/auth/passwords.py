@@ -10,6 +10,7 @@ import base64
 import hashlib
 import hmac
 import secrets
+import threading
 
 from hacienda_gpt import settings
 
@@ -23,6 +24,11 @@ _SALT_BYTES = 16
 _KEY_BYTES = 32
 # Never accept parameters from a stored hash beyond this (128 * n * r bytes of memory).
 _MAX_N = 2**20
+# Each derivation holds 128 * n * r bytes (128 MB at the default n = 2**17) and logins and registrations are
+# unauthenticated: without a cap, the 40 worker threads of the server could hold 5 GB at once. Requests over
+# the cap wait their turn instead (docs/seguridad.md).
+_KDF_CONCURRENCY = 4
+_kdf_slots = threading.BoundedSemaphore(_KDF_CONCURRENCY)
 
 
 class PasswordPolicyError(ValueError):
@@ -37,6 +43,11 @@ def check_password_policy(password: str) -> None:
 
 
 def _derive(password: str, salt: bytes, *, n: int, r: int, p: int) -> bytes:
+    with _kdf_slots:
+        return _scrypt(password, salt, n=n, r=r, p=p)
+
+
+def _scrypt(password: str, salt: bytes, *, n: int, r: int, p: int) -> bytes:
     return hashlib.scrypt(
         password.encode("utf-8"),
         salt=salt,
