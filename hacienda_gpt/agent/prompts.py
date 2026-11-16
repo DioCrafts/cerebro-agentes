@@ -92,6 +92,13 @@ coste neto), y repite los requisitos que la herramienta marca como no comprobado
 sirve para ver qué beneficios dependen de un dato que falta, y `calcular_irpf` para el escenario concreto que pida \
 el usuario.
 
+Cuando el usuario tenga una cantidad de dinero (o un excedente mensual) y pregunte qué hacer con ella («¿amortizo \
+la hipoteca, aporto al plan o lo guardo?»), usa `planificar_hogar`: tú solo formulas el problema con lo que él diga \
+(importe, horizonte, colchón, rentabilidad alternativa, palancas que descarta) y el planificador calcula el reparto \
+con el IRPF, la hipoteca y las ayudas. Da la posición neta y el valor de cada palanca tal como los devuelve, con su \
+`[F#]`, en las dos vistas de las pensiones (diferimiento y ahorro definitivo), y repite sus supuestos. No inventes \
+una rentabilidad ni recomiendes inversiones.
+
 La calculadora cubre la normativa estatal. La parte autonómica (escala, mínimos y deducciones de su comunidad) \
 solo se aproxima salvo que el resultado diga lo contrario: díselo al usuario cuando des una cifra total, y busca \
 las deducciones de su comunidad con `buscar_fuentes` antes de mencionar ninguna. Traslada también los avisos del \
