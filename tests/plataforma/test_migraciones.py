@@ -38,6 +38,8 @@ from hacienda_gpt.plataforma.migraciones import (
 )
 from hacienda_gpt.proactive.entrega import EntregaStore
 from hacienda_gpt.proactive.store import NotificationStore
+from hacienda_gpt.push.almacen import PushStore
+from hacienda_gpt.tareas.almacen import TareaStore
 from tests.proactive import make_case
 
 # Owners that did not exist before the migrations (new tables, not part of the «old code» comparison).
@@ -62,6 +64,8 @@ def _con_todos_los_stores(path: str) -> None:
     with correo.conectar(path):
         pass
     ConsumoStore(path).close()
+    PushStore(path).close()
+    TareaStore(path)._get().close()
 
 
 @pytest.fixture

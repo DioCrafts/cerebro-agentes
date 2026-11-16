@@ -29,6 +29,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict
 
 from hacienda_gpt import settings
+from hacienda_gpt.plataforma.migraciones import asegurar_esquema
 
 # The owner of everything when there are no accounts.
 OPERADOR = "operador"
@@ -88,6 +89,7 @@ class PushStore:
         self._conn.row_factory = sqlite3.Row
         with self._lock, self._conn:
             self._conn.execute("PRAGMA journal_mode=WAL;")
+            asegurar_esquema(self._conn, "push")  # migrations (hacienda_gpt/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS push_suscripciones (
                     id TEXT PRIMARY KEY,

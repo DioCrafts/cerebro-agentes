@@ -20,6 +20,8 @@ from hacienda_gpt.plataforma.migraciones.catalogo import (
     navegador,
     plataforma,
     proactive,
+    push,
+    tareas,
 )
 from hacienda_gpt.plataforma.migraciones.motor import Propietario
 
@@ -37,6 +39,8 @@ PROPIETARIOS: tuple[Propietario, ...] = (
     navegador.PROPIETARIO,
     plataforma.PROPIETARIO,
     doctrina.PROPIETARIO,
+    tareas.PROPIETARIO,
+    push.PROPIETARIO,
 )
 
 __all__ = ["PROPIETARIOS"]
