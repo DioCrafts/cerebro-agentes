@@ -15,6 +15,10 @@ on:
     - cron: "0 6 * * *" # daily at 06:00 UTC
   workflow_dispatch:
 
+# Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   critical-regression:
     runs-on: ubuntu-latest

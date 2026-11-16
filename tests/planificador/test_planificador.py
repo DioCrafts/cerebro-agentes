@@ -273,8 +273,9 @@ def test_the_pre_2013_payments_are_the_bridge_figure_plus_the_repayment(plan_par
         assert plan_pareja.valoracion.impuesto_ejercicio == total
 
 
-def test_the_unverified_housing_parameters_are_said(plan_pareja) -> None:
-    assert any("Deducción por vivienda" in x and "no se ha contrastado" in x for x in plan_pareja.avisos)
+def test_the_housing_deduction_conditions_are_said(plan_pareja) -> None:
+    # Rate and cap are verified against the 2012 wording (tax/data/irpf_*.json): no "not verified" warning.
+    assert not any("Deducción por vivienda" in x and "no se ha contrastado" in x for x in plan_pareja.avisos)
     assert any("disposición transitoria 18.ª" in x for x in plan_pareja.avisos)
 
 

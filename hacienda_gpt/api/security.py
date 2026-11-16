@@ -78,10 +78,15 @@ class RateLimiter:
 
 
 def client_key(request: Request) -> str:
-    """Identify the caller for rate limiting: API key if present, else peer IP."""
+    """Identify the caller for rate limiting: the API key when it is the configured one, else peer IP.
+
+    Only a VALID key may name the bucket: the limiter runs before authentication, and keying on whatever
+    ``X-API-Key`` the client sends would give every made-up value a fresh budget (an unlimited bypass).
+    """
     api_key = request.headers.get("X-API-Key")
-    if api_key:
-        return f"key:{api_key}"
+    expected = os.environ.get("HACIENDA_API_KEY")
+    if api_key and expected and hmac.compare_digest(api_key, expected):
+        return "key:configured"
     client = request.client
     return f"ip:{client.host}" if client else "ip:unknown"
 

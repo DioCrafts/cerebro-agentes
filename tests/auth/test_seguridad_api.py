@@ -16,7 +16,6 @@ from hacienda_gpt.api.api import app, get_agent, get_document_provider, get_fact
 from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore
 from hacienda_gpt.ops import consumo
 from hacienda_gpt.ops.consumo import ConsumoStore, Usage
-
 from .conftest import CONSENTS, Env
 
 # Routes that answer without a session on purpose. Everything else needs one when AUTH_MODE=required.
@@ -315,3 +314,15 @@ def test_deleting_the_account_detaches_the_usage_log(env: Env) -> None:
         rows = conn.execute("SELECT user_id, case_id, input_tokens FROM llm_usage ORDER BY id").fetchall()
     # The operator keeps the totals; nothing says whose they were. Luis's rows are untouched.
     assert rows == [(None, None, 10), (None, None, 10), (luis["_user_id"], case_luis, 10)]
+
+
+def test_made_up_api_keys_do_not_get_a_fresh_rate_limit_each(monkeypatch) -> None:
+    from fastapi.testclient import TestClient
+
+    from hacienda_gpt.api import api
+
+    monkeypatch.setattr(api._rate_limiter, "limit", 2)
+    monkeypatch.setattr(api._rate_limiter, "_windows", {})
+    client = TestClient(app)
+    codes = [client.get("/auth/config", headers={"X-API-Key": f"inventada-{n}"}).status_code for n in range(3)]
+    assert codes == [200, 200, 429]

@@ -203,7 +203,9 @@ def test_every_business_and_heritage_rule_says_who_it_is_for() -> None:
 
 def test_the_self_check_requires_the_law_s_own_words_for_each_class_of_acquirers() -> None:
     raw = load_isd_params(2026).model_dump(mode="json")
-    raw["estatal"]["reducciones_bienes"][0]["adquirentes"][1]["texto"] = "ascendientes y colaterales hasta el cuarto grado"
+    raw["estatal"]["reducciones_bienes"][0]["adquirentes"][1][
+        "texto"
+    ] = "ascendientes y colaterales hasta el cuarto grado"
     raw["comunidades"]["canarias"]["reducciones_bienes"][0]["adquirentes"][1]["porcentaje"] = "0.97"
     problemas = comprobar_evidencias(ISDParams.model_validate(raw))
     assert any("estatal.reducciones_bienes.0" in x and "adquirentes.1.texto" in x for x in problemas)

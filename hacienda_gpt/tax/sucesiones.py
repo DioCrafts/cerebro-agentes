@@ -619,9 +619,7 @@ _REQUISITO_ADQUIRENTE = {
 }
 
 
-def _adquirente(
-    regla: ReduccionBienes, caso: _Caso, inp: BeneficiarioISD
-) -> tuple[bool, AdquirenteBienes | None, str]:
+def _adquirente(regla: ReduccionBienes, caso: _Caso, inp: BeneficiarioISD) -> tuple[bool, AdquirenteBienes | None, str]:
     """(admitted, class of acquirers they qualify as, why not) for a reduction of ``reducciones_bienes``.
 
     A rule with no ``adquirentes`` admits everyone (the data does not restrict it); the caller says so.

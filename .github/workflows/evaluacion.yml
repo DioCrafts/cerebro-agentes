@@ -17,6 +17,10 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
+# Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   deterministico:
     runs-on: ubuntu-latest

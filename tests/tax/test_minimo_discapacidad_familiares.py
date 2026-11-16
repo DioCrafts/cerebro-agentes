@@ -373,7 +373,7 @@ def test_every_minimums_group_with_quotes_is_checked_by_them_and_every_figure_is
     for ejercicio in (2025, 2026):
         fichero = f"irpf_{ejercicio}.json"
         raw = json.loads((DATA_DIR / fichero).read_text(encoding="utf-8"))
-        rutas = set(evidencia[fichero])
+        rutas = {ruta for ruta in evidencia[fichero] if ruta.split("/")[-1] == "minimos"}
         assert {"minimos", "comunidades/madrid/minimos", "comunidades/la_rioja/minimos"} <= rutas
         # The quotes vouch for the group (its fingerprint matches): verification checks the quotes literally.
         tipos = {"/".join(c.ruta): c.tipo for c in comprobaciones(load_params(ejercicio))}

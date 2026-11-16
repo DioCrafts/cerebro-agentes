@@ -578,6 +578,15 @@ ISD = Familia(
     # input, and earlier gifts are not accumulated. A case run through the calculator would not depend on them, so
     # they stay with a person.
     sin_evaluador=frozenset({"_Regla"}),
+    pistas={
+        "ReduccionBienes": "`isd` with `valor_empresa_familiar` (class `empresa`) or `valor_patrimonio_historico` "
+        "equal to `valor_recibido`, and a `parentesco` inside and one outside each class of `adquirentes`; for a "
+        "class with `solo_si_no_hay`, both values of its input (`hay_descendientes_del_causante`, "
+        "`hay_adquirentes_grupos_i_ii` or `hay_familiares_adquirentes_hasta_cuarto_grado`), and for one that "
+        "`requiere` the tie with the business, `vinculo_laboral_empresa` true and false; result line "
+        '"linea:Reducción por empresa individual, negocio profesional o participaciones (<percentage>)" or '
+        "`reducciones`.",
+    },
     limpiar=isd_mod.load_isd_params.cache_clear,
 )
 

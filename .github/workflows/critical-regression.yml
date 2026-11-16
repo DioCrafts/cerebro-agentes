@@ -5,6 +5,10 @@ on:
   push:
     branches: [ main, master ]
 
+# Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   critical-cases:
     runs-on: ubuntu-latest

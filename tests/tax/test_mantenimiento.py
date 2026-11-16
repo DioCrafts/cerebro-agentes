@@ -46,13 +46,16 @@ def test_every_group_of_parameters_has_a_check(checks_2026: list[Comprobacion]) 
     rutas = {"/".join(c.ruta) for c in checks_2026}
     assert {"escala_general_estatal", "minimos", "trabajo", "comunidades/galicia/escala_general"} <= rutas
     assert "comunidades/galicia/minimos" in rutas and "comunidades/madrid/deducciones_madrid" in rutas
-    # Unverified parameters and computed minimums are not re-checked.
-    assert "vivienda_habitual_transitoria" not in rutas and "comunidades/baleares/minimos" not in rutas
+    # Computed minimums are not re-checked.
+    assert "comunidades/baleares/minimos" not in rutas
+    # The transitional housing deduction is checked by its quotes against the wording of 31-12-2012.
+    vivienda = next(c for c in checks_2026 if c.ruta == ["vivienda_habitual_transitoria"])
+    assert (vivienda.tipo, vivienda.version) == ("cita", "20121031")
     citas = [c for c in checks_2026 if c.tipo == "cita"]
     assert len(citas) >= 80 and all(c.citas for c in citas)  # every regional deduction carries its quote
     # A scale read from a superseded wording is checked against that wording.
     historicas = {c.version for c in comprobaciones(load_params(2025)) if c.version}
-    assert historicas == {"20250407", "20221231"}
+    assert historicas == {"20250407", "20221231", "20121031"}
 
 
 def test_text_is_normalised_before_matching() -> None:
@@ -95,7 +98,11 @@ def test_rollover_keeps_what_matches_and_flags_what_does_not(checks_2026: list[C
     hoy = date(2027, 1, 4)
     data, informe = preparar_ejercicio(2026, 2027, lambda b, v=None: leyes.get((b, v)), hoy=hoy)
     assert data["ejercicio"] == 2027 and informe.conformes == informe.comprobaciones
-    assert informe.sin_verificar == [] and informe.deducciones_retiradas == []
+    # Only what was read from a superseded wording waits for a person in the new year.
+    assert [s.split(" — ")[0] for s in informe.sin_verificar] == [
+        "disposición transitoria 18.ª LIRPF y art. 68.1 en su redacción a 31-12-2012"
+    ]
+    assert informe.deducciones_retiradas == []
     assert data["fuente_principal"]["consultado_el"] == "2027-01-04"
     IRPFParams(**data)
 

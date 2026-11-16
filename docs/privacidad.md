@@ -51,6 +51,7 @@ Todo lo persistente está en **un único fichero SQLite** (`DECISION_STATE_DB_PA
 | `notification_deliveries` | Qué aviso se envió por qué canal y cuándo | Solo existe si se ha usado la entrega fuera de la aplicación. |
 | `user_module_choices` | Qué módulos del hogar ha activado o desactivado cada usuario, y cuándo | Solo se añaden filas (el historial es el registro de la elección). Se borra con la cuenta. |
 | `acciones_pendientes` | Acciones que un especialista preparó y que esperan confirmación (módulo, herramienta, datos, estado, resultado) | Se borran con el expediente. |
+| `llm_usage` | Registro de cada llamada al modelo: fecha y hora, identificador del usuario y del expediente, propósito, proveedor, modelo, tokens y coste estimado (ningún texto) | Sirve para los límites diarios y para `GET /usage` (solo el operador). Al eliminar la cuenta las filas se conservan para los totales del operador, pero pierden el usuario y el expediente. |
 | `eventos`, `eventos_entregas`, `eventos_temporizadores` (bus de eventos) | Qué pasó y a qué módulo se despertó: tipo de evento, identificador del expediente, **nombres** de los hechos cambiados (nunca sus valores), clave del módulo, fecha de la próxima revisión; los eventos globales llevan datos públicos del BOE | Se borran en la misma transacción que el expediente; el trabajador del bus (`cli.eventos worker`) borra a diario lo terminado hace más de 30 días. `eventos_cursores` y `eventos_trabajadores` no contienen datos de nadie. |
 
 ### Lo que guarda el optimizador fiscal
@@ -146,10 +147,12 @@ servidores) lo fijan sus condiciones y el contrato que el operador tenga con él
 - **Entrega de avisos fuera de la aplicación** (`NOTIFY_WEBHOOK_URL`, `NOTIFY_SMTP_*`): si el
   operador la configura, el texto de los avisos de **todos** los expedientes (con importes
   estimados y el identificador del expediente) se envía a un único destino del operador, a través
-  del servicio de correo o del *webhook* elegido. **Hoy ese envío no consulta el consentimiento
-  `avisos_por_correo` ni escribe a cada usuario**: el consentimiento se registra, pero todavía no
-  gobierna ningún envío. Con usuarios reales, no active estos canales hasta decidir si ese destino
-  y ese intermediario son admisibles.
+  del servicio de correo o del *webhook* elegido. Con `AUTH_MODE=required`, `ops deliver` solo envía
+  los avisos de los usuarios que han dado `avisos_por_correo`, **pero los envía a ese destino del
+  operador, no al correo de cada usuario**: marcar la casilla hace que sus avisos salgan hacia el
+  buzón o el *webhook* del operador, que no es lo que la casilla dice al usuario. Con usuarios
+  reales, no active estos canales hasta que exista el envío a cada usuario (ver `docs/seguridad.md`,
+  hallazgo S-10).
 - **Vigilancia de tareas** (`HEALTHCHECK_URL`): solo indica si una tarea programada ha terminado
   bien; no lleva datos personales.
 
@@ -254,7 +257,7 @@ Se registran como hechos fechados (tipo, concedido o retirado, instante, versió
 |---|---|---|
 | `tratamiento_datos` | Guardar y tratar los datos del expediente | Obligatorio para registrarse. No se puede retirar sin eliminar la cuenta. |
 | `envio_documentos_a_proveedor_llm` | Enviar documentos al proveedor del modelo | Sin él, subir documentos devuelve 403. Se puede dar y retirar en cualquier momento. |
-| `avisos_por_correo` | Recibir avisos por correo | Solo se registra; ver «Otros destinatarios». |
+| `avisos_por_correo` | Recibir avisos por correo | Con `AUTH_MODE=required` decide qué avisos entrega `ops deliver`, pero al destino único del operador; ver «Otros destinatarios». |
 
 La versión del texto mostrado es `CONSENT_TEXT_VERSION` (`hacienda_gpt/auth/store.py`). Hay que
 cambiarla cada vez que cambie la redacción que ve el usuario (`frontend/src/components/AuthScreen.tsx`
@@ -344,7 +347,11 @@ Lo que **no** alcanza ese borrado:
   El dueño de un expediente es siempre la sesión que lo crea, nunca un dato enviado por el cliente.
 - Acceso: mismo mensaje y mismo coste de cálculo para «correo desconocido» y «contraseña
   incorrecta»; límite de intentos fallidos por correo y dirección (`AUTH_LOGIN_MAX_ATTEMPTS` en
-  `AUTH_LOGIN_WINDOW_SECONDS`), también al registrar y al confirmar el borrado.
+  `AUTH_LOGIN_WINDOW_SECONDS`), también al confirmar el borrado; por dirección sola, cuatro veces ese
+  número de intentos fallidos con cualquier correo y de altas de cuenta (cada alta cuenta).
+- Las cifras de todo el servicio (`GET /usage`, `GET /eventos/salud`) son solo del operador: con
+  cuentas exigen `HACIENDA_OPERATOR_KEY` en `X-Operator-Key`. Revisión de seguridad completa en
+  `docs/seguridad.md`.
 - La clave de API compartida (`HACIENDA_API_KEY`) sigue funcionando igual y se suma a la sesión.
 
 ### Límites conocidos
@@ -362,7 +369,8 @@ Lo que **no** alcanza ese borrado:
   Streamlit (`hacienda_gpt/ui`) abre la base de datos directamente. Con `AUTH_MODE=required` no
   debe exponerse Streamlit a usuarios; con `UI_USE_API=true` tampoco funciona, porque no inicia sesión.
 - Quien tenga acceso al fichero SQLite o a sus copias lo lee todo.
-- Este diseño no ha pasado una auditoría de seguridad externa ni una prueba de intrusión.
+- Este diseño no ha pasado una auditoría de seguridad externa ni una prueba de intrusión (la revisión
+  interna está en `docs/seguridad.md`).
 
 ## Lo que el operador tiene que hacer
 
