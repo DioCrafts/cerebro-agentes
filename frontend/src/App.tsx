@@ -35,6 +35,7 @@ import { DoctrineNotice } from "./components/DoctrineNotice";
 import { AssistantBubble, UserBubble } from "./components/ChatBubbles";
 import { Composer } from "./components/Composer";
 import { EmptyState } from "./components/EmptyState";
+import { EvaluacionFeedback } from "./components/EvaluacionFeedback";
 import { ModulosPanel } from "./components/ModulosPanel";
 import { NotificationsPanel } from "./components/NotificationsPanel";
 import { ObligationCardList } from "./components/ObligationCard";
@@ -42,6 +43,9 @@ import { PrivacyPanel } from "./components/PrivacyPanel";
 import { RichText } from "./components/RichText";
 import { AutonomosPanel } from "./components/AutonomosPanel";
 import { OptimizerPanel } from "./components/OptimizerPanel";
+import { PlanificadorPanel } from "./components/PlanificadorPanel";
+import { NavegadorPanel } from "./components/NavegadorPanel";
+import { useNavegadorActivo } from "./lib/navegador";
 import { type SimulatorSeed, SimulatorPanel } from "./components/SimulatorPanel";
 import { Sidebar } from "./components/Sidebar";
 import { SourceCardList } from "./components/SourceCard";
@@ -116,6 +120,10 @@ function Advisor({ account }: { account?: AccountControls }) {
   const [simulatorOpen, setSimulatorOpen] = useState(false);
   const [autonomosOpen, setAutonomosOpen] = useState(false);
   const [optimizerOpen, setOptimizerOpen] = useState(false);
+  const [planificadorOpen, setPlanificadorOpen] = useState(false);
+  // Browser agent: its entry point only when the operator switched it on.
+  const [navegadorOpen, setNavegadorOpen] = useState(false);
+  const navegadorActivo = useNavegadorActivo(true);
   // Figures the optimiser hands to the simulator ("Usar este plan en el simulador"): the simulator is
   // remounted with them, for the conversation they were computed in.
   const [simulatorSeed, setSimulatorSeed] = useState<{ id: number; conversationId: string; seed: SimulatorSeed } | null>(null);
@@ -486,6 +494,8 @@ function Advisor({ account }: { account?: AccountControls }) {
           onOpenSimulator={() => setSimulatorOpen(true)}
           onOpenAutonomos={() => setAutonomosOpen(true)}
           onOpenOptimizer={() => setOptimizerOpen(true)}
+          onOpenPlanificador={() => setPlanificadorOpen(true)}
+          onOpenNavegador={navegadorActivo ? () => setNavegadorOpen(true) : undefined}
           onOpenNotifications={() => setNotificationsOpen(true)}
           unreadNotifications={unreadNotifications}
           onOpenModulos={() => {
@@ -559,6 +569,7 @@ function Advisor({ account }: { account?: AccountControls }) {
                             <CopyButton text={t.envelope.answer} />
                           </div>
                         </div>
+                        <EvaluacionFeedback key={t.id} caseId={active.caseId} question={t.userText} answer={t.envelope.answer} />
                       </>
                     )}
                   </AssistantBubble>
@@ -647,6 +658,7 @@ function Advisor({ account }: { account?: AccountControls }) {
           void handleSubmit(question);
         }}
         moduleNames={moduleNames}
+        caseId={activeCaseId}
       />
       {/* Keyed by conversation: figures typed for one consultation never leak into another. */}
       <SimulatorPanel
@@ -675,6 +687,23 @@ function Advisor({ account }: { account?: AccountControls }) {
           setAutonomosOpen(false);
           setSimulatorOpen(true);
         }}
+      />
+      <NavegadorPanel
+        open={navegadorOpen}
+        onClose={() => setNavegadorOpen(false)}
+        caseId={active.caseId}
+        onChanged={() => {
+          // An import wrote facts; a procedure left a pending action.
+          setAccionesTick((n) => n + 1);
+          if (active.caseId) void getCase({ caseId: active.caseId }).then(applyCase, () => undefined);
+        }}
+      />
+      <PlanificadorPanel
+        key={`planificador-${activeId}`}
+        open={planificadorOpen}
+        onClose={() => setPlanificadorOpen(false)}
+        caseId={active.caseId}
+        taxPeriod={active.taxPeriod}
       />
       <OptimizerPanel
         key={`optimizador-${activeId}`}

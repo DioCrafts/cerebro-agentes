@@ -1,0 +1,61 @@
+{
+  "id": "irpf-resultado-madrid",
+  "version": 1,
+  "categoria": "calculo_fiscal",
+  "descripcion": "Resultado de la renta con los datos del expediente: la cifra sale de calcular_irpf y se cita.",
+  "pregunta": "¿Cuánto me saldrá a pagar o a devolver la declaración de la renta de 2025?",
+  "modulos": [],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf",
+      "agente": "asesor"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "5.140,12 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1,
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Con los datos de tu expediente, el resultado de tu declaración de 2025 sería de {cifra:resultado} a ingresar {fragmento:calcular_irpf}. Es una simulación provisional."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2025",
+    "jurisdiction": "ES",
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 30000
+    }
+  }
+}

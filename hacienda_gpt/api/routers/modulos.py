@@ -35,6 +35,9 @@ from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
 from hacienda_gpt.api.security import require_api_key
 from hacienda_gpt.auth.deps import CONSENT_DOCUMENTS_DETAIL, CaseAccess, get_case_access, require_session
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from hacienda_gpt.eventos import emitir_cambio_modulo
+from hacienda_gpt.memoria.almacen import almacen, tabla_existe
+from hacienda_gpt.memoria.servicio import desde_accion
 from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore, describir
 from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
 from hacienda_gpt.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
@@ -282,6 +285,11 @@ def build_router(
                 acciones.rechazar_pendientes_de(case_id, clave)
                 if nombres:
                     _borrar_hechos(cases, case_id, clave, nombres)
+                    # The user's decisions about the module are its data too (hacienda_gpt/memoria).
+                    if tabla_existe(cases.db_path):
+                        almacen(cases.db_path).delete_where(case_id, modulo=clave)
+        if estado.activo != payload.activo:  # event bus: wake the module now / cancel its scheduled wake-ups
+            emitir_cambio_modulo(cases.db_path, auth.case_ids_of(user.id), clave, payload.activo)
         return _respuesta(access)
 
     @router.get("/acciones", response_model=AccionesResponse, dependencies=[Depends(require_api_key)])
@@ -377,6 +385,16 @@ def build_router(
             resultado=texto,
             es_error=es_error,
         )
+        if not es_error:  # remembered as done (hacienda_gpt/memoria; never raises)
+            desde_accion(
+                cases.db_path,
+                case_id=accion.case_id,
+                modulo=accion.modulo,
+                herramienta=accion.herramienta,
+                resumen=accion.resumen,
+                decision="aceptacion",
+                user_id=access.user.id if access.user is not None else None,
+            )
         cases.append_audit_event(
             accion.case_id,
             {
@@ -401,6 +419,16 @@ def build_router(
         rechazada = acciones.transicion(accion_id, desde="pendiente", hacia="rechazada")
         if rechazada is None:
             raise HTTPException(status_code=409, detail="Esta acción ya se decidió.")
+        # Remembered, so the specialist does not propose it again (hacienda_gpt/memoria; never raises).
+        desde_accion(
+            cases.db_path,
+            case_id=accion.case_id,
+            modulo=accion.modulo,
+            herramienta=accion.herramienta,
+            resumen=accion.resumen,
+            decision="rechazo",
+            user_id=access.user.id if access.user is not None else None,
+        )
         cases.append_audit_event(
             accion.case_id,
             {

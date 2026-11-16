@@ -51,6 +51,7 @@ Todo lo persistente está en **un único fichero SQLite** (`DECISION_STATE_DB_PA
 | `notification_deliveries` | Qué aviso se envió por qué canal y cuándo | Solo existe si se ha usado la entrega fuera de la aplicación. |
 | `user_module_choices` | Qué módulos del hogar ha activado o desactivado cada usuario, y cuándo | Solo se añaden filas (el historial es el registro de la elección). Se borra con la cuenta. |
 | `acciones_pendientes` | Acciones que un especialista preparó y que esperan confirmación (módulo, herramienta, datos, estado, resultado) | Se borran con el expediente. |
+| `eventos`, `eventos_entregas`, `eventos_temporizadores` (bus de eventos) | Qué pasó y a qué módulo se despertó: tipo de evento, identificador del expediente, **nombres** de los hechos cambiados (nunca sus valores), clave del módulo, fecha de la próxima revisión; los eventos globales llevan datos públicos del BOE | Se borran en la misma transacción que el expediente; el trabajador del bus (`cli.eventos worker`) borra a diario lo terminado hace más de 30 días. `eventos_cursores` y `eventos_trabajadores` no contienen datos de nadie. |
 
 ### Lo que guarda el optimizador fiscal
 
@@ -179,6 +180,39 @@ suscripciones, hipoteca…), cada uno en un **módulo**. Lo que cambia para la p
 - **Acciones fuera de la aplicación.** Ninguna se ejecuta sin que el dueño del caso la confirme; la
   confirmación y su resultado quedan en la auditoría.
 
+## Memoria de decisiones («Lo que sé de tus preferencias»)
+
+El asistente guarda lo que el usuario **decide** sobre lo que se le propone (no quiere planes de pensiones
+porque necesita liquidez, rechazó cambiar de tarifa por la permanencia, prefiere la declaración conjunta, ya
+presentó un modelo), para no volver a proponérselo (`hacienda_gpt/memoria/`).
+
+- **Qué se guarda y dónde.** Tabla `decisiones` del mismo fichero SQLite que los expedientes, una fila por
+  decisión: sobre qué (módulo y palanca), qué decidió, **sus palabras** (pueden contener datos personales,
+  incluso de salud o de terceros, si el usuario los escribe al explicar el porqué), de dónde viene (chat,
+  botón, ajustes, acción pendiente), cuándo, hasta cuándo, condiciones para volver a proponerlo y cuántas
+  veces se ha dejado de avisar por ella. La tabla `decisiones_historial` registra lo que pasó con cada una
+  (creada, cambiada, vuelta a proponer, borrada).
+- **Sin copia de otros datos.** Una condición «si cambia este dato» guarda solo una huella (hash) del valor
+  que tenía, nunca el valor: borrar el dato del expediente no deja una copia aquí.
+- **Solo lo que el usuario dice.** El asistente solo puede registrar una decisión con las palabras literales
+  del usuario en esa conversación (lo comprueba el código, no solo el *prompt*); nunca la deduce.
+- **Visible y editable.** En «Avisos» → «Lo que sé de tus preferencias» (`GET/POST/PUT/DELETE
+  /cases/{id}/decisiones`) el usuario ve todas, con sus palabras y fechas, y puede añadir, cambiar u olvidar
+  cualquiera. **Olvidar** borra la decisión y sustituye sus palabras por «[borrado]» en el historial, con
+  `secure_delete` y volcado del WAL para que no queden legibles en el fichero.
+- **Caducan.** Por defecto un rechazo o una restricción valen 12 meses, «ya lo hice» 6 y las preferencias
+  hasta que el usuario las cambie; pasado ese plazo dejan de aplicarse, aunque **siguen guardadas** (el
+  usuario las ve como «caducadas» y puede olvidarlas). El software no las borra por antigüedad: es parte de
+  la conservación que tiene que fijar el operador.
+- **Qué ve el proveedor del modelo.** Las decisiones que siguen contando van en el contexto del asistente
+  cuando el usuario le pregunta con su expediente (son necesarias para no proponerle lo que rechazó); cada
+  especialista recibe solo las de su módulo. Los avisos, el resumen semanal y el optimizador las aplican sin
+  modelo.
+- **Exportación y borrado.** Van en `GET /me/export` (`decisiones` de cada expediente, con el historial) y se
+  borran con el expediente —un *trigger* sobre `case_states` las elimina en la misma transacción, sea cual sea
+  el camino— y por tanto con la cuenta. «Desactivar y borrar sus datos» de un módulo borra también sus
+  decisiones. Lo comprueban `tests/memoria/test_api.py`.
+
 ## Consentimientos
 
 Se registran como hechos fechados (tipo, concedido o retirado, instante, versión del texto):
@@ -223,6 +257,9 @@ descargado las conversaciones guardadas en ese navegador.
 
 Las cifras del cónyuge y las preferencias del optimizador (`datos_conyuge`,
 `preferencias_optimizacion`) van entre los hechos de cada expediente, como texto JSON.
+
+Las decisiones que recuerda el asistente («Lo que sé de tus preferencias») van en `decisiones` de cada
+expediente: `decisiones` (cada una con las palabras del usuario, fechas y estado) e `historial`.
 
 No incluye lo que el servidor no tiene (los documentos subidos) ni lo que haya quedado en poder de
 terceros (proveedor del modelo, correo ya enviado).
@@ -350,4 +387,5 @@ Nada de esto lo resuelve el código. Sin ello, el despliegue no debería recibir
 | Comprobación de sesión, propiedad y consentimiento | `hacienda_gpt/auth/deps.py` |
 | Endpoints de cuenta, exportación y borrado | `hacienda_gpt/api/routers/auth.py` |
 | Pruebas | `tests/auth/` |
+| Decisiones y preferencias recordadas (tabla, exportación, borrado) | `hacienda_gpt/memoria/`, `hacienda_gpt/api/routers/memoria.py`, `tests/memoria/` |
 | Pantalla de acceso y panel de privacidad | `frontend/src/components/Auth*.tsx`, `PrivacyPanel.tsx` |

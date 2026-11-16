@@ -1,0 +1,163 @@
+{
+  "id": "no-sumar-ahorros-hipoteca-y-renta",
+  "version": 1,
+  "categoria": "no_sumar",
+  "descripcion": "Dos ahorros de ámbitos distintos (intereses de hipoteca, IRPF): no se suman como un total.",
+  "pregunta": "Si amortizo 1.500 € de hipoteca el 20 de marzo de 2026 y además aporto 1.500 € al plan de pensiones, ¿cuánto me ahorro en total?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro_irpf",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025,
+          "escenarios": [
+            {
+              "nombre": "Sin aportación",
+              "cambios": {}
+            },
+            {
+              "nombre": "Con aportación de 1.500 €",
+              "cambios": {
+                "aportacion_plan_pensiones": 1500
+              }
+            }
+          ]
+        },
+        "patron": "Frente a «[^»]+»: ahorra (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "538,50 €"
+      }
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro_intereses",
+      "calculo": {
+        "herramienta": "hipoteca_amortizar",
+        "argumentos": {
+          "importe": 1500,
+          "fecha": "2026-03-20"
+        },
+        "patron": "A\\) Reducir plazo[\\s\\S]*?Intereses que te ahorras: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "1.059,81 €"
+      }
+    },
+    {
+      "tipo": "suma_ausente",
+      "calculos": [
+        {
+          "herramienta": "calcular_irpf",
+          "argumentos": {
+            "ejercicio": 2025,
+            "escenarios": [
+              {
+                "nombre": "Sin aportación",
+                "cambios": {}
+              },
+              {
+                "nombre": "Con aportación de 1.500 €",
+                "cambios": {
+                  "aportacion_plan_pensiones": 1500
+                }
+              }
+            ]
+          },
+          "patron": "Frente a «[^»]+»: ahorra (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        },
+        {
+          "herramienta": "hipoteca_amortizar",
+          "argumentos": {
+            "importe": 1500,
+            "fecha": "2026-03-20"
+          },
+          "patron": "A\\) Reducir plazo[\\s\\S]*?Intereses que te ahorras: (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        }
+      ],
+      "motivo": "un ahorro fiscal de un año y un ahorro de intereses de años no forman un total"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_amortizar",
+            "argumentos": {
+              "importe": 1500,
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Ahorro {cifra:ahorro_intereses} {fragmento:hipoteca_amortizar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Amortizar"
+            }
+          },
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025,
+              "escenarios": [
+                {
+                  "nombre": "Sin aportación",
+                  "cambios": {}
+                },
+                {
+                  "nombre": "Con aportación de 1.500 €",
+                  "cambios": {
+                    "aportacion_plan_pensiones": 1500
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Por la amortización te ahorras {cifra:ahorro_intereses} de intereses durante la vida del préstamo {fragmento:hipoteca_amortizar}; por la aportación, {cifra:ahorro_irpf} en la renta de 2025 {fragmento:calcular_irpf}. No los sumo: son ahorros de naturaleza y plazo distintos y ninguna herramienta ha calculado esa combinación."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2025",
+    "jurisdiction": "ES",
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 42000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

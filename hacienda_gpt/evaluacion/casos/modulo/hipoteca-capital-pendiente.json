@@ -1,0 +1,83 @@
+{
+  "id": "hipoteca-capital-pendiente",
+  "version": 1,
+  "categoria": "modulo",
+  "descripcion": "Capital pendiente a una fecha dada.",
+  "pregunta": "¿Cuánto capital me quedará pendiente de la hipoteca el 20 de marzo de 2026?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "pendiente",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Capital pendiente: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "81.799,42 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Capital pendiente a 20/03/2026: {cifra:pendiente} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Capital pendiente el 20/03/2026"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "El 20 de marzo de 2026 te quedarán {cifra:pendiente} de capital pendiente {fragmento:hipoteca_cuadro}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "id": "borrador-baja-suscripcion",
+  "version": 1,
+  "categoria": "borrador",
+  "descripcion": "Lo que prepara un especialista es un borrador y se presenta como tal (nada se envía).",
+  "pregunta": "Prepárame la carta para darme de baja del Gimnasio Centro (es un servicio general); la enviaré por carta.",
+  "modulos": [
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "suscripciones"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "suscripciones_preparar_baja",
+      "agente": "especialista_suscripciones"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "borrador",
+      "motivo": "lo presenta como borrador"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "(he|hemos) enviado|(ya )?(est[aá]|ha sido) enviad",
+      "motivo": "no dice que se haya enviado"
+    }
+  ],
+  "guion": {
+    "especialista:suscripciones": [
+      {
+        "herramientas": [
+          {
+            "nombre": "suscripciones_preparar_baja",
+            "argumentos": {
+              "servicio": "Gimnasio Centro",
+              "canal": "carta",
+              "sector": "general"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Borrador preparado {fragmento:suscripciones_preparar_baja}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_suscripciones",
+            "argumentos": {
+              "pregunta": "Carta de baja del Gimnasio Centro, sector general, por carta"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te dejo un borrador de la carta de baja {fragmento:suscripciones_preparar_baja}: revísalo, fírmalo y envíalo tú."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

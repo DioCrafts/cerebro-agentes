@@ -34,7 +34,7 @@ still says which groups must be re-read. The state file makes the run idempotent
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from datetime import date, datetime, timedelta
 import hashlib
 import json
@@ -385,6 +385,7 @@ def pilotar(
     motivo_sin_modelo: str = "No hay credenciales del proveedor de LLM configurado: no se ha recodificado nada.",
     fecha_boe: FechaBoe | None = None,
     procedencia: Procedencia = "anotar",
+    ejecutor: Callable[..., tuple[Informe, list[Propuesta]]] | None = None,
 ) -> tuple[InformePiloto, list[Propuesta]]:
     """One run of the autopilot (see the module's docstring). Returns the report and the proposals made in it.
 
@@ -396,6 +397,8 @@ def pilotar(
     ``fecha_boe(boe_id)``: the day the BOE's metadata says a law was last updated (what ``params-check`` compares);
     without it, the date its page shows. ``procedencia``: "anotar" records today's reading of the laws that are up to
     date again, "simular" only reports them (texts that were not read from the BOE today), "no" skips the step.
+    ``ejecutor`` replaces :func:`ejecutar` for the loop (same signature), e.g. the batch one of
+    :mod:`~hacienda_gpt.tax.recodificacion.lotes`.
     """
     hoy = hoy or date.today()
     estado = leer_estado(estado_path)
@@ -597,7 +600,7 @@ def pilotar(
     if objetivos and lector is None:
         informe.omitido = motivo_sin_modelo
     elif objetivos:
-        resultado, nuevas = ejecutar(
+        resultado, nuevas = (ejecutor or ejecutar)(
             list(objetivos.values()),
             lector=lector,
             revisor=revisor if revisor is not None else lector,

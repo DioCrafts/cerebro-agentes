@@ -1,0 +1,35 @@
+{
+  "id": "enrutado-modulo-no-activo",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "La luz no está activada: no se consulta a otro especialista ni se inventa la factura.",
+  "pregunta": "¿Cuánto me va a costar la factura de la luz este mes?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "\\d+,\\d{2}\\s*€",
+      "motivo": "no da ninguna cifra de luz que nadie ha calculado"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "texto": "No tengo activado el ámbito de la luz, así que no puedo calcular tu factura. Puedes activarlo en «Módulos»."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

@@ -519,6 +519,10 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - network / 
     sha = {boe_id: hashlib.sha256(xml).hexdigest() for boe_id, xml in xmls.items()}
     serie = construir_serie(resoluciones, hoy, sha, base)
     SERIE_PATH.write_text(json.dumps(serie, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    if base is not None and resoluciones:  # event bus: wake the mortgage module of every household now
+        from hacienda_gpt.eventos import emitir_indices
+
+        emitir_indices(xmls)
     print(f"Serie escrita en {SERIE_PATH}: {len(resoluciones)} resolución(es) leída(s), {len(problemas)} aviso(s).")
     return 1 if problemas else 0
 

@@ -63,6 +63,7 @@ import {
   tributacionTexto,
 } from "../lib/optimizador";
 import { COMUNIDADES, comunidadDeExpediente, factLabel, formatDate } from "../lib/presentation";
+import { MemoriaBotones } from "./MemoriaBotones";
 import type { SimulatorSeed } from "./SimulatorPanel";
 
 // ---- The form -------------------------------------------------------------------
@@ -1533,6 +1534,14 @@ export function OptimizerPanel({ open, onClose, caseId, facts, taxPeriod, onSave
           <span className="font-semibold">Base legal:</span> {p.referencia}
           {!p.verificado && " · cifras pendientes de contrastar con el BOE"}
         </p>
+        {/* Remembered (hacienda_gpt/memoria): the plan is recomputed without what the user rejects. */}
+        {caseId && (
+          <MemoriaBotones
+            caseId={caseId}
+            palanca={{ id: p.id, opcion: p.opcion, titulo: p.accion, importe: p.ahorro_marginal }}
+            onDone={() => void calcular()}
+          />
+        )}
       </li>
     );
   }

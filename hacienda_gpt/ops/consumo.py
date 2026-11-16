@@ -11,7 +11,12 @@ twice). This module:
 * aggregates by day (Europe/Madrid), user, case and purpose;
 * enforces optional limits (:class:`Presupuesto`) BEFORE each call;
 * provides :class:`MeteredProvider`, a wrapper with the ``LLMProvider``
-  protocol that does the checking and the recording around any provider.
+  protocol that does the checking and the recording around any provider, and
+  that picks the model of each purpose (routing table, ``agent/enrutado.py``)
+  and retries an invalid output once on the next tier (escalation).
+
+Prompt-cache reads and writes (5-minute and 1-hour), long-context rates and the
+batch discount are priced separately, each from the table.
 
 The limits are soft by one call: they are checked before a call starts, so a
 call in flight (or several concurrent ones) can take the day slightly over.
@@ -38,6 +43,7 @@ from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 from pydantic import BaseModel, ConfigDict, Field
 
 from hacienda_gpt import settings
+from hacienda_gpt.agent import enrutado
 from hacienda_gpt.agent.providers.base import (
     Attachment,
     Conversation,
@@ -63,6 +69,8 @@ __all__ = [
     "PresupuestoAgotadoError",
     "ResumenConsumo",
     "TablaPrecios",
+    "Tarifa",
+    "TramoLargo",
     "Usage",
     "almacen_por_defecto",
     "calcular_coste",
@@ -79,7 +87,7 @@ _TOTAL_DECIMALES = Decimal("0.000001")
 # Dated snapshot ids ("<model>-20260401") are priced like the model they pin.
 _SUFIJO_FECHA_RE = re.compile(r"-\d{8}$")
 
-Dimension = Literal["dia", "usuario", "caso", "proposito"]
+Dimension = Literal["dia", "usuario", "caso", "proposito", "modelo"]
 Limite = Literal["diario", "diario_por_usuario", "llamadas_por_pregunta"]
 
 
@@ -111,15 +119,31 @@ def _ts(momento: datetime) -> str:
 # --- Prices (data, not code) --------------------------------------------------
 
 
-class Precio(BaseModel):
-    """USD per million tokens for one model. None = not looked up."""
+class Tarifa(BaseModel):
+    """Prices of one kind of token, USD per million. None = not looked up."""
 
     model_config = ConfigDict(extra="forbid")
 
     input: Decimal | None = Field(default=None, ge=0)
     output: Decimal | None = Field(default=None, ge=0)
     cache_read: Decimal | None = Field(default=None, ge=0)
+    # Cache writes with the default 5-minute TTL, and with the 1-hour TTL.
     cache_write: Decimal | None = Field(default=None, ge=0)
+    cache_write_1h: Decimal | None = Field(default=None, ge=0)
+
+
+class TramoLargo(Tarifa):
+    """Prices that apply to a whole request whose prompt is longer than ``desde_tokens``."""
+
+    desde_tokens: int = Field(gt=0)
+
+
+class Precio(Tarifa):
+    """USD per million tokens for one model. None = not looked up."""
+
+    # Multiplier of every token price for requests served by the batch API (e.g. 0.5).
+    factor_lote: Decimal | None = Field(default=None, gt=0, le=1)
+    contexto_largo: TramoLargo | None = None
     nota: str = ""
 
 
@@ -155,25 +179,37 @@ def calcular_coste(usage: Usage, precios: TablaPrecios | None = None) -> Decimal
     """Cost in USD of one call, or None when it cannot be known.
 
     None when the API reported no usage, the model is not in the table, or a
-    token type that was actually used has no price. Never a guess.
+    token type that was actually used has no price (a batch call needs the
+    model's ``factor_lote`` too). Never a guess.
     """
     if not usage.reported:
         return None
     precio = (precios or cargar_precios()).precio_de(usage.model)
     if precio is None:
         return None
+    tarifa: Tarifa = precio
+    prompt = usage.input_tokens + usage.cache_read_tokens + usage.cache_write_tokens
+    if precio.contexto_largo is not None and prompt > precio.contexto_largo.desde_tokens:
+        tarifa = precio.contexto_largo
+    escritos_1h = min(usage.cache_write_1h_tokens, usage.cache_write_tokens)
     total = Decimal(0)
     for tokens, por_millon in (
-        (usage.input_tokens, precio.input),
-        (usage.output_tokens, precio.output),
-        (usage.cache_read_tokens, precio.cache_read),
-        (usage.cache_write_tokens, precio.cache_write),
+        (usage.input_tokens, tarifa.input),
+        (usage.output_tokens, tarifa.output),
+        (usage.cache_read_tokens, tarifa.cache_read),
+        (usage.cache_write_tokens - escritos_1h, tarifa.cache_write),
+        (escritos_1h, tarifa.cache_write_1h),
     ):
         if tokens <= 0:
             continue
         if por_millon is None:
             return None
         total += Decimal(tokens) * por_millon / _MILLON
+    if usage.batch:
+        if precio.factor_lote is None:
+            return None
+        # The batch discount applies to every token, cache reads and writes included.
+        total *= precio.factor_lote
     return total.quantize(_COSTE_DECIMALES)
 
 
@@ -196,6 +232,11 @@ class Agregado(BaseModel):
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     coste_usd: Decimal = Decimal(0)
+    # Share of the prompt tokens served from the prompt cache (None: no prompt tokens).
+    proporcion_cache: Decimal | None = None
+    # Calls served by a batch API, and one-off retries of an invalid output on the next tier.
+    llamadas_lote: int = 0
+    llamadas_escaladas: int = 0
 
 
 class ResumenConsumo(BaseModel):
@@ -209,6 +250,7 @@ class ResumenConsumo(BaseModel):
     por_dia: list[Agregado] = Field(default_factory=list)
     por_usuario: list[Agregado] = Field(default_factory=list)
     por_caso: list[Agregado] = Field(default_factory=list)
+    por_modelo: list[Agregado] = Field(default_factory=list)
 
 
 class _Acumulador:
@@ -216,11 +258,15 @@ class _Acumulador:
         self.clave = clave
         self.llamadas = 0
         self.sin_coste = 0
+        self.lote = 0
+        self.escaladas = 0
         self.tokens = [0, 0, 0, 0]
         self.coste = Decimal(0)
 
     def sumar(self, row: sqlite3.Row) -> None:
         self.llamadas += 1
+        self.lote += 1 if row["batch"] else 0
+        self.escaladas += 1 if row["escalated"] else 0
         for index, column in enumerate(("input_tokens", "output_tokens", "cache_read_tokens", "cache_write_tokens")):
             self.tokens[index] += row[column] or 0
         if row["cost_usd"] is None:
@@ -229,6 +275,7 @@ class _Acumulador:
             self.coste += Decimal(str(row["cost_usd"]))
 
     def agregado(self) -> Agregado:
+        prompt = self.tokens[0] + self.tokens[2] + self.tokens[3]
         return Agregado(
             clave=self.clave,
             llamadas=self.llamadas,
@@ -238,7 +285,18 @@ class _Acumulador:
             cache_read_tokens=self.tokens[2],
             cache_write_tokens=self.tokens[3],
             coste_usd=self.coste.quantize(_TOTAL_DECIMALES),
+            proporcion_cache=(Decimal(self.tokens[2]) / prompt).quantize(Decimal("0.0001")) if prompt else None,
+            llamadas_lote=self.lote,
+            llamadas_escaladas=self.escaladas,
         )
+
+
+_COLUMNAS_NUEVAS: tuple[tuple[str, str], ...] = (
+    ("cache_write_1h_tokens", "INTEGER"),
+    ("tier", "TEXT"),
+    ("escalated", "INTEGER NOT NULL DEFAULT 0"),
+    ("batch", "INTEGER NOT NULL DEFAULT 0"),
+)
 
 
 class ConsumoStore:
@@ -273,6 +331,11 @@ class ConsumoStore:
                 )
                 """)
             self._conn.execute("CREATE INDEX IF NOT EXISTS idx_llm_usage_ts ON llm_usage(ts)")
+            # Columns added after the first release: routing tier, escalation, batch, 1-hour cache writes.
+            existentes = {row[1] for row in self._conn.execute("PRAGMA table_info(llm_usage)")}
+            for columna, tipo in _COLUMNAS_NUEVAS:
+                if columna not in existentes:
+                    self._conn.execute(f"ALTER TABLE llm_usage ADD COLUMN {columna} {tipo}")
 
     def close(self) -> None:
         with self._lock:
@@ -292,14 +355,21 @@ class ConsumoStore:
         """Record one call and return its cost (None when unknown)."""
         coste = calcular_coste(usage, self.precios())
         tokens: tuple[int | None, ...] = (
-            (usage.input_tokens, usage.output_tokens, usage.cache_read_tokens, usage.cache_write_tokens)
+            (
+                usage.input_tokens,
+                usage.output_tokens,
+                usage.cache_read_tokens,
+                usage.cache_write_tokens,
+                usage.cache_write_1h_tokens,
+            )
             if usage.reported
-            else (None, None, None, None)
+            else (None, None, None, None, None)
         )
         with self._lock, self._conn:
             self._conn.execute(
                 "INSERT INTO llm_usage (ts, user_id, case_id, purpose, provider, model, input_tokens, output_tokens,"
-                " cache_read_tokens, cache_write_tokens, cost_usd) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                " cache_read_tokens, cache_write_tokens, cache_write_1h_tokens, cost_usd, tier, escalated, batch)"
+                " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                 (
                     _ts(ts or datetime.now(UTC)),
                     user_id,
@@ -309,6 +379,9 @@ class ConsumoStore:
                     usage.model,
                     *tokens,
                     None if coste is None else float(coste),
+                    usage.tier or None,
+                    int(usage.escalated),
+                    int(usage.batch),
                 ),
             )
         return coste
@@ -335,7 +408,7 @@ class ConsumoStore:
     def _clave(row: sqlite3.Row, por: Dimension) -> str | None:
         if por == "dia":
             return hoy_madrid(datetime.fromisoformat(row["ts"])).isoformat()
-        column = {"usuario": "user_id", "caso": "case_id", "proposito": "purpose"}[por]
+        column = {"usuario": "user_id", "caso": "case_id", "proposito": "purpose", "modelo": "model"}[por]
         value = row[column]
         return None if value is None else str(value)
 
@@ -349,7 +422,7 @@ class ConsumoStore:
         *,
         desde: date,
         hasta: date,
-        por: Sequence[Dimension] = ("proposito", "dia", "usuario", "caso"),
+        por: Sequence[Dimension] = ("proposito", "dia", "usuario", "caso", "modelo"),
     ) -> ResumenConsumo:
         """Overall total plus the requested breakdowns, for ``desde``..``hasta`` inclusive."""
         total = _Acumulador(None)
@@ -376,6 +449,7 @@ _CAMPO: dict[Dimension, str] = {
     "usuario": "por_usuario",
     "caso": "por_caso",
     "proposito": "por_proposito",
+    "modelo": "por_modelo",
 }
 
 
@@ -611,6 +685,11 @@ class MeteredProvider:
     for a long-lived wrapper, in which case calls made outside a context are
     recorded without user / case and are not subject to the per-question cap
     (a counter that never resets would end up blocking every call).
+
+    Routing: the purpose picks the model through the routing table
+    (:mod:`hacienda_gpt.agent.enrutado`); with no routing setting it is the
+    wrapped provider's own model, as before. ``complete_json`` retries an output
+    that fails its validation once on the next tier, when that tier is another model.
     """
 
     def __init__(
@@ -624,21 +703,27 @@ class MeteredProvider:
         presupuesto: Presupuesto | None = None,
         compartido: bool = False,
         _contexto: ContextoConsumo | None = None,
+        _ruta: enrutado.Ruta | None = None,
+        _escalado: bool = False,
     ) -> None:
-        self._provider = provider
+        self._base = provider
         self._store = store
         self._presupuesto = presupuesto
         self._compartido = compartido
         self._propio = _contexto or ContextoConsumo(user_id=user_id, case_id=case_id)
         self._avisados: set[str] = set()
+        self._escalado = _escalado
         self.purpose = purpose
-        self.name = provider.name
-        self.model = provider.model
+        self.ruta = _ruta or enrutado.resolver(purpose, proveedor=provider.name)
+        # The provider that serves this purpose: the wrapped one, or a sibling on another model.
+        self._provider: LLMProvider = enrutado.aplicar(provider, self.ruta)
+        self.name = self._provider.name
+        self.model = self._provider.model
         # Providers with an ``on_usage`` hook report every API call they make
         # (a call may be more than one request); the others are measured from
         # ``ModelTurn.usage``. The hook is the same function for every wrapper,
         # so two wrappers can share one provider.
-        _instalar_captura(provider)
+        _instalar_captura(self._provider)
 
     def __getattr__(self, name: str) -> Any:
         # Anything else (e.g. ``effort``) is the wrapped provider's.
@@ -648,18 +733,48 @@ class MeteredProvider:
 
     @property
     def wrapped(self) -> LLMProvider:
+        """The provider that actually serves this purpose (after routing)."""
         return self._provider
 
-    def con_proposito(self, purpose: str) -> MeteredProvider:
-        """A sibling wrapper recording under another purpose (same budget and question counter)."""
+    def _hermano(self, purpose: str, *, ruta: enrutado.Ruta | None = None, escalado: bool = False) -> MeteredProvider:
         return MeteredProvider(
-            self._provider,
+            self._base,
             self._store,
             purpose=purpose,
             presupuesto=self._presupuesto,
             compartido=self._compartido,
             _contexto=self._propio,
+            _ruta=ruta,
+            _escalado=escalado,
         )
+
+    def con_proposito(self, purpose: str) -> MeteredProvider:
+        """A sibling wrapper recording under another purpose (same budget and question counter).
+
+        It is routed for its own purpose, from the same base provider.
+        """
+        return self._hermano(purpose)
+
+    @property
+    def es_escalado(self) -> bool:
+        """Whether this wrapper is the one-off retry of another tier's invalid output."""
+        return self._escalado
+
+    def escalado(self) -> MeteredProvider | None:
+        """A sibling on the next tier up that runs another model, or None.
+
+        None when escalation is off, when this wrapper already is the escalation (it
+        happens once) or when no tier above resolves to a different model.
+        """
+        if self._escalado:
+            return None
+        ruta = enrutado.siguiente(
+            self.ruta,
+            proveedor=self._base.name,
+            modelo_base=self._base.model,
+            effort_base=getattr(self._provider, "effort", None),
+        )
+        return None if ruta is None else self._hermano(self.purpose, ruta=ruta, escalado=True)
 
     def nueva_pregunta(self, *, user_id: str | None = None, case_id: str | None = None) -> None:
         """Start counting a new question on this wrapper (when no :func:`contexto_consumo` is used)."""
@@ -674,6 +789,33 @@ class MeteredProvider:
         if ambiente is not None:
             return ambiente, True
         return self._propio, not self._compartido
+
+    def comprobar_presupuesto(self) -> None:
+        """Raise :class:`PresupuestoAgotadoError` if the daily limits leave no room (no call is counted).
+
+        For work that is paid for outside a call, like a batch about to be submitted.
+        """
+        if self._presupuesto is None:
+            return
+        contexto, _ = self._contexto_activo()
+        self._presupuesto.comprobar(contexto.user_id, contexto.case_id, llamadas_en_pregunta=0)
+
+    def registrar_externo(self, usage: Usage) -> Decimal | None:
+        """Record usage billed outside :meth:`_medir` (e.g. one result of a batch); returns its cost.
+
+        Keeps ``usage.purpose`` / ``usage.tier`` when set, else this wrapper's.
+        """
+        contexto, _ = self._contexto_activo()
+        etiquetada = replace(
+            usage,
+            purpose=usage.purpose or self.purpose,
+            tier=usage.tier or self.ruta.nivel,
+        )
+        try:
+            return self._store.registrar(etiquetada, user_id=contexto.user_id, case_id=contexto.case_id)
+        except Exception:  # bookkeeping never breaks the work it measures
+            logger.warning("could not record LLM usage", exc_info=True)
+            return None
 
     def _medir[T](self, llamada: Callable[[], T], usage_de: Callable[[T], Usage | None] | None = None) -> T:
         contexto, cuenta = self._contexto_activo()
@@ -701,8 +843,14 @@ class MeteredProvider:
 
     def _registrar(self, usages: list[Usage], user_id: str | None, case_id: str | None) -> None:
         for usage in usages:
+            etiquetada = replace(
+                usage,
+                purpose=self.purpose,
+                tier=self.ruta.nivel,
+                escalated=usage.escalated or self._escalado,
+            )
             try:
-                coste = self._store.registrar(replace(usage, purpose=self.purpose), user_id=user_id, case_id=case_id)
+                coste = self._store.registrar(etiquetada, user_id=user_id, case_id=case_id)
             except Exception:  # the answer is already paid for: never lose it over bookkeeping
                 logger.warning("could not record LLM usage", exc_info=True)
                 continue
@@ -739,14 +887,46 @@ class MeteredProvider:
         schema: dict[str, Any],
         schema_name: str,
         attachments: Sequence[Attachment] | None = None,
+        validar: enrutado.Validador | None = None,
     ) -> dict[str, Any]:
+        """The wrapped provider's ``complete_json``, metered, with one escalation.
+
+        When escalation is possible (another model on the next tier), an output that
+        is unusable (``ProviderError`` with ``salida_invalida``), that does not match
+        ``schema``, or that ``validar`` (the caller's deterministic check: a reason, or
+        None when it passes) rejects is asked again ONCE on that tier. Otherwise the
+        first answer is returned (or the error raised) exactly as before.
+        """
         # ``attachments`` is only forwarded when given, so providers written
         # before it existed keep working.
         extra: dict[str, Any] = {} if attachments is None else {"attachments": attachments}
-        return self._medir(
-            lambda: self._provider.complete_json(
-                system=system, user=user, schema=schema, schema_name=schema_name, **extra
+
+        def llamar() -> dict[str, Any]:
+            return self._medir(
+                lambda: self._provider.complete_json(
+                    system=system, user=user, schema=schema, schema_name=schema_name, **extra
+                )
             )
+
+        try:
+            datos = llamar()
+        except ProviderError as exc:
+            superior = self.escalado() if exc.salida_invalida else None
+            if superior is None:
+                raise
+            logger.info("Escalating %s from %s to %s: %s", self.purpose, self.model, superior.model, exc)
+            return superior.complete_json(
+                system=system, user=user, schema=schema, schema_name=schema_name, attachments=attachments
+            )
+        superior = self.escalado()
+        if superior is None:
+            return datos
+        fallo = enrutado.fallo_de_salida(datos, schema, [validar] if validar is not None else [])
+        if fallo is None:
+            return datos
+        logger.info("Escalating %s from %s to %s: %s", self.purpose, self.model, superior.model, fallo)
+        return superior.complete_json(
+            system=system, user=user, schema=schema, schema_name=schema_name, attachments=attachments
         )
 
 

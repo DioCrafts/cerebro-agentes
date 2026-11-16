@@ -1,0 +1,130 @@
+{
+  "id": "cruce-hipoteca-o-plan",
+  "version": 1,
+  "categoria": "cruce_modulos",
+  "descripcion": "Amortizar o aportar al plan: especialista de hipoteca + calculadora del IRPF, cada cifra por separado.",
+  "pregunta": "Tengo 1.500 € ahorrados. ¿Me conviene más amortizar hipoteca el 20 de marzo de 2026 o aportarlos a mi plan de pensiones antes de fin de año para la renta de 2025?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro_irpf",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025,
+          "escenarios": [
+            {
+              "nombre": "Sin aportación",
+              "cambios": {}
+            },
+            {
+              "nombre": "Con aportación de 1.500 €",
+              "cambios": {
+                "aportacion_plan_pensiones": 1500
+              }
+            }
+          ]
+        },
+        "patron": "Frente a «[^»]+»: ahorra (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "538,50 €"
+      }
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro_intereses",
+      "calculo": {
+        "herramienta": "hipoteca_amortizar",
+        "argumentos": {
+          "importe": 1500,
+          "fecha": "2026-03-20"
+        },
+        "patron": "A\\) Reducir plazo[\\s\\S]*?Intereses que te ahorras: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "1.059,81 €"
+      }
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_amortizar",
+            "argumentos": {
+              "importe": 1500,
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Ahorro de intereses: {cifra:ahorro_intereses} {fragmento:hipoteca_amortizar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Amortizar 1.500 €"
+            }
+          },
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025,
+              "escenarios": [
+                {
+                  "nombre": "Sin aportación",
+                  "cambios": {}
+                },
+                {
+                  "nombre": "Con aportación de 1.500 €",
+                  "cambios": {
+                    "aportacion_plan_pensiones": 1500
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Amortizar te ahorra {cifra:ahorro_intereses} de intereses a lo largo del préstamo {fragmento:hipoteca_amortizar}. Aportar al plan te ahorra {cifra:ahorro_irpf} en la renta {fragmento:calcular_irpf}. Son cifras de ámbitos distintos y no las comparo como una sola cuenta: el plan inmoviliza el dinero hasta el rescate."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2025",
+    "jurisdiction": "ES",
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 42000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

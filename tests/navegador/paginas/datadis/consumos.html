@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="es">
+<head><meta charset="utf-8"><title>Datadis · Consumos (simulación local)</title>
+<script src="{{TRACKER}}/t.js"></script></head>
+<body>
+<header>
+  <h1>Datadis</h1>
+  <span id="usuario-conectado">Hola, María Ejemplo Ficticia</span>
+</header>
+<main>
+  <h2>Consulta de consumos</h2>
+  <form id="filtro" onsubmit="return false">
+    <label for="{{ID_CUPS}}">{{ETIQUETA_CUPS}}</label>
+    <select id="{{ID_CUPS}}" name="cups">
+      <option value="">Elige un suministro</option>
+      <option value="ES0021000000000001AA">ES0021000000000001AA · Calle Mayor 1, Madrid</option>
+      <option value="ES0031000000000002BB">ES0031000000000002BB · Avenida del Mar 7, Valencia</option>
+    </select>
+    <label for="fecha-inicial">Fecha inicial</label>
+    <input type="date" id="fecha-inicial" name="fechaInicial">
+    <label for="fecha-final">Fecha final</label>
+    <input type="date" id="fecha-final" name="fechaFinal">
+    <button type="button" id="consultar">Consultar</button>
+  </form>
+  <p id="error" hidden></p>
+  <section id="resultado" hidden>
+    <p>Consumo total del periodo: <strong id="total"></strong> kWh</p>
+    <a id="descargar-csv" href="#" download>Descargar CSV</a>
+  </section>
+  <p><a id="externo" href="{{TRACKER}}/fuera">Más información sobre tus datos</a></p>
+  <form method="POST" action="/privado/baja">
+    <button type="submit" id="baja">Darse de baja de Datadis</button>
+  </form>
+  <form method="POST" action="/privado/preferencias">
+    <button type="submit" id="preferencias">Ver preferencias</button>
+  </form>
+</main>
+<script>
+  document.getElementById("consultar").addEventListener("click", async () => {
+    const cups = document.getElementById("{{ID_CUPS}}").value;
+    const desde = document.getElementById("fecha-inicial").value;
+    const hasta = document.getElementById("fecha-final").value;
+    const error = document.getElementById("error");
+    if (!cups || !desde || !hasta) { error.hidden = false; error.textContent = "Rellena todos los campos."; return; }
+    const q = new URLSearchParams({ cups, desde, hasta });
+    const resp = await fetch("/privado/api/consumo?" + q.toString());
+    if (!resp.ok) { error.hidden = false; error.textContent = "No hay datos para ese periodo."; return; }
+    const datos = await resp.json();
+    document.getElementById("total").textContent = datos.total;
+    document.getElementById("descargar-csv").href = "{{RUTA_CSV}}?" + q.toString();
+    document.getElementById("resultado").hidden = false;
+  });
+</script>
+</body>
+</html>

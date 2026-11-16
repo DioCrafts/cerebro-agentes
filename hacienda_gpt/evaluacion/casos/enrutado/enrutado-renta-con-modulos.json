@@ -1,0 +1,67 @@
+{
+  "id": "enrutado-renta-con-modulos",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "Una pregunta de impuestos la responde el asesor con su calculadora aunque haya módulos activos.",
+  "pregunta": "¿Cuánto me saldrá la declaración de la renta de 2025?",
+  "modulos": [
+    "luz",
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf",
+      "agente": "asesor"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "5.140,12 €"
+      }
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te saldría {cifra:resultado} a ingresar {fragmento:calcular_irpf}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2025",
+    "jurisdiction": "ES",
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 30000
+    }
+  }
+}

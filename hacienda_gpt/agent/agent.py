@@ -18,10 +18,10 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field
 
 from hacienda_gpt import settings
+from hacienda_gpt.agent import enrutado
 from hacienda_gpt.agent.especialistas import Coordinador
 from hacienda_gpt.agent.evidence import EvidenceLedger, Fragment, extract_cited_ids
 from hacienda_gpt.agent.prompts import (
-    AGENT_SYSTEM_PROMPT,
     CASE_TOOLS_ADDENDUM,
     CRITIC_REVISION_MESSAGE,
     FORCE_ANSWER_MESSAGE,
@@ -46,6 +46,8 @@ from hacienda_gpt.agent.tools import Toolbox
 from hacienda_gpt.agent.verifier import ClaimCheck, ResponseType, Verdict, VerificationReport, Verifier
 from hacienda_gpt.decision.schemas import CaseState
 from hacienda_gpt.doctrine.grafo import DoctrineGraph
+from hacienda_gpt.evaluacion.variantes import argumentos_proveedor, prompt_activo
+from hacienda_gpt.memoria.agente import MemoriaAgente
 from hacienda_gpt.modulos.acciones import AccionPendiente
 from hacienda_gpt.modulos.contrato import Modulo
 
@@ -246,15 +248,23 @@ class TaxAgent:
 
         ledger = ledger if ledger is not None else EvidenceLedger()
         especialistas = Coordinador.para(self._provider, ledger, modulos, emit)
+        # The user's remembered decisions (hacienda_gpt/memoria): two tools and a context block, only with a case.
+        memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
         toolbox = Toolbox(
             searcher=self._searcher,
             ledger=ledger,
             case=case,
             default_k=self._default_k,
             graph=self._graph,
-            extra=especialistas.herramientas() if especialistas is not None else (),
+            extra=[
+                *(especialistas.herramientas() if especialistas is not None else ()),
+                *(memoria.herramientas() if memoria is not None else ()),
+            ],
         )
-        system = AGENT_SYSTEM_PROMPT + (CASE_TOOLS_ADDENDUM if case is not None else "")
+        if memoria is not None:
+            memoria.vincular(toolbox)
+        # The active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.AGENT_SYSTEM_PROMPT.
+        system = prompt_activo("agente") + (CASE_TOOLS_ADDENDUM if case is not None else "")
         if especialistas is not None:
             especialistas.vincular(toolbox)
             system += especialistas.addendum()
@@ -262,7 +272,11 @@ class TaxAgent:
             system=system,
             tools=toolbox.specs(),
             history=chat_history or [],  # type: ignore[arg-type]  # normalized by the provider
-            user_message="\n\n".join(part for part in (_context_block(case), briefing, query) if part),
+            user_message="\n\n".join(
+                part
+                for part in (_context_block(case), memoria.contexto() if memoria is not None else "", briefing, query)
+                if part
+            ),
         )
 
         trace: list[ToolTraceEntry] = []
@@ -513,7 +527,7 @@ class TeamAgent(TaxAgent):
         plan: Plan | None = None
         if self._mode == "always" or len(tributos) >= 2:
             emit("team", stage="planning", agent="planificador", status="start")
-            plan = planificar(self._provider, query, case)
+            plan = planificar(enrutado.para(self._provider, "equipo:planificador"), query, case)
             emit("team", stage="planning", agent="planificador", status="done", complex=bool(plan and plan.compleja))
 
         if self._mode == "always" or (plan is not None and plan.compleja):
@@ -586,7 +600,7 @@ class TeamAgent(TaxAgent):
             graph=self._graph,
         )
         runs = investigar(
-            self._provider,
+            enrutado.para(self._provider, "equipo:investigador"),
             plan=plan,
             query=query,
             case=case,
@@ -599,7 +613,7 @@ class TeamAgent(TaxAgent):
 
         def critic(draft: str, fragments: list[Fragment], _toolbox: Toolbox) -> str | None:
             run = criticar(
-                self._provider,
+                enrutado.para(self._provider, "equipo:critico"),
                 query=query,
                 case=case,
                 draft=draft,
@@ -646,7 +660,8 @@ def build_agent() -> TaxAgent:
     from hacienda_gpt.ops.consumo import medir
 
     # Every call is recorded and checked against the configured budgets.
-    provider = medir(create_provider(), "agente")
+    # The active variant may name another provider/model ({} by default: settings decide, as always).
+    provider = medir(create_provider(**argumentos_proveedor()), "agente")
     verifier_provider = provider.con_proposito("verificador")
     if settings.VERIFIER_PROVIDER or settings.VERIFIER_MODEL:
         verifier_provider = medir(

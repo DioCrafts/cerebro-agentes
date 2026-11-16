@@ -227,6 +227,12 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         ("post", "/agent/stream", {"query": "¿Qué plazo tengo?", "case_id": case_id}),
         ("post", "/simulate", {"case_id": case_id}),
         ("post", "/optimize", {"case_id": case_id}),
+        # The user's decisions (hacienda_gpt/api/routers/memoria.py).
+        ("get", f"/cases/{case_id}/decisiones", None),
+        ("post", f"/cases/{case_id}/decisiones", {"ambito": "fiscal:donativo", "razon": "No quiero donar"}),
+        ("put", f"/cases/{case_id}/decisiones/{{decision_id}}", {"razon": "Otra razón"}),
+        ("delete", f"/cases/{case_id}/decisiones/{{decision_id}}", None),
+        ("post", f"/cases/{case_id}/decisiones/aviso/{notification_id}", {"boton": "no_me_interesa"}),
     ]
 
 
@@ -297,6 +303,9 @@ def test_the_owner_reaches_every_case_endpoint(env: Env) -> None:
     try:
         for method, path, body in _case_requests(case_id, notification.id):
             response = env.client.request(method, path, json=body, headers=ana)
+            if "{decision_id}" in path:  # past ownership: the (made-up) decision itself is what is missing
+                assert (response.status_code, response.json()) == (404, {"detail": "decision not found"}), path
+                continue
             # 503: the request got past ownership and reached the (unavailable) model.
             expected = 503 if path.endswith(("/documents", "/agent")) else 200
             assert response.status_code == expected, (method, path, response.text)

@@ -36,6 +36,7 @@ from hacienda_gpt.auth.store import (
     User,
 )
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from hacienda_gpt.memoria.almacen import exportar_decisiones
 from hacienda_gpt.modulos.acciones import AccionStore
 from hacienda_gpt.proactive.store import NotificationStore
 
@@ -304,6 +305,8 @@ def build_router(
                     "notifications": [n.model_dump(mode="json") for n in notifications.list(case_id)],
                     "notification_deliveries": notifications.deliveries_for_case(case_id),
                     "pending_actions": acciones.exportar(case_id) if acciones is not None else [],
+                    # What the user decided or prefers (hacienda_gpt/memoria), with its redacted history.
+                    "decisiones": exportar_decisiones(cases.db_path, case_id),
                 }
             )
         return {

@@ -426,6 +426,58 @@ En la web, el panel **Módulos** lista los módulos, permite activarlos, editar 
 construido a partir de sus `HechoModulo` (los `json` en un área de texto con los errores de validación a la
 vista) y confirmar o rechazar las acciones pendientes; los avisos se agrupan por módulo.
 
+### Memoria de decisiones
+
+El asistente recuerda lo que el usuario **decide**, no solo los hechos, para no volver a proponer lo que
+rechazó y no preguntar dos veces (`hacienda_gpt/memoria/`). Una `Decision` dice *sobre qué* (ámbito =
+módulo + palanca, p. ej. `fiscal:plan_pensiones`, `luz:cambio_tarifa`, `luz:cambio_tarifa:<oferta>`), *qué*
+(`rechazo`, `aceptacion`, `preferencia`, `restriccion`), *con qué palabras* (las del usuario), *de dónde*
+(`chat`, `boton`, `ajustes`, `accion`), *cuándo* y *hasta cuándo*: no dura para siempre (por defecto 12 meses
+los rechazos y restricciones, 6 las aceptaciones —«ya lo hice»—, sin fin las preferencias) y puede llevar
+**condiciones de reapertura**: una fecha (fin de una permanencia), un dato del expediente que cambia (solo se
+guarda una huella de su valor, nunca el valor) o una propuesta mucho mejor (por defecto, más del doble de la
+rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `…:conyuge`), nunca otros.
+
+**Cómo se captura**
+- Herramienta del agente `registrar_decision`, solo con lo que el usuario dice en la conversación: exige sus
+  palabras literales (`cita_del_usuario`, y `razon` si la hay) y **comprueba** que aparecen en sus mensajes
+  (sin tildes, mayúsculas ni signos); una decisión deducida por el modelo se rechaza y no se guarda. El
+  *prompt* también le prohíbe deducirlas.
+- Botones «No me interesa», «Ya lo hice» y «Recuérdamelo más tarde» en cada aviso (no en el resumen semanal)
+  y «No me interesa» / «Ya lo hice» en cada medida del plan del optimizador. Una oferta de luz rechazada
+  cubre el cambio de tarifa entero (`luz:cambio_tarifa`), con reapertura si aparece una más del doble de
+  buena; el resto de avisos, su propio asunto (esa suscripción, ese plazo).
+- Confirmar o rechazar una acción pendiente de un módulo (`<modulo>:accion:<herramienta>`).
+- «Lo que sé de tus preferencias» (icono en la cabecera de «Avisos»): verlas, añadir, cambiar y olvidar.
+
+**Cómo se usa**
+- **Bandeja (un solo sitio):** `NotificationStore.add` pasa cada aviso por `memoria.bandeja.filtrar_al_escribir`.
+  Un aviso cubierto por un rechazo, restricción o «ya lo hice» en vigor no se escribe (y la decisión cuenta las
+  veces, para explicarlo); si se cumplió una condición de reapertura o caducó, se escribe **una vez**,
+  empezando por «Te lo vuelvo a proponer. El dd/mm/aaaa me dijiste…: «…». … porque <qué cambió>». El resumen
+  semanal se construye con lo guardado, así que nunca lista lo rechazado; al registrar una decisión se quitan
+  en el acto los avisos que cubre (y el resumen de la semana si los listaba, que se rehace).
+- **Optimizador fiscal:** `memoria.optimizador.optimizar_con_memoria` (lo usan `/optimize`,
+  `optimizar_impuestos` y el plan de fin de ejercicio) convierte los rechazos y restricciones en vigor en
+  `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el primero
+  en `supuestos`, con las palabras y la fecha; quita las entradas de «no disponibles» que invitarían a hacerlo.
+  Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Limitación: el
+  optimizador no tiene restricción para excluir una **modalidad de declaración**; si el usuario rechazó la
+  conjunta y el plan óptimo la usa, el plan lo dice en `avisos` y `supuestos` en lugar de ocultarlo (cambio
+  propuesto: un campo `Restricciones.modalidades_excluidas`). Una preferencia de modalidad se menciona, no se
+  impone.
+- **Asistente central:** con expediente recibe `<preferencias_del_usuario>` (las decisiones que siguen
+  contando, con su estado) y las herramientas `registrar_decision` y `leer_preferencias`; el *prompt* le
+  prohíbe volver a proponer lo rechazado salvo que la decisión «se pueda reabrir», y entonces una vez diciendo
+  qué cambió. **Especialistas:** cada uno recibe solo las decisiones de su módulo.
+
+**API** (mismas reglas de acceso que `/cases/{id}/…`): `GET/POST /cases/{id}/decisiones`,
+`PUT/DELETE /cases/{id}/decisiones/{decision_id}`, `POST /cases/{id}/decisiones/aviso/{notification_id}`
+(`{"boton": "no_me_interesa" | "ya_lo_hice" | "recuerdamelo", "razon"?, "hasta"?}`). Se exportan en
+`GET /me/export` (`decisiones` de cada expediente, con su historial) y se borran con el expediente (un
+*trigger* sobre `case_states`) y con la cuenta; olvidar una decisión borra sus palabras del historial
+(`secure_delete`). Pruebas: `tests/memoria/`.
+
 ---
 
 ## 🤖 Agente con herramientas (`/agent`)
@@ -949,6 +1001,68 @@ Repetir una ejecución no duplica avisos. Los importes son estimaciones de la
 calculadora con los datos del expediente, y los plazos no tienen en cuenta
 festivos. Los avisos solo se guardan en la base de datos: todavía no se envían
 por correo ni al móvil.
+
+### Arquitectura orientada a eventos
+
+Los avisos ya no esperan a la pasada diaria: cuando algo pasa, se despierta
+solo el módulo al que le importa, y el aviso aparece en segundos. La pasada
+diaria (`run-daily`) se queda como red de seguridad: produce exactamente los
+mismos avisos, con las mismas claves, así que lo que ya escribió un evento no
+se repite.
+
+| Evento | Quién lo emite | A quién despierta (por defecto) |
+|--------|----------------|----------------------------------|
+| `perfil.cambiado` | Cualquier guardado del expediente que cambie hechos: `PUT/DELETE /cases/{id}/facts`, `registrar_hechos` del asesor, herramientas de los módulos, datos de un documento aceptado | El módulo dueño del hecho; los hechos compartidos (comunidad, hijos, rentas…), al módulo fiscal y a los que los leen (`ayudas`, `luz`, `caducidades`) |
+| `cargos.importados` | Importar un extracto en `suscripciones` | `suscripciones` |
+| `modulo.activado` / `modulo.desactivado` | `PUT /me/modulos/{clave}` | Ese módulo / ninguno (se cancelan su temporizador y su trabajo pendiente) |
+| `fecha.umbral` | El propio bus, el día que el módulo pidió | Solo ese módulo para ese expediente |
+| `boe.norma_nueva` | `boe-novedades` (las de relevancia alta) | Fiscal, en cada expediente abierto (mismo aviso y mismos criterios de perfil que ya usaba) |
+| `boe.cambio_normativo` | (preparado: `procesar_eventos` aún avisa directamente) | Fiscal (`impacto.notificar_cambio`) |
+| `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
+
+**Cómo funciona** (`hacienda_gpt/eventos/`, todo en el mismo SQLite que los
+expedientes, sin broker externo):
+
+- *Bandeja de salida en la misma transacción.* El cambio de un hecho escribe
+  su evento con la misma conexión y en la misma transacción que guarda el
+  expediente: si el guardado falla, no hay evento; si hay evento, el cambio
+  está guardado. El evento lleva solo identificadores y **nombres** de hechos,
+  nunca sus valores; un fallo del bus nunca impide guardar (queda en el
+  registro y lo recoge la pasada diaria).
+- *Consumidores con cursor e idempotentes.* Cada evento se reparte en entregas
+  (módulo, expediente) únicas, solo para módulos suscritos **y activados** para
+  el dueño del expediente (se vuelve a comprobar justo antes de ejecutarlo).
+- *Al menos una vez, sin duplicados.* Un trabajador reclama entregas con un
+  arriendo; si falla, se reintenta con espera exponencial (30 s, 60 s…, máx. 1 h)
+  y tras `EVENTOS_MAX_INTENTOS` va a la cola de errores. Si un trabajador muere,
+  otro retoma la entrega: los avisos tienen clave, así que repetir no duplica.
+- *Fechas calculadas, no sondeadas.* Un módulo puede devolver
+  `proxima_revision` en sus avisos (o `proxima_revision(contexto)`); el bus
+  guarda un temporizador por expediente y módulo y emite `fecha.umbral` ese
+  día. El módulo fiscal calcula el suyo con el calendario: el día en que el
+  siguiente plazo entra en la ventana de aviso de 30 días, o el 1 de octubre
+  (plan de fin de ejercicio).
+
+**Para los módulos** (contrato, cambios opcionales y compatibles):
+`eventos` (tipos a los que se suscribe; vacío = el valor por defecto del
+núcleo, en `eventos/rutas.py`), `al_evento(evento, contexto)` (por defecto,
+`avisos`), `proxima_revision(contexto)`, `hechos_leidos` y el campo
+`AvisoModulo.proxima_revision`. Ningún módulo existente ha tenido que cambiar.
+
+**Operación.** La API despacha en su propio proceso justo después de cada
+cambio (`EVENTOS_DESPACHO_EN_PROCESO`); además conviene un trabajador, que
+recoge lo que emiten otros procesos y dispara los temporizadores:
+
+```bash
+uv run python -m hacienda_gpt.cli.eventos worker          # en marcha continua (systemd, supervisor…)
+uv run python -m hacienda_gpt.cli.eventos estado          # atraso, cola de errores, métricas por tipo y módulo
+uv run python -m hacienda_gpt.cli.eventos reintentar      # vuelve a encolar la cola de errores
+```
+
+`ops doctor` incluye la salud del bus (y avisa de la cola de errores o de
+trabajo esperando más de `EVENTOS_ATRASO_MAX_MINUTOS`), y `GET /eventos/salud`
+la da en JSON, solo con agregados. Detalles y alternativa con cron en
+[docs/operacion.md](docs/operacion.md#bus-de-eventos).
 
 ### Mantenimiento: que los parámetros no caduquen en silencio
 

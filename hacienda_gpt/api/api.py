@@ -68,7 +68,12 @@ from hacienda_gpt.api.observability import ApiMetrics, observability_middleware
 from hacienda_gpt.api.routers import auth as auth_router
 from hacienda_gpt.api.routers import autonomos as autonomos_router
 from hacienda_gpt.api.routers import consumo as consumo_router
+from hacienda_gpt.api.routers import evaluacion as evaluacion_router
+from hacienda_gpt.api.routers import eventos as eventos_router
+from hacienda_gpt.api.routers import memoria as memoria_router
 from hacienda_gpt.api.routers import modulos as modulos_router
+from hacienda_gpt.api.routers import navegador as navegador_router
+from hacienda_gpt.api.routers import planificador as planificador_router
 from hacienda_gpt.api.security import (
     RateLimiter,
     make_rate_limit_middleware,
@@ -112,7 +117,7 @@ from hacienda_gpt.proactive.store import Notification, NotificationStore
 from hacienda_gpt.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
 from hacienda_gpt.tax.calendario import Vencimiento, aviso_festivos, proximos_vencimientos
 from hacienda_gpt.tax.documentos import AnalisisDocumento, DocumentoNoLegibleError, analizar_documento, decode_upload
-from hacienda_gpt.tax.optimizador import PlanOptimo, Restricciones, detalle_a_texto, optimizar_desde_hechos
+from hacienda_gpt.tax.optimizador import PlanOptimo, Restricciones, detalle_a_texto
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_disponibles
 from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES, DatosInvalidosError
 from hacienda_gpt.tax.simulador import Simulacion, simular
@@ -928,7 +933,12 @@ def post_optimize(
     if year is None:
         year = (parse_fiscal_year(case.tax_period) if case is not None else None) or max(ejercicios_disponibles())
     try:
-        return optimizar_desde_hechos(
+        # With a case, the user's rejections and restrictions in force are constraints (hacienda_gpt/memoria).
+        from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+
+        return optimizar_con_memoria(
+            case_id=case.case_id if case is not None else None,
+            db_path=store.db_path,
             ejercicio=year,
             fecha=payload.fecha or hoy_en_espana(),
             facts=facts,
@@ -1164,4 +1174,15 @@ app.include_router(
 )
 app.include_router(autonomos_router.router)
 app.include_router(consumo_router.router)
+app.include_router(
+    memoria_router.build_router(
+        get_case_store=get_case_store,
+        get_notification_store=get_notification_store,
+        get_accion_store=get_accion_store,
+    )
+)
+app.include_router(eventos_router.build_router(get_case_store=get_case_store))
+app.include_router(navegador_router.build_router(get_case_store=get_case_store, get_accion_store=get_accion_store))
+app.include_router(evaluacion_router.build_router(get_case_store=get_case_store))
+app.include_router(planificador_router.build_router(get_case_store=get_case_store))
 # --- /routers ---

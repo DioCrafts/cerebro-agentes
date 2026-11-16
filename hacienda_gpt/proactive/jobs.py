@@ -21,7 +21,7 @@ from hacienda_gpt.decision.schemas import CaseState, CaseStatus, parse_fiscal_ye
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.proactive.store import Notification, NotificationStore
 from hacienda_gpt.tax.calendario import proximos_vencimientos
-from hacienda_gpt.tax.optimizador import PalancaElegida, optimizar_desde_hechos
+from hacienda_gpt.tax.optimizador import PalancaElegida
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError, ejercicios_disponibles
 from hacienda_gpt.tax.profile import DatosInvalidosError
 from hacienda_gpt.tax.simulador import simular
@@ -266,7 +266,12 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
     try:
         # The benefit catalogue only feeds the "one datum away" section; the plan is the optimiser's.
         simulacion = simular(ejercicio=ejercicio, facts=facts, con_beneficios=True)
-        plan = optimizar_desde_hechos(ejercicio=ejercicio, fecha=hoy, facts=facts)
+        # The user's rejections and restrictions in force are constraints of the plan (hacienda_gpt/memoria).
+        from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+
+        plan = optimizar_con_memoria(
+            case_id=case.case_id, db_path=store.db_path, hoy=hoy, ejercicio=ejercicio, fecha=hoy, facts=facts
+        )
     except EjercicioNoDisponibleError:
         return 0
     except DatosInvalidosError as exc:

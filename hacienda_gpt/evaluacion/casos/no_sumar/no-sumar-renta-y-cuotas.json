@@ -1,0 +1,127 @@
+{
+  "id": "no-sumar-renta-y-cuotas",
+  "version": 1,
+  "categoria": "no_sumar",
+  "descripcion": "Resultado de la renta y cuotas de hipoteca del año: separados.",
+  "pregunta": "Entre lo que me sale la renta de 2025 y lo que pagué de hipoteca en 2025, ¿cuánto se me fue en total?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "renta",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "5.140,12 €"
+      }
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuotas",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "ejercicio": 2025,
+          "fecha": "2026-03-20"
+        },
+        "patron": "^Año \\d{4}: cuotas por (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": true,
+        "registrada": "5.690,52 €"
+      }
+    },
+    {
+      "tipo": "suma_ausente",
+      "calculos": [
+        {
+          "herramienta": "calcular_irpf",
+          "argumentos": {
+            "ejercicio": 2025
+          },
+          "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        },
+        {
+          "herramienta": "hipoteca_cuadro",
+          "argumentos": {
+            "ejercicio": 2025,
+            "fecha": "2026-03-20"
+          },
+          "patron": "^Año \\d{4}: cuotas por (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        }
+      ],
+      "motivo": "una cuota del IRPF y unas cuotas de préstamo no se suman sin una herramienta que lo haga"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "ejercicio": 2025,
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Cuotas 2025: {cifra:cuotas} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          },
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Cuotas de 2025"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La renta de 2025 te sale a ingresar {cifra:renta} {fragmento:calcular_irpf}, y en cuotas de hipoteca pagaste {cifra:cuotas} en 2025 {fragmento:hipoteca_cuadro}. Te doy cada cifra por separado."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2025",
+    "jurisdiction": "ES",
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 30000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  }
+}

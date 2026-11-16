@@ -1646,10 +1646,13 @@ def ejecutar(
     forzar: bool = False,
     hoy: date | None = None,
     al_terminar: Callable[[Propuesta], None] | None = None,
+    recodificador: Callable[..., Propuesta] | None = None,
 ) -> tuple[Informe, list[Propuesta]]:
     """Run the loop for each group, save every proposal and, with ``auto_aplicar``, apply the ones that need nobody.
 
     A budget error stops the run at once (what was left is listed); any other failure is recorded and the run goes on.
+    ``recodificador`` replaces :func:`recodificar` (same signature), e.g. with the escalating one of
+    :mod:`~hacienda_gpt.tax.recodificacion.lotes`.
     """
     from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
 
@@ -1675,7 +1678,7 @@ def ejecutar(
             for ejercicio in ejercicios_en(data_dir, objetivo.fichero)
         }
         try:
-            propuesta = recodificar(
+            propuesta = (recodificador or recodificar)(
                 objetivo, lector=lector, revisor=revisor, texto_de=texto_de, datos=ficheros, max_iter=max_iter
             )
         except PresupuestoAgotadoError as exc:

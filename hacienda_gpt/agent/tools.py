@@ -26,6 +26,7 @@ from hacienda_gpt.decision.rules_engine import evaluate_rules
 from hacienda_gpt.decision.schemas import CaseState, Fact, parse_fiscal_year
 from hacienda_gpt.doctrine.citas import extract_citations, identify_document
 from hacienda_gpt.doctrine.grafo import DoctrineGraph
+from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL, planificar_para_agente
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 from hacienda_gpt.tax.actividad import ActividadInput, calcular_rendimiento_actividad
 from hacienda_gpt.tax.autonomos_params import ejercicios_autonomos_disponibles
@@ -34,7 +35,7 @@ from hacienda_gpt.tax.calendario import aviso_festivos, proximos_vencimientos
 from hacienda_gpt.tax.conjunta import comparar_tributacion
 from hacienda_gpt.tax.irpf import IRPFInput, IRPFResult
 from hacienda_gpt.tax.iva import Modelo303Input, calcular_modelo_303
-from hacienda_gpt.tax.optimizador import PlanOptimo, detalle_a_texto, optimizar_desde_hechos, resumen_conyuge
+from hacienda_gpt.tax.optimizador import PlanOptimo, detalle_a_texto, resumen_conyuge
 from hacienda_gpt.tax.pagos_fraccionados import Modelo130Input, calcular_modelo_130
 from hacienda_gpt.tax.params import EjercicioNoDisponibleError, EtapaEducativa, ejercicios_disponibles, load_params
 from hacienda_gpt.tax.patrimonio import PatrimonioInput, calcular_patrimonio
@@ -1076,6 +1077,7 @@ class Toolbox:
             ISD_TOOL,
             BENEFITS_TOOL,
             OPTIMIZE_TOOL,
+            PLANIFICAR_TOOL,
             CALENDAR_TOOL,
         ]
         if self._graph is not None:
@@ -1141,6 +1143,7 @@ class Toolbox:
             ),
             BENEFITS_TOOL.name: self._benefits,
             OPTIMIZE_TOOL.name: self._optimize,
+            PLANIFICAR_TOOL.name: lambda a: ToolOutcome(*planificar_para_agente(a, case=self.case, ledger=self.ledger)),
             CALENDAR_TOOL.name: self._calendar,
             VALIDITY_TOOL.name: self._validity,
             READ_CASE_TOOL.name: self._read_case,
@@ -1415,7 +1418,11 @@ class Toolbox:
         restricciones = {k: arguments[k] for k in _RESTRICCIONES if arguments.get(k) is not None}
         try:
             year, facts, datos = self._scenario_base(arguments)
-            plan = optimizar_desde_hechos(
+            # With a case, the user's rejections and restrictions in force are constraints (hacienda_gpt/memoria).
+            from hacienda_gpt.memoria.optimizador import optimizar_con_memoria
+
+            plan = optimizar_con_memoria(
+                case_id=self.case.case_id if self.case is not None else None,
                 ejercicio=year,
                 fecha=hoy_en_espana(),
                 facts=facts,

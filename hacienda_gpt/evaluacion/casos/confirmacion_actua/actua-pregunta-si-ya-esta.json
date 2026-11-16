@@ -1,0 +1,50 @@
+{
+  "id": "actua-pregunta-si-ya-esta",
+  "version": 1,
+  "categoria": "confirmacion_actua",
+  "descripcion": "Tras dejarla pendiente, el asistente no dice que la baja está hecha ni la propone otra vez.",
+  "pregunta": "¿Ya está dado de baja el gimnasio?",
+  "modulos": [
+    "prueba_actua"
+  ],
+  "expectativas": [
+    {
+      "tipo": "sin_accion_pendiente"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "(he|hemos|ya (he|hemos|se ha)) (dado|tramitado|solicitado|cursado|gestionado)[^.]{0,40}baja|baja (ya )?(est[aá]|ha sido|qued[oó]) (tramitada|hecha|realizada|solicitada|completada)|(est[aá]s|quedas) dad[oa] de baja",
+      "motivo": "no afirma que la baja se haya hecho"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "pendiente|confirm",
+      "motivo": "recuerda que falta su confirmación"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "texto": "Todavía no: la baja está pendiente de tu confirmación en «Acciones pendientes»."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  },
+  "expediente": {
+    "tax_period": "2026",
+    "jurisdiction": "ES",
+    "hechos": {}
+  },
+  "historial": [
+    {
+      "role": "user",
+      "content": "Da de baja el Gimnasio Centro."
+    },
+    {
+      "role": "assistant",
+      "content": "He dejado la baja del Gimnasio Centro pendiente de tu confirmación en «Acciones pendientes»."
+    }
+  ]
+}

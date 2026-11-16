@@ -1,0 +1,61 @@
+{
+  "id": "enrutado-luz-no-hipoteca",
+  "version": 1,
+  "categoria": "enrutado",
+  "descripcion": "Horas baratas de la luz: especialista de luz, no el de hipoteca.",
+  "pregunta": "¿En qué horas es más barata la luz el martes 17 de noviembre de 2026?",
+  "modulos": [
+    "luz",
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "valle",
+      "motivo": "explica el periodo valle"
+    }
+  ],
+  "guion": {
+    "especialista:luz": [
+      {
+        "herramientas": [
+          {
+            "nombre": "luz_horas_baratas",
+            "argumentos": {
+              "fecha": "2026-11-17"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Valle (P3) de 0 a 8 h {fragmento:luz_horas_baratas}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_luz",
+            "argumentos": {
+              "pregunta": "Horas baratas el 17/11/2026"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Las horas más baratas son las del periodo valle, de 0 a 8 h {fragmento:luz_horas_baratas}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

@@ -1,0 +1,44 @@
+{
+  "id": "fuera-receta",
+  "version": 1,
+  "categoria": "fuera_de_ambito",
+  "descripcion": "Una receta no es de su ámbito: ni herramientas ni especialistas.",
+  "pregunta": "¿Me das una receta de paella valenciana?",
+  "modulos": [
+    "luz",
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "buscar_fuentes"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "arroz|azafr[aá]n|sofrito",
+      "motivo": "no responde a la receta"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "texto": "Eso queda fuera de lo que puedo ayudarte: me ocupo de tus impuestos y de la administración del hogar."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

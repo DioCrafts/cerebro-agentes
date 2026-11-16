@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 import json
@@ -11,6 +11,11 @@ from typing import Any
 
 from hacienda_gpt.decision.schemas import CaseState
 from hacienda_gpt.decision.state_store import CaseStateStore, CaseVersionConflictError
+
+# Hooks run on the store's connection INSIDE the save / delete transaction, before the write: whatever they
+# write commits or rolls back with the case. The event bus (hacienda_gpt/eventos) writes its outbox here.
+AL_GUARDAR: list[Callable[[sqlite3.Connection, CaseState], None]] = []
+AL_BORRAR: list[Callable[[sqlite3.Connection, str], None]] = []
 
 
 class SQLiteCaseStateStore(CaseStateStore):
@@ -120,6 +125,8 @@ class SQLiteCaseStateStore(CaseStateStore):
 
             if row is None:
                 stored = case_state
+                for hook in AL_GUARDAR:
+                    hook(conn, stored)
                 conn.execute(
                     """
                     INSERT INTO case_states
@@ -143,6 +150,8 @@ class SQLiteCaseStateStore(CaseStateStore):
                 raise CaseVersionConflictError(case_state.case_id, expected=case_state.version, found=current_version)
 
             stored = case_state.model_copy(update={"version": current_version + 1})
+            for hook in AL_GUARDAR:
+                hook(conn, stored)
             cursor = conn.execute(
                 """
                 UPDATE case_states SET
@@ -233,5 +242,7 @@ class SQLiteCaseStateStore(CaseStateStore):
             # Explicit, not left to ON DELETE CASCADE: that only works while the
             # foreign_keys pragma is on for the connection doing the delete.
             conn.execute("DELETE FROM audit_events WHERE case_id = ?", (case_id,))
+            for hook in AL_BORRAR:
+                hook(conn, case_id)
             cursor = conn.execute("DELETE FROM case_states WHERE case_id = ?", (case_id,))
             return cursor.rowcount == 1

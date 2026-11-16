@@ -97,6 +97,14 @@ class NotificationStore:
 
     def add(self, notification: Notification) -> bool:
         """Store ``notification``; False (and no write) when its ``(case_id, key)`` already exists."""
+        # The user's decisions (hacienda_gpt/memoria): a rejected proposal is not written; one that may come
+        # back is written once, saying what the user decided and what changed. Never fails the write.
+        from hacienda_gpt.memoria.bandeja import filtrar_al_escribir
+
+        filtrada = filtrar_al_escribir(self, notification)
+        if filtrada is None:
+            return False
+        notification = filtrada
         with self._lock, self._conn:
             cursor = self._conn.execute(
                 "INSERT OR IGNORE INTO notifications (id, case_id, key, created_at, read_at, payload_json) "

@@ -1,0 +1,77 @@
+{
+  "id": "caducidades-dni",
+  "version": 1,
+  "categoria": "modulo",
+  "descripcion": "Caducidad del DNI calculada por el módulo, no de memoria.",
+  "pregunta": "Nací el 10 de mayo de 1990 y renové el DNI el 1 de marzo de 2021. ¿Cuándo me caduca?",
+  "modulos": [
+    "caducidades"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "caducidades"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "caducidades_calcular",
+      "agente": "especialista_caducidades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "caduca",
+      "calculo": {
+        "herramienta": "caducidades_calcular",
+        "argumentos": {
+          "regla": "dni",
+          "fecha_nacimiento": "1990-05-10",
+          "fecha_expedicion": "2021-03-01"
+        },
+        "patron": "^DNI: (?P<cifra>\\d{2}/\\d{2}/\\d{4})",
+        "con_expediente": true,
+        "registrada": "01/03/2031"
+      }
+    },
+    {
+      "tipo": "citas",
+      "minimo": 1
+    }
+  ],
+  "guion": {
+    "especialista:caducidades": [
+      {
+        "herramientas": [
+          {
+            "nombre": "caducidades_calcular",
+            "argumentos": {
+              "regla": "dni",
+              "fecha_nacimiento": "1990-05-10",
+              "fecha_expedicion": "2021-03-01"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Caduca el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_caducidades",
+            "argumentos": {
+              "pregunta": "DNI renovado el 01/03/2021, titular nacido el 10/05/1990"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Tu DNI caduca el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ]
+  },
+  "origen": {
+    "tipo": "sintetico"
+  }
+}

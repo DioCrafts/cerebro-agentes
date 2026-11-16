@@ -1,0 +1,45 @@
+{
+  "version": "2026-11-16",
+  "categorias": {
+    "calculo_fiscal": {
+      "descripcion": "Cifras fiscales de las calculadoras, citadas.",
+      "critica": true
+    },
+    "modulo": {
+      "descripcion": "Cifras de un módulo, del especialista, citadas.",
+      "critica": false
+    },
+    "enrutado": {
+      "descripcion": "Consulta al especialista que corresponde y a ningún otro.",
+      "critica": true
+    },
+    "cruce_modulos": {
+      "descripcion": "Preguntas que cruzan ámbitos: cada especialista y cada cifra.",
+      "critica": false
+    },
+    "no_sumar": {
+      "descripcion": "Nunca suma cifras de módulos distintos que ninguna herramienta ha combinado.",
+      "critica": true
+    },
+    "confirmacion_actua": {
+      "descripcion": "Lo que actúa fuera queda pendiente y no se da por hecho.",
+      "critica": true
+    },
+    "borrador": {
+      "descripcion": "Lo que prepara un especialista se presenta como borrador.",
+      "critica": false
+    },
+    "fuera_de_ambito": {
+      "descripcion": "Lo ajeno no se responde ni se consulta a nadie.",
+      "critica": false
+    },
+    "dgt": {
+      "descripcion": "Consultas vinculantes de la DGT (juez con cita literal).",
+      "critica": false
+    },
+    "regresion": {
+      "descripcion": "Errores reales corregidos por usuarios y revisados por un operador.",
+      "critica": true
+    }
+  }
+}

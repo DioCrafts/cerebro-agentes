@@ -39,6 +39,7 @@ import click
 from hacienda_gpt import settings
 from hacienda_gpt.decision.schemas import CaseStatus
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
+from hacienda_gpt.eventos import emitir_novedades
 from hacienda_gpt.proactive.impacto import clave_evento, parse_fecha_actualizacion, preparar_eventos, procesar_eventos
 from hacienda_gpt.proactive.jobs import ejecutar_para_todos, hoy_en_espana
 from hacienda_gpt.proactive.novedades import ItemSumario, notificar_novedad, revisar
@@ -57,7 +58,6 @@ from hacienda_gpt.tax.recodificacion import (
     avisar_operador,
     confirmar,
     control_de_lo_publicado,
-    ejecutar,
     objetivo_de_ruta,
     objetivos_de_articulo,
     objetivos_de_desglose,
@@ -908,6 +908,7 @@ def _revisar_novedades(
         cases = [case for case in SQLiteCaseStateStore(path).list_all_cases() if case.status != CaseStatus.CLOSED]
         store = NotificationStore(path)
         notificaciones = sum(notificar_novedad(novedad, cases, store) for novedad in revision.novedades)
+        emitir_novedades(path, revision.novedades)  # event bus: wakes the modules subscribed to new norms
 
     registro_path.write_text(json.dumps(registro, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     if dias and not revision.errores:
@@ -991,6 +992,12 @@ def _proveedores_de_recodificacion() -> tuple[Any, Any]:
     else:
         revisor = lector.con_proposito("recodificacion-revisor")
     return lector, revisor
+
+
+def _ejecutor_de_recodificacion(tipo: str) -> Any:
+    from hacienda_gpt.tax.recodificacion.lotes import ejecutor_de_recodificacion
+
+    return ejecutor_de_recodificacion(tipo)
 
 
 def _canales_del_operador() -> list[Any]:
@@ -1078,7 +1085,11 @@ def _recodificar(
         return salida
     lector, revisor = _proveedores_de_recodificacion()
     almacen = _almacen(proposals_dir)
-    informe, nuevas = ejecutar(
+    from hacienda_gpt.tax.recodificacion.lotes import ejecutor_de_recodificacion
+
+    # Plain ``ejecutar`` (with one escalation of a reader that fails the gate, when routing has a tier above),
+    # or the batch executor with RECODE_BATCH=true.
+    informe, nuevas = ejecutor_de_recodificacion("params-recode")(
         hallazgo.objetivos,
         lector=lector,
         revisor=revisor,
@@ -1358,6 +1369,7 @@ def _pilotar(
             motivo_sin_modelo=motivo,
             fecha_boe=None if texto_de is not None else _fechas_del_boe(),
             procedencia="no" if not anotar else ("simular" if texto_de is not None else "anotar"),
+            ejecutor=_ejecutor_de_recodificacion("autopilot"),
         )
     except RecodificacionError as exc:
         raise click.ClickException(str(exc)) from exc
@@ -1543,7 +1555,9 @@ def params_eval(
     if not hay_credenciales_llm():
         raise click.ClickException("No hay credenciales del proveedor de LLM configurado: no se puede evaluar.")
     lector, revisor = _proveedores_de_recodificacion()
-    resultado = evaluacion.evaluar(
+    from hacienda_gpt.tax.recodificacion.lotes import evaluador_de_recodificacion
+
+    resultado = evaluador_de_recodificacion()(
         elegidos,
         lector=lector,
         revisor=revisor,

@@ -99,6 +99,9 @@ class AvisoModulo:
     vence: date | None = None
     # Keys of earlier notices of this module that this one replaces (e.g. an updated estimate).
     sustituye_prefijo: str | None = None
+    # Optional (event bus): wake this module again for this case on that date, even if nothing happens
+    # (e.g. the day a deadline enters its notice window). The earliest future date of a run wins.
+    proxima_revision: date | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +127,12 @@ class Modulo(Protocol):
         """Deterministic proactive job, run daily per case. Must be idempotent (same keys)."""
         ...
 
+    # Optional event hooks (hacienda_gpt/eventos), read with getattr so every existing module still
+    # satisfies this protocol: ``eventos: Sequence[str]`` (event types the module subscribes to; empty =
+    # the core's default for it, see eventos/rutas.py), ``al_evento(evento, contexto)`` (what to do when
+    # woken; default: ``avisos``), ``proxima_revision(contexto) -> date | None`` (when to wake it next
+    # without any event) and ``hechos_leidos: Sequence[str]`` (shared facts it reads without declaring).
+
 
 @dataclass
 class ModuloBase:
@@ -136,6 +145,16 @@ class ModuloBase:
     hechos: Sequence[HechoModulo] = field(default_factory=tuple)
     herramientas: Sequence[HerramientaModulo] = field(default_factory=tuple)
     fuentes: Sequence[FuenteModulo] = field(default_factory=tuple)
+    # Event types this module wants to be woken by (hacienda_gpt/eventos/tipos.py); empty: the core's default.
+    eventos: Sequence[str] = field(default_factory=tuple)
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return []
+
+    def al_evento(self, evento: Any, contexto: ContextoModulo) -> list[AvisoModulo]:
+        """Woken by ``evento`` (a ``hacienda_gpt.eventos.Evento``): by default, the same notices as daily."""
+        return self.avisos(contexto)
+
+    def proxima_revision(self, contexto: ContextoModulo) -> date | None:
+        """The next date to be woken for this case without any event (None: only events and the daily run)."""
+        return None

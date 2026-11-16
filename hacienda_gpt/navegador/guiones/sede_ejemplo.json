@@ -1,0 +1,35 @@
+{
+  "fuente": "nav_sede_ejemplo",
+  "version": 1,
+  "descripcion": "Demostración: preparar una solicitud genérica en una sede electrónica simulada y detenerse antes de «Firmar y enviar».",
+  "origen": "incorporada",
+  "reglas": {
+    "titulo": "Preparar una solicitud genérica (demostración)",
+    "descripcion": "Abre la sede, esperas a que te identifiques tú con Cl@ve y, después, rellena el formulario con los datos que has escrito y se detiene ANTES de «Firmar y enviar»: te enseña una captura y un resumen. No firma ni presenta nada.",
+    "verificado_contra_sitio_real": false,
+    "nota_verificacion": "Demostración sobre una sede simulada (los dominios .invalid no existen): enseña cómo se prepara un trámite sin presentarlo.",
+    "demostracion": true,
+    "origenes": {"sede": "https://sede.ejemplo.invalid", "clave": "https://clave.ejemplo.invalid"},
+    "login": {"origen": "sede", "ruta": "/tramite", "hecho_cuando": "#sesion-usuario", "espera_max_s": 600, "origenes_login": ["clave"]},
+    "parametros": [
+      {"nombre": "nombre", "tipo": "texto", "etiqueta": "Nombre y apellidos", "max_len": 120, "personal": true},
+      {"nombre": "nif", "tipo": "texto", "etiqueta": "NIF", "max_len": 9, "patron": "[0-9XYZ][0-9]{7}[A-Z]", "personal": true},
+      {"nombre": "correo", "tipo": "texto", "etiqueta": "Correo electrónico", "max_len": 120, "patron": "[^@\\s]{1,64}@[^@\\s]{1,120}", "personal": true},
+      {"nombre": "motivo", "tipo": "opcion", "etiqueta": "Motivo", "opciones": ["informacion", "queja"]},
+      {"nombre": "expone", "tipo": "texto", "etiqueta": "Expone", "max_len": 500, "personal": true}
+    ],
+    "pasos": [
+      {"id": "formulario", "accion": "esperar", "descripcion": "Esperar al formulario de la solicitud", "selector": "#paso-1"},
+      {"id": "nombre", "accion": "rellenar", "descripcion": "Escribir el nombre", "selector": "#nombre", "campo": "nombre", "etiqueta": "Nombre y apellidos", "valor": "{nombre}"},
+      {"id": "nif", "accion": "rellenar", "descripcion": "Escribir el NIF", "selector": "#nif", "campo": "nif", "etiqueta": "NIF", "valor": "{nif}"},
+      {"id": "correo", "accion": "rellenar", "descripcion": "Escribir el correo", "selector": "#correo", "campo": "correo", "etiqueta": "Correo electrónico", "valor": "{correo}"},
+      {"id": "siguiente_1", "accion": "pulsar", "descripcion": "Pasar a los datos de la solicitud", "selector": "#siguiente-1", "texto": "Siguiente"},
+      {"id": "motivo", "accion": "seleccionar", "descripcion": "Elegir el motivo", "selector": "#motivo", "campo": "motivo", "etiqueta": "Motivo", "valor": "{motivo}"},
+      {"id": "expone", "accion": "rellenar", "descripcion": "Escribir la exposición", "selector": "#expone", "campo": "expone", "etiqueta": "Expone", "valor": "{expone}"},
+      {"id": "siguiente_2", "accion": "pulsar", "descripcion": "Pasar a la revisión", "selector": "#siguiente-2", "texto": "Siguiente"},
+      {"id": "revision", "accion": "esperar", "descripcion": "Esperar a la página de revisión", "selector": "#paso-3"},
+      {"id": "firmar", "accion": "detener", "descripcion": "Detenerse antes de «Firmar y enviar»", "selector": "#firmar", "texto": "Firmar y enviar", "resumen": {"filas": "#resumen .fila", "etiqueta": "dt", "valor": "dd"}}
+    ],
+    "enmascarar": ["#resumen", "#paso-1", "#paso-2"]
+  }
+}

@@ -29,10 +29,10 @@ from typing import Any
 
 from hacienda_gpt import settings
 from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.prompts import MODULES_ADDENDUM, SPECIALIST_SYSTEM_PROMPT
 from hacienda_gpt.agent.providers.base import LLMProvider, ToolCall, ToolSpec
 from hacienda_gpt.agent.team import SubagentRun, run_subagent
 from hacienda_gpt.agent.tools import ExtraTool, Toolbox, ToolOutcome
+from hacienda_gpt.evaluacion.variantes import prompt_activo
 from hacienda_gpt.modulos.acciones import AccionPendiente, describir
 from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo, ResultadoHerramienta
 from hacienda_gpt.modulos.perfil import HechoInvalidoError, hechos_para_modulo, perfil_de, registrar_hechos_de_modulo
@@ -82,7 +82,8 @@ def consult_spec(modulo: Modulo) -> ToolSpec:
 
 def modules_addendum(modulos: Sequence[Modulo]) -> str:
     lineas = "\n".join(f"- `{nombre_herramienta(m)}` — {m.nombre}: {' '.join(m.descripcion.split())}" for m in modulos)
-    return MODULES_ADDENDUM.format(especialistas=lineas)
+    # Active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.MODULES_ADDENDUM.
+    return prompt_activo("modulos").format(especialistas=lineas)
 
 
 def _error(message: str) -> ToolOutcome:
@@ -251,12 +252,20 @@ class Coordinador:
         mensaje = f"<consulta>\n{pregunta}\n</consulta>"
         if contexto:
             mensaje += f"\n\n<contexto_del_asistente>\n{contexto}\n</contexto_del_asistente>"
+        # The user's decisions about THIS module only (hacienda_gpt/memoria): never another module's.
+        from hacienda_gpt.memoria.agente import bloque_para_especialista
+
+        memoria = bloque_para_especialista(self._toolbox.case if self._toolbox is not None else None, modulo.clave)
+        if memoria:
+            mensaje += f"\n\n{memoria}"
         mensaje = f"Fecha de hoy: {hoy_en_espana().isoformat()}\n\n{mensaje}"
         self.emit("team", stage="specialist", agent=agente, status="start", modulo=modulo.clave)
         run = run_subagent(
             provider,
             agent=agente,
-            system=SPECIALIST_SYSTEM_PROMPT.format(nombre=modulo.nombre, instrucciones=modulo.instrucciones.strip()),
+            system=prompt_activo("especialista").format(
+                nombre=modulo.nombre, instrucciones=modulo.instrucciones.strip()
+            ),
             toolbox=ModuleToolbox(self, modulo),
             user_message=mensaje,
             max_steps=self.max_steps,

@@ -3,13 +3,15 @@
 // the household modules the user switched on, and the weekly digest. Grouped by
 // module, the digest first.
 
-import { Bell, CalendarClock, Check, House, Landmark, ListChecks, PiggyBank, RefreshCw, X } from "lucide-react";
+import { Bell, BookUser, CalendarClock, Check, House, Landmark, ListChecks, PiggyBank, RefreshCw, X } from "lucide-react";
 import clsx from "clsx";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import type { AdvisorNotification } from "../api";
 import { moduloDeKind } from "../apiModulos";
 import { formatDate, formatMoney, relativeTime } from "../lib/presentation";
+import { MemoriaBotones } from "./MemoriaBotones";
+import { PreferenciasPanel } from "./PreferenciasPanel";
 import { RichText } from "./RichText";
 
 const KIND: Record<string, { icon: typeof Bell; label: string }> = {
@@ -59,9 +61,13 @@ interface NotificationsPanelProps {
   onAsk: (question: string) => void;
   // Display names of the household modules, by key.
   moduleNames?: Record<string, string>;
+  // The case the notices belong to: enables «No me interesa / Ya lo hice / Recuérdamelo» and «Lo que sé de tus preferencias».
+  caseId?: string | null;
 }
 
-export function NotificationsPanel({ open, onClose, notifications, hasCase, loading, error, onMarkRead, onRefresh, onAsk, moduleNames = {} }: NotificationsPanelProps) {
+export function NotificationsPanel({ open, onClose, notifications, hasCase, loading, error, onMarkRead, onRefresh, onAsk, moduleNames = {}, caseId = null }: NotificationsPanelProps) {
+  // «Lo que sé de tus preferencias» (hacienda_gpt/memoria), opened from this panel's header.
+  const [preferenciasOpen, setPreferenciasOpen] = useState(false);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -83,6 +89,17 @@ export function NotificationsPanel({ open, onClose, notifications, hasCase, load
             <p className="text-[12.5px] text-muted">Plazos, plan de fin de año, cambios que te afectan y avisos de tus módulos</p>
           </div>
           <div className="flex items-center gap-1">
+            {caseId && (
+              <button
+                type="button"
+                onClick={() => setPreferenciasOpen(true)}
+                aria-label="Lo que sé de tus preferencias"
+                title="Lo que sé de tus preferencias"
+                className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink"
+              >
+                <BookUser size={16} />
+              </button>
+            )}
             {hasCase && (
               <button type="button" onClick={onRefresh} disabled={loading} aria-label="Actualizar los avisos" title="Actualizar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink disabled:opacity-50">
                 <RefreshCw size={16} className={loading ? "animate-spin" : undefined} />
@@ -173,6 +190,7 @@ export function NotificationsPanel({ open, onClose, notifications, hasCase, load
                     </button>
                   )}
                 </div>
+                {caseId && n.kind !== "resumen_semanal" && <MemoriaBotones caseId={caseId} notificationId={n.id} onDone={onRefresh} />}
               </article>
             );
           })}
@@ -183,6 +201,7 @@ export function NotificationsPanel({ open, onClose, notifications, hasCase, load
           Los importes son estimaciones calculadas con los datos de tu expediente, cada uno por su módulo (no se suman entre sí); los plazos no tienen en cuenta festivos.
         </footer>
       </aside>
+      <PreferenciasPanel open={preferenciasOpen} onClose={() => setPreferenciasOpen(false)} caseId={caseId} onChanged={onRefresh} />
     </div>
   );
 }
