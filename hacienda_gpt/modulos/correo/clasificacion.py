@@ -61,6 +61,8 @@ _COMPRA = re.compile(
     r"confirmacion de (tu |su )?pedido|tu pedido|su pedido|\bpedido\b|gracias por tu compra|gracias por su compra|"
     r"recibo de (tu |su )?compra|\bticket\b|factura simplificada|resumen de (tu |su )?compra"
 )
+_PEDIDO = re.compile(r"\bpedido\b", re.IGNORECASE)
+_ENVIO = re.compile(r"\benvi(o|ado|aremos)\b|\bentreg|\breparto\b|\bseguimiento\b")
 _CARGO = re.compile(
     r"\bcargo\b|\badeudo\b|se ha cargado|hemos cargado|compra con (tu |su )?tarjeta|recibo domiciliado|"
     r"domiciliacion|movimiento en (tu |su )?cuenta|pago con tarjeta"
@@ -173,6 +175,11 @@ def clasificar(mensaje: Mensaje, remitentes: Remitentes) -> Clasificacion:
             extraccion.fecha_tras(texto, referencia, r"fecha (del |de )?(pedido|compra)", "fecha_compra"),
             extraccion.fecha_tras(texto, referencia, r"(entregado|entrega|llegar[aá]) el", "fecha_entrega"),
         )
+        pedido = _PEDIDO.search(texto)
+        if pedido is not None and _ENVIO.search(plano):
+            # An order shipped to the buyer: a distance sale (the receipt's own word is the evidence).
+            fragmento = extraccion.fragmento(texto, pedido.start(), pedido.end())
+            _mas(campos, Extraido("modalidad", "distancia", pedido.group(0), fragmento))
     elif _CARGO.search(plano):
         categoria = "cargo"
         area = "suscripciones"
