@@ -249,20 +249,23 @@ class Toolbox:
         self._default_k = default_k
         # The modules this toolbox draws on (default: every module the operator has on, from the registry).
         fuentes = tuple(modulos) if modulos is not None else tuple(modulos_del_nucleo())
-        # Read-only tools of the modules flagged ``herramientas_directas``, offered right after the corpus search
+        # Read-only tools a module declares direct (``GanchosAgente.directas``), offered right after the corpus search
         # (a tool that prepares or acts never runs without the specialist's confirmation flow: not offered here).
         self._directas: dict[str, tuple[Modulo, HerramientaModulo]] = {}
         # Shared facts whose shape a module knows: name -> validate and return the canonical text to store.
         self._estructurados: dict[str, Callable[[Any], str]] = {}
-        for modulo in fuentes:
-            if getattr(modulo, "herramientas_directas", False) is True:
-                for herramienta in modulo.herramientas:
-                    if herramienta.efecto == "lectura":
-                        self._directas.setdefault(herramienta.spec.name, (modulo, herramienta))
-            estructurados: Mapping[str, Callable[[Any], str]] = getattr(modulo, "hechos_estructurados", None) or {}
+        from hacienda_gpt.modulos.ganchos import ganchos_de
+
+        agentes = [(modulo, ganchos_de(modulo).agente) for modulo in fuentes]
+        for modulo, agente in agentes:
+            directas = set(agente.directas)
+            for herramienta in modulo.herramientas:
+                if herramienta.spec.name in directas and herramienta.efecto == "lectura":
+                    self._directas.setdefault(herramienta.spec.name, (modulo, herramienta))
+            estructurados: Mapping[str, Callable[[Any], str]] = agente.hechos_estructurados or {}
             for nombre, normalizar in estructurados.items():
                 self._estructurados.setdefault(nombre, normalizar)
-        self._record_spec = registrar_hechos_spec(str(getattr(m, "ayuda_registrar_hechos", "") or "") for m in fuentes)
+        self._record_spec = registrar_hechos_spec(agente.ayuda_registrar_hechos for _modulo, agente in agentes)
 
     def specs(self) -> list[ToolSpec]:
         specs = [SEARCH_TOOL, *(herramienta.spec for _modulo, herramienta in self._directas.values())]

@@ -62,7 +62,9 @@ HECHOS_DE_CARGOS: Final = frozenset({"suscripciones_servicios"})
 
 def suscripciones_de(modulo: Any) -> frozenset[str]:
     """Event types the module is subscribed to (its own declaration, else the core's default)."""
-    declaradas = getattr(modulo, "eventos", None)
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+
+    declaradas = ganchos_de(modulo).eventos.tipos
     if declaradas:
         return frozenset(str(tipo) for tipo in declaradas)
     return SUSCRIPCIONES_POR_DEFECTO.get(str(modulo.clave), SUSCRIPCION_MINIMA)
@@ -71,11 +73,17 @@ def suscripciones_de(modulo: Any) -> frozenset[str]:
 def hechos_que_lee(modulo: Any, compartidos: Iterable[str]) -> frozenset[str]:
     """Fact names whose change concerns the module."""
     compartidos = frozenset(compartidos)
+    from hacienda_gpt.modulos.ganchos import TODOS, es_v2, ganchos_de
+
     propios = {h.nombre for h in getattr(modulo, "hechos", ()) or ()}
-    extra = {str(n) for n in getattr(modulo, "hechos_leidos", ()) or ()}
+    declarados = {str(n) for n in ganchos_de(modulo).eventos.hechos_leidos}
+    if TODOS in declarados:
+        return frozenset(propios | compartidos)
+    if es_v2(modulo):  # a v2 domain declares what it reads: no default table applies
+        return frozenset(propios | declarados)
     lectura = LECTURAS_COMPARTIDAS.get(str(modulo.clave), frozenset())
     leidos = compartidos if lectura == TODOS_LOS_COMPARTIDOS else frozenset(lectura)
-    return frozenset(propios | extra | leidos)
+    return frozenset(propios | declarados | leidos)
 
 
 def le_afecta(modulo: Any, evento: Evento, compartidos: Iterable[str]) -> bool:

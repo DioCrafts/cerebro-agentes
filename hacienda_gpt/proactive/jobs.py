@@ -39,17 +39,22 @@ def hoy_en_espana() -> date:
 
 
 def con_bandeja_propia() -> list[Any]:
-    """The modules (operator-enabled) that write their own notifications: ``ejecutar_en_bandeja``."""
+    """The modules (operator-enabled) that write their own notifications: ``Ganchos.bandeja`` (contract v2)."""
+    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
     from hacienda_gpt.modulos.registro import registro
 
-    return [modulo for modulo in registro().activos() if callable(getattr(modulo, "ejecutar_en_bandeja", None))]
+    return [modulo for modulo in registro().activos() if escribe_su_bandeja(modulo)]
 
 
 def ejecutar_bandejas_propias(case: CaseState, *, hoy: date, store: NotificationStore) -> dict[str, int]:
     """Run, for one case, the modules that write their own notifications; notifications created per kind."""
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+
     creadas: dict[str, int] = {}
     for modulo in con_bandeja_propia():
-        for tipo, n in modulo.ejecutar_en_bandeja(case, hoy=hoy, store=store).items():
+        bandeja = ganchos_de(modulo).bandeja
+        assert bandeja is not None
+        for tipo, n in bandeja.ejecutar(case, hoy=hoy, store=store).items():
             creadas[tipo] = creadas.get(tipo, 0) + n
     return creadas
 
@@ -74,20 +79,24 @@ def ejecutar_para_todos(
     tax one is on, so a tax-only deployment reports exactly what it always did. ``preparar_modulos`` (the
     ``run-daily`` command) first runs each such module's daily task once (e.g. reading the day's calls for aid).
     """
-    propios = con_bandeja_propia()
+    from hacienda_gpt.modulos.ganchos import GanchosBandeja, ganchos_de
+
+    propios: list[tuple[Any, GanchosBandeja]] = [
+        (modulo, bandeja) for modulo in con_bandeja_propia() if (bandeja := ganchos_de(modulo).bandeja) is not None
+    ]
     summary: dict[str, Any] = {
         "hoy": hoy.isoformat(),
         "cases": 0,
-        **{tipo: 0 for modulo in propios for tipo in getattr(modulo, "tipos_en_bandeja", ())},
+        **{tipo: 0 for _modulo, bandeja in propios for tipo in bandeja.tipos},
         "errors": 0,
     }
     for case in case_store.list_all_cases():
         if case.status == CaseStatus.CLOSED:
             continue
         summary["cases"] += 1
-        for modulo in propios:
+        for _modulo, bandeja in propios:
             try:
-                created = modulo.ejecutar_en_bandeja(case, hoy=hoy, store=store)
+                created = bandeja.ejecutar(case, hoy=hoy, store=store)
             except Exception:
                 logger.exception("Proactive jobs failed for case %s", case.case_id)
                 summary["errors"] += 1

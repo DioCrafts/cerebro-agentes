@@ -11,9 +11,14 @@ Rules checked here (the core relies on them everywhere else):
 * every fact is a :class:`HechoModulo` whose name is prefixed ``<clave>_`` (or is one of the shared facts
   the core already defines, which a module may declare to say it reads it but never redefines), of a known
   type, and not declared by another module;
-* every tool is a :class:`HerramientaModulo` named ``<clave>_…`` (the tax module keeps the names its tools
-  always had), unique across modules, with a valid effect and an object input schema;
-* sources are :class:`FuenteModulo` and ``avisos`` is callable.
+* every tool is a :class:`HerramientaModulo` named ``<clave>_…`` (or declared as a DIRECT tool of the central
+  agent, which keeps the name it is offered under), unique across modules, with a valid effect and an object
+  input schema;
+* sources are :class:`FuenteModulo` and ``avisos`` is callable;
+* the hooks (contract v2, ``ganchos.py``; read through the v1 adapter for a v1 module) are well formed: a direct
+  tool exists and is read-only (a tool that prepares or acts is never offered directly), the document reader and
+  the inbox runner are callable, ``entradas`` name the domain's own tools (never one that acts) or facts, bridges
+  name another domain.
 
 ``MODULOS_DESACTIVADOS`` (settings) switches modules off for everyone without touching their code.
 """
@@ -39,9 +44,12 @@ from hacienda_gpt.modulos.contrato import (
     Modulo,
     TipoHecho,
 )
+from hacienda_gpt.modulos.ganchos import Ganchos, PuenteAmbito, ganchos_de
 
 logger = logging.getLogger(__name__)
 
+# The tax module's key: kept for callers; the core no longer tells it apart by key (``Ganchos.obligatorio``,
+# ``GanchosAgente.directas``, ``GanchosBandeja``).
 FISCAL = "fiscal"
 PAQUETE = "hacienda_gpt.modulos"
 _CLAVE_RE = re.compile(r"^[a-z][a-z0-9_]{1,30}$")
@@ -56,6 +64,13 @@ CLAVES_RESERVADAS = frozenset(
 )
 
 
+def obligatorios(modulos: Iterable[Modulo]) -> frozenset[str]:
+    """Keys of the modules that are always on (declared ``Ganchos.obligatorio``: the tax module)."""
+    from hacienda_gpt.modulos.ganchos import obligatorio
+
+    return frozenset(m.clave for m in modulos if obligatorio(m))
+
+
 def hechos_compartidos() -> frozenset[str]:
     """Facts the core defines (the tax profile vocabulary): modules read them and never redefine them."""
     from hacienda_gpt.decision.fact_extractor import EXPECTED_FACT_TYPE
@@ -65,7 +80,7 @@ def hechos_compartidos() -> frozenset[str]:
 
 @dataclass
 class Registro:
-    """The modules that passed validation, in a stable order (``fiscal`` first, then by key)."""
+    """The modules that passed validation, in a stable order (the always-on ones first, then by key)."""
 
     modulos: dict[str, Modulo] = field(default_factory=dict)
     # origin (package or key) -> why it was left out
@@ -83,9 +98,9 @@ class Registro:
     def activos(self) -> list[Modulo]:
         """Registered modules minus the ones the operator switched off (``MODULOS_DESACTIVADOS``).
 
-        The tax module cannot be switched off: the advisor's own tools are the tax tools.
+        A module declared ``obligatorio`` (the tax module: the advisor's own tools) cannot be switched off.
         """
-        apagados = desactivados_por_operador() - {FISCAL}
+        apagados = desactivados_por_operador() - obligatorios(self.modulos.values())
         return [modulo for clave, modulo in self.modulos.items() if clave not in apagados]
 
     def hechos(self) -> dict[str, tuple[Modulo, HechoModulo]]:
@@ -132,6 +147,11 @@ def problemas_de(modulo: Any, *, paquete: str | None = None) -> list[str]:
     if not callable(getattr(modulo, "avisos", None)):
         problemas.append("avisos no es invocable")
 
+    try:
+        ganchos = ganchos_de(modulo)
+    except Exception as exc:  # a v1 attribute of the wrong shape
+        return [f"ganchos no válidos: {type(exc).__name__}: {exc}"]
+    directas = frozenset(ganchos.agente.directas)
     compartidos = hechos_compartidos()
     vistos: set[str] = set()
     for hecho in modulo.hechos or ():
@@ -162,7 +182,7 @@ def problemas_de(modulo: Any, *, paquete: str | None = None) -> list[str]:
         if nombre in herramientas:
             problemas.append(f"herramienta repetida: {nombre}")
         herramientas.add(nombre)
-        if clave != FISCAL and (not _NOMBRE_RE.match(nombre) or not nombre.startswith(f"{clave}_")):
+        if nombre not in directas and (not _NOMBRE_RE.match(nombre) or not nombre.startswith(f"{clave}_")):
             problemas.append(f"la herramienta {nombre!r} debe empezar por {clave}_")
         if herramienta.efecto not in _EFECTOS:
             problemas.append(f"{nombre}: efecto desconocido {herramienta.efecto!r}")
@@ -177,19 +197,97 @@ def problemas_de(modulo: Any, *, paquete: str | None = None) -> list[str]:
     for fuente in modulo.fuentes or ():
         if not isinstance(fuente, FuenteModulo) or not _texto(fuente.identificador):
             problemas.append(f"fuente que no es FuenteModulo con identificador: {fuente!r}")
+    problemas += problemas_de_ganchos(modulo, ganchos)
     return problemas
+
+
+def problemas_de_ganchos(modulo: Modulo, ganchos: Ganchos) -> list[str]:
+    """The rules of the declared hooks (``ganchos.py``)."""
+    problemas: list[str] = []
+    clave = modulo.clave
+    por_nombre = {h.spec.name: h for h in modulo.herramientas or () if isinstance(h, HerramientaModulo)}
+    propios = {h.nombre for h in modulo.hechos or () if isinstance(h, HechoModulo)}
+    if not isinstance(ganchos.obligatorio, bool):
+        problemas.append("obligatorio debe ser True o False")
+    for nombre in ganchos.agente.directas:
+        herramienta = por_nombre.get(nombre)
+        if herramienta is None:
+            problemas.append(f"la herramienta directa {nombre!r} no es una herramienta del módulo")
+        elif herramienta.efecto != "lectura":
+            problemas.append(
+                f"la herramienta directa {nombre!r} no es de solo lectura ({herramienta.efecto}): "
+                "el asistente central solo ofrece directamente herramientas que leen"
+            )
+    for nombre, normalizar in ganchos.agente.hechos_estructurados.items():
+        if not callable(normalizar):
+            problemas.append(f"hechos_estructurados[{nombre}] no es invocable")
+    if not all(isinstance(t, str) and t for t in ganchos.eventos.tipos):
+        problemas.append("eventos.tipos debe ser una lista de tipos de evento")
+    if not all(isinstance(n, str) and n for n in ganchos.eventos.hechos_leidos):
+        problemas.append("eventos.hechos_leidos debe ser una lista de nombres de hechos")
+    for nombre, valor in (
+        ("eventos.al_evento", ganchos.eventos.al_evento),
+        ("eventos.proxima_revision", ganchos.eventos.proxima_revision),
+        ("tarea_diaria", ganchos.tarea_diaria),
+        ("borrar_datos_de_caso", ganchos.borrar_datos_de_caso),
+    ):
+        if valor is not None and not callable(valor):
+            problemas.append(f"{nombre} no es invocable")
+    if ganchos.bandeja is not None:
+        if not callable(ganchos.bandeja.ejecutar):
+            problemas.append("bandeja.ejecutar no es invocable")
+        reservados = {t for t in (*ganchos.bandeja.tipos, *ganchos.bandeja.otros_tipos) if t.startswith("modulo:")}
+        if reservados:
+            problemas.append(f"bandeja: los tipos {sorted(reservados)} son los de los avisos de los módulos")
+    if ganchos.documentos is not None:
+        if not callable(ganchos.documentos.leer):
+            problemas.append("documentos.leer no es invocable")
+        destino = ganchos.documentos.herramienta_destino
+        if destino is not None and destino not in por_nombre:
+            problemas.append(f"documentos.herramienta_destino {destino!r} no es una herramienta del módulo")
+    for puente in ganchos.puentes:
+        if not isinstance(puente, PuenteAmbito) or not callable(puente.proponer):
+            problemas.append(f"puente no válido: {puente!r}")
+        elif puente.destino == clave or not _CLAVE_RE.match(puente.destino):
+            problemas.append(f"el puente debe proponer a otro ámbito, no a {puente.destino!r}")
+    for tipo, destino in ganchos.entradas.items():
+        clase, _, nombre = str(destino).partition(":")
+        if clase == "herramienta":
+            herramienta = por_nombre.get(nombre)
+            if herramienta is None:
+                problemas.append(f"entrada {tipo!r}: {nombre!r} no es una herramienta del módulo")
+            elif herramienta.efecto == "actua":
+                problemas.append(f"entrada {tipo!r}: {nombre!r} actúa fuera de la app y no puede recibir propuestas")
+        elif clase == "hecho":
+            if nombre not in propios:
+                problemas.append(f"entrada {tipo!r}: {nombre!r} no es un hecho del módulo")
+        else:
+            problemas.append(f"entrada {tipo!r}: debe ser «herramienta:<nombre>» o «hecho:<nombre>»")
+    for pedida in ganchos.capacidades:
+        if not isinstance(pedida, str) or not re.match(r"^[a-z][a-z0-9_]{1,30}(\.[a-z][a-z0-9_]{1,30})?$", pedida):
+            problemas.append(f"capacidad no válida: {pedida!r} («capacidad» o «capacidad.operacion»)")
+    return problemas
+
+
+def _es_obligatorio(modulo: Any) -> bool:
+    try:
+        from hacienda_gpt.modulos.ganchos import obligatorio
+
+        return obligatorio(modulo)
+    except Exception:  # validated (and refused) later
+        return False
 
 
 def construir_registro(candidatos: Iterable[tuple[str, Any]], *, errores: Mapping[str, str] | None = None) -> Registro:
     """Validate ``(origin, module)`` pairs into a registry. ``origin`` is the package name (or a label).
 
     A module is accepted whole or not at all. When two modules claim the same key, fact or tool, the one
-    accepted first (``fiscal``, then alphabetical by key) keeps it and the other is left out.
+    accepted first (the always-on ones, then alphabetical by key) keeps it and the other is left out.
     """
     registro = Registro(errores=dict(errores or {}))
     ordenados = sorted(
         candidatos,
-        key=lambda par: (getattr(par[1], "clave", None) != FISCAL, str(getattr(par[1], "clave", par[0]))),
+        key=lambda par: (not _es_obligatorio(par[1]), str(getattr(par[1], "clave", par[0]))),
     )
     hechos: dict[str, str] = {}
     herramientas: dict[str, str] = {}
@@ -280,7 +378,9 @@ __all__ = [
     "desactivados_por_operador",
     "hechos_compartidos",
     "modulos_activos",
+    "obligatorios",
     "problemas_de",
+    "problemas_de_ganchos",
     "registro",
     "reiniciar",
 ]

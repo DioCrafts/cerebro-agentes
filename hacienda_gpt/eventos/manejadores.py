@@ -4,32 +4,35 @@ The notices are written exactly as the daily run writes them (same kinds, keys a
 through :mod:`hacienda_gpt.proactive.bandeja` and the tax jobs), so a notice created by an event and the
 same notice found by the daily run are one and the same row: handlers are idempotent by construction.
 
-* The tax module keeps its own runner (``ejecutar_en_bandeja``). It also reacts to new tax law: a new BOE
-  norm (``proactive.novedades.notificar_novedad``) and an analysed change of a consolidated law
-  (``proactive.impacto.notificar_cambio``), matched against this case's profile with the same criteria
-  as ever (``impacto.CRITERIOS``). Its next wake-up is computed from the fiscal calendar: the day the next
-  filing deadline enters the 30-day reminder window, or 1 October (the year-end plan).
-* Any other module: ``al_evento(evento, contexto)`` when it defines it, else ``avisos(contexto)``; its next
-  wake-up is the earliest future ``proxima_revision`` of its notices or of ``proxima_revision(contexto)``.
+The module's hooks are read through ``modulos.ganchos.ganchos_de`` (contract v2, or the v1 adapter); no module
+is told apart by its key:
+
+* A module that writes its own notifications (``Ganchos.bandeja``, the tax module) first gets the event through
+  ``bandeja.al_evento`` (the tax module notifies new tax law there: a new BOE norm and an analysed change of a
+  consolidated law, matched against this case's profile with the same criteria as ever); when that returns None
+  its runner runs, and its next wake-up is ``bandeja.proxima_revision(case)`` (for the tax module, from the
+  fiscal calendar: the day the next filing deadline enters the 30-day reminder window, or 1 October).
+* Any other module: ``eventos.al_evento(evento, contexto)`` when it declares it, else ``avisos(contexto)``; its
+  next wake-up is the earliest future ``proxima_revision`` of its notices or of ``eventos.proxima_revision``.
 """
 
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 import logging
 from typing import Any
 
 from hacienda_gpt.decision.schemas import CaseState
-from hacienda_gpt.eventos.tipos import CAMBIO_NORMATIVO, INDICE_PUBLICADO, NORMA_BOE, Evento
+from hacienda_gpt.eventos.tipos import INDICE_PUBLICADO, Evento
 from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo
+from hacienda_gpt.modulos.ganchos import Ganchos, ganchos_de, proxima_revision_de_caso
 from hacienda_gpt.proactive.store import NotificationStore
 
 logger = logging.getLogger(__name__)
 
-FISCAL = "fiscal"
-# The reminder window of ``proactive.jobs.recordatorios_de_plazos`` (its default ``dias``).
+# The reminder window of ``proactive.jobs.recordatorios_de_plazos`` (its default ``dias``; the tax module's).
 DIAS_AVISO_PLAZO = 30
 
 
@@ -62,47 +65,11 @@ def _refrescar_indices() -> None:
 REFRESCOS: dict[str, Callable[[], None]] = {INDICE_PUBLICADO: _refrescar_indices}
 
 
-# --------------------------------------------------------------------------- #
-# The tax module
-# --------------------------------------------------------------------------- #
-
-
 def proxima_revision_fiscal(case: CaseState, *, hoy: date) -> date | None:
-    """The next day the tax jobs could write something new for this case without any event.
+    """The tax module's next wake-up for a case (kept for callers; it lives in ``modulos/fiscal/modulo.py``)."""
+    from hacienda_gpt.modulos.fiscal.modulo import proxima_revision
 
-    A filing deadline is reminded when it is at most ``DIAS_AVISO_PLAZO`` days away, so the case is woken
-    the day the next one enters that window; the year-end plan starts on 1 October of the case's year.
-    """
-    from hacienda_gpt.decision.schemas import parse_fiscal_year
-    from hacienda_gpt.proactive.jobs import _CIERRE_EJERCICIO_ID, facts_de
-    from hacienda_gpt.tax.calendario import proximos_vencimientos
-
-    candidatos: list[date] = []
-    for vencimiento in proximos_vencimientos(facts_de(case), hoy=hoy, dias=400):
-        if vencimiento.id.split(":", 1)[0] == _CIERRE_EJERCICIO_ID:
-            continue  # never reminded on its own: the year-end plan covers it
-        entra = vencimiento.fecha - timedelta(days=DIAS_AVISO_PLAZO)
-        if entra > hoy:
-            candidatos.append(entra)
-    inicio_plan = date(hoy.year, 10, 1)
-    if parse_fiscal_year(case.tax_period) == hoy.year and hoy < inicio_plan:
-        candidatos.append(inicio_plan)
-    return min(candidatos, default=None)
-
-
-def _fiscal(modulo: Any, evento: Evento, case: CaseState, *, hoy: date, store: NotificationStore) -> Resultado:
-    if evento.tipo == NORMA_BOE:
-        from hacienda_gpt.proactive.novedades import Novedad, notificar_novedad
-
-        novedad = Novedad.model_validate(evento.payload["novedad"])
-        return Resultado(avisos=notificar_novedad(novedad, [case], store))
-    if evento.tipo == CAMBIO_NORMATIVO:
-        from hacienda_gpt.proactive.impacto import CambioNormativo, notificar_cambio
-
-        cambio = CambioNormativo.model_validate(evento.payload["cambio"])
-        return Resultado(avisos=notificar_cambio(cambio, [case], store))
-    creados = modulo.ejecutar_en_bandeja(case, hoy=hoy, store=store)
-    return Resultado(avisos=sum(int(n) for n in dict(creados).values()), proxima_revision=None)
+    return proxima_revision(case, hoy=hoy)
 
 
 # --------------------------------------------------------------------------- #
@@ -138,12 +105,12 @@ def guardar_avisos(case_id: str, modulo: Any, avisos: Sequence[Any], store: Noti
     return nuevos
 
 
-def _proxima(avisos: Sequence[Any], modulo: Any, contexto: ContextoModulo) -> date | None:
+def _proxima(avisos: Sequence[Any], ganchos: Ganchos, contexto: ContextoModulo) -> date | None:
     fechas: list[date] = [
         a.proxima_revision for a in avisos if isinstance(a, AvisoModulo) and isinstance(a.proxima_revision, date)
     ]
-    propia = getattr(modulo, "proxima_revision", None)
-    if callable(propia):
+    propia = ganchos.eventos.proxima_revision
+    if propia is not None:
         valor = propia(contexto)
         if isinstance(valor, date):
             fechas.append(valor)
@@ -156,32 +123,29 @@ def despertar_modulo(modulo: Any, evento: Evento, case: CaseState, *, hoy: date,
     refresco = REFRESCOS.get(evento.tipo)
     if refresco is not None:
         refresco()
-    if callable(getattr(modulo, "ejecutar_en_bandeja", None)):
-        resultado = _fiscal(modulo, evento, case, hoy=hoy, store=store)
-        if modulo.clave == FISCAL and evento.tipo not in (NORMA_BOE, CAMBIO_NORMATIVO):
-            return Resultado(avisos=resultado.avisos, proxima_revision=proxima_revision_fiscal(case, hoy=hoy))
-        return resultado
+    ganchos = ganchos_de(modulo)
+    if ganchos.bandeja is not None:
+        bandeja = ganchos.bandeja
+        if bandeja.al_evento is not None:
+            propios = bandeja.al_evento(evento, case, hoy=hoy, store=store)
+            if propios is not None:
+                return Resultado(avisos=int(propios))
+        creados = bandeja.ejecutar(case, hoy=hoy, store=store)
+        proxima = bandeja.proxima_revision(case, hoy=hoy) if bandeja.proxima_revision is not None else None
+        return Resultado(avisos=sum(int(n) for n in dict(creados).values()), proxima_revision=proxima)
 
     from hacienda_gpt.modulos.perfil import perfil_de
 
     contexto = ContextoModulo(perfil=perfil_de(case), hoy=hoy, case_id=case.case_id)
-    al_evento = getattr(modulo, "al_evento", None)
-    avisos = list(al_evento(evento, contexto) if callable(al_evento) else modulo.avisos(contexto))
+    al_evento = ganchos.eventos.al_evento
+    avisos = list(al_evento(evento, contexto) if al_evento is not None else modulo.avisos(contexto))
     creados = guardar_avisos(case.case_id, modulo, avisos, store)
-    return Resultado(avisos=creados, proxima_revision=_proxima(avisos, modulo, contexto))
+    return Resultado(avisos=creados, proxima_revision=_proxima(avisos, ganchos, contexto))
 
 
 def proxima_revision_de(modulo: Any, case: CaseState, *, hoy: date) -> date | None:
     """Cheap recomputation for the daily reconciliation: no notices are produced or stored."""
-    if modulo.clave == FISCAL:
-        return proxima_revision_fiscal(case, hoy=hoy)
-    propia = getattr(modulo, "proxima_revision", None)
-    if not callable(propia):
-        return None
-    from hacienda_gpt.modulos.perfil import perfil_de
-
-    valor = propia(ContextoModulo(perfil=perfil_de(case), hoy=hoy, case_id=case.case_id))
-    return valor if isinstance(valor, date) and valor > hoy else None
+    return proxima_revision_de_caso(modulo, case, hoy=hoy)
 
 
 __all__ = [

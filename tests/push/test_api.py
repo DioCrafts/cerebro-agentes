@@ -339,8 +339,10 @@ def test_delivery_channel_sends_only_a_generic_sentence(env: Env, vapid: str, se
     assert [c.nombre for c in canales] == ["push"]
     store = EntregaStore(env.db_path)
     try:
+        # The urgent notice was already pushed when it was written (inbox write hook); the batch sends the rest.
+        assert [c["cuerpo"] for c in servicio.recibido(movil_ana)] == [TEXTO_URGENTE]
         resumen = entregar_pendientes(store, canales)
-        assert resumen["canales"]["push"] == {"pendientes": 2, "enviadas": 2, "errores": 0}
+        assert resumen["canales"]["push"] == {"pendientes": 1, "enviadas": 1, "errores": 0}
         cargas = servicio.recibido(movil_ana)
         assert sorted(c["cuerpo"] for c in cargas) == sorted([TEXTO_URGENTE, TEXTO_AVISO])
         _sin_datos_personales(cargas)
@@ -356,7 +358,8 @@ def test_delivery_channel_sends_only_a_generic_sentence(env: Env, vapid: str, se
 
 def test_expired_device_is_forgotten_and_the_notice_retried(env: Env, vapid: str, servicio: ServicioFalso) -> None:
     _user, case_id, movil = _suscrito(env, "ana@example.org", FCM + "ana")
-    env.notifications.add(_aviso(case_id, "k"))
+    # A non-urgent notice, so it goes through the batch delivery (an urgent one is pushed when written).
+    env.notifications.add(_aviso(case_id, "k", severity="aviso"))
     servicio.estado[movil.endpoint] = 410
     store = EntregaStore(env.db_path)
     try:
@@ -371,8 +374,10 @@ def test_urgent_notice_is_pushed_when_written_and_not_again(env: Env, vapid: str
     _user, case_id, movil = _suscrito(env, "ana@example.org", FCM + "ana")
     urgente, normal = _aviso(case_id, "u"), _aviso(case_id, "n", severity="aviso")
     for n in (urgente, normal):
-        env.notifications.add(n)
+        env.notifications.add(n)  # the inbox write path pushes the urgent one at once
+    assert [c["cuerpo"] for c in servicio.recibido(movil)] == [TEXTO_URGENTE]
     assert avisar_al_escribir(env.db_path, normal, en_segundo_plano=False) is False
+    # Calling the hook again for the same notice sends nothing twice.
     assert avisar_al_escribir(env.db_path, urgente, en_segundo_plano=False) is True
     assert [c["cuerpo"] for c in servicio.recibido(movil)] == [TEXTO_URGENTE]
     store = EntregaStore(env.db_path)

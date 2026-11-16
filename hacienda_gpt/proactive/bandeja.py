@@ -71,15 +71,17 @@ def avisos_de_modulos(
 ) -> tuple[dict[str, int], list[str]]:
     """Run every module's ``avisos`` for one case. Returns (notices created per module, modules that failed).
 
-    Modules with their own runner (the tax module's ``ejecutar_en_bandeja``) are skipped here.
+    Modules with their own runner (``Ganchos.bandeja``: the tax module) are skipped here.
     """
+    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
+
     from hacienda_gpt.modulos.perfil import perfil_de
 
     perfil = perfil_de(case)
     creados: dict[str, int] = {}
     fallidos: list[str] = []
     for modulo in modulos:
-        if callable(getattr(modulo, "ejecutar_en_bandeja", None)):
+        if escribe_su_bandeja(modulo):
             continue
         try:
             avisos = list(modulo.avisos(ContextoModulo(perfil=perfil, hoy=hoy, case_id=case.case_id)))
@@ -119,22 +121,15 @@ def avisos_de_modulos(
 
 
 # Daily preparation a module needs before its per-case notices (e.g. reading the day's BOE for new calls
-# for aid). Generic hook: ``MODULO.tarea_diaria(hoy)``; the names below are the modules' own entry points,
-# looked up in their package (proposed for the contract as ``tarea_diaria``).
+# for aid): ``Ganchos.tarea_diaria`` (contract v2). For v1 modules the adapter also looks up the entry points
+# below by name in their package (kept for callers: ``modulos.ganchos.TAREAS_DIARIAS_V1``).
 TAREAS_DIARIAS: dict[str, str] = {"ayudas": "actualizar_convocatorias"}
 
 
 def tarea_diaria_de(modulo: Modulo) -> Callable[[date], Any] | None:
-    tarea = getattr(modulo, "tarea_diaria", None)
-    if callable(tarea):
-        return tarea  # type: ignore[no-any-return]
-    nombre = TAREAS_DIARIAS.get(modulo.clave)
-    if nombre is None:
-        return None
-    import importlib
+    from hacienda_gpt.modulos.ganchos import ganchos_de
 
-    funcion = getattr(importlib.import_module(f"hacienda_gpt.modulos.{modulo.clave}"), nombre, None)
-    return funcion if callable(funcion) else None
+    return ganchos_de(modulo).tarea_diaria
 
 
 def preparar_modulos(modulos: Sequence[Modulo], *, hoy: date) -> dict[str, Any]:
@@ -173,7 +168,7 @@ def avisos_de_modulos_para_todos(
         if case.status == CaseStatus.CLOSED:
             continue
         try:
-            modulos = [m for m in modulos_de(case) if not callable(getattr(m, "ejecutar_en_bandeja", None))]
+            modulos = [m for m in modulos_de(case) if not escribe_su_bandeja(m)]
         except Exception:
             logger.exception("Could not tell which modules are on for case %s", case.case_id)
             errores += 1
@@ -231,8 +226,33 @@ def _orden(n: Notification) -> tuple[Any, ...]:
     return (_RANGO.get(n.severity, 3), n.due_date or date.max, n.created_at, n.key)
 
 
+def _modulos_registrados() -> list[Modulo]:
+    try:
+        from hacienda_gpt.modulos.registro import registro
+
+        return list(registro().modulos.values())
+    except Exception:  # the digest never fails because of the registry
+        logger.warning("could not read the module registry for the digest", exc_info=True)
+        return []
+
+
+def _nombres_de_ambitos() -> dict[str, str]:
+    """Each domain's name, for the digest's labels (``[Impuestos]``, ``[Luz]``…)."""
+    return {m.clave: m.nombre for m in _modulos_registrados()}
+
+
+def _ambito_de_tipo(kind: str) -> str:
+    """The domain a notice belongs to: ``modulo:<clave>``, else the domain that declares writing that kind
+    (``Ganchos.bandeja``), else what the store says."""
+    from hacienda_gpt.modulos.ganchos import propietario_de_tipo
+
+    if kind.startswith(PREFIJO_MODULO):
+        return kind[len(PREFIJO_MODULO) :]
+    return propietario_de_tipo(kind, _modulos_registrados()) or modulo_de(kind) or kind
+
+
 def _linea(n: Notification, nombres: Mapping[str, str], *, hoy: date) -> str:
-    clave = modulo_de(n.kind) or "fiscal"
+    clave = _ambito_de_tipo(n.kind)
     partes = [f"- [{nombres.get(clave, clave)}] {n.title}"]
     if n.due_date is not None:
         dias = (n.due_date - hoy).days
@@ -323,7 +343,7 @@ def resumen_semanal(
     actuales = store.list(case.case_id)
     if any(n.key == key for n in actuales):
         return 0
-    nombres = {"fiscal": "Impuestos", **(nombres or {})}
+    nombres = {**_nombres_de_ambitos(), **(nombres or {})}
     abiertos = sorted(abiertas(actuales, hoy=hoy), key=_orden)
     pendientes = acciones.list(case.case_id, estado="pendiente") if acciones is not None else []
     if not abiertos and not pendientes:

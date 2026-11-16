@@ -44,6 +44,7 @@ from hacienda_gpt.navegador import tareas as tareas_navegador
 from hacienda_gpt.navegador import vigilancia
 from hacienda_gpt.ops.consumo import anonimizar_consumo
 from hacienda_gpt.proactive.store import NotificationStore
+from hacienda_gpt.push.almacen import PushStore
 from hacienda_gpt.tareas.almacen import exportar_tareas
 
 _limiter_lock = threading.Lock()
@@ -346,6 +347,8 @@ def build_router(
             "consents": [c.model_dump(mode="json") for c in store.consent_history(user.id)],
             "module_choices": [c.model_dump(mode="json") for c in store.module_choice_history(user.id)],
             "cases": exported_cases,
+            # Devices registered for push notices and the consent history (hacienda_gpt/push).
+            "push": PushStore(cases.db_path).exportar(user.id),
             "not_included": (
                 "El historial de conversaciones se guarda solo en tu navegador, no en el servidor. "
                 "Los documentos que subes no se almacenan."

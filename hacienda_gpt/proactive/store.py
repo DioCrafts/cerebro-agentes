@@ -121,7 +121,13 @@ class NotificationStore:
                     notification.model_dump_json(exclude={"read_at"}),
                 ),
             )
-            return cursor.rowcount == 1
+            nueva = cursor.rowcount == 1
+        if nueva:
+            # Urgent notices reach the phone at once (never raises; no-op unless push is configured).
+            from hacienda_gpt.push.envio import avisar_al_escribir
+
+            avisar_al_escribir(self.db_path, notification)
+        return nueva
 
     def list(self, case_id: str, *, unread_only: bool = False) -> list[Notification]:
         """Notifications of a case, newest first."""

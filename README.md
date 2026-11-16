@@ -570,6 +570,71 @@ de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las prueb
 instala antes de las pruebas y `NAVEGADOR_EXIGIR_CHROMIUM=1` convierte la falta de Chromium en un fallo (nunca se
 omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
 
+### Tareas de larga duración
+
+`hacienda_gpt/tareas/` convierte un objetivo de varios pasos y varios días («renovar el pasaporte», «preparar la
+renta», «cambiar de tarifa de la luz») en una **tarea**: el objetivo con las palabras del usuario, un plan de pasos,
+su estado, fechas (creada, plazo, próxima revisión), un historial y los avisos, acciones pendientes y decisiones que
+ha creado. El cerebro central planifica; el **motor** (una máquina de estados determinista) reparte el trabajo entre
+los módulos y las capacidades y avanza cada paso cuando sus dependencias están hechas.
+
+**Pasos** (conjunto cerrado): `calculo` (una herramienta de módulo que solo lee o prepara), `consulta` (al
+especialista de un módulo; necesita un modelo y corre en el trabajador), `capacidad` (correo, navegador, documentos,
+investigación solo en webs oficiales), `espera` (una fecha, la que dio el usuario en un paso anterior, un plazo del
+calendario fiscal o un evento del bus: `perfil.cambiado` de un dato, `correo.clasificado` de una categoría,
+`cargos.importados`), `confirmacion_usuario`, `accion` (una herramienta `efecto="actua"`: solo crea una **acción
+pendiente**; la tarea sigue cuando el dueño la confirma con su botón, `POST /acciones/{id}/confirmar`) y `nota`.
+
+**Plantillas** (`tareas/plantillas/*.json`, declarativas y versionadas; una tarea guarda la versión con la que nació):
+
+| Plantilla | Pasos |
+|---|---|
+| `renovar_pasaporte` | caducidades → qué llevar (art. 4.1 RD 896/2003, de los datos del módulo de caducidades) → dónde pedir cita (solo webs oficiales) → el usuario pide cita (y da la fecha) → recordatorio la víspera → confirma que lo tiene |
+| `preparar_renta` | obligación de declarar → propuestas del correo (opcional) → el usuario revisa sus datos → IRPF → optimizador → papeles (lista orientativa según sus datos) → calendario → aviso 30 días antes del fin del plazo del calendario (que dice si la fecha está sin verificar) → el usuario la presenta |
+| `cambiar_tarifa_luz` | traer el consumo (agente con navegador si está activado; si no, a mano) → esperar `perfil.cambiado` de `luz_consumo` (21 días como mucho) → comparar tarifas → el usuario decide → borrador de la solicitud (**nunca se envía**) → el usuario la envía |
+
+**Planes propios.** El asistente (`crear_tarea` con `pasos`) o un modelo (`POST /tareas/proponer`) puede proponer un
+plan; una **puerta determinista** (`tareas/validacion.py`) lo acepta o lo rechaza entero: solo tipos de paso del
+conjunto cerrado y sin campos de estado inyectados, herramientas que existen con el efecto que toca (una que actúa
+nunca va en un `calculo`), argumentos válidos contra el esquema de la herramienta, operaciones y parámetros de
+capacidad válidos, investigación solo bajo las raíces oficiales de los datos de los módulos, esperas solo de eventos
+de un expediente, grafo sin ciclos, máximo 15 pasos y textos sin enlaces, marcado ni código. El modelo recibe el
+objetivo y el catálogo de herramientas, nunca los datos del expediente. Lo que pasa la puerta queda **propuesto**: no
+corre nada hasta que el usuario lo acepta.
+
+**Garantías.**
+- *Idempotente y reanudable.* Arriendo por tarea y versión optimista; lo que un paso crea fuera (aviso, acción
+  pendiente) tiene una clave derivada de (tarea, paso, intento): repetir tras una caída no duplica nada. Un fallo se
+  reintenta con espera exponencial (`TAREAS_MAX_INTENTOS`, `TAREAS_BACKOFF_SEGUNDOS`) y después se avisa al usuario,
+  que puede reintentar. Una herramienta que dice que falta un dato pregunta al usuario en lugar de reintentar.
+- *Bus de eventos.* Las esperas por fecha programan el temporizador del caso (`tareas`; `fecha.umbral`), y un
+  consumidor propio (`ConsumidorTareas`, cursor `tareas`) convierte los eventos que esperan los pasos en señales, en la
+  misma transacción que mueve su cursor. Una tarea en pausa conserva los eventos que llegan y los atiende al reanudar.
+- *Confirmación literal en el chat.* `avanzar_tarea` acepta una propuesta solo si el mensaje anterior del asistente la
+  mostraba (título o referencia) y el usuario dice que sí con sus palabras en su mensaje actual; `confirmar_paso`
+  igual con el título del paso (y una fecha solo si el usuario la escribió). Las acciones nunca se confirman en el
+  chat. `pausar_tarea` y `cancelar_tarea` exigen sus palabras literales.
+- *Memoria.* Cancelar con un motivo registra un «rechazo» en la memoria de decisiones (ámbito de la plantilla, p. ej.
+  `luz:cambio_tarifa`); cancelar rechaza las acciones pendientes de la tarea y quita sus avisos.
+- *Privacidad.* Todo vive en la base de los expedientes (`tareas`, `tareas_historial`, `tareas_senales`), sale en
+  `GET /me/export` (`tareas` de cada expediente, con su historial) y se borra con el expediente y con la cuenta (un
+  *trigger* sobre `case_states`). El historial (la auditoría) guarda sucesos, ids y estados, **nunca valores**.
+
+**Uso.** Panel «Tareas» (lista, línea de tiempo de cada tarea, empezar, hecho/saltar un paso, confirmar la acción,
+pausar, reanudar, reintentar, cancelar con motivo). API: `GET /tareas/plantillas`, `GET /tareas?case_id=`,
+`POST /tareas` (de plantilla; `aceptar: true` = botón «Empezar»), `POST /tareas/plan`, `POST /tareas/proponer`,
+`GET /tareas/{id}`, `POST /tareas/{id}/aceptar|avanzar|pausar|reanudar|reintentar|cancelar`,
+`POST /tareas/{id}/pasos/{paso}/confirmar|omitir`. En el chat (con expediente y algún módulo del hogar activado, o
+si ya hay tareas): `crear_tarea`, `estado_tareas`, `avanzar_tarea`, `confirmar_paso`, `pausar_tarea`,
+`cancelar_tarea`. Trabajador: el servicio `tareas` del trabajador de la plataforma, o
+`uv run python -m hacienda_gpt.tareas ciclo|worker|estado`; `proactive run-daily` también revisa las tareas (sin
+modelo). La API avanza las tareas en el acto salvo las consultas a especialistas.
+
+**Qué no se ha probado contra la realidad.** Sin clave de modelo: las consultas a especialistas y `POST
+/tareas/proponer` solo con modelos simulados. Sin red salvo www.boe.es: la investigación en webs oficiales no lee
+nada (indica las webs); un buscador inyectado se prueba con resultados simulados. Las pruebas de extremo a extremo de
+las plantillas usan módulos falsos con los nombres de las herramientas reales (`tests/tareas/`).
+
 ---
 
 ## 🤖 Agente con herramientas (`/agent`)

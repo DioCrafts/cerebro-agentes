@@ -1,7 +1,8 @@
 """Which modules work for whom: the operator's switch, the defaults and each user's choice.
 
 * ``MODULOS_DESACTIVADOS`` (operator) removes a module for everyone.
-* ``fiscal`` is always on: it is the service the account was opened for, and the chat is its advisor.
+* A module declared ``obligatorio`` (contract v2: the tax module) is always on: it is the service the account
+  was opened for, and the chat is its advisor.
 * Every other module is OFF until the user switches it on (privacy by default, art. 25.2 GDPR: a module
   processes household data — bills, subscriptions, a mortgage — for a purpose the user has not chosen yet).
   ``MODULOS_ACTIVOS_POR_DEFECTO`` changes that default; with ``AUTH_MODE=off`` (a personal deployment, no
@@ -18,8 +19,10 @@ from typing import Any
 
 from hacienda_gpt import settings
 from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.registro import FISCAL, Registro, registro
+from hacienda_gpt.modulos.ganchos import obligatorio
+from hacienda_gpt.modulos.registro import FISCAL, Registro, obligatorios, registro
 
+# Kept for callers; the registry's declaration (``Ganchos.obligatorio``) is what decides.
 SIEMPRE_ACTIVOS = frozenset({FISCAL})
 
 
@@ -33,7 +36,7 @@ class EstadoModulo:
 
     @property
     def obligatorio(self) -> bool:
-        return self.modulo.clave in SIEMPRE_ACTIVOS
+        return obligatorio(self.modulo)
 
 
 def activos_por_defecto(reg: Registro | None = None) -> frozenset[str]:
@@ -41,7 +44,7 @@ def activos_por_defecto(reg: Registro | None = None) -> frozenset[str]:
     valor = settings.MODULOS_ACTIVOS_POR_DEFECTO.strip().lower()
     if valor in {"todos", "all", "*"}:
         return frozenset(reg.modulos)
-    return frozenset(part.strip() for part in valor.split(",") if part.strip()) | SIEMPRE_ACTIVOS
+    return frozenset(part.strip() for part in valor.split(",") if part.strip()) | obligatorios(reg)
 
 
 def _cuentas_activas() -> bool:
@@ -57,7 +60,7 @@ def estado_para_usuario(user_id: str | None, auth: Any | None, reg: Registro | N
     for modulo in reg.activos():
         clave = modulo.clave
         eleccion = elecciones.get(clave)
-        if clave in SIEMPRE_ACTIVOS:
+        if obligatorio(modulo):
             estados.append(EstadoModulo(modulo=modulo, activo=True))
         elif eleccion is not None:
             estados.append(EstadoModulo(modulo=modulo, activo=eleccion.activo, elegido=True, cuando=eleccion.timestamp))

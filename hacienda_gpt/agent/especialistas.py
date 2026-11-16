@@ -170,7 +170,9 @@ class Coordinador:
         cls, provider: LLMProvider, ledger: EvidenceLedger, modulos: Sequence[Modulo] | None, emit: Emit
     ) -> Coordinador | None:
         """A coordinator when at least one module without direct tools is on; None keeps the advisor as it was."""
-        especialistas = [m for m in modulos or () if getattr(m, "herramientas_directas", False) is not True]
+        from hacienda_gpt.modulos.ganchos import tiene_especialista
+
+        especialistas = [m for m in modulos or () if tiene_especialista(m)]
         if not especialistas:
             return None
         return cls(provider=provider, ledger=ledger, modulos=especialistas, emit=emit)

@@ -555,17 +555,20 @@ def _load_agent_case(case_id: str | None, store: SQLiteCaseStateStore, access: C
 
 
 def _modulos_del_turno(case_id: str | None, access: CaseAccess) -> dict[str, Any]:
-    """``{"modulos": [...]}`` for ``agent.run`` when the user has a household module on besides the tax one.
+    """``{"modulos": [...]}`` for ``agent.run`` when the user has a module on that the advisor consults through a
+    specialist (``GanchosAgente.especialista``: every household module, not the tax one, whose tools are direct).
 
     Empty otherwise, so the agent is called exactly as before the modules existed.
     """
+    from hacienda_gpt.modulos.ganchos import tiene_especialista
+
     if case_id is not None:
         modulos = modulos_activos_para_caso(case_id, access.store)
     else:
         from hacienda_gpt.modulos.preferencias import modulos_activos_para
 
         modulos = modulos_activos_para(access.user.id if access.user is not None else None, access.store)
-    return {"modulos": modulos} if any(m.clave != "fiscal" for m in modulos) else {}
+    return {"modulos": modulos} if any(tiene_especialista(m) for m in modulos) else {}
 
 
 def _guardar_acciones(result: AgentResult, acciones: AccionStore) -> list[AccionPendiente]:
@@ -1197,7 +1200,9 @@ def post_case_proactive_run(
     hoy = hoy_en_espana()
     # The modules that write their own notifications (the tax jobs), through the module contract.
     created = ejecutar_bandejas_propias(case, hoy=hoy, store=notifications)
-    otros = [m for m in modulos_activos_para_caso(case_id, access.store) if m.clave != "fiscal"]
+    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
+
+    otros = [m for m in modulos_activos_para_caso(case_id, access.store) if not escribe_su_bandeja(m)]
     if otros:
         # The household modules the owner switched on: their notices land in the same inbox.
         por_modulo, _fallidos = avisos_de_modulos(case, hoy=hoy, store=notifications, modulos=otros)

@@ -337,11 +337,16 @@ def canal_push_configurado() -> PushCanal | None:
     return PushCanal(claves) if claves is not None else None
 
 
+# Whether the inbox write hook pushes in a daemon thread (the default) or inline; tests set it to False so
+# what reaches the push service is deterministic.
+EN_SEGUNDO_PLANO = True
+
+
 def avisar_al_escribir(
     db_path: str,
     notification: Notification,
     *,
-    en_segundo_plano: bool = True,
+    en_segundo_plano: bool | None = None,
     transporte: Transporte | None = None,
 ) -> bool:
     """Push an URGENT notice right after it was written to the inbox. Never raises; True when it was started.
@@ -382,7 +387,7 @@ def avisar_al_escribir(
         except Exception as exc:  # never propagate into the writer
             logger.warning("Immediate push of an urgent notice failed: %s", type(exc).__name__)
 
-    if en_segundo_plano:
+    if EN_SEGUNDO_PLANO if en_segundo_plano is None else en_segundo_plano:
         threading.Thread(target=trabajo, name="push-urgente", daemon=True).start()
     else:
         trabajo()

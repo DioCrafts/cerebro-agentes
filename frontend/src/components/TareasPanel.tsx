@@ -133,7 +133,7 @@ function PasoTimeline({
         </span>
       </div>
       {paso.descripcion && <p className="text-[13px] leading-snug text-ink-soft">{paso.descripcion}</p>}
-      {espera && paso.estado === "esperando" && (
+      {espera && paso.estado === "esperando" && (espera.detalle !== paso.descripcion || espera.hasta) && (
         <p className="mt-1 rounded-lg bg-grounding-uncited-bg px-2.5 py-1.5 text-[12.5px] text-ink">
           {espera.detalle || "Esperando."}
           {espera.hasta ? ` (${espera.motivo === "fecha" ? "el" : "hasta el"} ${formatDate(espera.hasta)})` : ""}
@@ -323,7 +323,7 @@ export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: Tarea
                 <p className="mt-1">«{tarea.objetivo}»</p>
                 <p className="text-[12px] text-muted">
                   {detalle.resumen.pasos_hechos} de {detalle.resumen.pasos_total} pasos
-                  {tarea.proxima_revision ? ` · próxima revisión: ${formatDate(tarea.proxima_revision)}` : ""}
+                  {tarea.proxima_revision && tarea.estado === "esperando_evento" ? ` · próxima revisión: ${formatDate(tarea.proxima_revision)}` : ""}
                   {tarea.vence ? ` · plazo: ${formatDate(tarea.vence)}` : ""}
                 </p>
                 {detalle.avisos.map((aviso) => (
@@ -473,7 +473,7 @@ export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: Tarea
                         </span>
                         <span className="block text-[12.5px] text-muted">
                           {t.ref} · {t.pasos_hechos}/{t.pasos_total} pasos
-                          {t.proxima_revision ? ` · revisión ${formatDate(t.proxima_revision)}` : ""}
+                          {t.proxima_revision && t.estado === "esperando_evento" ? ` · revisión ${formatDate(t.proxima_revision)}` : ""}
                         </span>
                         {t.esperando.length > 0 && (
                           <span className="mt-1 block text-[12.5px] text-ink">Espera: {t.esperando.map((e) => e.titulo).join(", ")}</span>
