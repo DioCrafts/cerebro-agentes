@@ -143,7 +143,12 @@ def anotar_en_texto(texto: str, cambios: Mapping[tuple[str, ...], Mapping[str, s
             patron = re.compile(rf'("{re.escape(campo)}"\s*:\s*)"[^"\\]*"')
             if len(patron.findall(objeto)) != 1:
                 return None
-            objeto = patron.sub(lambda m, v=valor: m.group(1) + json.dumps(v, ensure_ascii=False), objeto)
+            nuevo_valor = json.dumps(valor, ensure_ascii=False)
+
+            def sustituir(m: re.Match[str], texto: str = nuevo_valor) -> str:
+                return m.group(1) + texto
+
+            objeto = patron.sub(sustituir, objeto)
         nuevo = nuevo[:inicio] + objeto + nuevo[fin:]
         nodo.update(campos)
     try:

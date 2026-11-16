@@ -19,6 +19,7 @@ import {
   ClipboardList,
   Globe,
   House,
+  ListChecks,
   PiggyBank,
   Scale,
 } from "lucide-react";
@@ -87,6 +88,14 @@ export const REGISTRO: DefinicionPanel[] = [
     icono: Scale,
     orden: 60,
     cargar: () => import("./planificar"),
+  },
+  {
+    id: "tareas",
+    etiqueta: "Tareas",
+    titulo: "Tareas de varios pasos: renovar documentos, preparar la renta, cambiar de tarifa…",
+    icono: ListChecks,
+    orden: 65,
+    cargar: () => import("./tareas"),
   },
   {
     id: "navegador",

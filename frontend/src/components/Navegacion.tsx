@@ -12,9 +12,10 @@ import { useEffect, useId, useRef, useState, useSyncExternalStore } from "react"
 
 import type { DefinicionPanel, Insignias } from "../paneles/tipos";
 
-// Tools shown next to the highlighted panels from this width up (Tailwind `lg`).
-const ANCHO_ESCRITORIO = "(min-width: 1024px)";
-const HERRAMIENTAS_EN_BARRA = 4;
+// How many tools fit next to the highlighted panels (the sidebar takes 290 px from `lg` up): Tailwind
+// `2xl` and `xl`. Below that, every tool is in «Más».
+const MUY_ANCHO = "(min-width: 1536px)";
+const ANCHO = "(min-width: 1280px)";
 
 function useMedia(query: string): boolean {
   return useSyncExternalStore(
@@ -54,11 +55,13 @@ interface NavegacionProps {
 }
 
 export function Navegacion({ paneles, insignias, abierto, onAbrir }: NavegacionProps) {
-  const escritorio = useMedia(ANCHO_ESCRITORIO);
+  const muyAncho = useMedia(MUY_ANCHO);
+  const ancho = useMedia(ANCHO);
+  const enLaBarra = muyAncho ? 4 : ancho ? 2 : 0;
   const destacados = paneles.filter((p) => p.destacado);
   const herramientas = paneles.filter((p) => !p.destacado);
-  const enBarra = escritorio ? herramientas.slice(0, HERRAMIENTAS_EN_BARRA) : [];
-  const enMenu = escritorio ? herramientas.slice(HERRAMIENTAS_EN_BARRA) : herramientas;
+  const enBarra = herramientas.slice(0, enLaBarra);
+  const enMenu = herramientas.slice(enLaBarra);
   // Highlighted first except «Tu expediente», which closes the bar as before.
   const antes = destacados.filter((p) => p.id !== "expediente");
   const despues = destacados.filter((p) => p.id === "expediente");

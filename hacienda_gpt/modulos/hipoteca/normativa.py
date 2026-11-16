@@ -231,7 +231,9 @@ def grupos_legales(normativa: Normativa) -> list[GrupoLegal]:
             ruta=[nombre],
             descripcion=grupo.cita_corta(),
             fuente=fuente_de(grupo.fuente),
-            cifras=hojas(grupo, tipos=(Decimal, date), excluir=("fuente", "evidencia"), listas=False, diccionarios=False),
+            cifras=hojas(
+                grupo, tipos=(Decimal, date), excluir=("fuente", "evidencia"), listas=False, diccionarios=False
+            ),
             citas=citas_de_evidencia(grupo.evidencia),
         )
         for nombre, grupo in normativa.grupos().items()

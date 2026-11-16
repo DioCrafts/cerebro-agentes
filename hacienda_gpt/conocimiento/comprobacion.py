@@ -198,7 +198,9 @@ def comprobar_grupo(
         ]:
             if ruta not in grupo.cifras:
                 articulo = "un" if ortografia.sustantivo == "dato" else "una"
-                problemas.append(f"{prefijo}: la evidencia cita {articulo} {ortografia.sustantivo} inexistente ({ruta})")
+                problemas.append(
+                    f"{prefijo}: la evidencia cita {articulo} {ortografia.sustantivo} inexistente ({ruta})"
+                )
                 continue
             if not ortografia.esta_en(literal, cita.cita):
                 problemas.append(f"{_con(prefijo, ruta)}: «{literal}» no aparece en la cita de {de_cita}")

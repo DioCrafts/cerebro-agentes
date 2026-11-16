@@ -32,12 +32,12 @@ from typing import Any
 from pydantic import BaseModel, ValidationError
 
 from hacienda_gpt.conocimiento.registro import FicheroLegal, ficheros_legales
+from hacienda_gpt.conocimiento.texto import TextoDe
 from hacienda_gpt.tax.params import DATA_DIR
 from hacienda_gpt.tax.recodificacion import adaptadores_otros as otros
 from hacienda_gpt.tax.recodificacion.adaptadores import Hallazgo
 from hacienda_gpt.tax.recodificacion.control import Control
 from hacienda_gpt.tax.recodificacion.nucleo import Objetivo, registrar
-from hacienda_gpt.conocimiento.texto import TextoDe
 
 REVISION_HUMANA = (
     "datos legales de un módulo del hogar: una persona confirma la propuesta antes de aplicarla (nunca se aplica "

@@ -1606,6 +1606,55 @@ incluye Seguridad Social ni costes de gestión, y no declara un ganador.
   `LLM_MAX_CALLS_PER_QUESTION`; al agotarse, la API responde 429. Los límites
   en dólares solo cuentan modelos con precio en `ops/data/precios_llm.json`.
 
+### App instalable (PWA) y notificaciones
+
+La interfaz web se instala como una aplicación en el móvil (Android, iPhone/iPad) y en el ordenador, y puede
+avisar en el dispositivo cuando hay algo urgente.
+
+- **Instalar.** En Android y en Chrome/Edge de escritorio aparece «Instala HaciendaGPT en este dispositivo»
+  con un botón «Instalar». En iPhone/iPad (Safari no tiene ese botón) la app explica cómo: Compartir →
+  «Añadir a pantalla de inicio». Manifiesto en `frontend/public/manifest.webmanifest`; iconos PNG/SVG en
+  `frontend/public/icons/`, generados con `node frontend/scripts/iconos.mjs` (sin dependencias).
+- **Sin conexión.** El *service worker* (`frontend/pwa/sw.js`, escrito a mano; `vite.config.ts` le añade en
+  cada build la lista de ficheros) guarda **solo los ficheros de la propia aplicación** (HTML, JS, CSS, iconos)
+  y abre la interfaz sin red. **Nunca guarda respuestas de la API**: no intercepta `/api/…` ni ninguna otra
+  petición que no sea uno de esos ficheros o la página de inicio, así que van siempre a la red (y la API
+  responde `Cache-Control: no-store`). Lo prueba un navegador real (ver más abajo).
+- **Versión nueva.** Cuando se despliega una versión, la app muestra «Hay una versión nueva» con
+  «Actualizar»: no se recarga sola (una pregunta a medio escribir no se pierde).
+- **Avisos en el móvil (Web Push)**, en «Más» → «Avisos en el móvil»: el usuario los activa en cada
+  dispositivo marcando una casilla que dice exactamente qué se envía (consentimiento propio, con historial y
+  versión del texto). El mensaje **no lleva datos personales**: solo «Tienes un aviso urgente: abre la app» (o
+  «Tienes un aviso nuevo…») y un enlace a `/?panel=avisos`; los detalles se ven dentro de la app, con sesión.
+  Va cifrado para el dispositivo (RFC 8291) y firmado con la clave VAPID del operador (RFC 8292), implementados
+  con `cryptography` en `hacienda_gpt/push/` y comprobados con el ejemplo del RFC 8291. Salen los avisos
+  `urgente` y `aviso` (los `info` se quedan en la app) por el canal `push` de `ops deliver`, y los urgentes
+  también en cuanto se escriben si se conecta `avisar_al_escribir` (ver «Pendiente» en `docs/despliegue.md`).
+  En **iPhone/iPad** solo funcionan con la app añadida a la pantalla de inicio (iOS/iPadOS 16.4 o posterior).
+- **Configurar**: `python -m hacienda_gpt.push.vapid` genera las claves; `PUSH_VAPID_PRIVATE_KEY` (secreto),
+  `PUSH_VAPID_SUBJECT` (`mailto:` o `https://`) y, opcional, `PUSH_VAPID_PUBLIC_KEY`. Sin ellas, la app dice
+  que el servicio no tiene avisos en el móvil. Hace falta HTTPS (o `localhost`). API: `GET /push/config`,
+  `POST /push/suscripciones`, `POST /push/suscripciones/baja`, `DELETE /push/consentimiento`,
+  `GET /push/suscripciones`, `POST /push/prueba`.
+- **Privacidad**: las suscripciones se borran con la cuenta; ver [`docs/privacidad.md`](docs/privacidad.md)
+  («Avisos en el móvil»).
+
+**Interfaz por módulos.** Los paneles (Simulador, Autónomos, Optimizar, Planificar, Módulos, Avisos,
+Preferencias, Navegador, Avisos en el móvil, Tu expediente) se declaran en `frontend/src/paneles/registro.ts`:
+id, nombre, icono, cuándo se ofrece (módulo activo según `GET /modulos`, una *feature flag* o tener cuenta) y
+su código, que se descarga la primera vez que se abre (un fichero por panel). La barra superior muestra los
+principales y el resto va a «Más» (un menú en el ordenador, una hoja desde abajo en el móvil). El panel abierto
+está en la URL: `/?panel=optimizador` abre el optimizador, y el botón Atrás lo cierra. Para añadir un panel:
+un fichero en `frontend/src/paneles/` y una entrada en el registro. `VITE_PANELES_OCULTOS=id1,id2` oculta
+paneles en una build.
+
+Comprobado con Playwright (Chromium) contra `vite preview` y la API con `AUTH_MODE=required`: manifiesto e
+iconos válidos y app instalable según Chromium, *service worker* registrado, la interfaz abre sin conexión y
+la API no responde desde caché (la caché solo tiene ficheros de la app), enlaces `/?panel=…`, Atrás y Escape,
+foco y teclado en el menú «Más», tamaño iPhone 13 y escritorio, tema oscuro, el aviso «Hay una versión nueva»
+y la notificación genérica de un mensaje *push*. **No** se ha probado en un iPhone ni en un Android reales, ni
+con un servicio de *push* real (Google, Apple, Mozilla): desde esta máquina no se llega a ellos.
+
 ### Evaluación del agente con consultas de la DGT
 
 Cada consulta vinculante de la DGT es un caso de prueba ya resuelto por un

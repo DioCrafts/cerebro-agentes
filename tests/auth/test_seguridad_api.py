@@ -36,7 +36,7 @@ PUBLIC = {
     "/correo/oauth/callback",
 }
 # Service-wide figures: the operator's, never a user's (404 without the operator key).
-OPERATOR = {"/usage", "/eventos/salud"}
+OPERATOR = {"/usage", "/eventos/salud", "/plataforma/salud"}
 # Gone with accounts on (404 to everyone): the API's documentation (S-18, unless API_DOCS_PUBLICAS=true) and the
 # legacy /qa chain, which calls the model unmetered (S-14).
 DISABLED = {"/openapi.json", "/docs", "/redoc", "/qa"}

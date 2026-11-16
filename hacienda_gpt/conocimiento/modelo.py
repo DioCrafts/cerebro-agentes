@@ -127,8 +127,10 @@ def hojas(
     excluidos = frozenset(excluir)
     if isinstance(valor, bool):
         return {}
-    if isinstance(valor, tipos):
-        return {prefijo: Decimal(valor) if isinstance(valor, int) else valor}
+    if isinstance(valor, int) and int in tipos:
+        return {prefijo: Decimal(valor)}
+    if isinstance(valor, tipos) and isinstance(valor, Decimal | date):
+        return {prefijo: valor}
     items: list[tuple[str, Any]]
     if isinstance(valor, BaseModel):
         items = [(n, getattr(valor, n)) for n in type(valor).model_fields if n not in excluidos]
@@ -189,7 +191,9 @@ def fuente_de(fuente: Any) -> FuenteLegal:
         "condicionada_a": "condicionada_a",
         "nota": "nota",
     }
-    datos = {propio: getattr(fuente, suyo) for propio, suyo in campos.items() if getattr(fuente, suyo, None) is not None}
+    datos = {
+        propio: getattr(fuente, suyo) for propio, suyo in campos.items() if getattr(fuente, suyo, None) is not None
+    }
     if "en_vigor_desde" in datos:
         datos["en_vigor_desde"] = str(datos["en_vigor_desde"])
     return FuenteLegal(**datos)

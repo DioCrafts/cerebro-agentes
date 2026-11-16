@@ -193,7 +193,9 @@ def test_a_changed_rule_is_found_re_encoded_checked_by_cases_and_applied_only_by
 ) -> None:
     ley = pagina([P1, P2_NUEVO, P3, P5])
     # The package-wide search leaves a copy of the files alone; asked for this family and folder, it finds it.
-    assert not [o for o in objetivos_de_todo(None, texto_de(ley), data_dir=tmp_path).objetivos if "caducidades" in o.tipo]
+    assert not [
+        o for o in objetivos_de_todo(None, texto_de(ley), data_dir=tmp_path).objetivos if "caducidades" in o.tipo
+    ]
     hallazgo = rec.objetivos_de_verificacion(None, texto_de(ley), data_dir=datos, familias=[_familia()])
     (objetivo,) = [o for o in hallazgo.objetivos if o.ruta == ["seguro"]]
     assert objetivo.tipo == "caducidades:ReglaSeguro" and objetivo.ejercicios == [SIN_EJERCICIO]

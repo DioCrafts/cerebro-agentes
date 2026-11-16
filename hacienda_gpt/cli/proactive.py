@@ -738,7 +738,8 @@ def params_verify(
         informe["otros"] = otros
         fallos += sum(len(fila["no_coinciden"]) for fila in otros.values())
     de_modulos = {
-        nombre: _fila_de_verificacion(resultados) for nombre, resultados in _verificar_modulos(texto_de, ficheros).items()
+        nombre: _fila_de_verificacion(resultados)
+        for nombre, resultados in _verificar_modulos(texto_de, ficheros).items()
     }
     if de_modulos:
         informe["modulos"] = de_modulos

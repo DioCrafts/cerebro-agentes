@@ -208,8 +208,13 @@ def familia_caducidades() -> Any:
     from hacienda_gpt.tax.recodificacion.adaptadores_otros import Calculo, Familia
     from hacienda_gpt.tax.recodificacion.control import Reglas
 
+    def cargador(
+        modelo: type[BaseModel], funcion: Callable[[Any, Any], ResultadoCaso]
+    ) -> Callable[[], tuple[type[BaseModel], Callable[[Any, Any], Any]]]:
+        return lambda: (modelo, funcion)
+
     calculos = {
-        nombre: Calculo(cargar=lambda m=modelo, f=funcion: (m, f), que=que)
+        nombre: Calculo(cargar=cargador(modelo, funcion), que=que)
         for nombre, (modelo, funcion, que) in _calculos().items()
     }
     return Familia(

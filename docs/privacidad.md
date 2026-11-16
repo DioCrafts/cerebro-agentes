@@ -155,6 +155,8 @@ servidores) lo fijan sus condiciones y el contrato que el operador tenga con él
   hallazgo S-10).
 - **Vigilancia de tareas** (`HEALTHCHECK_URL`): solo indica si una tarea programada ha terminado
   bien; no lleva datos personales.
+- **Avisos en el móvil** (`PUSH_VAPID_*`): a cada usuario que los activa, a través del servicio de
+  *push* de su navegador, una frase fija sin datos personales (ver «Avisos en el móvil»).
 
 ## Módulos del hogar
 
@@ -290,6 +292,42 @@ presentó un modelo), para no volver a proponérselo (`hacienda_gpt/memoria/`).
   borran con el expediente —un *trigger* sobre `case_states` las elimina en la misma transacción, sea cual sea
   el camino— y por tanto con la cuenta. «Desactivar y borrar sus datos» de un módulo borra también sus
   decisiones. Lo comprueban `tests/memoria/test_api.py`.
+
+## Avisos en el móvil (notificaciones *push*) y app instalable
+
+Solo existen si el operador configura `PUSH_VAPID_*` y solo para quien los activa.
+
+- **Consentimiento propio y por dispositivo.** En «Avisos en el móvil» el usuario marca una casilla que dice
+  lo que se envía y por dónde pasa; sin ella el botón no se activa, y la API rechaza una suscripción sin
+  `consentimiento: true`. Cada decisión queda en `push_consentimientos` (sí/no, fecha y versión del texto,
+  `2026-11-push-1`), como los demás consentimientos. «Desactivar en este dispositivo» quita ese dispositivo;
+  «Retirar mi consentimiento» los quita todos y lo anota. Al cerrar sesión, la app quita también el
+  dispositivo en el que se cierra.
+- **Qué se guarda** (`push_suscripciones`, en la misma base que los expedientes): por dispositivo, la
+  dirección del servicio de *push* del navegador (una URL secreta), las dos claves públicas que el navegador
+  da para cifrar, la fecha de alta y el último envío. Ni el modelo del teléfono ni nada más.
+- **Qué sale y hacia quién.** El mensaje va al servicio de *push* del navegador del usuario (Google para
+  Chrome/Android, Apple para Safari/iPhone, Mozilla para Firefox, Microsoft para Edge en Windows), que lo
+  entrega al dispositivo. Va **cifrado de extremo a extremo** para el dispositivo (RFC 8291), y su contenido
+  es fijo: «HaciendaGPT — Tienes un aviso urgente: abre la app» (o «Tienes un aviso nuevo: abre la app») y el
+  enlace `/?panel=avisos`. **Ninguna cifra, fecha, concepto, identificador de expediente ni dato del
+  usuario**: el servicio de *push* y quien mire la pantalla bloqueada solo saben que hay un aviso. El servicio
+  de *push* sí ve la dirección IP del servidor, la hora y el tamaño del mensaje. Se envían los avisos de
+  gravedad `urgente` y `aviso` creados después de activarlos; los `info` se quedan en la app.
+- **Sin cuentas** (`AUTH_MODE=off`) todos los avisos son del operador, como en los demás canales: los
+  reciben los dispositivos que el operador active.
+- **A dónde puede llamar el servidor.** Solo a los servicios de *push* conocidos (lista en
+  `hacienda_gpt/push/envio.py`, ampliable con `PUSH_HOSTS_PERMITIDOS`), por HTTPS y sin seguir
+  redirecciones: una suscripción no puede hacer que el servidor llame a otra máquina.
+- **Acceso y borrado.** `GET /push/suscripciones` devuelve los dispositivos (solo el servicio, sin la URL ni
+  las claves) y el historial del consentimiento. Al eliminar la cuenta (`DELETE /me`), unos disparadores de
+  SQLite borran sus suscripciones y consentimientos de *push* en la misma operación que la cuenta. Lo
+  comprueba `tests/push/test_api.py`. **Pendiente**: `GET /me/export` aún no incluye estos datos (hay que
+  añadirlos en `hacienda_gpt/api/routers/auth.py`; ver el informe del cambio).
+- **La app instalada y la caché del navegador.** El *service worker* (`frontend/pwa/sw.js`) guarda solo los
+  ficheros de la aplicación; **nunca** respuestas de la API, que van siempre a la red y llegan con
+  `Cache-Control: no-store`. Las conversaciones siguen donde estaban: en el almacenamiento del navegador
+  (ver «Qué datos se guardan y dónde»). Sin conexión, la app abre pero no muestra datos.
 
 ## Consentimientos
 
