@@ -31,6 +31,9 @@ PUBLIC = {
     "/autonomos/actividad",
     "/autonomos/modelo-130",
     "/autonomos/modelo-303",
+    # Google's OAuth redirect: a redirect carries no session header, so the single-use ``state`` issued to the
+    # case owner is its credential (without it, 401; a wrong or used one changes nothing): see its own tests.
+    "/correo/oauth/callback",
 }
 # Service-wide figures: the operator's, never a user's (404 without the operator key).
 OPERATOR = {"/usage", "/eventos/salud"}

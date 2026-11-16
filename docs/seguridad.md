@@ -323,7 +323,9 @@ registra nada. Los hechos que proponen los documentos y los módulos siguen sus 
 (edición del usuario, `aceptar_propuesta`). Límite: se comprueba la **procedencia**, no la
 interpretación (qué significan las palabras citadas lo sigue leyendo el modelo); el hecho queda visible
 y editable. **Pruebas**: `tests/agent/test_procedencia_hechos.py` (un fragmento recuperado y la
-etiqueta de un cargo bancario guardada por suscripciones intentan escribir hechos; grafías de cifras).
+etiqueta de un cargo bancario guardada por suscripciones intentan escribir hechos; grafías de cifras) y
+`test_an_email_cannot_make_the_core_advisor_record_a_fact` (`tests/modulos/correo/test_integracion_nucleo.py`:
+un correo leído por el especialista de correo intenta que el asesor central registre hechos).
 
 ### S-17 (baja, corregido): pickle de FAISS en el indexador
 

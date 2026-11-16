@@ -60,6 +60,14 @@ class ModuloCorreo(ModuloBase):
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return generar_avisos(contexto)
 
+    def borrar_datos_de_caso(self, case_id: str, db_path: str) -> None:
+        """Switched off with «borrar datos»: revoke the Gmail grant at Google, delete the token and erase the
+        derived items, proposals and pinned contacts of the case."""
+        from hacienda_gpt.modulos.correo import oauth
+
+        oauth.desconectar(case_id, db_path=db_path)
+        almacen.borrar_datos(case_id, db_path)
+
 
 def _fuentes() -> tuple[FuenteModulo, ...]:
     normativa = cargar_normativa()

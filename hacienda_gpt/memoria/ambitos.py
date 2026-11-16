@@ -50,6 +50,19 @@ CATALOGO: dict[str, str] = {
     "ayudas:prestacion": "Prestaciones que podrían corresponderte",
     "ayudas:convocatoria": "Convocatorias de ayudas",
     "caducidades": "Avisos de caducidades y garantías",
+    # The Gmail module (modulos/correo/decisiones.py): «correo:<categoría>[:<dominio>]» silences a kind of
+    # e-mail (from one sender), «correo:remitente:<dominio>» everything from a sender.
+    "correo": "Cualquier aviso del correo",
+    "correo:administracion": "Avisos de la Administración en el correo",
+    "correo:factura_luz": "Facturas de la luz en el correo",
+    "correo:compra": "Compras y recibos en el correo",
+    "correo:cargo": "Cargos y avisos del banco en el correo",
+    "correo:viaje": "Viajes en el correo",
+    "correo:accion": "Correos que piden hacer algo",
+    "correo:promocion": "Promociones y boletines en el correo",
+    "correo:phishing": "Avisos de posible fraude en el correo",
+    "correo:otro": "Otros correos",
+    "correo:remitente": "Correos de un remitente",
 }
 
 # The lever a module's notice type proposes, when its name in the notice key is not the lever's.

@@ -288,6 +288,10 @@ def build_router(
                     # The user's decisions about the module are its data too (hacienda_gpt/memoria).
                     if tabla_existe(cases.db_path):
                         almacen(cases.db_path).delete_where(case_id, modulo=clave)
+                # What the module keeps outside the facts (optional hook, modulos/contrato.py).
+                borrar_propios = getattr(estado.modulo, "borrar_datos_de_caso", None)
+                if payload.borrar_datos and callable(borrar_propios):
+                    borrar_propios(case_id, cases.db_path)
         if estado.activo != payload.activo:  # event bus: wake the module now / cancel its scheduled wake-ups
             emitir_cambio_modulo(cases.db_path, auth.case_ids_of(user.id), clave, payload.activo)
         return _respuesta(access)

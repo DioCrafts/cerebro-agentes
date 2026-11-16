@@ -132,6 +132,9 @@ class Modulo(Protocol):
     # the core's default for it, see eventos/rutas.py), ``al_evento(evento, contexto)`` (what to do when
     # woken; default: ``avisos``), ``proxima_revision(contexto) -> date | None`` (when to wake it next
     # without any event) and ``hechos_leidos: Sequence[str]`` (shared facts it reads without declaring).
+    # Optional data hook, also read with getattr: ``borrar_datos_de_caso(case_id, db_path)`` erases what the
+    # module keeps OUTSIDE the case's facts (its own tables, a third-party grant) when the user switches it off
+    # with «borrar datos» (``PUT /me/modulos/{clave}``); the facts and decisions are erased by the core.
 
 
 @dataclass
@@ -157,4 +160,8 @@ class ModuloBase:
 
     def proxima_revision(self, contexto: ContextoModulo) -> date | None:
         """The next date to be woken for this case without any event (None: only events and the daily run)."""
+        return None
+
+    def borrar_datos_de_caso(self, case_id: str, db_path: str) -> None:
+        """Erase what the module keeps outside the case's facts (switched off with «borrar datos»): nothing here."""
         return None

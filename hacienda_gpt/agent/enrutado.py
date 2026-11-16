@@ -82,6 +82,7 @@ TABLA: tuple[Proposito, ...] = (
     Proposito("formatos", "mediano", "Diagnóstico de un formato externo que ha cambiado."),
     Proposito("formatos-revisor", "grande", "Reflexión independiente sobre el diagnóstico."),
     Proposito("ayudas*", "pequeno", "Clasificador de convocatorias de ayudas."),
+    Proposito("correo:*", "pequeno", "Clasificador del correo: categoría de un correo ya reducido a datos."),
     Proposito("evaluacion-juez", "grande", "Juez de las evaluaciones del agente."),
 )
 NIVEL_POR_DEFECTO: Nivel = "grande"
