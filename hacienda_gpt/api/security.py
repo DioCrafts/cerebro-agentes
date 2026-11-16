@@ -124,10 +124,6 @@ def max_body_bytes() -> int:
     return valor if valor > 0 else DEFAULT_MAX_BODY_BYTES
 
 
-class _CuerpoDemasiadoGrandeError(Exception):
-    pass
-
-
 _TOO_LARGE = b'{"detail":"La petici\\u00f3n es demasiado grande."}'
 
 
@@ -135,7 +131,9 @@ class BodySizeLimitMiddleware:
     """Pure ASGI middleware: 413 for a body over the limit, declared (Content-Length) or streamed (chunked).
 
     uvicorn and Starlette impose no limit of their own: without this a single request could make the
-    process buffer gigabytes while FastAPI parses the JSON.
+    process buffer gigabytes while FastAPI parses the JSON. A declared length is checked before anything is
+    read (the server enforces that framing); a chunked body is read here, up to the limit, and replayed to
+    the application only when it fits.
     """
 
     def __init__(self, app: Any, max_bytes: int | None = None) -> None:
@@ -147,38 +145,44 @@ class BodySizeLimitMiddleware:
             await self.app(scope, receive, send)
             return
         limite = self.max_bytes or max_body_bytes()
-        for nombre, valor in scope.get("headers", []):
-            if nombre == b"content-length":
-                try:
-                    declarado = int(valor)
-                except ValueError:
-                    declarado = limite + 1
-                if declarado > limite:
-                    await _responder_413(send)
-                    return
-        leidos = 0
-        respuesta_empezada = False
-
-        async def receive_limitado() -> Any:
-            nonlocal leidos
-            mensaje = await receive()
-            if mensaje["type"] == "http.request":
-                leidos += len(mensaje.get("body", b""))
-                if leidos > limite:
-                    raise _CuerpoDemasiadoGrandeError
-            return mensaje
-
-        async def send_vigilado(mensaje: Any) -> None:
-            nonlocal respuesta_empezada
-            if mensaje["type"] == "http.response.start":
-                respuesta_empezada = True
-            await send(mensaje)
-
-        try:
-            await self.app(scope, receive_limitado, send_vigilado)
-        except _CuerpoDemasiadoGrandeError:
-            if not respuesta_empezada:
+        cabeceras = dict(scope.get("headers", []))
+        if b"content-length" in cabeceras:
+            try:
+                declarado = int(cabeceras[b"content-length"])
+            except ValueError:
+                declarado = limite + 1
+            if declarado > limite:
                 await _responder_413(send)
+                return
+            await self.app(scope, receive, send)
+            return
+        if cabeceras.get(b"transfer-encoding", b"").lower() != b"chunked":
+            await self.app(scope, receive, send)
+            return
+        partes: list[bytes] = []
+        leidos = 0
+        while True:
+            mensaje = await receive()
+            if mensaje["type"] != "http.request":  # the client went away
+                return
+            cuerpo = mensaje.get("body", b"")
+            leidos += len(cuerpo)
+            if leidos > limite:
+                await _responder_413(send)
+                return
+            partes.append(cuerpo)
+            if not mensaje.get("more_body", False):
+                break
+        entregado = False
+
+        async def repetir() -> Any:
+            nonlocal entregado
+            if not entregado:
+                entregado = True
+                return {"type": "http.request", "body": b"".join(partes), "more_body": False}
+            return await receive()
+
+        await self.app(scope, repetir, send)
 
 
 async def _responder_413(send: Any) -> None:

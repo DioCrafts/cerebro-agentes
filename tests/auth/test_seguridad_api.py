@@ -116,6 +116,7 @@ def test_another_users_case_is_404_on_the_query_and_body_endpoints(env: Env, no_
     accion = acciones.add(
         AccionPendiente(case_id=case_id, modulo="suscripciones", herramienta="x", argumentos={}, resumen="r")
     )
+    env.cases.append_audit_event(case_id, {"event_type": "agent_answer", "input": "¿Plazo?"})
     feedback = env.client.post(
         "/evaluacion/feedback",
         json={"case_id": case_id, "pregunta": "¿Plazo?", "respuesta": "El 30 de junio.", "valoracion": "positiva"},

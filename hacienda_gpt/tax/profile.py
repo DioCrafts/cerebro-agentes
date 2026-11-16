@@ -142,6 +142,18 @@ PROFILE_FACT_TYPES: dict[str, str] = {
     "inversion_economia_social": "number",
     # Drives the fiscal calendar (modelo 720), not the IRPF computation.
     "bienes_en_el_extranjero": "boolean",
+    # Whether the user must file (art. 96 LIRPF, ``tax.obligacion``); the tax itself does not use them.
+    "num_pagadores_trabajo": "number",
+    "importe_segundo_y_restantes_pagadores": "number",
+    "pension_compensatoria_o_anualidades": "boolean",
+    "pagador_no_obligado_a_retener": "boolean",
+    "trabajo_tipo_fijo_retencion": "boolean",
+    "pensiones_procedimiento_especial": "boolean",
+    "ganancias_sometidas_a_retencion": "boolean",
+    "alta_autonomo_en_el_ejercicio": "boolean",
+    "deduccion_doble_imposicion_internacional": "boolean",
+    "aportaciones_patrimonio_protegido": "boolean",
+    "beneficiario_ingreso_minimo_vital": "boolean",
 }
 
 # The detail of each child: ONE fact whose value is the JSON text of a list of objects with the
