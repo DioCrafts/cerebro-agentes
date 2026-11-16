@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from functools import cached_property
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
+from functools import cached_property
 import os
 import re
 from typing import Any
 
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.contrato import (
     AvisoModulo,
     ContextoModulo,
@@ -17,7 +18,6 @@ from hacienda_gpt.modulos.contrato import (
     HechoModulo,
     HerramientaModulo,
 )
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
 from hacienda_gpt.modulos.luz.analisis import comparar
 from hacienda_gpt.modulos.luz.consumo import cargar_consumo, validar_consumo, zona_valida

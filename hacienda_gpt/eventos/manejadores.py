@@ -130,9 +130,9 @@ def despertar_modulo(modulo: Any, evento: Evento, case: CaseState, *, hoy: date,
             propios = bandeja.al_evento(evento, case, hoy=hoy, store=store)
             if propios is not None:
                 return Resultado(avisos=int(propios))
-        creados = bandeja.ejecutar(case, hoy=hoy, store=store)
+        por_tipo = bandeja.ejecutar(case, hoy=hoy, store=store)
         proxima = bandeja.proxima_revision(case, hoy=hoy) if bandeja.proxima_revision is not None else None
-        return Resultado(avisos=sum(int(n) for n in dict(creados).values()), proxima_revision=proxima)
+        return Resultado(avisos=sum(int(n) for n in dict(por_tipo).values()), proxima_revision=proxima)
 
     from hacienda_gpt.modulos.perfil import perfil_de
 

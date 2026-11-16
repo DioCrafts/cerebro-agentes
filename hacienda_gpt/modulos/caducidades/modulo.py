@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from functools import cached_property
 from typing import Any
 
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.caducidades.agenda import avisos_de_agenda
 from hacienda_gpt.modulos.caducidades.hechos import (
     HECHO_ANTELACIONES,
@@ -23,7 +24,6 @@ from hacienda_gpt.modulos.caducidades.hechos import (
 )
 from hacienda_gpt.modulos.caducidades.herramientas import HERRAMIENTAS
 from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
-from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
 from hacienda_gpt.modulos.ganchos import Ganchos, GanchosDocumentos, GanchosEventos
 

@@ -44,7 +44,6 @@ from hacienda_gpt.modulos.ganchos import Ganchos, GanchosAgente, GanchosBandeja,
 from hacienda_gpt.proactive.store import NotificationStore
 from hacienda_gpt.tax.profile import DETALLE_FACT_TYPES
 
-
 # The reminder window of ``recordatorios_de_plazos`` (its default ``dias``).
 DIAS_AVISO_PLAZO = 30
 # Event types (hacienda_gpt/eventos/tipos.py): profile changes, dates, new BOE norms, analysed law changes.
@@ -136,6 +135,8 @@ class ModuloFiscal:
                 hechos_estructurados={nombre: _normalizador(nombre) for nombre in DETALLE_FACT_TYPES},
             ),
             ficheros_legales=tuple(FICHEROS_LEGALES),
+            # Tax documents (certificates, payslips…) are read by the documents capability.
+            capacidades=("documentos.leer_campos",),
         )
 
     # v1 views of the declaration (older callers and tests read them).

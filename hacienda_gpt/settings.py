@@ -443,3 +443,17 @@ PLATAFORMA_RECUPERAR_HORAS = float(os.environ.get("PLATAFORMA_RECUPERAR_HORAS", 
 PLATAFORMA_LATIDO_SEGUNDOS = float(os.environ.get("PLATAFORMA_LATIDO_SEGUNDOS", "30"))
 # Extra modules (comma-separated) whose ``registrar_en_plataforma(registro)`` adds services or jobs to the worker.
 PLATAFORMA_EXTENSIONES = os.environ.get("PLATAFORMA_EXTENSIONES", "")
+
+# --- Research with sources (hacienda_gpt/capacidades/investigacion, docs/capacidades/investigacion.md) ---
+# The open web through the model provider's server-side search: off by default; each user must also consent.
+INVESTIGACION_WEB = _env_bool("INVESTIGACION_WEB", default=False)
+# Allow-list for «official sites only» (comma-separated hosts; empty = the built-in official list) and block-list.
+INVESTIGACION_WEB_PERMITIDOS = os.environ.get("INVESTIGACION_WEB_PERMITIDOS", "")
+INVESTIGACION_WEB_BLOQUEADOS = os.environ.get("INVESTIGACION_WEB_BLOQUEADOS", "")
+# Caps of ONE research (on top of the daily LLM limits), the web search fee, cache days, the store, the agent tool.
+INVESTIGACION_MAX_USD = os.environ.get("INVESTIGACION_MAX_USD", "0.50")
+INVESTIGACION_MAX_TOKENS = os.environ.get("INVESTIGACION_MAX_TOKENS", "300000")
+INVESTIGACION_PRECIO_BUSQUEDA_USD = os.environ.get("INVESTIGACION_PRECIO_BUSQUEDA_USD", "0.01")
+INVESTIGACION_CACHE_DIAS = os.environ.get("INVESTIGACION_CACHE_DIAS", "7")
+INVESTIGACION_DB_PATH = os.environ.get("INVESTIGACION_DB_PATH", "./data/investigacion.sqlite3")
+INVESTIGACION_AGENTE = _env_bool("INVESTIGACION_AGENTE", default=False)

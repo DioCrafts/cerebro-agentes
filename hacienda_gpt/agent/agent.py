@@ -261,6 +261,10 @@ class TaxAgent:
         propuestas = PropuestasChat.para(case, modulos, query=query, chat_history=chat_history)
         # Long-running tasks (hacienda_gpt/tareas): tools and a paragraph, with a case and household modules or tasks.
         tareas = TareasAgente.para(case, query=query, chat_history=chat_history, modulos=modulos or ())
+        # Research with sources (capacidades/investigacion): the `investigar` tool, only with INVESTIGACION_AGENTE.
+        from hacienda_gpt.capacidades.investigacion.herramienta import InvestigacionAgente
+
+        investigacion = InvestigacionAgente.para(self._provider, case, query=query, chat_history=chat_history)
         toolbox = Toolbox(
             searcher=self._searcher,
             ledger=ledger,
@@ -274,6 +278,7 @@ class TaxAgent:
                 *(memoria.herramientas() if memoria is not None else ()),
                 *(propuestas.herramientas() if propuestas is not None else ()),
                 *(tareas.herramientas() if tareas is not None else ()),
+                *(investigacion.herramientas() if investigacion is not None else ()),
             ],
         )
         if memoria is not None:
@@ -287,6 +292,8 @@ class TaxAgent:
             system += especialistas.addendum()
         if tareas is not None:  # the long-running tasks' paragraph (hacienda_gpt/tareas/prompt.py)
             system += tareas.addendum()
+        if investigacion is not None:
+            system += investigacion.addendum()
         # The household planner's paragraph, only when its tool is offered (a case and household modules).
         if any(spec.name == PLANIFICAR_TOOL.name for spec in toolbox.specs()):
             system += PLANIFICADOR_ADDENDUM

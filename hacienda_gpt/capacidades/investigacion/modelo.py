@@ -15,6 +15,9 @@ PROFUNDIDADES: tuple[Profundidad, ...] = ("rapida", "normal", "a_fondo")
 Confianza = Literal["alta", "media", "baja"]
 
 
+_POR_DEFECTO: list[TipoFuente] = ["corpus", "boe"]
+
+
 class _M(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -26,7 +29,7 @@ class PeticionInvestigacion(_M):
     # The domain that asks or the topic («fiscal», «caducidades», «seguros»…): a hint for the plan.
     ambito: str | None = Field(default=None, max_length=60)
     # Sources in priority order; the web only when listed AND switched on AND consented.
-    fuentes: list[TipoFuente] = Field(default_factory=lambda: ["corpus", "boe"], min_length=1, max_length=3)
+    fuentes: list[TipoFuente] = Field(default_factory=lambda: _POR_DEFECTO.copy(), min_length=1, max_length=3)
     profundidad: Profundidad = "normal"
     # Web only: restrict to the official allow-list (default) or search the open web minus the block-list.
     solo_oficiales: bool = True

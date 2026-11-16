@@ -83,6 +83,9 @@ def test_module_satisfies_the_contract_and_the_registry() -> None:
         "luz_importar_consumo",
         "luz_horas_baratas",
         "luz_potencia_optima",
+        # What luz asks of the capabilities (browser, mail): modulos/luz/capacidades.py.
+        "luz_descargar_consumo",
+        "luz_facturas_del_correo",
     }
     assert all(h.nombre.startswith("luz_") for h in MODULO.hechos)
     sensibles = {h.nombre for h in MODULO.hechos if h.sensible}

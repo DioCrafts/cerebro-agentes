@@ -1,8 +1,9 @@
-"""Discovery shim of the browser agent module (``navegador``): the code lives in ``hacienda_gpt.navegador``.
+"""Discovery shim of the browser's chat front (module ``navegador``): the code lives in
+``hacienda_gpt.capacidades.navegador`` (the browser capability).
 
-See ``hacienda_gpt/navegador/modulo.py`` and the README section «Agente con navegador».
+See ``hacienda_gpt/capacidades/navegador/modulo.py`` and the README section «Agente con navegador».
 """
 
-from hacienda_gpt.navegador.modulo import MODULO
+from hacienda_gpt.capacidades.navegador.modulo import MODULO
 
 __all__ = ["MODULO"]

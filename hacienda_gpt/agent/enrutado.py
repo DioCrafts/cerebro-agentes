@@ -84,6 +84,10 @@ TABLA: tuple[Proposito, ...] = (
     Proposito("ayudas*", "pequeno", "Clasificador de convocatorias de ayudas."),
     Proposito("correo:*", "pequeno", "Clasificador del correo: categoría de un correo ya reducido a datos."),
     Proposito("evaluacion-juez", "grande", "Juez de las evaluaciones del agente."),
+    # The research capability (capacidades/investigacion): what it writes passes a literal-quote gate.
+    Proposito("investigacion:planificar", "pequeno", "Divide una pregunta de investigación en subpreguntas."),
+    Proposito("investigacion:web", "mediano", "Busca y lee páginas web con la herramienta del proveedor."),
+    Proposito("investigacion:sintetizar", "mediano", "Redacta afirmaciones con citas literales de las fuentes."),
 )
 NIVEL_POR_DEFECTO: Nivel = "grande"
 

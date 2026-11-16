@@ -13,6 +13,7 @@
 import {
   BellRing,
   Bell,
+  BookOpenCheck,
   BookUser,
   BriefcaseBusiness,
   Calculator,
@@ -96,6 +97,14 @@ export const REGISTRO: DefinicionPanel[] = [
     icono: ListChecks,
     orden: 65,
     cargar: () => import("./tareas"),
+  },
+  {
+    id: "investigar",
+    etiqueta: "Investigar",
+    titulo: "Investigar una pregunta con fuentes (corpus legal, BOE y, si lo permites, la web)",
+    icono: BookOpenCheck,
+    orden: 68,
+    cargar: () => import("./investigar"),
   },
   {
     id: "navegador",

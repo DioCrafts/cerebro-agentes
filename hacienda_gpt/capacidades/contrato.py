@@ -51,12 +51,16 @@ MotivoDenegacion = Literal[
 ]
 
 
-class PeticionDenegada(PermissionError):
+class PeticionDenegadaError(PermissionError):
     """:func:`pedir` refused the request. ``motivo`` says which rule; the message is Spanish, for the user."""
 
     def __init__(self, mensaje: str, *, motivo: MotivoDenegacion) -> None:
         super().__init__(mensaje)
         self.motivo: MotivoDenegacion = motivo
+
+
+# The name the contract was first published with (domains and capabilities may use either).
+PeticionDenegada = PeticionDenegadaError
 
 
 @dataclass(frozen=True)
@@ -96,6 +100,14 @@ class ContextoPeticion:
     db_path: str | None = None
     confirmacion: Confirmacion | None = None
     origen: Origen = "usuario"
+    # The household profile of the case (fact -> value), when the caller has it (a task step, a domain tool).
+    perfil: Mapping[str, Any] | None = None
+    # The modules/capabilities the caller already knows are on for the case's owner (a task step): consent is
+    # then read from it instead of the store. None: :func:`pedir` reads the user's choices.
+    activos: frozenset[str] | None = None
+    # Stable per logical request (a task's step): whatever an operation creates elsewhere must reuse it, so a
+    # retry repeats nothing.
+    clave_idempotencia: str | None = None
 
 
 @dataclass(frozen=True)
@@ -109,15 +121,29 @@ class ResultadoCapacidad:
       ``datos_de_terceros`` (the only form in which a domain may hand the result to a model);
     * ``no_confiable`` — the result carries third-party data;
     * ``propuesta`` — the operation's effect is ``prepara``: nothing may be applied without the user's confirmation.
+
+    ``datos`` defaults to empty so a task-facing result (``resumen``, ``estado``, ``aviso``, ``borrador``,
+    ``es_error``) can be built alone; the tasks engine reads those fields (``hacienda_gpt/tareas``).
     """
 
-    datos: Mapping[str, Any]
+    datos: Mapping[str, Any] = field(default_factory=dict)
     resumen: str = ""
     citas: tuple[str, ...] = ()
     avisos: tuple[str, ...] = ()
     texto_para_modelo: str = ""
     no_confiable: bool = False
     propuesta: bool = False
+    # For long-running tasks (hacienda_gpt/tareas): the step is done, or waits for the user; a draft the user
+    # reviews (never sent); a notice for the user (title, body), created once per step; a failure to retry.
+    estado: Literal["hecho", "esperando_usuario"] = "hecho"
+    borrador: str | None = None
+    aviso: tuple[str, str] | None = None
+    es_error: bool = False
+
+    @property
+    def evidencias(self) -> tuple[str, ...]:
+        """The sources (``citas``), under the name the tasks engine uses."""
+        return self.citas
 
 
 Ejecutor = Callable[[Mapping[str, Any], ContextoPeticion], ResultadoCapacidad]
@@ -137,6 +163,9 @@ class OperacionCapacidad:
     datos_de_terceros: bool = True
     # Domains allowed to call this operation; None: the capability's ``ambitos``.
     ambitos: frozenset[str] | None = None
+    # False: the operation runs without the user's consent to the capability, because it does not use what the
+    # consent is about (e.g. it only explains how to do something by hand). None: as the capability says.
+    requiere_consentimiento: bool | None = None
 
 
 @runtime_checkable
@@ -203,6 +232,7 @@ __all__ = [
     "OperacionCapacidad",
     "Origen",
     "PeticionDenegada",
+    "PeticionDenegadaError",
     "ResultadoCapacidad",
     "envolver_no_confiable",
     "huella_de",

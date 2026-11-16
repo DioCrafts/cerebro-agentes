@@ -197,7 +197,12 @@ def confianza(resultado: ResultadoPuerta, fuentes: Mapping[str, FuenteRecuperada
     if not afirmaciones or not any(a.oficial for a in afirmaciones):
         return "baja"
     sospechosas = any(fuentes[f].sospechosa for f in resultado.citadas)
-    if all(a.oficial for a in afirmaciones) and not resultado.descartes and not resultado.conflictos and not sospechosas:
+    if (
+        all(a.oficial for a in afirmaciones)
+        and not resultado.descartes
+        and not resultado.conflictos
+        and not sospechosas
+    ):
         return "alta"
     return "media"
 

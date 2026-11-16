@@ -76,7 +76,7 @@ def capturar() -> Iterator[list[Usage]]:
         _USOS.reset(token)
 
 
-class PresupuestoAgotado(RuntimeError):
+class PresupuestoInvestigacionAgotadoError(RuntimeError):
     """A per-research cap was reached; ``limite`` is ``llamadas``, ``tokens`` or ``usd``."""
 
     def __init__(self, mensaje: str, *, limite: str) -> None:
@@ -87,7 +87,7 @@ class PresupuestoAgotado(RuntimeError):
 Coster = Callable[[Usage], Decimal | None]
 
 
-def _coste_por_defecto(usage: Usage) -> Decimal | None:
+def coste_por_defecto(usage: Usage) -> Decimal | None:
     from hacienda_gpt.ops.consumo import calcular_coste
 
     return calcular_coste(usage)
@@ -99,7 +99,7 @@ class PresupuestoInvestigacion:
     max_tokens: int
     max_usd: Decimal
     precio_busqueda: Decimal
-    coster: Coster = _coste_por_defecto
+    coster: Coster = coste_por_defecto
     llamadas: int = 0
     tokens_entrada: int = 0
     tokens_salida: int = 0
@@ -114,7 +114,7 @@ class PresupuestoInvestigacion:
         return self.tokens_entrada + self.tokens_salida
 
     def comprobar(self) -> None:
-        """Raise :class:`PresupuestoAgotado` if one more model call is not allowed."""
+        """Raise :class:`PresupuestoInvestigacionAgotadoError` if one more model call is not allowed."""
         motivo: tuple[str, str] | None = None
         if self.llamadas >= self.max_llamadas:
             motivo = ("llamadas", f"se ha llegado al máximo de {self.max_llamadas} llamadas al modelo")
@@ -124,7 +124,9 @@ class PresupuestoInvestigacion:
             motivo = ("usd", f"se ha llegado al máximo de {self.max_usd} USD")
         if motivo is not None:
             self.limite_alcanzado = motivo[0]
-            raise PresupuestoAgotado(f"Investigación detenida: {motivo[1]} por investigación.", limite=motivo[0])
+            raise PresupuestoInvestigacionAgotadoError(
+                f"Investigación detenida: {motivo[1]} por investigación.", limite=motivo[0]
+            )
 
     def anotar(self, usos: list[Usage], *, llamadas: int = 1, busquedas: int = 0) -> None:
         """Add one (or more) model calls and what the API reported for them."""
@@ -155,4 +157,11 @@ class PresupuestoInvestigacion:
         )
 
 
-__all__ = ["PresupuestoAgotado", "PresupuestoInvestigacion", "capturar", "observar"]
+__all__ = [
+    "Coster",
+    "PresupuestoInvestigacion",
+    "PresupuestoInvestigacionAgotadoError",
+    "capturar",
+    "coste_por_defecto",
+    "observar",
+]

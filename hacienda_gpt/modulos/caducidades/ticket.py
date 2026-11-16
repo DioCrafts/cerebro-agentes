@@ -1,6 +1,6 @@
 """Propose a purchase (for its warranty and return dates) from a receipt or invoice.
 
-Same safeguard as the tax document reader (:mod:`hacienda_gpt.tax.documentos`), reused, not copied: every
+Same safeguard as the tax document reader (:mod:`hacienda_gpt.modulos.fiscal.documentos`), reused, not copied: every
 proposed field comes with the literal passage it was read from, and a field whose passage is not in the
 document — or whose value is not in its passage — is discarded. Scans and photos are read twice,
 independently, and only the fields both readings agree on are proposed. Nothing is saved: the user confirms
@@ -10,8 +10,9 @@ Two entry points:
 
 - :func:`verificar_propuesta` — deterministic: checks a proposal (made by the agent's model from a text it
   already has) against that text, and adds what can be read without a model (dates, the TOTAL line).
-- :func:`leer_ticket` — for an uploaded file, given an LLM provider (``complete_json``), as
-  ``documentos.analizar_documento`` does for tax documents.
+- :func:`leer_ticket` — for an uploaded file, given an LLM provider (``complete_json``): «léeme este ticket» is
+  asked of the ``documentos`` capability (``capacidades.pedir``), which reads the upload with the instructions
+  and schema below (the text once, a scan twice); the check of every field against its passage stays here.
 """
 
 from __future__ import annotations
@@ -23,14 +24,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from hacienda_gpt.agent.providers.base import Attachment
-from hacienda_gpt.tax.documentos import (
-    DocumentoEscaneadoError,
-    DocumentoNoLegibleError,
-    extract_text,
-    normalizar_pasaje,
-    tipo_de_imagen,
-)
+from hacienda_gpt.capacidades.documentos.lectura import DocumentoNoLegibleError, normalizar_pasaje
 
 CAMPOS = ("descripcion", "establecimiento", "fecha_compra", "fecha_entrega", "importe")
 CampoTicket = Literal["descripcion", "establecimiento", "fecha_compra", "fecha_entrega", "importe"]
@@ -270,22 +264,15 @@ SCHEMA_IMAGEN: dict[str, Any] = {
 }
 
 
-def _leer_imagen(provider: Any, adjunto: Attachment, filename: str) -> PropuestaCompra:
-    lecturas: list[tuple[dict[str, CampoPropuesto], list[str]]] = []
-    for _ in range(2):
-        raw = provider.complete_json(
-            system=SYSTEM_PROMPT_IMAGEN,
-            user=f'El documento adjunto se llama "{filename}". Transcríbelo y localiza los datos de la compra.',
-            schema=SCHEMA_IMAGEN,
-            schema_name="datos_tique_escaneado",
-            attachments=[adjunto],
-        )
+def _leer_imagen(lecturas: list[Any]) -> PropuestaCompra:
+    validadas: list[tuple[dict[str, CampoPropuesto], list[str]]] = []
+    for raw in lecturas:
         transcripcion = raw.get("transcripcion") if isinstance(raw, dict) else ""
         campos = raw.get("campos") if isinstance(raw, dict) else []
-        lecturas.append(
+        validadas.append(
             _validar(campos, normalizar_pasaje(transcripcion if isinstance(transcripcion, str) else ""), "imagen")
         )
-    (primera, desc_1), (segunda, desc_2) = lecturas
+    (primera, desc_1), (segunda, desc_2) = validadas
     coinciden = {c: v for c, v in primera.items() if c in segunda and segunda[c].valor == v.valor}
     discrepan = sorted((set(primera) | set(segunda)) - set(coinciden))
     avisos = [
@@ -301,22 +288,45 @@ def _leer_imagen(provider: Any, adjunto: Attachment, filename: str) -> Propuesta
     )
 
 
-def leer_ticket(provider: Any, *, filename: str, data: bytes) -> PropuestaCompra:
+def leer_ticket(provider: Any, *, filename: str, data: bytes, hoy: date | None = None) -> PropuestaCompra:
     """Propose a purchase from an uploaded receipt. Raises ``DocumentoNoLegibleError`` or the provider's error."""
-    imagen = tipo_de_imagen(data)
-    if imagen is not None:
-        return _leer_imagen(provider, Attachment(imagen, data, filename), filename)
-    try:
-        texto, _ = extract_text(data, filename)
-    except DocumentoEscaneadoError as exc:
-        if exc.paginas > 5:
-            raise DocumentoNoLegibleError("Un tique escaneado de más de 5 páginas no se lee automáticamente.") from exc
-        return _leer_imagen(provider, Attachment("application/pdf", data, filename), filename)
-    raw = provider.complete_json(
-        system=SYSTEM_PROMPT,
-        user=f'<documento nombre="{filename}">\n{texto[:MAX_TEXTO]}\n</documento>',
-        schema=SCHEMA,
-        schema_name="datos_tique",
-    )
+    from hacienda_gpt.capacidades.contrato import ContextoPeticion, pedir
+    from hacienda_gpt.capacidades.documentos import contenido
+
+    leido = pedir(
+        "documentos",
+        "leer_campos",
+        {
+            "nombre_fichero": filename,
+            "contenido_base64": contenido(data),
+            "instrucciones": SYSTEM_PROMPT,
+            "esquema": SCHEMA,
+            "nombre_esquema": "datos_tique",
+            "instrucciones_imagen": SYSTEM_PROMPT_IMAGEN,
+            "esquema_imagen": SCHEMA_IMAGEN,
+            "nombre_esquema_imagen": "datos_tique_escaneado",
+            "que_localizar": "los datos de la compra",
+            "max_caracteres": MAX_TEXTO,
+            "max_paginas_escaneo": 5,
+            "aviso_escaneo_largo": "Un tique escaneado de más de 5 páginas no se lee automáticamente.",
+        },
+        ContextoPeticion(ambito="caducidades", hoy=hoy or date.today(), proveedor=provider),
+    ).datos
+    if leido["lectura"] == "imagen":
+        return _leer_imagen(list(leido["lecturas"]))
+    raw = leido["lecturas"][0]
     campos = raw.get("campos") if isinstance(raw, dict) else []
-    return verificar_propuesta(texto, campos if isinstance(campos, list) else [])
+    return verificar_propuesta(str(leido["texto"]), campos if isinstance(campos, list) else [])
+
+
+__all__ = [
+    "CAMPOS",
+    "CampoPropuesto",
+    "DocumentoNoLegibleError",
+    "PropuestaCompra",
+    "extraer_sin_modelo",
+    "fechas_en",
+    "importes_en",
+    "leer_ticket",
+    "verificar_propuesta",
+]

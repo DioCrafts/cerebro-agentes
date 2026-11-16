@@ -44,7 +44,7 @@ from hacienda_gpt.modulos.contrato import (
     Modulo,
     TipoHecho,
 )
-from hacienda_gpt.modulos.ganchos import Ganchos, PuenteAmbito, ganchos_de
+from hacienda_gpt.modulos.ganchos import Ganchos, PuenteAmbito, es_v2, ganchos_de
 
 logger = logging.getLogger(__name__)
 
@@ -152,6 +152,9 @@ def problemas_de(modulo: Any, *, paquete: str | None = None) -> list[str]:
     except Exception as exc:  # a v1 attribute of the wrong shape
         return [f"ganchos no válidos: {type(exc).__name__}: {exc}"]
     directas = frozenset(ganchos.agente.directas)
+    if not es_v2(modulo) and clave == FISCAL:
+        # v1 compatibility: a v1 tax module kept the names its tools always had (v2 declares direct tools).
+        directas |= {h.spec.name for h in modulo.herramientas or () if isinstance(h, HerramientaModulo)}
     compartidos = hechos_compartidos()
     vistos: set[str] = set()
     for hecho in modulo.hechos or ():

@@ -62,7 +62,9 @@ def estado_para_usuario(
             continue
         eleccion = elecciones.get(cap.clave)
         if eleccion is not None:
-            estados.append(EstadoCapacidad(capacidad=cap, activa=eleccion.activo, elegida=True, cuando=eleccion.timestamp))
+            estados.append(
+                EstadoCapacidad(capacidad=cap, activa=eleccion.activo, elegida=True, cuando=eleccion.timestamp)
+            )
         else:
             estados.append(EstadoCapacidad(capacidad=cap, activa=_por_defecto(cap.clave)))
     return estados
@@ -82,6 +84,8 @@ def consentida(capacidad: Capacidad, contexto: ContextoPeticion, auth: Any | Non
         return False
     if capacidad.consentimiento == "ninguno":
         return True
+    if contexto.activos is not None:  # the caller already read the owner's choices (a task step)
+        return capacidad.clave in contexto.activos
     if settings.AUTH_MODE != "required":
         return _por_defecto(capacidad.clave)
     if auth is None:

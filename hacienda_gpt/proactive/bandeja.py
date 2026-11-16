@@ -74,7 +74,6 @@ def avisos_de_modulos(
     Modules with their own runner (``Ganchos.bandeja``: the tax module) are skipped here.
     """
     from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
-
     from hacienda_gpt.modulos.perfil import perfil_de
 
     perfil = perfil_de(case)

@@ -10,6 +10,7 @@ from typing import Any
 from hacienda_gpt.agent.providers.base import ToolSpec
 from hacienda_gpt.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 from hacienda_gpt.modulos.suscripciones import almacen
+from hacienda_gpt.modulos.suscripciones.capacidades import HERRAMIENTA_CARGOS_DEL_CORREO
 from hacienda_gpt.modulos.suscripciones.derechos import DerechosConsumidor, cargar
 from hacienda_gpt.modulos.suscripciones.deteccion import (
     ServicioDetectado,
@@ -694,4 +695,6 @@ HERRAMIENTAS: tuple[HerramientaModulo, ...] = (
     HerramientaModulo(SPEC_LISTADO, _envolver(ejecutar_listado), "lectura"),
     HerramientaModulo(SPEC_GASTO, _envolver(ejecutar_gasto_anual), "lectura"),
     HerramientaModulo(SPEC_BAJA, _envolver(ejecutar_preparar_baja), "prepara"),
+    # What the domain asks of the mail capability («facturas de este emisor»): see ``capacidades.py``.
+    HERRAMIENTA_CARGOS_DEL_CORREO,
 )

@@ -128,6 +128,8 @@ class Ganchos:
 
 # Daily tasks of v1 modules found by name in their package (what ``proactive/bandeja.TAREAS_DIARIAS`` did).
 TAREAS_DIARIAS_V1: dict[str, str] = {"ayudas": "actualizar_convocatorias"}
+# The key the v1 core told the tax module apart by (only the v1 adapter still reads it).
+CLAVE_FISCAL_V1 = "fiscal"
 
 
 def _invocable(valor: Any) -> Callable[..., Any] | None:
@@ -173,6 +175,8 @@ def desde_v1(modulo: Any) -> Ganchos:
     destino = getattr(modulo, "herramienta_de_documento", None)
     return Ganchos(
         version=1,
+        # v1 compatibility: the v1 core kept the tax module on by its key.
+        obligatorio=getattr(modulo, "clave", None) == CLAVE_FISCAL_V1,
         eventos=GanchosEventos(
             tipos=tuple(str(t) for t in (getattr(modulo, "eventos", None) or ())),
             hechos_leidos=tuple(str(n) for n in (getattr(modulo, "hechos_leidos", None) or ())),
@@ -193,7 +197,9 @@ def desde_v1(modulo: Any) -> Ganchos:
         ),
         agente=GanchosAgente(
             # v1 offered only the read-only tools of a flagged module, silently skipping the others.
-            directas=tuple(h.spec.name for h in herramientas if directas_v1 and getattr(h, "efecto", None) == "lectura"),
+            directas=tuple(
+                h.spec.name for h in herramientas if directas_v1 and getattr(h, "efecto", None) == "lectura"
+            ),
             especialista=not directas_v1,
             ayuda_registrar_hechos=str(getattr(modulo, "ayuda_registrar_hechos", "") or ""),
             hechos_estructurados=dict(getattr(modulo, "hechos_estructurados", None) or {}),

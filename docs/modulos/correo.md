@@ -4,7 +4,14 @@ Objetivo: que lo importante del buzón no se pierda —una notificación de Haci
 intento de fraude— sin que el asistente pueda tocar el buzón. **Fase 1: leer, clasificar, resumir, avisar y
 proponer datos a otros módulos.** No envía, no borra, no archiva, no etiqueta, no marca como leído.
 
-Código: `hacienda_gpt/modulos/correo/` · API: `hacienda_gpt/api/routers/correo.py` · interfaz:
+> **Capacidad, no ámbito.** El correo es una *capacidad* (`hacienda_gpt/capacidades/correo/`, contrato en
+> `hacienda_gpt/capacidades/contrato.py`): cualquier ámbito la pide con `pedir("correo", "facturas_de_emisor", …)`
+> (luz y suscripciones ya lo hacen) y sus propuestas van al ámbito que declara aceptar ese dato
+> (`Ganchos.entradas`: compras → caducidades, potencia → luz). Sigue teniendo su cara en el chat y su
+> interruptor en «Módulos» (`MODULO`, descubierto por `hacienda_gpt/modulos/correo/`, que queda como alias de
+> la ruta antigua). Ver [README de los módulos](README.md).
+
+Código: `hacienda_gpt/capacidades/correo/` (alias en `hacienda_gpt/modulos/correo/`) · API: `hacienda_gpt/api/routers/correo.py` · interfaz:
 `frontend/src/components/CorreoSeccion.tsx` (dentro de la tarjeta del módulo en «Módulos») · datos:
 `data/notificaciones.json` (BOE) y `data/remitentes.json` (lista del operador) · pruebas: `tests/modulos/correo/`
 · extractos del BOE: `tests/fixtures/modulos/correo/boe/`.

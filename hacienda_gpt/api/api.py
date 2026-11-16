@@ -70,10 +70,12 @@ from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
 from hacienda_gpt.api.observability import ApiMetrics, observability_middleware
 from hacienda_gpt.api.routers import auth as auth_router
 from hacienda_gpt.api.routers import autonomos as autonomos_router
+from hacienda_gpt.api.routers import capacidades as capacidades_router
 from hacienda_gpt.api.routers import consumo as consumo_router
 from hacienda_gpt.api.routers import correo as correo_router
 from hacienda_gpt.api.routers import evaluacion as evaluacion_router
 from hacienda_gpt.api.routers import eventos as eventos_router
+from hacienda_gpt.api.routers import investigacion as investigacion_router
 from hacienda_gpt.api.routers import memoria as memoria_router
 from hacienda_gpt.api.routers import modulos as modulos_router
 from hacienda_gpt.api.routers import navegador as navegador_router
@@ -1264,4 +1266,6 @@ app.include_router(correo_router.build_router(get_case_store=get_case_store))
 app.include_router(push_router.build_router(get_case_store=get_case_store))
 app.include_router(plataforma_router.build_router(get_case_store=get_case_store))
 app.include_router(tareas_router.build_router(get_case_store=get_case_store))
+app.include_router(capacidades_router.build_router())
+app.include_router(investigacion_router.router)
 # --- /routers ---

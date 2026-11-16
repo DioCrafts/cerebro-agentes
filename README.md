@@ -347,86 +347,155 @@ curl -X POST "http://127.0.0.1:8000/cases/$CASE/turn" \
 
 ---
 
-## 🏠 Asistente central y módulos
+## 🏠 Ámbitos y capacidades
 
-El asesor fiscal es ahora el **asistente central** de la administración del hogar. La parte de impuestos
-es el primer módulo (`fiscal`) y no ha cambiado: mismas herramientas, mismas respuestas, mismos avisos y
-la misma API. Los demás ámbitos (luz, caducidades y garantías, ayudas públicas, suscripciones,
-hipoteca…) se enchufan como **módulos** que cumplen un único contrato,
-[`hacienda_gpt/modulos/contrato.py`](hacienda_gpt/modulos/contrato.py).
+El asesor fiscal es el **asistente central** de la administración del hogar. Lo que sabe hacer se reparte en
+dos clases de piezas, cada una con su contrato:
+
+- **Ámbitos** (dominios): `fiscal`, `luz`, `caducidades`, `ayudas`, `suscripciones`, `hipoteca`… Cada uno es
+  dueño de sus **datos** (hechos del expediente), sus **calculadoras** deterministas (herramientas) y sus
+  **avisos**. Contrato: [`modulos/contrato.py`](hacienda_gpt/modulos/contrato.py) (v1) y sus integraciones
+  declaradas en [`modulos/ganchos.py`](hacienda_gpt/modulos/ganchos.py) (v2). Paquetes en
+  `hacienda_gpt/modulos/<clave>/`.
+- **Capacidades**: un **medio** que cualquier ámbito puede usar — el correo (`correo`), el navegador
+  (`navegador`), los documentos (`documentos`), la investigación con fuentes (`investigacion`). Contrato:
+  [`capacidades/contrato.py`](hacienda_gpt/capacidades/contrato.py). Paquetes en
+  `hacienda_gpt/capacidades/<clave>/`. Un ámbito nunca importa a otro ni las tripas de una capacidad: las
+  pide con `pedir(capacidad, operación, argumentos, contexto)`.
+
+La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su clave: lo que la hace distinta
+(siempre activa, herramientas directas del asistente, su propia bandeja de avisos) lo **declara**.
 
 ### Arquitectura
 
 ```
                        ┌──────────── asistente central (agent/agent.py) ─────────────┐
- pregunta ──► /agent ──►│ herramientas fiscales (calcular_irpf, buscar_fuentes…)      │──► respuesta
-                       │ consultar_luz / consultar_hipoteca / …  (una por módulo)     │    citada [F#]
+ pregunta ──► /agent ──►│ herramientas directas de un ámbito (fiscal: calcular_irpf…) │──► respuesta
+                       │ consultar_luz / consultar_hipoteca / …  (una por ámbito)     │    citada [F#]
                        └──────┬───────────────────────────────────────────────────────┘    y verificada
                               │ especialista (sub-agente acotado, agent/especialistas.py)
                               ▼
-                 solo las herramientas del módulo + leer_expediente
-                 instrucciones del módulo; cada resultado = fragmento citable [F#]
+                 solo las herramientas del ámbito + leer_expediente
+                              │ una herramienta del ámbito pide una capacidad
+                              ▼
+             capacidades.pedir("navegador", "preparar_descarga_consumo", {...}, contexto)
+             ── comprueba ámbito, consentimiento, efecto, esquemas; mide; envuelve datos de terceros ──
 ```
 
-- **Registro** (`modulos/registro.py`): descubre con `pkgutil` cada paquete `hacienda_gpt.modulos.<clave>`
-  que expone `MODULO`, lo valida contra el contrato (claves únicas, hechos con prefijo `<clave>_` salvo los
-  compartidos del núcleo, herramientas únicas con prefijo `<clave>_` salvo las fiscales de siempre, efectos
-  válidos…) y deja fuera, con un error en el log, el módulo que falle al importar o incumpla una regla: un
-  módulo roto nunca tumba la aplicación. `MODULOS_DESACTIVADOS` apaga módulos para todos (`fiscal` no se
-  puede apagar). `python -m hacienda_gpt.cli.proactive modulos` lista lo cargado y lo rechazado.
+- **Registro de ámbitos** (`modulos/registro.py`): descubre con `pkgutil` cada paquete
+  `hacienda_gpt.modulos.<clave>` que expone `MODULO` y lo valida: claves únicas, hechos con prefijo
+  `<clave>_` salvo los compartidos del núcleo, herramientas únicas con prefijo `<clave>_` salvo las que el
+  ámbito declara **directas** (y una herramienta directa tiene que existir y ser de **solo lectura**: si no, el
+  ámbito queda fuera), `entradas` que nombran herramientas suyas que no actúan o hechos suyos, puentes hacia
+  otro ámbito… Un ámbito roto nunca tumba la aplicación. `MODULOS_DESACTIVADOS` apaga ámbitos para todos
+  (salvo los `obligatorio`). `python -m hacienda_gpt.cli.proactive modulos` lista lo cargado y lo rechazado.
+- **Registro de capacidades** (`capacidades/registro.py`): igual, con `CAPACIDAD`; `CAPACIDADES_DESACTIVADAS`
+  las apaga para todos.
 - **Perfil del hogar** (`modulos/perfil.py`): los hechos del expediente son el perfil que comparten todos
-  los módulos. Los hechos de un módulo (`HechoModulo`) entran en el vocabulario en tiempo de ejecución:
-  `PUT /cases/{id}/facts/{nombre}` los valida con su `validar` y guarda los `json` como texto JSON canónico
-  (como `descendientes`). No se ofrecen al extractor de hechos del chat.
-- **Especialistas** (`agent/especialistas.py`): por cada módulo activado (salvo `fiscal`) el asistente
-  recibe `consultar_<clave>`, que lanza un sub-agente con las herramientas de ese módulo y `leer_expediente`
-  (datos compartidos y los suyos, nunca los de otro módulo). Reutiliza el bucle de los investigadores del
-  equipo (`team.run_subagent`), mide el consumo con el propósito `especialista:<clave>` contra el mismo
-  presupuesto de la pregunta, y registra cada resultado en el libro de evidencias como fragmento citable,
-  que el verificador comprueba como cualquier otro. Sin módulos activados el asistente es exactamente el de
-  antes (mismo *prompt*, mismas herramientas).
-- **Bandeja única** (`proactive/bandeja.py`): `run-daily` ejecuta los avisos fiscales como siempre y
-  después `avisos` de cada módulo activado para el dueño de cada caso (tipo `modulo:<clave>`, clave
-  `modulo:<clave>:<aviso>`, idempotente, `sustituye_prefijo` respetado; un módulo que falla no para a los
-  demás). `run-weekly` escribe un **resumen semanal** por caso con lo que vence, los importes de los avisos y
-  las acciones por decidir, ordenado por urgencia, sin sumar nunca cifras de módulos distintos.
-- **Mantenimiento**: las fuentes BOE de los módulos (`FuenteModulo`) entran en la vigilancia de
-  `boe-novedades` y en `params-check` (apartado `modulos`), como las leyes de la calculadora.
+  los ámbitos (`PUT /cases/{id}/facts/{nombre}` valida los de cada uno con su `validar`).
+- **Especialistas** (`agent/especialistas.py`): por cada ámbito activado que tiene especialista el asistente
+  recibe `consultar_<clave>` (sub-agente con sus herramientas y `leer_expediente`; propósito de medición
+  `especialista:<clave>`; cada resultado es un fragmento citable que el verificador comprueba).
+- **Bandeja única** (`proactive/bandeja.py`): `run-daily` ejecuta primero los ámbitos con bandeja propia
+  (`fiscal`) y después `avisos` de cada ámbito activado (tipo `modulo:<clave>`, idempotente). `run-weekly`
+  escribe el **resumen semanal** sin sumar nunca cifras de ámbitos distintos; la etiqueta de cada aviso sale
+  del ámbito que declara ese tipo.
+- **Eventos** (`eventos/`): cada ámbito declara a qué eventos se suscribe, qué hechos compartidos lee, qué hace
+  al despertar y cuándo quiere despertar (ver «Arquitectura orientada a eventos»).
 
 ### Garantías
 
 - Ninguna cifra la calcula el modelo: sale de una herramienta determinista y llega citada.
-- El asistente no suma ni compara como una sola cuenta cifras de módulos distintos si ningún módulo ha
-  calculado esa combinación (regla del *prompt* y del resumen semanal).
-- Una herramienta `efecto="actua"` nunca se ejecuta al llamarla: queda como **acción pendiente**
-  (`GET /acciones?case_id=…`) y solo corre tras `POST /acciones/{id}/confirmar` del dueño del caso, una sola
-  vez y solo si el módulo sigue activado. Las `prepara` devuelven borradores marcados como tales.
-- Consentimiento por módulo: `fiscal` siempre activo; el resto **desactivado hasta que el usuario lo
-  activa** (privacidad por defecto, art. 25.2 RGPD). `GET /modulos`, `PUT /me/modulos/{clave}`
-  (`{"activo": false, "borrar_datos": true}` borra además sus datos). Sin cuentas manda
-  `MODULOS_ACTIVOS_POR_DEFECTO`.
-- Los datos de los módulos se exportan y se borran con la cuenta como cualquier hecho; al borrar un hecho
-  se anonimiza en la auditoría y se quitan los avisos del módulo.
+- El asistente no suma ni compara como una sola cuenta cifras de ámbitos distintos.
+- Una herramienta `efecto="actua"` nunca se ejecuta al llamarla: queda como **acción pendiente** y solo corre
+  tras `POST /acciones/{id}/confirmar` del dueño del caso. Las `prepara` devuelven borradores.
+- `pedir` hace cumplir, en código, cada regla de una capacidad (`capacidades/peticion.py`):
+  1. el ámbito que pide puede usarla (la operación o la capacidad dicen qué ámbitos; un ámbito v2 solo pide lo
+     que declara en `Ganchos.capacidades`);
+  2. **consentimiento**: una capacidad `consentimiento="usuario"` (correo, navegador) solo funciona si el
+     usuario la activó (la elección se guarda con las de los módulos: correo y navegador tienen **un solo
+     interruptor**, el de «Módulos»);
+  3. **efecto**: `actua` exige una `Confirmacion` del usuario para exactamente esa capacidad, operación, caso y
+     argumentos (`huella_de`); el resultado de una `prepara` sale marcado como `propuesta` (nada se aplica sin
+     el usuario);
+  4. los argumentos y el resultado cumplen el JSON Schema de la operación;
+  5. **medición**: el proveedor del contexto se re-propone para el `proposito` de la operación (enrutado y
+     coste por propósito) y el gasto se atribuye al usuario y al caso; una operación sin propósito no recibe
+     proveedor;
+  6. **datos no confiables**: si la operación devuelve datos de terceros (un correo, una web, un documento), el
+     texto para el modelo va entre `<datos_no_confiables origen="…">`, sin poder cerrar las marcas y con el
+     cebo de inyección retirado.
+- Las propuestas que una capacidad hace a un ámbito (lo que el correo encuentra) siguen necesitando el botón
+  «Confirmar» del usuario (`tests/modulos/correo/test_adversarial.py`).
+- Consentimiento por ámbito: los `obligatorio` (fiscal) siempre activos; el resto **desactivado hasta que el
+  usuario lo activa** (art. 25.2 RGPD). `GET /modulos`, `PUT /me/modulos/{clave}` (`{"activo": false,
+  "borrar_datos": true}` borra además sus datos, también lo que el ámbito guarda fuera del expediente).
+  `GET /capacidades` lista las capacidades con su estado de consentimiento, sus operaciones y qué ámbitos las
+  usan; `PUT /me/capacidades/{clave}` da o retira el consentimiento de una capacidad sin interruptor propio en
+  «Módulos». Sin cuentas manda `MODULOS_ACTIVOS_POR_DEFECTO`.
+- Los datos se exportan y se borran con la cuenta.
 
-### Cómo escribir un módulo
+### Cómo escribir un ámbito
 
-1. Crea el paquete `hacienda_gpt/modulos/<clave>/` con un `__init__.py` que exponga `MODULO` (puedes
-   heredar de `ModuloBase`). La clave debe coincidir con el nombre del paquete.
-2. Declara sus hechos (`HechoModulo`, prefijo `<clave>_`, `validar` que lance `ValueError` en español,
-   `sensible=True` para datos personales delicados), sus herramientas (`HerramientaModulo`, nombre
-   `<clave>_…`, `efecto` correcto) y sus fuentes (`FuenteModulo`, con el id del BOE cuando lo haya).
-3. Herramientas deterministas que devuelven `ResultadoHerramienta` con cifras, fuentes y advertencias; los
-   errores como `es_error=True`, nunca como excepción. `avisos` idempotente (claves estables).
-4. Pruebas en `tests/modulos/<clave>/`. No hace falta tocar el núcleo: el registro lo encuentra solo.
+1. Crea `hacienda_gpt/modulos/<clave>/` con un `__init__.py` que exponga `MODULO` (hereda de `ModuloBase`). La
+   clave coincide con el paquete.
+2. Declara sus hechos (`HechoModulo`, prefijo `<clave>_`, `validar` con errores en español, `sensible=True`
+   para datos delicados), herramientas (`HerramientaModulo`, `<clave>_…`, `efecto` correcto) y fuentes
+   (`FuenteModulo`, con el id del BOE).
+3. Herramientas deterministas que devuelven `ResultadoHerramienta`; los errores con `es_error=True`. `avisos`
+   idempotente (claves estables).
+4. Declara sus integraciones en `ganchos` (contrato v2; un `@cached_property` que devuelve `Ganchos`), cada
+   una con su valor por defecto:
 
-Ganchos opcionales que el núcleo ya entiende (propuestos para la próxima versión del contrato):
-`leer_documento(provider, *, filename, data)` (propone datos de un documento subido:
-`POST /modulos/{clave}/documento`) y `herramienta_de_documento` (a qué herramienta van esos datos).
-`POST /modulos/{clave}/herramientas/{nombre}` ejecuta una herramienta desde la interfaz.
+   | Gancho | Para qué |
+   |---|---|
+   | `eventos=GanchosEventos(tipos, hechos_leidos, al_evento, proxima_revision)` | eventos que le despiertan, hechos compartidos que lee (`("*",)` = todos), qué hacer al despertar, cuándo volver a despertar |
+   | `bandeja=GanchosBandeja(ejecutar, tipos, otros_tipos, al_evento, proxima_revision)` | escribe sus propias notificaciones (como `fiscal`) |
+   | `documentos=GanchosDocumentos(leer, herramienta_destino)` | lee un documento subido y propone los argumentos de una herramienta (`POST /modulos/{clave}/documento`) |
+   | `agente=GanchosAgente(directas, especialista, ayuda_registrar_hechos, hechos_estructurados)` | herramientas que el asistente ofrece directamente (solo lectura), si tiene especialista, formas de hechos compartidos |
+   | `tarea_diaria`, `borrar_datos_de_caso` | preparación diaria; borrar lo que guarda fuera del expediente |
+   | `ficheros_legales` | sus ficheros de datos legales (`conocimiento.FicheroLegal`) |
+   | `puentes=(PuenteAmbito(destino, proponer),)` | cifras que propone a otro ámbito (nunca las escribe) |
+   | `entradas={"compra": "herramienta:<nombre>"}` | datos que otras partes (el correo) le pueden **proponer** |
+   | `capacidades=("documentos.leer_campos",)` | capacidades que pide con `pedir` |
+   | `obligatorio` | siempre activo (solo el ámbito base del asesor) |
 
-En la web, el panel **Módulos** lista los módulos, permite activarlos, editar sus datos con un formulario
-construido a partir de sus `HechoModulo` (los `json` en un área de texto con los errores de validación a la
-vista) y confirmar o rechazar las acciones pendientes; los avisos se agrupan por módulo.
+   Un módulo v1 (atributos sueltos: `eventos`, `al_evento`, `leer_documento`, `herramientas_directas`,
+   `ejecutar_en_bandeja`…) sigue funcionando: `ganchos_de(modulo)` los lee con el adaptador v1→v2.
+5. Para usar una capacidad desde una herramienta: `capacidades.desde_ambito.pedir_desde_herramienta(
+   "<clave>", "correo", "facturas_de_emisor", {...}, ctx)` (un rechazo se convierte en el error en español de la
+   herramienta). Ejemplos: `modulos/luz/capacidades.py` («descarga mi consumo», «facturas de este emisor»),
+   `modulos/caducidades/ticket.py` («léeme este ticket»), `modulos/fiscal/documentos.py`.
+6. Pruebas en `tests/modulos/<clave>/`. No hace falta tocar el núcleo.
+
+### Cómo escribir una capacidad
+
+1. Crea `hacienda_gpt/capacidades/<clave>/` con un `__init__.py` que exponga `CAPACIDAD` (`CapacidadBase`).
+2. Declara sus operaciones (`OperacionCapacidad`): `entrada` y `salida` como JSON Schema de tipo objeto,
+   `efecto` (`lectura`, `prepara`, `actua`), `proposito` de medición si llama a un modelo (fila en
+   `agent/enrutado.py`), `datos_de_terceros` si devuelve contenido ajeno, `ambitos` si solo algunos ámbitos
+   pueden pedirla (obligatorio para una operación `actua`), `requiere_consentimiento=False` si no usa aquello
+   para lo que el usuario da permiso.
+3. Declara `consentimiento="usuario"` si procesa datos del usuario que no le entrega en esa misma petición
+   (su buzón, su sesión en una web); `"ninguno"` si solo procesa lo que le dan.
+4. La operación recibe `ContextoPeticion` (ámbito que pide, caso, perfil, proveedor ya re-propuesto) y
+   devuelve `ResultadoCapacidad` (`datos`, `resumen`, `citas`, `avisos`; para tareas también `estado`,
+   `borrador`, `aviso`, `es_error`). Nunca escribe en el expediente de un ámbito: devuelve datos o propuestas.
+5. Si además debe tener cara en el chat (especialista, avisos, interruptor), expón también un `MODULO` y un
+   paquete de descubrimiento en `hacienda_gpt/modulos/<clave>/` (como `correo` y `navegador`).
+
+Las tareas de larga duración (`hacienda_gpt/tareas`) usan las capacidades registradas con `pedir`
+(`tareas/capacidades.py`, ámbito `nucleo`, origen `tarea`).
+
+En la web, el panel **Módulos** lista los ámbitos y las caras de las capacidades (campo `capacidad`), permite
+activarlos, editar sus datos y confirmar o rechazar las acciones pendientes.
+
+**Rutas que se mantienen**: el correo vive en `hacienda_gpt/capacidades/correo/` y el navegador en
+`hacienda_gpt/capacidades/navegador/`; `hacienda_gpt/modulos/correo/` y `hacienda_gpt/navegador/` quedan como
+alias (el mismo objeto de módulo), `python -m hacienda_gpt.modulos.correo` sigue funcionando y las rutas de la
+API (`/correo/*`, `/navegador/*`, `/modulos/*`) no cambian. La lectura de documentos vive en
+`hacienda_gpt/capacidades/documentos/`; `hacienda_gpt/tax/documentos.py` es alias del lector fiscal
+(`modulos/fiscal/documentos.py`).
 
 ### Correo (Gmail, solo lectura)
 

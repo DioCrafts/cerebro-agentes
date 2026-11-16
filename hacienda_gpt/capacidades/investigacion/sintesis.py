@@ -13,7 +13,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from hacienda_gpt.capacidades.contrato import envolver_no_confiable
-from hacienda_gpt.capacidades.investigacion.fuentes import FuenteRecuperada
+from hacienda_gpt.capacidades.investigacion.fuentes import FuenteRecuperada, neutralizar
 
 PROPOSITO = "investigacion:sintetizar"
 
@@ -88,7 +88,9 @@ def mensaje(pregunta: str, ambito: str | None, fuentes: Sequence[FuenteRecuperad
         if fuente.referencia and fuente.tipo == "boe":
             cabecera += f" — {fuente.referencia}"
         partes.append(cabecera)
-        partes.append(envolver_no_confiable(fuente.id.lower(), f"Título: {fuente.titulo}\n{fuente.extracto}"))
+        partes.append(
+            envolver_no_confiable(fuente.id.lower(), neutralizar(f"Título: {fuente.titulo}\n{fuente.extracto}"))
+        )
         partes.append("")
     return "\n".join(partes)
 

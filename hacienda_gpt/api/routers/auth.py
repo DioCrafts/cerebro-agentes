@@ -35,6 +35,7 @@ from hacienda_gpt.auth.store import (
     InvalidEmailError,
     User,
 )
+from hacienda_gpt.capacidades.investigacion import capacidad as investigacion_capacidad
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.memoria.almacen import exportar_decisiones
 from hacienda_gpt.modulos.acciones import AccionStore
@@ -349,6 +350,8 @@ def build_router(
             "cases": exported_cases,
             # Devices registered for push notices and the consent history (hacienda_gpt/push).
             "push": PushStore(cases.db_path).exportar(user.id),
+            # Research with sources (capacidades/investigacion): web consent history and cached reports.
+            "investigacion": investigacion_capacidad.exportar_usuario(user.id),
             "not_included": (
                 "El historial de conversaciones se guarda solo en tu navegador, no en el servidor. "
                 "Los documentos que subes no se almacenan."
@@ -389,6 +392,8 @@ def build_router(
             for tarea in tareas_navegador.gestor().de_caso(case_id):
                 tareas_navegador.gestor().cerrar(tarea)
             cases.delete_case(case_id)
+        # Research with sources: the user's web consent and cached reports (its own store).
+        investigacion_capacidad.borrar_usuario(user.id)
         store.delete_user(user.id)
         limiter.reset(key)
         return Response(status_code=204)

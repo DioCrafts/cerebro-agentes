@@ -20,6 +20,7 @@ from hacienda_gpt.modulos.luz.analisis import (
     horas_por_periodo,
     potencia_optima,
 )
+from hacienda_gpt.modulos.luz.capacidades import herramientas_de_capacidades
 from hacienda_gpt.modulos.luz.consumo import (
     ConsumoGuardado,
     FormatoNoReconocidoError,
@@ -673,4 +674,6 @@ def herramientas() -> list[HerramientaModulo]:
             ),
             ejecutar=potencia,
         ),
+        # What the domain asks of the capabilities (browser, mail): see ``capacidades.py``.
+        *herramientas_de_capacidades(),
     ]

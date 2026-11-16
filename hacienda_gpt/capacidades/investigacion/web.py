@@ -64,7 +64,7 @@ NO_DISPONIBLE_OPENAI = (
 )
 
 
-class WebNoDisponible(RuntimeError):
+class WebNoDisponibleError(RuntimeError):
     """The web cannot be used (provider, settings): the message is Spanish, for the report."""
 
 
@@ -122,7 +122,7 @@ def herramientas(
     if permitidos is not None:
         lista = [d for d in permitidos if d not in set(bloqueados)]
         if not lista:
-            raise WebNoDisponible("La lista de webs permitidas está vacía: no se puede buscar en la web.")
+            raise WebNoDisponibleError("La lista de webs permitidas está vacía: no se puede buscar en la web.")
         dominios["allowed_domains"] = lista[:MAX_DOMINIOS]
     elif bloqueados:
         dominios["blocked_domains"] = list(bloqueados)[:MAX_DOMINIOS]
@@ -342,12 +342,12 @@ def _error_proveedor(exc: Exception) -> ProviderError:
 
 
 def web_para(proveedor: Any) -> BuscadorWeb:
-    """The web searcher that goes with ``proveedor`` (an LLM provider, metered or not); WebNoDisponible otherwise."""
+    """The web searcher that goes with ``proveedor`` (an LLM provider, metered or not); WebNoDisponibleError otherwise."""
     if proveedor is None:
-        raise WebNoDisponible("No hay modelo de IA configurado: la búsqueda web lo necesita.")
+        raise WebNoDisponibleError("No hay modelo de IA configurado: la búsqueda web lo necesita.")
     nombre = str(getattr(proveedor, "name", "") or "").lower()
     if nombre not in ("anthropic", "claude"):
-        raise WebNoDisponible(NO_DISPONIBLE_OPENAI)
+        raise WebNoDisponibleError(NO_DISPONIBLE_OPENAI)
     return WebAnthropic(modelo=str(proveedor.model))
 
 
@@ -359,7 +359,7 @@ __all__ = [
     "DocumentoWeb",
     "ResultadoWeb",
     "WebAnthropic",
-    "WebNoDisponible",
+    "WebNoDisponibleError",
     "documento_de",
     "herramientas",
     "leer_bloques",

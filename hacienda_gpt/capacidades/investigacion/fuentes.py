@@ -16,8 +16,8 @@ import json
 import logging
 import re
 import threading
-import unicodedata
 from typing import Any
+import unicodedata
 import urllib.parse
 import urllib.request
 
@@ -38,7 +38,7 @@ VACIAS = frozenset(
     "a al algo como con cual cuales cuando de del desde donde el ella en entre es esta este esto hay la las le lo "
     "los mas me mi mis muy no o para pero por que qué se sea ser si sin sobre su sus tambien te tengo tiene un una "
     "uno unos y ya yo necesito necesita puedo puede debo debe hacer hace dice dicen quiero cuanto cuanta cuantos "
-    "segun año años".split()
+    "segun año años empieza empiezan comienza comienzan termina acaba cuesta cuestan vale".split()
 )
 
 
@@ -57,9 +57,31 @@ def palabras_clave(texto: str, maximo: int = 6) -> list[str]:
     return vistas[:maximo]
 
 
+_INVISIBLES_RE = re.compile("[\u00ad\u200b\u200c\u200d\u2060\ufeff]")
+# Broader than llm/security.py (which misses «ignora TUS instrucciones», «disregard…»). Used to flag a text
+# (``sospechosa``) and to neutralise it before a model reads it (``neutralizar``); the stored text, which quotes
+# are checked against, is never rewritten.
+_INYECCION_RE = re.compile(
+    r"\b(?:ignora|ignorad|ignorar|olvida|olvidad|olvidar|omite|omitir|desobedece)\s+(?:\w+\s+){0,3}?"
+    r"(?:instrucciones|reglas|indicaciones|[oó]rdenes)\b"
+    r"|\bnuevas?\s+instrucciones\b"
+    r"|\b(?:ignore|disregard|forget)\s+(?:\w+\s+){0,3}?(?:instructions|rules|prompt)\b"
+    r"|\b(?:system|developer)\s+(?:prompt|message)\b",
+    re.IGNORECASE,
+)
+REDACCION = "[INSTRUCCIÓN INCRUSTADA ELIMINADA]"
+
+
 def sospechosa(texto: str) -> bool:
-    """Does ``texto`` carry prompt-injection bait (what ``sanitize_retrieved_context`` would redact)?"""
-    return sanitize_retrieved_context(texto) != re.sub("[­​‌‍⁠﻿]", "", texto)
+    """Does ``texto`` carry prompt-injection bait (what ``sanitize_retrieved_context`` would redact, or one of
+    the broader patterns above)?"""
+    limpio = _INVISIBLES_RE.sub("", texto)
+    return sanitize_retrieved_context(texto) != limpio or bool(_INYECCION_RE.search(limpio))
+
+
+def neutralizar(texto: str) -> str:
+    """``texto`` with the broader injection patterns replaced (the contract's wrapper redacts the rest)."""
+    return _INYECCION_RE.sub(REDACCION, _INVISIBLES_RE.sub("", texto))
 
 
 def extracto(texto: str, terminos: Sequence[str], maximo: int) -> str:
@@ -159,7 +181,7 @@ def _vigencia(grafo: Any, metadata: dict[str, Any]) -> str | None:
 
 
 def buscar_corpus(
-    searcher: CorpusSearcher, consulta: str, *, k: int, grafo: Any | None = None
+    searcher: CorpusSearcher, consulta: str, *, k: int, grafo: Any | None = None, ahora: datetime | None = None
 ) -> list[FuenteRecuperada]:
     """The corpus chunks for ``consulta`` (the same search as the agent's ``buscar_fuentes``)."""
     documentos = searcher.search(consulta, k=k, filters=SearchFilters())
@@ -187,7 +209,7 @@ def buscar_corpus(
                 # The corpus holds law, doctrine, case law and the Tax Agency's pages: official when the issuing
                 # authority is known or the page is on an official host.
                 oficial=tipo is not None or es_oficial(url),
-                recuperada_el=_ahora(),
+                recuperada_el=ahora or _ahora(),
                 nota=_vigencia(grafo, metadata),
             )
         )
@@ -238,7 +260,7 @@ def _terminos(terminos: Sequence[str]) -> list[str]:
 
 
 class ClienteBOE:
-    """Search the consolidated legislation of the BOE by title (then by text) and read a norm's text."""
+    """Search the consolidated legislation of the BOE by title (by text when no title matches) and read a norm's text."""
 
     def __init__(self, descargar: Descargar | None = None, *, max_textos: int = 16) -> None:
         self._descargar = descargar or descargar_boe
@@ -247,7 +269,7 @@ class ClienteBOE:
         self._lock = threading.Lock()
 
     def _consulta(self, consulta: str, limite: int) -> list[NormaBOE]:
-        query = json.dumps({"query": {"query_string": {"query": consulta}}})
+        query = json.dumps({"query": {"query_string": {"query": consulta}}}, ensure_ascii=False)
         url = f"{API_BOE}?query={urllib.parse.quote(query)}&limit={max(1, min(limite * 3, 30))}"
         crudo = self._descargar(url, "application/json")
         if not crudo:
@@ -286,9 +308,9 @@ class ClienteBOE:
             return []
         conjuncion = " AND ".join(palabras)
         normas = self._consulta(f"titulo:({conjuncion})", limite)
-        if len(normas) < limite:
-            vistas = {n.boe_id for n in normas}
-            normas += [n for n in self._consulta(f"texto:({conjuncion})", limite) if n.boe_id not in vistas]
+        if not normas:
+            # Only when no title matches: a full-text match is looser (long codes that mention the words).
+            normas = self._consulta(f"texto:({conjuncion})", limite)
         return normas[:limite]
 
     def texto(self, boe_id: str) -> str | None:
@@ -307,7 +329,9 @@ class ClienteBOE:
         return texto
 
 
-def buscar_boe(cliente: ClienteBOE, terminos: Sequence[str], *, limite: int) -> list[FuenteRecuperada]:
+def buscar_boe(
+    cliente: ClienteBOE, terminos: Sequence[str], *, limite: int, ahora: datetime | None = None
+) -> list[FuenteRecuperada]:
     fuentes: list[FuenteRecuperada] = []
     for norma in cliente.buscar(terminos, limite=limite):
         texto = cliente.texto(norma.boe_id)
@@ -321,7 +345,7 @@ def buscar_boe(cliente: ClienteBOE, terminos: Sequence[str], *, limite: int) -> 
                 url=norma.url,
                 referencia=norma.boe_id,
                 oficial=True,
-                recuperada_el=_ahora(),
+                recuperada_el=ahora or _ahora(),
                 nota=f"Texto consolidado (actualizado {norma.actualizada})" if norma.actualizada else None,
             )
         )
@@ -339,6 +363,7 @@ __all__ = [
     "buscar_corpus",
     "descargar_boe",
     "extracto",
+    "neutralizar",
     "palabras_clave",
     "plano",
     "sospechosa",

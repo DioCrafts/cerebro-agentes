@@ -37,20 +37,20 @@ from pydantic import BaseModel, ConfigDict, Field
 from hacienda_gpt.agent.providers.base import LLMProvider, ProviderError
 from hacienda_gpt.api.security import require_api_key
 from hacienda_gpt.auth.deps import CONSENT_DOCUMENTS_DETAIL, CaseAccess, get_case_access, require_session
+from hacienda_gpt.capacidades.documentos.lectura import DocumentoNoLegibleError, decode_upload
 from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
 from hacienda_gpt.eventos import emitir_cambio_modulo
 from hacienda_gpt.memoria.almacen import almacen, tabla_existe
 from hacienda_gpt.memoria.servicio import desde_accion
 from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore, describir
 from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
+from hacienda_gpt.modulos.ganchos import directas_de, ganchos_de, obligatorio
 from hacienda_gpt.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
 from hacienda_gpt.modulos.preferencias import EstadoModulo, estado_para_usuario, modulos_activos_para_caso
-from hacienda_gpt.modulos.ganchos import directas_de, ganchos_de, obligatorio
 from hacienda_gpt.modulos.registro import registro
 from hacienda_gpt.proactive.bandeja import kind_de
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.documentos import DocumentoNoLegibleError, decode_upload
 
 logger = logging.getLogger(__name__)
 

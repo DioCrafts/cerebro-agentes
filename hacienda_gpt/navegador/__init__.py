@@ -1,12 +1,5 @@
-"""Browser agent: acts on official websites on the user's behalf, safely.
+"""Moved to :mod:`hacienda_gpt.capacidades.navegador` (the browser CAPABILITY, see ``capacidades/contrato.py``).
 
-* ``guion.py`` — declarative, versioned scripts (selectors and steps as data) and their static safety checks;
-* ``seguridad.py`` — network allow-list per run, element checks, redaction;
-* ``ejecutor.py`` — runs a script in Chromium (Playwright) after the USER logged in;
-* ``reparacion.py`` — optional LLM selector repair behind a deterministic gate;
-* ``vigilancia.py`` — format-watch sources, repair proposals, redacted diagnoses;
-* ``tareas.py`` — tasks: consent, kill switch, rate limits, results (luz import, pending actions);
-* ``modulo.py`` — the ``navegador`` household module (its tools in the chat).
-
-Playwright is imported lazily: the API starts without it, and no browser starts unless ``NAVEGADOR_ACTIVO``.
+Every old import path keeps working: each submodule here is an alias of the moved one (the same module object,
+so patching either name patches both).
 """

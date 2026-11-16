@@ -58,12 +58,13 @@ from hacienda_gpt.capacidades.investigacion.modelo import (
 )
 from hacienda_gpt.capacidades.investigacion.presupuesto import (
     Coster,
-    PresupuestoAgotado,
     PresupuestoInvestigacion,
+    PresupuestoInvestigacionAgotadoError,
     capturar,
+    coste_por_defecto,
     observar,
 )
-from hacienda_gpt.capacidades.investigacion.web import BuscadorWeb, WebNoDisponible, web_para
+from hacienda_gpt.capacidades.investigacion.web import BuscadorWeb, WebNoDisponibleError, web_para
 
 logger = logging.getLogger(__name__)
 
@@ -109,7 +110,7 @@ class Investigador:
     boe: ClienteBOE | None = field(default_factory=ClienteBOE)
     grafo: Any | None = None
     almacen: AlmacenInvestigacion | None = None
-    # The web searcher that goes with a provider (WebNoDisponible when there is none).
+    # The web searcher that goes with a provider (WebNoDisponibleError when there is none).
     web: Callable[[Any], BuscadorWeb] = web_para
     reloj: Callable[[], datetime] = field(default=lambda: datetime.now(UTC))
     ajustes_de: Callable[[], Ajustes] = ajustes
@@ -147,7 +148,7 @@ class Investigador:
             if motivo is None:
                 try:
                     buscador = self.web(enrutado.para(proveedor, PROPOSITO_WEB) if proveedor is not None else None)
-                except WebNoDisponible as exc:
+                except WebNoDisponibleError as exc:
                     motivo = str(exc)
             estado_web.motivo = motivo
 
@@ -177,7 +178,7 @@ class Investigador:
                 max_tokens=aj.max_tokens,
                 max_usd=aj.max_usd,
                 precio_busqueda=aj.precio_busqueda_usd,
-                **({"coster": self.coster} if self.coster is not None else {}),
+                coster=self.coster or coste_por_defecto,
             ),
             web=estado_web,
         )
@@ -218,7 +219,7 @@ class Investigador:
                     )
                 finally:
                     presupuesto.anotar(list(usos), llamadas=max(1, len(usos)))
-        except PresupuestoAgotado as exc:
+        except PresupuestoInvestigacionAgotadoError as exc:
             ejecucion.avisos.append(str(exc))
             return planificacion.plan_determinista(peticion.pregunta)
         except ProviderError as exc:
@@ -251,7 +252,7 @@ class Investigador:
                 for sub in subpreguntas:
                     try:
                         por_tipo["corpus"] += buscar_corpus(
-                            self.searcher, sub.consulta_corpus, k=lim.corpus_k, grafo=self.grafo
+                            self.searcher, sub.consulta_corpus, k=lim.corpus_k, grafo=self.grafo, ahora=self.reloj()
                         )
                     except Exception:  # one failed search must not lose the others
                         logger.exception("corpus search failed")
@@ -262,7 +263,9 @@ class Investigador:
             else:
                 for sub in subpreguntas:
                     try:
-                        por_tipo["boe"] += buscar_boe(self.boe, sub.terminos_boe, limite=lim.normas_boe)
+                        por_tipo["boe"] += buscar_boe(
+                            self.boe, sub.terminos_boe, limite=lim.normas_boe, ahora=self.reloj()
+                        )
                     except Exception:
                         logger.exception("BOE search failed")
                         ejecucion.avisos.append("Una búsqueda en el BOE falló.")
@@ -312,11 +315,11 @@ class Investigador:
                 max_busquedas=lim.busquedas_web,
                 max_lecturas=lim.lecturas_web,
             )
-        except PresupuestoAgotado as exc:
+        except PresupuestoInvestigacionAgotadoError as exc:
             ejecucion.avisos.append(str(exc))
             ejecucion.web.motivo = str(exc)
             return []
-        except (ProviderError, WebNoDisponible) as exc:
+        except (ProviderError, WebNoDisponibleError) as exc:
             ejecucion.avisos.append(f"La búsqueda web no se pudo hacer: {exc}")
             ejecucion.web.motivo = str(exc)
             ejecucion.fallo_modelo = True
@@ -391,7 +394,7 @@ class Investigador:
                         )
                     finally:
                         presupuesto.anotar(list(usos), llamadas=max(1, len(usos)))
-            except PresupuestoAgotado as exc:
+            except PresupuestoInvestigacionAgotadoError as exc:
                 ejecucion.avisos.append(str(exc))
             except ProviderError as exc:
                 ejecucion.fallo_modelo = True

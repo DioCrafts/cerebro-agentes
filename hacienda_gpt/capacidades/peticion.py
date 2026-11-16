@@ -219,7 +219,10 @@ def pedir(
             motivo="ambito",
         )
 
-    if cap.consentimiento == "usuario":
+    necesita_consentimiento = (
+        op.requiere_consentimiento if op.requiere_consentimiento is not None else cap.consentimiento == "usuario"
+    )
+    if necesita_consentimiento:
         if consentido is None:
             from hacienda_gpt.capacidades.consentimiento import consentida
 
