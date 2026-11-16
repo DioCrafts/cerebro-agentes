@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from functools import cached_property
 from datetime import timedelta
 from decimal import Decimal, InvalidOperation
 import os
@@ -16,6 +17,8 @@ from hacienda_gpt.modulos.contrato import (
     HechoModulo,
     HerramientaModulo,
 )
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
+from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
 from hacienda_gpt.modulos.luz.analisis import comparar
 from hacienda_gpt.modulos.luz.consumo import cargar_consumo, validar_consumo, zona_valida
 from hacienda_gpt.modulos.luz.datos import DatoNoDisponibleError, cargar_regulados
@@ -131,6 +134,22 @@ class ModuloLuz:
     hechos: tuple[HechoModulo, ...] = HECHOS
     herramientas: list[HerramientaModulo] = field(default_factory=herramientas)
     fuentes: tuple[FuenteModulo, ...] = field(default_factory=lambda: _fuentes())
+
+    @cached_property
+    def ganchos(self) -> Ganchos:
+        """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
+        from hacienda_gpt.modulos.luz.datos import FICHEROS_LEGALES
+
+        return Ganchos(
+            eventos=GanchosEventos(
+                tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL), hechos_leidos=("comunidad_autonoma",)
+            ),
+            ficheros_legales=tuple(FICHEROS_LEGALES),
+            # The contracted power a bill states, proposed from the mail and confirmed by the user.
+            entradas={"potencia_contratada": f"hecho:{HECHO_P1}"},
+            # «descarga mi consumo» (browser, Datadis) and «facturas de este emisor» (mail).
+            capacidades=("navegador.preparar_descarga_consumo", "correo.facturas_de_emisor"),
+        )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         """Deterministic and offline: never calls REE (PVPC is left to the comparison tool)."""

@@ -14,11 +14,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from datetime import date
+from functools import cached_property
 import json
 import os
 from typing import Any
 
 from hacienda_gpt.agent.providers.base import ToolSpec
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.ayudas import almacen as almacen_mod
 from hacienda_gpt.modulos.ayudas.convocatorias import TEMAS, Convocatoria, Encaje, encaje
 from hacienda_gpt.modulos.ayudas.hogar import PRESTACIONES, Hogar, entero, hogar_del_perfil
@@ -34,6 +36,7 @@ from hacienda_gpt.modulos.contrato import (
     ModuloBase,
     ResultadoHerramienta,
 )
+from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
 
 CLAVE = "ayudas"
 ETIQUETAS_ESTADO = {
@@ -552,7 +555,27 @@ def revision_automatica() -> bool:
     return os.environ.get("AYUDAS_BOE_AUTOMATICO", "").strip() in {"1", "true"}
 
 
+def _tarea_diaria(hoy: date) -> Any:
+    """The package's entry point, looked up at call time (as the v1 core did)."""
+    import hacienda_gpt.modulos.ayudas as paquete
+
+    return paquete.actualizar_convocatorias(hoy)
+
+
 class ModuloAyudas(ModuloBase):
+    @cached_property
+    def ganchos(self) -> Ganchos:
+        """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
+        from hacienda_gpt.modulos.ayudas.parametros import FICHEROS_LEGALES
+
+        return Ganchos(
+            # Eligibility reads the household (children, disability, region, income…): every shared fact.
+            eventos=GanchosEventos(tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL), hechos_leidos=("*",)),
+            # Once a day, before the notices: the day's BOE calls for aid.
+            tarea_diaria=_tarea_diaria,
+            ficheros_legales=tuple(FICHEROS_LEGALES),
+        )
+
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         if revision_automatica():
             actualizar_convocatorias(contexto.hoy)  # once a day; never raises

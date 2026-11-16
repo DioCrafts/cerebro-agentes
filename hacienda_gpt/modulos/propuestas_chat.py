@@ -139,6 +139,13 @@ palabras): no se le volverá a ofrecer. Si quiere otra cifra, regístrala con `r
 """
 
 
+def _propone_al_fiscal(modulo: Modulo) -> bool:
+    """The module declares a bridge to the tax module (``Ganchos.puentes``, contract v2; v1 through the adapter)."""
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+
+    return any(p.destino == "fiscal" for p in ganchos_de(modulo).puentes)
+
+
 def _texto(mensaje: Any) -> str:
     """The text of a chat message (a string, or a list of text blocks)."""
     contenido = mensaje.get("content") if isinstance(mensaje, dict) else None
@@ -215,7 +222,7 @@ class PropuestasChat:
         hoy: date | None = None,
     ) -> PropuestasChat | None:
         """None without a case, without a module that has a bridge, or with nothing to propose."""
-        if case is None or not modulos or not any(m.clave in PUENTES for m in modulos):
+        if case is None or not modulos or not any(_propone_al_fiscal(m) for m in modulos):
             return None
         dia = hoy or reloj.hoy()
         try:

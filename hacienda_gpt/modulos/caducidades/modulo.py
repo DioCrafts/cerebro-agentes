@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 from typing import Any
 
 from hacienda_gpt.modulos.caducidades.agenda import avisos_de_agenda
@@ -22,7 +23,9 @@ from hacienda_gpt.modulos.caducidades.hechos import (
 )
 from hacienda_gpt.modulos.caducidades.herramientas import HERRAMIENTAS
 from hacienda_gpt.modulos.caducidades.reglas import cargar_reglas
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from hacienda_gpt.modulos.ganchos import Ganchos, GanchosDocumentos, GanchosEventos
 
 HECHOS: tuple[HechoModulo, ...] = (
     HechoModulo(
@@ -115,6 +118,23 @@ class ModuloCaducidades(ModuloBase):
     # The core's document hook: an uploaded receipt proposes a purchase, which the user confirms and then
     # registers with this tool.
     herramienta_de_documento = "caducidades_registrar_compra"
+
+    @cached_property
+    def ganchos(self) -> Ganchos:
+        """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
+        from hacienda_gpt.modulos.caducidades.reglas import FICHEROS_LEGALES
+
+        return Ganchos(
+            eventos=GanchosEventos(
+                tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL), hechos_leidos=("descendientes",)
+            ),
+            documentos=GanchosDocumentos(leer=self.leer_documento, herramienta_destino=self.herramienta_de_documento),
+            ficheros_legales=tuple(FICHEROS_LEGALES),
+            # A purchase found in the mail is proposed to this tool (the user confirms it).
+            entradas={"compra": f"herramienta:{self.herramienta_de_documento}"},
+            # «léeme este ticket»: the documents capability reads the upload.
+            capacidades=("documentos.leer_campos",),
+        )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return avisos_de_agenda(contexto.perfil, contexto.hoy)

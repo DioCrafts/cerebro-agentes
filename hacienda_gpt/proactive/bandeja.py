@@ -161,6 +161,8 @@ def avisos_de_modulos_para_todos(
     With ``preparar`` (the daily runner), the daily task of every module that is on for at least one case
     runs once first (see :data:`TAREAS_DIARIAS`); its outcome is under ``tareas_modulos``.
     """
+    from hacienda_gpt.modulos.ganchos import escribe_su_bandeja
+
     por_modulo: dict[str, int] = {}
     errores = 0
     por_caso: list[tuple[CaseState, list[Modulo]]] = []

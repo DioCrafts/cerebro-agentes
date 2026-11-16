@@ -7,8 +7,11 @@ See docs/modulos/hipoteca.md. ``MODULO`` is what the core discovers (hacienda_gp
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 
+from hacienda_gpt.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos, PuenteAmbito
 from hacienda_gpt.modulos.hipoteca.avisos import avisos_hipoteca
 from hacienda_gpt.modulos.hipoteca.herramientas import HERRAMIENTAS, pagos_del_ejercicio
 from hacienda_gpt.modulos.hipoteca.modelo import validar_prestamo
@@ -94,6 +97,20 @@ INSTRUCCIONES = (
 
 @dataclass
 class ModuloHipoteca(ModuloBase):
+    @cached_property
+    def ganchos(self) -> Ganchos:
+        """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
+        from hacienda_gpt.modulos.hipoteca import deduccion, indices, normativa
+        from hacienda_gpt.modulos.puentes import proponer_vivienda_pre2013
+
+        return Ganchos(
+            # A new official index moves the estimated instalment of the next review.
+            eventos=GanchosEventos(tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL, INDICE_PUBLICADO)),
+            ficheros_legales=(*normativa.FICHEROS_LEGALES, *deduccion.FICHEROS_LEGALES, *indices.FICHEROS_LEGALES),
+            # The pre-2013 main-home deduction: payments it knows, proposed to the tax module (never written).
+            puentes=(PuenteAmbito(destino="fiscal", proponer=proponer_vivienda_pre2013),),
+        )
+
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return avisos_hipoteca(contexto)
 

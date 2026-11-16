@@ -11,13 +11,16 @@
   most once, and only while its module is still on.
 * ``POST /modulos/{clave}/herramientas/{nombre}`` — the user runs one of an active module's tools from the UI
   (e.g. saving a purchase); a tool that acts outside the app still only becomes a pending action.
-* ``POST /modulos/{clave}/documento`` — a module that reads documents (optional ``leer_documento`` hook, see
-  below) PROPOSES data from an upload; nothing is stored. Same consent as the tax document reader.
+* ``POST /modulos/{clave}/documento`` — a module that reads documents (``Ganchos.documentos``, contract v2 in
+  ``modulos/ganchos.py``; v1 ``leer_documento`` through the adapter) PROPOSES data from an upload; nothing is
+  stored. Same consent as the tax document reader.
 
-Optional hooks a module object may expose beyond the contract (proposed for the next contract version):
-``leer_documento(provider, *, filename, data)`` returning ``{"campos": [{"campo", "valor", "evidencia"…}],
-"avisos": […], "descartados": […]}`` (a pydantic model is accepted), and ``herramienta_de_documento``, the
-tool the confirmed fields are passed to as ``{campo: valor}``.
+The document hook: ``documentos.leer(provider, *, filename, data)`` returning ``{"campos": [{"campo", "valor",
+"evidencia"…}], "avisos": […], "descartados": […]}`` (a pydantic model is accepted), and
+``documentos.herramienta_destino``, the tool the confirmed fields are passed to as ``{campo: valor}``. No module
+is told apart by its key: an always-on module (``Ganchos.obligatorio``) cannot be switched off, and a module's
+direct tools (``GanchosAgente.directas``) run only inside the central agent. ``GET /modulos`` lists the domains
+and the modules that are the chat front of a capability (``capacidad``); ``GET /capacidades`` lists capabilities.
 
 Built by :func:`build_router` with the stores passed in (see ``api.py``), like the auth router.
 The module deliberately has no ``from __future__ import annotations`` (FastAPI resolves the local aliases).
@@ -42,7 +45,8 @@ from hacienda_gpt.modulos.acciones import AccionPendiente, AccionStore, describi
 from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
 from hacienda_gpt.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
 from hacienda_gpt.modulos.preferencias import EstadoModulo, estado_para_usuario, modulos_activos_para_caso
-from hacienda_gpt.modulos.registro import FISCAL, registro
+from hacienda_gpt.modulos.ganchos import directas_de, ganchos_de, obligatorio
+from hacienda_gpt.modulos.registro import registro
 from hacienda_gpt.proactive.bandeja import kind_de
 from hacienda_gpt.proactive.jobs import hoy_en_espana
 from hacienda_gpt.proactive.store import NotificationStore
@@ -95,9 +99,11 @@ class ModuloInfo(BaseModel):
     hechos: list[HechoInfo] = Field(default_factory=list)
     herramientas: list[HerramientaInfo] = Field(default_factory=list)
     fuentes: list[FuenteInfo] = Field(default_factory=list)
-    # The module reads uploaded documents (optional ``leer_documento`` hook) and where the fields go.
+    # The module reads uploaded documents (``Ganchos.documentos``) and where the fields go.
     lee_documentos: bool = False
     herramienta_de_documento: str | None = None
+    # The key of the capability this module is the chat front of (``correo``, ``navegador``); None: a domain.
+    capacidad: str | None = None
 
 
 class ModulosResponse(BaseModel):
@@ -209,8 +215,9 @@ def _info(estado: EstadoModulo) -> ModuloInfo:
         fuentes=[
             FuenteInfo(identificador=f.identificador, descripcion=f.descripcion, url=f.url) for f in modulo.fuentes
         ],
-        lee_documentos=callable(getattr(modulo, "leer_documento", None)),
+        lee_documentos=ganchos_de(modulo).documentos is not None,
         herramienta_de_documento=_herramienta_de_documento(modulo),
+        capacidad=_capacidad_de(modulo),
     )
 
 
@@ -220,10 +227,22 @@ def _acepta_fichero(schema: Any) -> bool:
 
 
 def _herramienta_de_documento(modulo: Modulo) -> str | None:
-    nombre = getattr(modulo, "herramienta_de_documento", None)
+    documentos = ganchos_de(modulo).documentos
+    nombre = documentos.herramienta_destino if documentos is not None else None
     if not isinstance(nombre, str) or nombre not in {h.spec.name for h in modulo.herramientas}:
         return None
     return nombre
+
+
+def _capacidad_de(modulo: Modulo) -> str | None:
+    """The capability whose chat front this module is (same key), or None for a domain."""
+    try:
+        from hacienda_gpt.capacidades.registro import registro as registro_capacidades
+
+        return modulo.clave if modulo.clave in registro_capacidades() else None
+    except Exception:  # the capability registry never breaks the module list
+        logger.warning("could not read the capability registry", exc_info=True)
+        return None
 
 
 def build_router(
@@ -269,9 +288,10 @@ def build_router(
         estado = estados.get(clave)
         if estado is None:
             raise HTTPException(status_code=404, detail="Ese módulo no existe o no está disponible.")
-        if clave == FISCAL:
+        if obligatorio(estado.modulo):
             raise HTTPException(
-                status_code=409, detail="El módulo de impuestos es la base del asesor y no se desactiva."
+                status_code=409,
+                detail=f"El módulo de {estado.modulo.nombre.lower()} es la base del asesor y no se desactiva.",
             )
         if payload.borrar_datos and payload.activo:
             raise HTTPException(status_code=422, detail="Solo se pueden borrar los datos de un módulo al desactivarlo.")
@@ -288,9 +308,9 @@ def build_router(
                     # The user's decisions about the module are its data too (hacienda_gpt/memoria).
                     if tabla_existe(cases.db_path):
                         almacen(cases.db_path).delete_where(case_id, modulo=clave)
-                # What the module keeps outside the facts (optional hook, modulos/contrato.py).
-                borrar_propios = getattr(estado.modulo, "borrar_datos_de_caso", None)
-                if payload.borrar_datos and callable(borrar_propios):
+                # What the module keeps outside the facts (``Ganchos.borrar_datos_de_caso``, modulos/ganchos.py).
+                borrar_propios = ganchos_de(estado.modulo).borrar_datos_de_caso
+                if payload.borrar_datos and borrar_propios is not None:
                     borrar_propios(case_id, cases.db_path)
         if estado.activo != payload.activo:  # event bus: wake the module now / cancel its scheduled wake-ups
             emitir_cambio_modulo(cases.db_path, auth.case_ids_of(user.id), clave, payload.activo)
@@ -475,7 +495,8 @@ def build_router(
         """
         modulo = _modulo_activo(clave, payload.case_id, access, cases)
         herramienta = next((h for h in modulo.herramientas if h.spec.name == nombre), None)
-        if herramienta is None or clave == FISCAL:
+        # A direct tool runs only inside the central agent (it needs the run's evidence ledger and case).
+        if herramienta is None or nombre in directas_de(modulo):
             raise HTTPException(status_code=404, detail="Ese módulo no tiene esa herramienta.")
         if herramienta.efecto == "actua":
             accion = acciones.add(
@@ -550,8 +571,9 @@ def build_router(
         if access.user is not None and access.store is not None:
             if not access.store.has_consent(access.user.id, "envio_documentos_a_proveedor_llm"):
                 raise HTTPException(status_code=403, detail=CONSENT_DOCUMENTS_DETAIL)
-        lector = getattr(modulo, "leer_documento", None)
-        if not callable(lector):
+        documentos = ganchos_de(modulo).documentos
+        lector = documentos.leer if documentos is not None else None
+        if lector is None:
             raise HTTPException(status_code=404, detail="Este módulo no lee documentos.")
         from hacienda_gpt.ops.consumo import PresupuestoAgotadoError, contexto_consumo
 

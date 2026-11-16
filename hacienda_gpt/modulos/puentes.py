@@ -139,6 +139,8 @@ def _fecha_larga(dia: date) -> str:
 
 
 Puente = Callable[[CaseState, dict[str, Any], date], PropuestaHecho | None]
+# The mortgage module declares this bridge (``Ganchos.puentes``, contract v2); the table is the v1 adapter's.
+proponer_vivienda_pre2013: Puente = _hipoteca
 PUENTES: dict[str, Puente] = {"hipoteca": _hipoteca}
 
 
@@ -156,18 +158,29 @@ def propuestas_para(case: CaseState, modulos: Sequence[Modulo], *, hoy: date) ->
     """Proposals for this case from the active modules' bridges. A failing bridge is logged and skipped."""
     perfil = perfil_de(case)
     out: list[PropuestaHecho] = []
+    from hacienda_gpt.modulos.ganchos import ganchos_de
+
     for modulo in modulos:
-        puente = PUENTES.get(modulo.clave)
-        if puente is None:
-            continue
-        try:
-            propuesta = puente(case, perfil, hoy)
-        except Exception:
-            logger.exception("Tax bridge of module %s failed for case %s", modulo.clave, case.case_id)
-            continue
-        if propuesta is not None:
-            out.append(propuesta)
+        for puente in ganchos_de(modulo).puentes:
+            if puente.destino != "fiscal":
+                continue  # only tax facts are proposed here (``GET /propuestas``)
+            try:
+                propuesta = puente.proponer(case, perfil, hoy)
+            except Exception:
+                logger.exception("Tax bridge of module %s failed for case %s", modulo.clave, case.case_id)
+                continue
+            if propuesta is not None:
+                out.append(propuesta)
     return out
 
 
-__all__ = ["HECHO_VIVIENDA_PRE2013", "PUENTES", "PropuestaHecho", "ambito_de", "eur", "fuente_de", "propuestas_para"]
+__all__ = [
+    "HECHO_VIVIENDA_PRE2013",
+    "PUENTES",
+    "proponer_vivienda_pre2013",
+    "PropuestaHecho",
+    "ambito_de",
+    "eur",
+    "fuente_de",
+    "propuestas_para",
+]

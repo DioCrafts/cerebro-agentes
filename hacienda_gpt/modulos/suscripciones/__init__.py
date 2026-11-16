@@ -9,8 +9,11 @@ read from the BOE. No bank credentials and no open-banking connection.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import cached_property
 
+from hacienda_gpt.eventos.tipos import CARGOS_IMPORTADOS, FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
+from hacienda_gpt.modulos.ganchos import Ganchos, GanchosEventos
 from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO, validar_servicios
 from hacienda_gpt.modulos.suscripciones.avisos import generar_avisos
 from hacienda_gpt.modulos.suscripciones.derechos import cargar
@@ -31,6 +34,19 @@ de cuenta ni movimientos que no sean cargos recurrentes."""
 
 @dataclass
 class ModuloSuscripciones(ModuloBase):
+    @cached_property
+    def ganchos(self) -> Ganchos:
+        """Contract v2 (``modulos/ganchos.py``): what the module integrates with, declared."""
+        from hacienda_gpt.modulos.suscripciones.derechos import FICHEROS_LEGALES
+
+        return Ganchos(
+            # A statement import changes the detected charges: renewals and price rises are recomputed at once.
+            eventos=GanchosEventos(tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL, CARGOS_IMPORTADOS)),
+            ficheros_legales=tuple(FICHEROS_LEGALES),
+            # «facturas de este emisor»: the receipts and charges the mail found for one sender.
+            capacidades=("correo.facturas_de_emisor",),
+        )
+
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
         return generar_avisos(contexto)
 
