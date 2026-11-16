@@ -13,7 +13,7 @@ from pathlib import Path
 from hipoteca_util import FIXTURES
 import pytest
 
-from hacienda_gpt.modulos.hipoteca.normativa import (
+from asistente.ambitos.hipoteca.normativa import (
     NORMATIVA_PATH,
     Normativa,
     cargar_normativa,

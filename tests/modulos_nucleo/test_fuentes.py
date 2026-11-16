@@ -7,10 +7,10 @@ import json
 
 from click.testing import CliRunner
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.modulos import fuentes
-from hacienda_gpt.tax.fuentes import normas_de_parametros
+from asistente.conocimiento.fuentes import normas_de_parametros
+from asistente.nucleo.modulos import fuentes
+from asistente.plataforma import settings
+from asistente.plataforma.cli import proactive as cli_module
 from .fakes import Llamadas, agua, instalar, seguros
 
 LEY_AGUAS = "BOE-A-2001-14276"
@@ -47,7 +47,7 @@ def test_first_reading_is_the_baseline_and_a_later_update_is_listed() -> None:
 
 
 def test_params_check_reports_the_module_laws(tmp_path, monkeypatch) -> None:
-    import hacienda_gpt.cli.boe_watch as boe_watch
+    import asistente.plataforma.cli.boe_watch as boe_watch
 
     instalar(agua(Llamadas()), seguros(Llamadas()))
     monkeypatch.setattr(settings, "MODULOS_FUENTES_STATE_PATH", str(tmp_path / "estado.json"))
@@ -78,3 +78,18 @@ def test_modulos_command_lists_the_registry() -> None:
     salida = json.loads(CliRunner().invoke(cli_module.cli, ["modulos"]).output)
     assert [m["clave"] for m in salida["modulos"]] == ["fiscal", "agua"]
     assert salida["modulos"][1]["herramientas"]["agua_cambiar_tarifa"] == "actua"
+
+
+def test_a_domain_that_watches_its_own_laws_is_left_out_by_declaration_not_by_key() -> None:
+    from asistente.nucleo.modulos.ganchos import Ganchos
+
+    # A domain (not the tax module) declaring its laws watched by its own maintenance is left out…
+    propio = agua(Llamadas())
+    propio.ganchos = Ganchos(fuentes_vigiladas_aparte=True)
+    reg = instalar(propio, seguros(Llamadas()))
+    assert [f.modulo for f in fuentes.fuentes_de_modulos(reg)] == ["seguros"]
+    # …and the tax module is left out because it declares so (its laws are params-check's), not by its key.
+    from asistente.ambitos.fiscal import MODULO as FISCAL
+
+    assert FISCAL.ganchos.fuentes_vigiladas_aparte is True
+    assert all(f.modulo != "fiscal" for f in fuentes.fuentes_de_modulos(instalar(agua(Llamadas()))))

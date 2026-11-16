@@ -3,10 +3,10 @@ import json
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.cli.proactive import cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.cli import proactive as cli_module
+from asistente.plataforma.cli.proactive import cli
 from . import SALARIED, make_case
 from .test_impacto import LIRPF_HTML, FakeProvider, _evento, _respuesta
 
@@ -65,7 +65,7 @@ def boe(tmp_path, monkeypatch):
     cases.close()
 
     provider = FakeProvider(_respuesta())
-    import hacienda_gpt.agent.providers as providers
+    import asistente.nucleo.agent.providers as providers
 
     monkeypatch.setattr(providers, "create_provider", lambda *args, **kwargs: provider)
     args = ["boe-impact", "--changes-log", str(log), "--snapshot-dir", str(snapshot), "--db-path", db]

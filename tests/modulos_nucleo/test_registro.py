@@ -8,11 +8,11 @@ import textwrap
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.modulos import registro as registro_mod
-from hacienda_gpt.modulos.contrato import HechoModulo, ModuloBase
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
-from hacienda_gpt.modulos.registro import construir_registro, descubrir, problemas_de
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.modulos import registro as registro_mod
+from asistente.nucleo.modulos.contrato import HechoModulo, ModuloBase
+from asistente.nucleo.modulos.registro import construir_registro, descubrir, problemas_de
+from asistente.plataforma import settings
 from .fakes import Llamadas, agua, seguros, spec
 
 
@@ -85,7 +85,7 @@ def test_discovery_imports_packages_and_survives_broken_ones(tmp_path: Path, mon
     for nombre, codigo in {
         "": "",
         "bueno": """
-            from hacienda_gpt.modulos.contrato import ModuloBase
+            from asistente.nucleo.modulos.contrato import ModuloBase
             MODULO = ModuloBase(clave="bueno", nombre="Bueno", descripcion="Bien.", instrucciones="Bien.")
         """,
         "roto": "raise RuntimeError('no arranca')",
@@ -122,7 +122,7 @@ def test_operator_switch(monkeypatch) -> None:
 
 
 def test_tool_spec_must_be_an_object_schema() -> None:
-    from hacienda_gpt.modulos.contrato import HerramientaModulo, ResultadoHerramienta
+    from asistente.nucleo.modulos.contrato import HerramientaModulo, ResultadoHerramienta
 
     mala = HerramientaModulo(
         spec=spec("agua_x").__class__(name="agua_x", description="X.", input_schema={"type": "array"}),

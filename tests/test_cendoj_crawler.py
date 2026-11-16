@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.crawler.cendoj import parse_cendoj_document
+from asistente.conocimiento.crawler.cendoj import parse_cendoj_document
 
 FIXTURES = Path(__file__).parent / "fixtures" / "cendoj"
 

@@ -1,7 +1,7 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.planner import Planner, PlannerWeights
-from hacienda_gpt.decision.schemas import CaseState, ObligationCandidate, RiskLevel
+from asistente.nucleo.decision.planner import Planner, PlannerWeights
+from asistente.nucleo.decision.schemas import CaseState, ObligationCandidate, RiskLevel
 
 
 def _case() -> CaseState:

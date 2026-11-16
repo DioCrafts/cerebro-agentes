@@ -1,6 +1,6 @@
-from hacienda_gpt.decision.fact_extractor import ExtractionPayload
-from hacienda_gpt.decision.interpreter import Intent, interpret_turn
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.fact_extractor import ExtractionPayload
+from asistente.nucleo.decision.interpreter import Intent, interpret_turn
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 
 
 class _StaticExtractor:

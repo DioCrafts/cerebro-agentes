@@ -1,0 +1,31 @@
+# Proceso «worker» de HaciendaGPT: bus de eventos, tareas programadas (sustituye a las líneas de cron) y
+# los servicios que registren otros paquetes. Ejemplo (docs/despliegue.md).
+# /etc/systemd/system/hacienda-worker.service   ·   systemctl enable --now hacienda-worker
+[Unit]
+Description=HaciendaGPT worker
+After=network-online.target hacienda-api.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hacienda
+Group=hacienda
+WorkingDirectory=/srv/hacienda-asesor
+EnvironmentFile=/etc/hacienda/entorno
+Environment=TZ=Europe/Madrid
+ExecStart=/srv/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.plataforma worker
+# SIGTERM: termina el ciclo en curso y espera a las tareas lanzadas (hasta 30 s cada una).
+KillSignal=SIGTERM
+TimeoutStopSec=90
+Restart=always
+RestartSec=10
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+# El worker escribe en data/ y, con hipoteca-indices o params-autopilot, en los datos del repositorio.
+ReadWritePaths=/srv/hacienda-asesor/data /srv/hacienda-asesor/asistente/ambitos/hipoteca/data
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

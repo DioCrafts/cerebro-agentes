@@ -2,9 +2,9 @@ from datetime import UTC, datetime
 
 from click.testing import CliRunner
 
-from hacienda_gpt.cli import crawler as crawler_cli
-from hacienda_gpt.cli import processor as processor_cli
-from hacienda_gpt.llm import chain
+from asistente.conocimiento.llm import chain
+from asistente.plataforma.cli import crawler as crawler_cli
+from asistente.plataforma.cli import processor as processor_cli
 
 
 def test_smoke_pipeline_crawler_to_index_to_question(monkeypatch) -> None:

@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.interpreter import QuestionPrompt
-from hacienda_gpt.decision.question_policy import QuestionPolicy
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType, RiskLevel
-from hacienda_gpt.decision.taxonomy import SupportedIntent
+from asistente.nucleo.decision.interpreter import QuestionPrompt
+from asistente.nucleo.decision.question_policy import QuestionPolicy
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType, RiskLevel
+from asistente.nucleo.decision.taxonomy import SupportedIntent
 
 
 def _case_with_known_and_gave_up() -> CaseState:

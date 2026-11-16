@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from hacienda_gpt.modulos.ayudas.parametros import load_prestaciones
-from hacienda_gpt.planificador.ayudas import _cita_datos
-from hacienda_gpt.planificador.textos import TEXTOS
+from asistente.ambitos.ayudas.parametros import load_prestaciones
+from asistente.nucleo.planificador.ayudas import _cita_datos
+from asistente.nucleo.planificador.textos import TEXTOS
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

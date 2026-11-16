@@ -4,11 +4,10 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.decision.fact_extractor import _SYSTEM_PROMPT, EXPECTED_FACT_TYPE
-from hacienda_gpt.decision.schemas import FactValueType
-from hacienda_gpt.tax.actividad import ActividadInput
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.calculo.actividad import ActividadInput
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.profile import (
     ACTIVIDAD_FACT_FIELDS,
     ACTIVIDAD_FACT_TYPES,
     DatosInvalidosError,
@@ -16,7 +15,8 @@ from hacienda_gpt.tax.profile import (
     build_input,
     build_input_con_actividad,
 )
-from hacienda_gpt.tax.simulador import simular
+from asistente.nucleo.decision.fact_extractor import _SYSTEM_PROMPT, EXPECTED_FACT_TYPE
+from asistente.nucleo.decision.schemas import FactValueType
 
 D = Decimal
 # 40,000 - (3,600 + 6,400) = 30,000; flat allowance 5 % = 1,500; net 28,500
@@ -110,7 +110,7 @@ def test_joint_cap_with_the_work_income_reduction_and_the_second_pass() -> None:
     assert actividad.resultado.reduccion_art_32_2 == D("700.00")
     assert actividad.reduccion_rendimientos_trabajo == D("3000.00")
     assert inp.rendimiento_actividad_neto == D("6330.00")
-    from hacienda_gpt.tax.irpf import calcular_irpf
+    from asistente.ambitos.fiscal.calculo.irpf import calcular_irpf
 
     final = calcular_irpf(inp)
     reduccion_art_20 = -next(
@@ -223,8 +223,8 @@ def test_activity_names_are_accepted_in_datos_and_bad_values_are_rejected() -> N
 
 def test_a_year_without_self_employed_parameters_is_not_computed_and_says_so(monkeypatch: pytest.MonkeyPatch) -> None:
     # Every year with IRPF parameters has self-employed ones today; simulate one that does not.
-    from hacienda_gpt.tax import actividad as modulo
-    from hacienda_gpt.tax.params import EjercicioNoDisponibleError
+    from asistente.ambitos.fiscal.calculo import actividad as modulo
+    from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
 
     def sin_parametros(ejercicio: int):
         raise EjercicioNoDisponibleError(f"No hay parámetros de autónomos cargados para {ejercicio}.")
@@ -274,9 +274,9 @@ class _NoSearch:
 
 
 def _toolbox(**facts):
-    from hacienda_gpt.agent.evidence import EvidenceLedger
-    from hacienda_gpt.agent.tools import Toolbox
-    from hacienda_gpt.decision.schemas import CaseState, Fact
+    from asistente.nucleo.agent.evidence import EvidenceLedger
+    from asistente.nucleo.agent.tools import Toolbox
+    from asistente.nucleo.decision.schemas import CaseState, Fact
 
     case = CaseState(
         case_id="c",
@@ -294,7 +294,7 @@ def _toolbox(**facts):
 def test_agent_tools_say_that_the_activity_income_was_derived() -> None:
     import json
 
-    from hacienda_gpt.agent.providers.base import ToolCall
+    from asistente.nucleo.agent.providers.base import ToolCall
 
     bajo = {"actividad_ingresos_integros": 10000.0, "actividad_otros_gastos": 1000.0}
     toolbox = _toolbox(**bajo)
@@ -319,7 +319,7 @@ def test_agent_tools_say_that_the_activity_income_was_derived() -> None:
 
 
 def test_documents_can_propose_the_activity_figures_with_a_literal_quote() -> None:
-    from hacienda_gpt.tax.documentos import (
+    from asistente.ambitos.fiscal.documentos import (
         DOCUMENT_ACTIVITY_FACTS,
         DOCUMENT_FACTS,
         SCHEMA,

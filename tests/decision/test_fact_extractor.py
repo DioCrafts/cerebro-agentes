@@ -12,12 +12,12 @@ from __future__ import annotations
 
 import pytest
 
-from hacienda_gpt.decision.fact_extractor import (
+from asistente.nucleo.decision.fact_extractor import (
     EXPECTED_FACT_TYPE,
     OpenAIFactExtractor,
     _coerce_value,
 )
-from hacienda_gpt.decision.schemas import FactValueType
+from asistente.nucleo.decision.schemas import FactValueType
 
 # --------------------------------------------------------------------------- #
 # _coerce_value — pure unit tests
@@ -231,6 +231,6 @@ def test_expected_fact_type_covers_all_known_facts() -> None:
     # Regression guard: anyone adding a new fact to KNOWN_FACT_NAMES must also
     # declare its expected value type, otherwise the extractor will silently
     # drop every emission of that fact.
-    from hacienda_gpt.decision.fact_extractor import KNOWN_FACT_NAMES
+    from asistente.nucleo.decision.fact_extractor import KNOWN_FACT_NAMES
 
     assert set(KNOWN_FACT_NAMES) == set(EXPECTED_FACT_TYPE.keys())

@@ -16,14 +16,14 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
-from hacienda_gpt.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolResult, Usage
-from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
-from hacienda_gpt.api.routers import consumo as consumo_router
-from hacienda_gpt.cli.consumo import cli
-from hacienda_gpt.ops import consumo
-from hacienda_gpt.ops.consumo import (
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
+from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolResult, Usage
+from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
+from asistente.plataforma import settings
+from asistente.plataforma.api.routers import consumo as consumo_router
+from asistente.plataforma.cli.consumo import cli
+from asistente.plataforma.ops import consumo
+from asistente.plataforma.ops.consumo import (
     ConsumoStore,
     MeteredProvider,
     Precio,
@@ -299,7 +299,7 @@ def test_calls_without_a_known_cost_do_not_count_and_are_warned_about(store, cap
     metered = MeteredProvider(
         provider, store, purpose="agente", presupuesto=Presupuesto(store, diario_usd=Decimal("1"))
     )
-    with caplog.at_level(logging.WARNING, logger="hacienda_gpt.ops.consumo"):
+    with caplog.at_level(logging.WARNING, logger="asistente.plataforma.ops.consumo"):
         for _ in range(3):
             metered.complete_json(system="S", user="U", schema={}, schema_name="x")
     assert len(provider.json_calls) == 3
@@ -437,7 +437,7 @@ def test_wrapper_lets_provider_errors_through_and_survives_a_broken_store(store,
 
     provider.error = None
     store.close()
-    with caplog.at_level(logging.WARNING, logger="hacienda_gpt.ops.consumo"):
+    with caplog.at_level(logging.WARNING, logger="asistente.plataforma.ops.consumo"):
         assert metered.complete_json(system="S", user="U", schema={}, schema_name="x") == {"ok": True, "n": 2}
     assert any("could not record LLM usage" in record.message for record in caplog.records)
 

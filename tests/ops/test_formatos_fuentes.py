@@ -23,14 +23,15 @@ from scrapy.http import HtmlResponse, Request, Response
 from scrapy.spidermiddlewares.httperror import HttpError
 from twisted.python.failure import Failure
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
-from hacienda_gpt.cli import formatos as cli_formatos
-from hacienda_gpt.crawler import cendoj, crawlers, teac
-from hacienda_gpt.crawler.boe_consolidado import BOECCAACrawler
-from hacienda_gpt.ops import formatos, formatos_agente, formatos_calendario, vigia
-from hacienda_gpt.ops.formatos_corpus import RecuentoCorpus
-from hacienda_gpt.tax import calendario
+from asistente.ambitos.fiscal.calculo import calendario
+from asistente.conocimiento import formatos, formatos_agente, formatos_calendario
+from asistente.conocimiento.crawler import cendoj, crawlers, teac
+from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler
+from asistente.conocimiento.formatos_corpus import RecuentoCorpus
+from asistente.plataforma import settings
+from asistente.plataforma.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
+from asistente.plataforma.cli import formatos as cli_formatos
+from asistente.plataforma.ops import vigia
 
 HOY = date(2026, 11, 12)
 T0 = datetime(2026, 11, 10, 8, 0, tzinfo=UTC)
@@ -151,7 +152,7 @@ def test_cendoj_crawler_reports_each_ruling_and_writes_the_same_files(vigilancia
 
 
 def test_the_skeleton_keeps_markup_labels_and_shapes_only() -> None:
-    from hacienda_gpt.ops.formatos_esqueleto import esqueleto_html, lista_permitida
+    from asistente.conocimiento.formatos_esqueleto import esqueleto_html, lista_permitida
 
     html = (
         '<html><head><script>var nombre = "Pérez";</script><style>p{}</style></head><body>'
@@ -180,12 +181,25 @@ def _palabras(html: str) -> set[str]:
     return set(re.findall(r"[^\W\d_]+", texto))
 
 
-def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia) -> None:
+class _RelojParado(datetime):
+    """``datetime`` with the clock stopped at ``T0``, whose digits hold none of the ruling's figures."""
+
+    @classmethod
+    def now(cls, tz=None):  # type: ignore[no-untyped-def,override]
+        return T0.astimezone(tz) if tz is not None else T0.replace(tzinfo=None)
+
+
+def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia, monkeypatch) -> None:
     import re
 
-    from hacienda_gpt.ops import formatos_fuentes
-    from hacienda_gpt.ops.formatos_esqueleto import plano
+    from asistente.conocimiento import formatos_fuentes
+    from asistente.conocimiento.formatos_esqueleto import plano
 
+    # Our own timestamps go to disk (ISO and «%Y%m%dT%H%M%S» file stamps): with a running clock, a run at 12:34 or
+    # 20:24 would write «1234» or «2024» and look like a figure of the ruling. The clock is stopped instead.
+    for modulo in (formatos, formatos_agente, formatos_fuentes, vigia, cendoj, cli_formatos):
+        if isinstance(getattr(modulo, "datetime", None), type):
+            monkeypatch.setattr(modulo, "datetime", _RelojParado)
     tributaria = (CENDOJ / "sentencia_tributaria.html").read_text(encoding="utf-8")
     otra = (CENDOJ / "sentencia_no_tributaria.html").read_text(encoding="utf-8")
     cendoj.observar_documento(otra, contexto="https://www.poderjudicial.es/a")
@@ -213,8 +227,8 @@ def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia) -> None:
     assert informe.tipo == "informe" and informe.informe and Path(informe.informe).exists()
     assert propuesta.tipo == "spec" and propuesta.ensayo is not None and propuesta.ensayo.ok
     en_disco = "".join(p.read_text(encoding="utf-8") for p in vigilancia.rglob("*") if p.is_file())
-    # Timestamps and hashes are ours; by chance they may contain a run of digits like "1234".
-    en_disco = re.sub(r"\d{4}-\d{2}-\d{2}T[\d:.+]+|\b[0-9a-f]{16,64}\b", "", en_disco)
+    # Hashes are ours; by chance they may contain a run of digits like "1234".
+    en_disco = re.sub(r"\b[0-9a-f]{16,64}\b", "", en_disco)
     enviado = proveedor.texto_recibido
     # Every word of the rulings outside the allow-list, except those our own code also writes (prompts,
     # expectations, canaries): what is left can only have come from a ruling.
@@ -496,8 +510,8 @@ def test_ccaa_text_yield_drop_against_the_recent_median(vigilancia, tmp_path) ->
 
 
 def test_the_ingest_reports_zero_chunk_files_without_changing_the_manifest(vigilancia, tmp_path, monkeypatch) -> None:
-    from hacienda_gpt.processor import document_loader as dl
-    from hacienda_gpt.processor import manifest as mf
+    from asistente.conocimiento.processor import document_loader as dl
+    from asistente.conocimiento.processor import manifest as mf
     from tests.test_document_loader_incremental import _DeterministicEmbed, _docs_for
 
     contenido = tmp_path / "html"

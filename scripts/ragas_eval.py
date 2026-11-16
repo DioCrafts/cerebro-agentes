@@ -38,11 +38,11 @@ import sys
 import time
 from typing import Any
 
-# Make both ``hacienda_gpt`` (project root) and ``qa_battery_test``
+# Make both ``asistente`` (project root) and ``qa_battery_test``
 # (sibling script) importable regardless of how Python was invoked.
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE))  # for qa_battery_test
-sys.path.insert(0, str(_HERE.parent))  # for hacienda_gpt
+sys.path.insert(0, str(_HERE.parent))  # for asistente
 
 # Reuse the canonical scenario list so RAGAS evaluates exactly the same
 # user prompts that the human-review QA battery already covers. Keep the
@@ -58,7 +58,7 @@ def _build_chain():
     is still OpenAI (because the user-facing chain quality matters and
     matches what real users would see); only the **judge** runs locally.
     """
-    from hacienda_gpt.llm.chain import create_openai_chain
+    from asistente.conocimiento.llm.chain import create_openai_chain
 
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
@@ -106,9 +106,9 @@ def _build_judge():
     from ragas.embeddings import LangchainEmbeddingsWrapper
     from ragas.llms import LangchainLLMWrapper
 
-    from hacienda_gpt import settings
-    from hacienda_gpt.llm.embeddings import create_embeddings
-    from hacienda_gpt.llm.mlx_chat import MLXChatLLM
+    from asistente.conocimiento.llm.embeddings import create_embeddings
+    from asistente.conocimiento.llm.mlx_chat import MLXChatLLM
+    from asistente.plataforma import settings
 
     # The judge model and its token budget are configured separately from
     # the contextualizer (see ``settings.RAGAS_JUDGE_MODEL_PATH``). The

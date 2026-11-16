@@ -1,8 +1,8 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.rules import RuleSet
-from hacienda_gpt.decision.rules_engine import RulesEngine
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.rules import RuleSet
+from asistente.nucleo.decision.rules_engine import RulesEngine
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 
 
 def _fact(name: str, value) -> Fact:

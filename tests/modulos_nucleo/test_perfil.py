@@ -6,8 +6,8 @@ from datetime import UTC, datetime
 
 import pytest
 
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.modulos.perfil import (
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.modulos.perfil import (
     HechoInvalidoError,
     hecho_de_modulo,
     hechos_para_modulo,

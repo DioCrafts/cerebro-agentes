@@ -1,5 +1,5 @@
 // «No me interesa» / «Ya lo hice» / «Recuérdamelo más tarde» on a notice or on a lever of the
-// optimiser's plan. The answer is remembered (hacienda_gpt/memoria): the assistant will not propose it
+// optimiser's plan. The answer is remembered (asistente/nucleo/memoria): the assistant will not propose it
 // again unless something important changes, and then only once, saying what changed.
 
 import { AlarmClock, CheckCheck, ThumbsDown } from "lucide-react";

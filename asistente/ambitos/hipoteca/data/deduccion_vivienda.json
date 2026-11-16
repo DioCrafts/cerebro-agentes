@@ -1,0 +1,145 @@
+{
+  "version": "2026-11-16",
+  "fuentes": {
+    "BOE-A-2006-20764": {
+      "boe_id": "BOE-A-2006-20764",
+      "norma": "Ley 35/2006, de 28 de noviembre, del Impuesto sobre la Renta de las Personas Físicas (texto consolidado vigente)",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764",
+      "consolidado_a": "2026-11-11",
+      "consultado_el": "2026-11-16",
+      "sha256_html": "62785c5c546758fec46d0da7c50273dfee86f98b961699296b6c2165220df2a5"
+    },
+    "BOE-A-2006-20764@20121031": {
+      "boe_id": "BOE-A-2006-20764",
+      "norma": "Ley 35/2006, redacción en vigor a 31-12-2012 (versión del BOE de 31-10-2012, la última antes de la Ley 16/2012, que suprimió el art. 68.1 «con efectos desde el 1 de enero de 2013»)",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764&tn=1&p=20121031",
+      "consolidado_a": "2012-10-31",
+      "consultado_el": "2026-11-16",
+      "sha256_html": "2e23720165ee2c1598203c2f99e8bc95a423ca5ef64d88fdea511894c4c454e7"
+    }
+  },
+  "fecha_limite_adquisicion": "2013-01-01",
+  "citas": {
+    "dt18_adquisicion": {
+      "boe_id": "BOE-A-2006-20764",
+      "articulo": "disp. trans. 18.ª.1.a) LIRPF",
+      "cita": "a) Los contribuyentes que hubieran adquirido su vivienda habitual con anterioridad a 1 de enero de 2013 o satisfecho cantidades con anterioridad a dicha fecha para la construcción de la misma.",
+      "cifras": {"fecha_limite_adquisicion": "1 de enero de 2013"}
+    },
+    "dt18_deduccion_previa": {
+      "boe_id": "BOE-A-2006-20764",
+      "articulo": "disp. trans. 18.ª.1, último párrafo, LIRPF",
+      "cita": "En todo caso, resultará necesario que el contribuyente hubiera practicado la deducción por inversión en vivienda habitual en relación con las cantidades satisfechas para la adquisición o construcción de dicha vivienda en un período impositivo devengado con anterioridad a 1 de enero de 2013, salvo que hubiera resultado de aplicación lo dispuesto en el artículo 68.1.2.ª de esta Ley en su redacción vigente a 31 de diciembre de 2012.",
+      "cifras": {"fecha_limite_adquisicion": "1 de enero de 2013"}
+    },
+    "dt18_remision": {
+      "boe_id": "BOE-A-2006-20764",
+      "articulo": "disp. trans. 18.ª.2 LIRPF",
+      "cita": "La deducción por inversión en vivienda habitual se aplicará conforme a lo dispuesto en los artículos 67.1, 68.1, 70.1, 77.1, y 78 de la Ley del Impuesto, en su redacción en vigor a 31 de diciembre de 2012, sin perjuicio de los porcentajes de deducción que conforme a lo dispuesto en la Ley 22/2009 hayan sido aprobados por la Comunidad Autónoma."
+    },
+    "art68_base": {
+      "boe_id": "BOE-A-2006-20764",
+      "version": "20121031",
+      "articulo": "art. 68.1.1.º LIRPF (redacción a 31-12-2012)",
+      "cita": "La base máxima de esta deducción será de 9.040 euros anuales y estará constituida por las cantidades satisfechas para la adquisición o rehabilitación de la vivienda, incluidos los gastos originados que hayan corrido a cargo del adquirente y, en el caso de financiación ajena, la amortización, los intereses, el coste de los instrumentos de cobertura del riesgo de tipo de interés variable de los préstamos hipotecarios regulados en el artículo decimonoveno de la Ley 36/2003, de 11 de noviembre, de medidas de reforma económica, y demás gastos derivados de la misma."
+    },
+    "art68_cobertura": {
+      "boe_id": "BOE-A-2006-20764",
+      "version": "20121031",
+      "articulo": "art. 68.1.1.º LIRPF (redacción a 31-12-2012)",
+      "cita": "En caso de aplicación de los citados instrumentos de cobertura, los intereses satisfechos por el contribuyente se minorarán en las cantidades obtenidas por la aplicación del citado instrumento."
+    },
+    "art68_viviendas_anteriores": {
+      "boe_id": "BOE-A-2006-20764",
+      "version": "20121031",
+      "articulo": "art. 68.1.2.º LIRPF (redacción a 31-12-2012)",
+      "cita": "Cuando se adquiera una vivienda habitual habiendo disfrutado de la deducción por adquisición de otras viviendas habituales anteriores, no se podrá practicar deducción por la adquisición o rehabilitación de la nueva en tanto las cantidades invertidas en la misma no superen las invertidas en las anteriores, en la medida en que hubiesen sido objeto de deducción."
+    },
+    "art70_patrimonio": {
+      "boe_id": "BOE-A-2006-20764",
+      "version": "20121031",
+      "articulo": "art. 70.1 LIRPF (redacción a 31-12-2012)",
+      "cita": "La aplicación de la deducción por inversión en vivienda y de la deducción por cuenta ahorro-empresa requerirá que el importe comprobado del patrimonio del contribuyente al finalizar el período de la imposición exceda del valor que arrojase su comprobación al comienzo del mismo al menos en la cuantía de las inversiones realizadas, sin computar los intereses y demás gastos de financiación."
+    },
+    "art78_autonomico": {
+      "boe_id": "BOE-A-2006-20764",
+      "version": "20121031",
+      "articulo": "art. 78.2 LIRPF (redacción a 31-12-2012)",
+      "cita": "Si la Comunidad Autónoma no hubiese aprobado los porcentajes a que se refiere el apartado anterior, serán de aplicación los siguientes: a) Con carácter general el 7,5 por ciento."
+    }
+  },
+  "conceptos": [
+    {
+      "clave": "capital",
+      "etiqueta": "Capital de las cuotas",
+      "incluido": true,
+      "cita": "art68_base",
+      "termino": "en el caso de financiación ajena, la amortización",
+      "nota": "Lo que amortizan las cuotas ordinarias que vencen en el año, según el cuadro del módulo."
+    },
+    {
+      "clave": "intereses",
+      "etiqueta": "Intereses",
+      "incluido": true,
+      "cita": "art68_base",
+      "termino": "los intereses",
+      "nota": "Los intereses de las cuotas que vencen en el año, según el cuadro del módulo."
+    },
+    {
+      "clave": "amortizaciones_anticipadas",
+      "etiqueta": "Amortizaciones anticipadas",
+      "incluido": true,
+      "cita": "art68_base",
+      "termino": "la amortización",
+      "nota": "La ley habla de «la amortización» sin distinguir la ordinaria de la anticipada: entra lo amortizado en el año."
+    },
+    {
+      "clave": "comisiones_amortizacion_anticipada",
+      "etiqueta": "Comisiones de amortización anticipada",
+      "incluido": true,
+      "cita": "art68_base",
+      "termino": "demás gastos derivados de la misma",
+      "nota": "Gasto de la financiación ajena: la comisión que el usuario anotó al registrar cada amortización."
+    },
+    {
+      "clave": "gastos_adquisicion",
+      "etiqueta": "Gastos de la compra a cargo del comprador",
+      "incluido": false,
+      "cita": "art68_base",
+      "termino": "incluidos los gastos originados que hayan corrido a cargo del adquirente",
+      "nota": "El módulo de hipoteca no los conoce (ni lo pagado sin préstamo en el año)."
+    },
+    {
+      "clave": "coste_cobertura",
+      "etiqueta": "Coste de instrumentos de cobertura del tipo de interés",
+      "incluido": false,
+      "cita": "art68_base",
+      "termino": "el coste de los instrumentos de cobertura del riesgo de tipo de interés variable",
+      "nota": "El módulo no sabe si el préstamo tiene una cobertura (swap, cap) ni lo que cuesta."
+    },
+    {
+      "clave": "ingresos_cobertura",
+      "etiqueta": "Lo cobrado por la cobertura (resta de los intereses)",
+      "incluido": false,
+      "cita": "art68_cobertura",
+      "termino": "los intereses satisfechos por el contribuyente se minorarán en las cantidades obtenidas por la aplicación del citado instrumento",
+      "nota": "El módulo no lo conoce: si cobraste algo por una cobertura, réstalo de los intereses."
+    },
+    {
+      "clave": "otros_gastos_financiacion",
+      "etiqueta": "Otros gastos del préstamo",
+      "incluido": false,
+      "cita": "art68_base",
+      "termino": "demás gastos derivados de la misma",
+      "nota": "Otros gastos de la financiación que el módulo no registra (p. ej. los de una novación o subrogación)."
+    }
+  ],
+  "no_modelado": [
+    "Que el contribuyente se aplicara la deducción por esta vivienda en un ejercicio anterior a 2013 (disp. trans. 18.ª.1, último párrafo): el módulo no lo sabe; lo confirma el usuario.",
+    "Viviendas habituales anteriores con deducción (art. 68.1.2.º en su redacción de 2012): no se comprueba.",
+    "Aumento del patrimonio del contribuyente al menos en lo invertido, sin contar intereses ni gastos de financiación (art. 70.1 en su redacción de 2012): no se comprueba.",
+    "Préstamos de varios titulares: la cifra es la de todo el préstamo; cada contribuyente deduce lo que pagó él.",
+    "Las cuotas cuentan por su vencimiento en el año según el cuadro del módulo; la ley habla de cantidades satisfechas en el período.",
+    "Porcentajes propios del tramo autonómico (disp. trans. 18.ª.2): los aplica, o no, la calculadora del IRPF, no el puente."
+  ]
+}

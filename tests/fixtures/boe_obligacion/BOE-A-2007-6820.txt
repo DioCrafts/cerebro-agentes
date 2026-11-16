@@ -1,0 +1,36 @@
+# Extracto literal de https://www.boe.es/buscar/act.php?id=BOE-A-2007-6820 (copia descargada el 2026-11-12). Texto consolidado: «Última actualización publicada el 07/10/2026»
+# Arts. 60.5, 60 bis.3, 61, 76.1 y 80.1 del Reglamento del IRPF: lo que lee hacienda_gpt/tax/obligacion.py.
+
+Artículo 61. Obligación de declarar.
+1. Los contribuyentes estarán obligados a presentar y suscribir declaración por este Impuesto en los términos previstos en el artículo 96 de la Ley del Impuesto. A efectos de lo dispuesto en el apartado 4 de dicho artículo, estarán obligados a declarar en todo caso los contribuyentes que tengan derecho a deducción por doble imposición internacional o que realicen aportaciones a patrimonios protegidos de las personas con discapacidad, planes de pensiones, planes de previsión asegurados, planes de previsión social empresarial, seguros de dependencia o mutualidades de previsión social que reduzcan la base imponible, cuando ejerciten tal derecho.
+2. No tendrán que declarar, sin perjuicio de lo dispuesto en el apartado anterior, los contribuyentes que obtengan exclusivamente rendimientos del trabajo, del capital, de actividades económicas y ganancias patrimoniales, hasta un importe máximo conjunto de 1.000 euros anuales, y pérdidas patrimoniales de cuantía inferior a 500 euros, en tributación individual o conjunta
+No obstante lo anterior, estarán en cualquier caso obligadas a declarar todas aquellas personas físicas que en cualquier momento del período impositivo hubieran estado de alta, como trabajadores por cuenta propia, en el Régimen Especial de Trabajadores por Cuenta Propia o Autónomos, o en el Régimen Especial de la Seguridad Social de los Trabajadores del Mar.
+3. Tampoco tendrán que declarar, sin perjuicio de lo dispuesto en los apartados anteriores, los contribuyentes que obtengan rentas procedentes exclusivamente de las siguientes fuentes, en tributación individual o conjunta:
+A) Rendimientos íntegros del trabajo, con los siguientes límites:
+1.º Con carácter general, 22.000 euros anuales, cuando procedan de un solo pagador. Este límite también se aplicará cuando se trate de contribuyentes que perciban rendimientos procedentes de más de un pagador y concurra cualquiera de las dos situaciones siguientes:
+a) Que la suma de las cantidades percibidas del segundo y restantes pagadores, por orden de cuantía, no supere en su conjunto la cantidad de 1.500 euros anuales.
+b) Que sus únicos rendimientos del trabajo consistan en las prestaciones pasivas a que se refiere el artículo 17.2.a) de la Ley del Impuesto y la determinación del tipo de retención aplicable se hubiera realizado de acuerdo con el procedimiento especial regulado en el artículo 89.A) de este reglamento.
+2.º 15.000 euros anuales, cuando:
+a) Procedan de más de un pagador, siempre que la suma de las cantidades percibidas del segundo y restantes pagadores, por orden de cuantía, superen en su conjunto la cantidad de 1.500 euros anuales.
+b) Se perciban pensiones compensatorias del cónyuge o anualidades por alimentos diferentes de las previstas en el artículo 7, letra k), de la Ley del Impuesto.
+c) El pagador de los rendimientos del trabajo no esté obligado a retener de acuerdo con lo previsto en el artículo 76 de este reglamento.
+d) Cuando se perciban rendimientos íntegros del trabajo sujetos a los tipos fijos de retención previstos en los números 3.º y 4.º del artículo 80.1 de este reglamento.
+B) Rendimientos íntegros del capital mobiliario y ganancias patrimoniales sometidos a retención o ingreso a cuenta, con el límite conjunto de 1.600 euros anuales. Lo dispuesto en esta letra no será de aplicación respecto de las ganancias patrimoniales procedentes de transmisiones o reembolsos de acciones o participaciones de instituciones de inversión colectiva en las que la base de retención, conforme a lo establecido en el apartado 2 del artículo 97 de este reglamento, no proceda determinarla por la cuantía a integrar en la base imponible.
+C) Rentas inmobiliarias imputadas a las que se refiere el artículo 85 de la Ley del Impuesto, rendimientos íntegros del capital mobiliario no sujetos a retención derivados de Letras del Tesoro y subvenciones para la adquisición de viviendas de protección oficial o de precio tasado y demás ganancias patrimoniales derivadas de ayudas públicas, con el límite conjunto de 1.000 euros anuales.
+4. La presentación de la declaración, en los supuestos en que exista obligación de efectuarla, será necesaria para solicitar devoluciones por razón de los pagos a cuenta efectuados.
+
+Artículo 60. Procedimiento para la práctica de la deducción por maternidad y su pago anticipado y para la aplicación del incremento de dicha deducción.
+3.º Cuando el importe de la deducción por maternidad no se correspondiera con el de su abono anticipado, los contribuyentes deberán regularizar tal situación en su declaración por este Impuesto. En el supuesto de contribuyentes no obligados a declarar deberán comunicar, a estos efectos, a la Administración tributaria la información que determine la persona titular del Ministerio de Hacienda y Función Pública, quien asimismo establecerá el lugar, forma y plazo de su presentación.
+
+Artículo 60 bis. Procedimiento para la práctica de las deducciones por familia numerosa o personas con discapacidad a cargo y su pago anticipado.
+3.º Cuando el importe de cada una de las deducciones no se correspondiera con el de su abono anticipado, los contribuyentes deberán regularizar tal situación en su declaración por este Impuesto. En el supuesto de contribuyentes no obligados a declarar, tal regularización se efectuará mediante el ingreso de las cantidades percibidas en exceso en el lugar, forma y plazo que determine la Ministra de Hacienda.
+
+Artículo 76. Obligados a retener o ingresar a cuenta.
+1. Con carácter general, estarán obligados a retener o ingresar a cuenta, en cuanto satisfagan rentas sometidas a esta obligación:
+a) Las personas jurídicas y demás entidades, incluidas las comunidades de propietarios y las entidades en régimen de atribución de rentas.
+b) Los contribuyentes que ejerzan actividades económicas, cuando satisfagan rentas en el ejercicio de sus actividades.
+c) Las personas físicas, jurídicas y demás entidades no residentes en territorio español, que operen en él mediante establecimiento permanente.
+
+Artículo 80. Importe de las retenciones sobre rendimientos del trabajo.
+3.º El 35 por ciento para las retribuciones que se perciban por la condición de administradores y miembros de los Consejos de Administración, de las Juntas que hagan sus veces y demás miembros de otros órganos representativos.
+4.º El 15 por ciento para los rendimientos derivados de impartir cursos, conferencias, coloquios, seminarios y similares, o derivados de la elaboración de obras literarias, artísticas o científicas, siempre que se ceda el derecho a su explotación.

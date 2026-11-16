@@ -18,13 +18,10 @@ from typing import Any
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.ops.consumo import PresupuestoAgotadoError
-from hacienda_gpt.tax import autonomicas
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.params import DATA_DIR, DeduccionCalculable, IRPFParams, load_params
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.fiscal.calculo import autonomicas
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, DeduccionCalculable, IRPFParams, load_params
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     ControlFallidoError,
     DatosCambiadosError,
@@ -47,7 +44,10 @@ from hacienda_gpt.tax.recodificacion import (
     rechazar_propuesta,
     recodificar,
 )
-from hacienda_gpt.tax.recodificacion.adaptadores import DEDUCCIONES, ESCALAS, REGLAS_DEDUCCION, REGLAS_ESCALA
+from asistente.conocimiento.recodificacion.adaptadores import DEDUCCIONES, ESCALAS, REGLAS_DEDUCCION, REGLAS_ESCALA
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.plataforma.cli import proactive as cli_module
+from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
 D = Decimal
 LEY = "BOE-T-2020-1"

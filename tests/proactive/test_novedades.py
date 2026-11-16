@@ -8,8 +8,7 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.proactive.novedades import (
+from asistente.nucleo.proactive.novedades import (
     ItemSumario,
     clasificar,
     items_del_sumario,
@@ -17,7 +16,8 @@ from hacienda_gpt.proactive.novedades import (
     notificar_novedad,
     revisar,
 )
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.cli import proactive as cli_module
 from tests.proactive import make_case
 
 DIA = date(2026, 10, 7)

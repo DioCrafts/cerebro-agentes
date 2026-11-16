@@ -10,7 +10,7 @@ import threading
 
 import pytest
 
-from hacienda_gpt.crawler.teac import (
+from asistente.conocimiento.crawler.teac import (
     DYCTEA_NOT_FOUND_MARKER,
     TEACCrawler,
     _normalise_vinculante,

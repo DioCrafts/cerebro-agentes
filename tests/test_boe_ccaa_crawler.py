@@ -9,7 +9,7 @@ import threading
 
 import pytest
 
-from hacienda_gpt.crawler.boe_consolidado import (
+from asistente.conocimiento.crawler.boe_consolidado import (
     BOE_BASE_URL,
     CCAA_REGIMEN_COMUN,
     DEFAULT_CCAA_CODES,

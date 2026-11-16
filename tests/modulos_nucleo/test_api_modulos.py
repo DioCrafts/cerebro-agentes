@@ -9,15 +9,15 @@ import sqlite3
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent.agent import TaxAgent
-from hacienda_gpt.api.api import app, get_agent, get_case_store, get_notification_store
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.nucleo.agent.agent import TaxAgent
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_case_store, get_notification_store
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 from .fakes import Llamadas, agua, aviso, instalar, seguros
 
@@ -311,7 +311,7 @@ def test_notifications_of_old_kinds_still_read(env: Env) -> None:
 def test_the_user_runs_a_module_tool_and_reads_a_document(env: Env) -> None:
     import base64
 
-    from hacienda_gpt.api.api import get_document_provider
+    from asistente.plataforma.api.api import get_document_provider
 
     ana, luis = env.register("ana@example.com"), env.register("luis@example.com")
     case_id = env.new_case(ana)
@@ -369,8 +369,8 @@ def test_a_module_proposes_a_tax_fact_and_only_the_user_writes_it(env: Env, monk
     from decimal import Decimal
     from types import SimpleNamespace
 
-    from hacienda_gpt.modulos import puentes
-    from hacienda_gpt.modulos.contrato import HechoModulo
+    from asistente.nucleo.modulos import puentes
+    from asistente.nucleo.modulos.contrato import HechoModulo
     from .fakes import ModuloFalso
 
     hipoteca = ModuloFalso(

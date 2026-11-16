@@ -1,4 +1,4 @@
-"""Real-package import smoke for `hacienda_gpt.llm.chain`.
+"""Real-package import smoke for `asistente.conocimiento.llm.chain`.
 
 The rest of the test suite uses `tests/conftest.py` to stub
 `langchain.*`, `langchain_classic.*`, `langchain_community.*` etc. so that
@@ -26,7 +26,7 @@ import pytest
 _IMPORT_SCRIPT = """
 import sys
 
-import hacienda_gpt.llm.chain as chain
+import asistente.conocimiento.llm.chain as chain
 
 # Exercise the public symbols that api.py and ui/app.py rely on.
 required = (
@@ -76,7 +76,7 @@ def test_chain_module_imports_in_clean_subprocess():
         env=env,
     )
     assert result.returncode == 0, (
-        "hacienda_gpt.llm.chain failed to import with the real installed "
+        "asistente.conocimiento.llm.chain failed to import with the real installed "
         "langchain packages — this is the contract that the /qa endpoint and "
         "the Streamlit UI depend on.\n"
         f"--- stdout ---\n{result.stdout}\n"

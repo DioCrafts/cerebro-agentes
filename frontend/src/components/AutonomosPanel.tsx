@@ -71,7 +71,7 @@ const M303_COMPRAS: FieldDef[] = [
   { name: "cuotas_a_compensar_periodos_anteriores", label: "Saldo a tu favor de trimestres anteriores", hint: "Lo que quedó «a compensar» en declaraciones anteriores" },
 ];
 
-// Panel field -> the case fact that stores it (hacienda_gpt/tax/profile.py: ACTIVIDAD_FACT_FIELDS).
+// Panel field -> the case fact that stores it (asistente/ambitos/fiscal/profile.py: ACTIVIDAD_FACT_FIELDS).
 const FACT_OF: Record<string, string> = {
   ...Object.fromEntries([...ACTIVIDAD_INGRESOS, ...ACTIVIDAD_GASTOS].map((f) => [f.name, `actividad_${f.name}`])),
   rendimientos_irregulares: "actividad_rendimientos_irregulares",

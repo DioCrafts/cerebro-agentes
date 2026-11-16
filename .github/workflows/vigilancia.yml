@@ -1,9 +1,12 @@
 name: vigilancia
 
-# Weekly check that the laws the calculator's parameters were read from have not
-# been updated in the BOE since. A RED run means "re-read these laws": the JSON
-# printed by the step lists them under `a_revisar`. It does not mean the figures
-# changed, only that someone has to look.
+# Weekly check that the laws the calculator's parameters — and every household
+# module's legal data (luz, caducidades, ayudas, hipoteca, suscripciones,
+# correo…, declared to asistente/conocimiento) — were read from have not been
+# updated in the BOE since. A RED run means "re-read these laws": the JSON
+# printed by the step lists them under `a_revisar` (the modules' under
+# `modulos.a_revisar`). It does not mean the figures changed, only that someone
+# has to look.
 #
 # Needs network access to www.boe.es and nothing else (no LLM, no secrets).
 #
@@ -19,7 +22,9 @@ name: vigilancia
 # The one thing that does reach the repository is the record of a READING:
 # when the BOE has updated a law and every parameter quoting it still matches,
 # `params-verify` / `params-autopilot` write the new consolidation date, the date
-# read and the page hash into the parameter files. A second job, the only one
+# read and the page hash into the parameter files — and into the modules' data
+# files, where the modules' reading dates live too (the runner keeps no state
+# between runs, so nothing may live anywhere else). A second job, the only one
 # with write access, opens (or updates) a pull request with exactly those
 # changes, after checking again that nothing else in the files moved. Merging
 # it is what turns `params-check --fail-on-stale` green.
@@ -38,8 +43,8 @@ jobs:
     outputs:
       hay_lecturas: ${{ steps.lecturas.outputs.hay }}
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
           enable-cache: true
@@ -49,7 +54,7 @@ jobs:
       - name: Source laws of the calculator parameters
         shell: bash # explicit, so `pipefail` is on and the exit code survives `tee`
         run: |
-          uv run python -m hacienda_gpt.cli.proactive params-check --fail-on-stale | tee params-check.json
+          uv run python -m asistente.plataforma.cli.proactive params-check --fail-on-stale | tee params-check.json
       - name: Fail when the check could not be completed
         # params-check reports laws it could not query under `errores` and still
         # exits 0. A watchdog that stays green when the BOE was unreachable would
@@ -71,7 +76,7 @@ jobs:
         # Restored before params-verify too: a law with a proposal still open from an
         # earlier week must not get its reading recorded.
         if: always()
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: recode-proposals
           key: recode-proposals-${{ github.run_id }}
@@ -83,7 +88,7 @@ jobs:
         if: always()
         shell: bash
         run: |
-          uv run python -m hacienda_gpt.cli.proactive params-verify --fail-on-mismatch --proposals-dir recode-proposals \
+          uv run python -m asistente.plataforma.cli.proactive params-verify --fail-on-mismatch --proposals-dir recode-proposals \
             | tee params-verify.json
       - name: "Autopilot: amending norms, verification, re-encoding proposals, report"
         # One entry point: reads the BOE issues since the last run, finds the norms
@@ -106,7 +111,7 @@ jobs:
           DECISION_STATE_DB_PATH: ${{ runner.temp }}/vigilancia.db
           NOTIFY_WEBHOOK_URL: ${{ secrets.NOTIFY_WEBHOOK_URL }}
         run: |
-          uv run python -m hacienda_gpt.cli.proactive params-autopilot --output-dir recode-proposals/estado \
+          uv run python -m asistente.plataforma.cli.proactive params-autopilot --output-dir recode-proposals/estado \
             | tee params-autopilot.json
       - name: Readings recorded in the parameter files
         # Compares the parameter files with the commit checked out. Lists every law
@@ -116,20 +121,21 @@ jobs:
         if: always()
         shell: bash
         run: |
-          uv run python -m hacienda_gpt.cli.proactive params-lecturas --body pr-lecturas.md | tee params-lecturas.json
+          uv run python -m asistente.plataforma.cli.proactive params-lecturas --body pr-lecturas.md | tee params-lecturas.json
           if [ -s pr-lecturas.md ]; then echo "hay=true" >> "$GITHUB_OUTPUT"; else echo "hay=false" >> "$GITHUB_OUTPUT"; fi
       - name: Hand the recorded readings to the job that opens the PR
         if: always() && steps.lecturas.outcome == 'success' && steps.lecturas.outputs.hay == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: lecturas-boe
           path: |
-            hacienda_gpt/tax/data/*_20[0-9][0-9].json
+            asistente/ambitos/fiscal/data/*_20[0-9][0-9].json
+            asistente/ambitos/*/data/*.json
             pr-lecturas.md
           retention-days: 7
       - name: Upload the proposals and the autopilot's report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: recode-proposals
           path: |
@@ -141,7 +147,7 @@ jobs:
         # is still pending, validated or repealed. The deployed app keeps its own
         # status file with the same command on a schedule.
         if: always()
-        run: uv run python -m hacienda_gpt.cli.proactive normas-check
+        run: uv run python -m asistente.plataforma.cli.proactive normas-check
 
   lecturas-pr:
     # The only job with write access. It runs no model and downloads nothing from
@@ -154,20 +160,20 @@ jobs:
       contents: write
       pull-requests: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: lecturas-boe
           path: .
       - name: Check again that only readings changed
-        run: uv run python -m hacienda_gpt.cli.proactive params-lecturas --body pr-lecturas.md
+        run: uv run python -m asistente.plataforma.cli.proactive params-lecturas --body pr-lecturas.md
       - name: Open or update the pull request
-        uses: peter-evans/create-pull-request@v7
+        uses: peter-evans/create-pull-request@22a9089034f40e5a961c8808d113e2c98fb63676 # v7.0.11
         with:
           # A pull request opened with the default token does not start other workflows
           # (the CI would not run on it). Set a VIGILANCIA_PR_TOKEN secret (a fine-grained
@@ -175,7 +181,9 @@ jobs:
           token: ${{ secrets.VIGILANCIA_PR_TOKEN || github.token }}
           branch: vigilancia/lecturas-boe
           delete-branch: true
-          add-paths: hacienda_gpt/tax/data/*.json
+          add-paths: |
+            asistente/ambitos/fiscal/data/*.json
+            asistente/ambitos/*/data/*.json
           commit-message: "Record the BOE readings of the laws the parameters come from"
           title: "Vigilancia: anotar la relectura de leyes actualizadas en el BOE"
           body-path: pr-lecturas.md

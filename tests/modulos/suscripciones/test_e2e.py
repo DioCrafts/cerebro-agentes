@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.suscripciones import MODULO
-from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO
+from asistente.ambitos.suscripciones import MODULO
+from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 from tests.modulos.suscripciones.sintetico import FIXTURES
 
 
@@ -21,6 +21,8 @@ def test_cumple_el_contrato() -> None:
         "suscripciones_listado": "lectura",
         "suscripciones_gasto_anual": "lectura",
         "suscripciones_preparar_baja": "prepara",
+        # What it asks of the mail capability: modulos/suscripciones/capacidades.py.
+        "suscripciones_cargos_del_correo": "lectura",
     }
     assert all(h.sensible for h in MODULO.hechos)
     assert {f.identificador for f in MODULO.fuentes} == {

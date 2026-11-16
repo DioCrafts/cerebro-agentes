@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 
 
 def make_case(case_id: str = "c1", tax_period: str = "2026", **facts: Any) -> CaseState:

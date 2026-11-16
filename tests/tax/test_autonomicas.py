@@ -7,9 +7,9 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.tax.autonomicas import Bases, aplicar, evaluar
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import DeduccionCalculable, load_params
+from asistente.ambitos.fiscal.calculo.autonomicas import Bases, aplicar, evaluar
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import DeduccionCalculable, load_params
 
 D = Decimal
 

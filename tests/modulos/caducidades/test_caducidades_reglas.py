@@ -2,7 +2,7 @@
 
 The extracts under ``tests/fixtures/modulos/caducidades`` are the lines of the consolidated texts on boe.es
 that hold the quoted passages (downloaded on 2026-11-13; the full pages were checked with
-``python -m hacienda_gpt.modulos.caducidades.reglas <dir>`` and their SHA-256 is in ``reglas.json``).
+``python -m asistente.ambitos.caducidades.reglas <dir>`` and their SHA-256 is in ``reglas.json``).
 """
 
 from decimal import Decimal
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.modulos.caducidades.reglas import (
+from asistente.ambitos.caducidades.reglas import (
     Reglas,
     cargar_reglas,
     cifra_a_numero,

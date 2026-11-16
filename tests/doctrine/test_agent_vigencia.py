@@ -7,12 +7,12 @@ from click.testing import CliRunner
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.agent.agent import AgentMode, TaxAgent
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.doctrine.citas import Documento
-from hacienda_gpt.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.doctrine.citas import Documento
+from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.nucleo.agent.agent import AgentMode, TaxAgent
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, text_turn, tool_turn, verdict
 
 OLD = Document(
@@ -198,8 +198,8 @@ def test_disputed_doctrine_must_be_presented_as_unsettled(graph: DoctrineGraph) 
 def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path, monkeypatch) -> None:
     from langchain_community.docstore.in_memory import InMemoryDocstore
 
-    from hacienda_gpt import settings
-    from hacienda_gpt.cli.doctrine_graph import cli
+    from asistente.plataforma import settings
+    from asistente.plataforma.cli.doctrine_graph import cli
 
     cites_missing = Document(
         page_content="Conforme a la sentencia del Tribunal Supremo de 5 de mayo de 2021 (rec. 999/2020), procede.",
@@ -230,9 +230,9 @@ def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path,
 
 def test_supreme_court_sidecar_feeds_the_graph_and_the_evidence_header() -> None:
     """The ruling filter, the graph and the agent agree on the metadata contract."""
-    from hacienda_gpt.doctrine.citas import identify_document
-    from hacienda_gpt.doctrine.construccion import build_graph
-    from hacienda_gpt.doctrine.supremo import analizar_documento, es_objetivo_prioritario, sidecar_metadata
+    from asistente.conocimiento.doctrine.citas import identify_document
+    from asistente.conocimiento.doctrine.construccion import build_graph
+    from asistente.conocimiento.doctrine.supremo import analizar_documento, es_objetivo_prioritario, sidecar_metadata
 
     html = """<html><body>
     <p>Roj: STS 1500/2020 - ECLI:ES:TS:2020:1500</p><p>Órgano: Tribunal Supremo. Sala de lo Contencioso</p>

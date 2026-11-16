@@ -7,23 +7,17 @@ import json
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import BENEFITS_TOOL, CALCULATE_TOOL, JOINT_TOOL, RECORD_FACTS_TOOL, Toolbox
-from hacienda_gpt.api.api import app
-from hacienda_gpt.decision.fact_extractor import (
-    _PROVIDER_SCHEMA,
-    _RESPONSE_SCHEMA,
-    _SYSTEM_PROMPT,
-    EXPECTED_FACT_TYPE,
-    EXTRACTOR_FACT_NAMES,
-    OpenAIFactExtractor,
+from asistente.ambitos.fiscal.calculo.irpf import Descendiente, IRPFInput
+from asistente.ambitos.fiscal.calculo.params import GASTOS_DESGLOSADOS
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.documentos import DOCUMENT_FACTS
+from asistente.ambitos.fiscal.especificaciones import (
+    AYUDA_REGISTRAR_HECHOS,
+    BENEFITS_TOOL,
+    CALCULATE_TOOL,
+    JOINT_TOOL,
 )
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
-from hacienda_gpt.tax.irpf import Descendiente, IRPFInput
-from hacienda_gpt.tax.params import GASTOS_DESGLOSADOS
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.profile import (
     DESCENDIENTES,
     PROFILE_FACT_TYPES,
     RECUENTOS_DEL_DETALLE,
@@ -32,7 +26,19 @@ from hacienda_gpt.tax.profile import (
     descendientes_a_texto,
     normalizar_descendientes,
 )
-from hacienda_gpt.tax.simulador import simular
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import RECORD_FACTS_TOOL, Toolbox
+from asistente.nucleo.decision.fact_extractor import (
+    _PROVIDER_SCHEMA,
+    _RESPONSE_SCHEMA,
+    _SYSTEM_PROMPT,
+    EXPECTED_FACT_TYPE,
+    EXTRACTOR_FACT_NAMES,
+    OpenAIFactExtractor,
+)
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.plataforma.api.api import app
 
 D = Decimal
 client = TestClient(app)
@@ -268,7 +274,8 @@ def test_tool_schemas_describe_the_new_inputs() -> None:
     assert (
         DESCENDIENTES in RECORD_FACTS_TOOL.input_schema["properties"]["hechos"]["items"]["properties"]["nombre"]["enum"]
     )
-    assert "descendientes" in RECORD_FACTS_TOOL.description
+    # The tax module documents its structured facts in the core's registrar_hechos (ayuda_registrar_hechos).
+    assert "descendientes" in AYUDA_REGISTRAR_HECHOS
 
 
 def test_calculate_tool_takes_the_detail_and_turns_contradictions_into_tool_errors() -> None:
@@ -296,7 +303,13 @@ def test_calculate_tool_takes_the_detail_and_turns_contradictions_into_tool_erro
 
 
 def test_record_facts_validates_and_canonicalises_the_children_detail() -> None:
-    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(num_descendientes=1.0))
+    dicho = (
+        "Tengo dos hijos: uno de 2 años en la guardería (1.800 € al año) y otra nacida en 2018, en primaria, "
+        "con 120,50 € de libros."
+    )
+    toolbox = Toolbox(
+        searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(num_descendientes=1.0), mensajes_usuario=[dicho]
+    )
 
     rechazado = toolbox.execute(
         _call("registrar_hechos", hechos=[{"nombre": DESCENDIENTES, "valor": "dos hijos de 2 y 8 años"}])
@@ -307,8 +320,9 @@ def test_record_facts_validates_and_canonicalises_the_children_detail() -> None:
 
     # As JSON text (what the schema asks for) or as a list: stored as the same canonical text.
     for valor in (json.dumps(HIJOS), HIJOS):
-        ok = toolbox.execute(_call("registrar_hechos", hechos=[{"nombre": DESCENDIENTES, "valor": valor}]))
-        assert not ok.is_error
+        hecho = {"nombre": DESCENDIENTES, "valor": valor, "cita_del_usuario": "Tengo dos hijos"}
+        ok = toolbox.execute(_call("registrar_hechos", hechos=[hecho]))
+        assert not ok.is_error, ok.content
         guardado = next(f for f in toolbox.case.facts if f.name == DESCENDIENTES)
         assert guardado.value == descendientes_a_texto(HIJOS) and guardado.value_type.value == "string"
 

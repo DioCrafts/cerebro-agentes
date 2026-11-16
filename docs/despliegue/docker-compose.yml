@@ -1,0 +1,78 @@
+# HaciendaGPT con Docker Compose: api + worker + web (interfaz estática y proxy inverso con TLS).
+# Ejemplo (docs/despliegue.md). Desde la raíz del repositorio:
+#
+#   cp docs/despliegue/entorno.ejemplo docs/despliegue/.env    # y rellénalo (secretos: nunca al repositorio)
+#   docker compose -f docs/despliegue/docker-compose.yml --env-file docs/despliegue/.env up -d --build
+#
+# api y worker comparten el volumen «datos»: la base de datos SQLite (modo WAL) necesita que los dos
+# procesos estén en la MISMA máquina y en un disco local (nunca NFS/SMB).
+name: haciendagpt
+
+x-backend: &backend
+  build:
+    context: ../..
+    dockerfile: docs/despliegue/Dockerfile
+  image: haciendagpt-backend
+  restart: unless-stopped
+  env_file:
+    - path: .env
+      required: false
+  environment:
+    TZ: Europe/Madrid
+    AUTH_MODE: ${AUTH_MODE:-required}
+  volumes:
+    - datos:/srv/hacienda-asesor/data
+
+services:
+  api:
+    <<: *backend
+    environment:
+      TZ: Europe/Madrid
+      AUTH_MODE: ${AUTH_MODE:-required}
+      # El worker reparte los eventos; la API solo los escribe.
+      EVENTOS_DESPACHO_EN_API: "false"
+    expose:
+      - "8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  worker:
+    <<: *backend
+    command: ["python", "-m", "asistente.plataforma.cli.plataforma", "worker"]
+    depends_on:
+      api:
+        condition: service_started
+    healthcheck:
+      test: ["CMD", "python", "-m", "asistente.plataforma.cli.plataforma", "salud", "--exigir-worker"]
+      interval: 60s
+      timeout: 30s
+      retries: 3
+      start_period: 120s
+    stop_grace_period: 60s
+
+  web:
+    build:
+      context: ../..
+      dockerfile: docs/despliegue/Dockerfile.web
+    image: haciendagpt-web
+    restart: unless-stopped
+    environment:
+      DOMINIO: ${DOMINIO:-localhost}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - caddy_datos:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  datos:
+  caddy_datos:
+  caddy_config:

@@ -9,13 +9,14 @@ from click.testing import CliRunner
 import formatos_util as util
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.cli import formatos as cli_formatos
-from hacienda_gpt.cli import ops as ops_module
-from hacienda_gpt.cli.ops import cli
-from hacienda_gpt.ops import formatos, formatos_agente, vigia
-from hacienda_gpt.ops.formatos import Fallo, Fuente, Lectura, Observacion, calcular_estado
-from hacienda_gpt.proactive import novedades
+from asistente.conocimiento import formatos, formatos_agente
+from asistente.conocimiento.formatos import Fallo, Fuente, Lectura, Observacion, calcular_estado
+from asistente.nucleo.proactive import novedades
+from asistente.plataforma import settings
+from asistente.plataforma.cli import formatos as cli_formatos
+from asistente.plataforma.cli import ops as ops_module
+from asistente.plataforma.cli.ops import cli
+from asistente.plataforma.ops import vigia
 
 SUMARIO = "boe_sumario_20261110.json"
 XML = "boe_documento_BOE-A-2023-26452.xml"
@@ -311,7 +312,7 @@ def test_revisar_flags_a_run_where_no_disposition_has_an_analysis(vigilancia, mo
 
 
 def test_documents_reader_reports_counters_only(vigilancia) -> None:
-    from hacienda_gpt.tax.documentos import analizar_documento
+    from asistente.ambitos.fiscal.documentos import analizar_documento
 
     texto = (
         "CERTIFICADO DE RETENCIONES\nPerceptor: Ana Pérez Gómez NIF 12345678Z\nRetribuciones dinerarias 41.250,37\n" * 2

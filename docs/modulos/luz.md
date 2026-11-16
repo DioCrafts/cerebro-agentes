@@ -13,7 +13,7 @@ Qué responde:
    y el bloque de horas seguidas más baratos.
 5. **Potencia óptima** con los datos del maxímetro (o, si no hay, un mínimo orientativo con el consumo horario).
 
-Código: `hacienda_gpt/modulos/luz/` · datos regulados: `data/regulados.json` · pruebas: `tests/modulos/luz/` ·
+Código: `asistente/ambitos/luz/` · datos regulados: `data/regulados.json` · pruebas: `tests/modulos/luz/` ·
 extractos del BOE y respuesta de ejemplo de REE: `tests/fixtures/modulos/luz/`.
 
 ## Cómo se calcula una factura 2.0TD
@@ -69,7 +69,7 @@ Cada grupo de `regulados.json` guarda `fuente` (referencia, en vigor desde, veri
 (`evidencia`) y cómo está escrita cada cifra en su cita (`cifras`). Comprobación contra las páginas del BOE:
 
 ```
-uv run python -m hacienda_gpt.modulos.luz.datos <directorio con BOE-*.html descargados>
+uv run python -m asistente.ambitos.luz.datos <directorio con BOE-*.html descargados>
 ```
 
 Las pruebas hacen lo mismo contra extractos literales pequeños (y contra las páginas completas si

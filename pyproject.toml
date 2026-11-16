@@ -1,5 +1,5 @@
 [project]
-name = "hacienda_gpt"
+name = "asistente"
 version = "0.1.0"
 description = ""
 authors = [
@@ -54,7 +54,7 @@ dependencies = [
     "uvicorn==0.37.0",
     "pydantic==2.12.3",
     "anthropic==2.8.0",
-    # The browser agent (hacienda_gpt/navegador) drives Chromium through Playwright directly; it also comes
+    # The browser agent (asistente/capacidades/navegador) drives Chromium through Playwright directly; it also comes
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.48",
 ]
@@ -74,7 +74,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["hacienda_gpt"]
+# ``hacienda_gpt``: the compatibility package (old module paths as aliases), kept for one release.
+packages = ["asistente", "hacienda_gpt"]
 
 [tool.black]
 line-length = 120
@@ -94,12 +95,12 @@ ignore = ["E501", "UP042"]
 
 [tool.ruff.lint.per-file-ignores]
 # api.py: first-party imports deliberately come after the module-level setup.
-"hacienda_gpt/api/api.py" = ["E402"]
+"asistente/plataforma/api/api.py" = ["E402"]
 
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
 no-lines-before = ["local-folder"]
-known-first-party = ["hacienda_gpt"]
+known-first-party = ["asistente", "hacienda_gpt"]
 
 [tool.pytest.ini_options]
 addopts = "-ra"

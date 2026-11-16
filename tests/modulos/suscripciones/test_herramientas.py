@@ -9,10 +9,10 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.contrato import ContextoModulo, ResultadoHerramienta
-from hacienda_gpt.modulos.suscripciones import MODULO
-from hacienda_gpt.modulos.suscripciones.almacen import NOMBRE_HECHO, fusionar, leer, validar_servicios
-from hacienda_gpt.modulos.suscripciones.modelos import ServiciosGuardados
+from asistente.ambitos.suscripciones import MODULO
+from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO, fusionar, leer, validar_servicios
+from asistente.ambitos.suscripciones.modelos import ServiciosGuardados
+from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
 from tests.modulos.suscripciones.sintetico import FIXTURES
 
 HOY = date(2026, 11, 13)

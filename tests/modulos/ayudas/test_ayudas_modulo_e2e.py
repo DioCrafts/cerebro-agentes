@@ -10,8 +10,8 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.ayudas import MODULO, actualizar_convocatorias
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
+from asistente.ambitos.ayudas import MODULO, actualizar_convocatorias
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 from .conftest import FIXTURES
 
 HOY = date(2026, 11, 13)
@@ -175,7 +175,7 @@ def test_automatic_review_is_opt_in(monkeypatch: pytest.MonkeyPatch, _aislado: P
     def falso(hoy: date, **_: Any) -> None:
         llamadas.append(hoy)
 
-    monkeypatch.setattr("hacienda_gpt.modulos.ayudas.modulo.actualizar_convocatorias", falso)
+    monkeypatch.setattr("asistente.ambitos.ayudas.modulo.actualizar_convocatorias", falso)
     MODULO.avisos(_ctx(PENSIONISTA))
     assert llamadas == []
     monkeypatch.setenv("AYUDAS_BOE_AUTOMATICO", "1")

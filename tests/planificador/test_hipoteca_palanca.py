@@ -8,10 +8,10 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.modulos.hipoteca.calculo import euros
-from hacienda_gpt.modulos.hipoteca.comisiones import comision_maxima
-from hacienda_gpt.modulos.hipoteca.modelo import Prestamo
-from hacienda_gpt.planificador.hipoteca import Crecimiento, PalancaHipoteca, meses_entre
+from asistente.ambitos.hipoteca.calculo import euros
+from asistente.ambitos.hipoteca.comisiones import comision_maxima
+from asistente.ambitos.hipoteca.modelo import Prestamo
+from asistente.nucleo.planificador.hipoteca import Crecimiento, PalancaHipoteca, meses_entre
 
 D = Decimal
 NOV = date(2026, 11, 16)

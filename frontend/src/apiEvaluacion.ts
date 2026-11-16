@@ -1,4 +1,4 @@
-// Client for the feedback on the assistant's answers (hacienda_gpt/api/routers/evaluacion.py).
+// Client for the feedback on the assistant's answers (asistente/plataforma/api/routers/evaluacion.py).
 //
 // A vote alone never stores the conversation. Storing it as an evaluation case needs the user to tick the
 // opt-in box for THAT answer; the request then carries the version of the consent text they saw.

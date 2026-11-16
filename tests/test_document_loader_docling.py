@@ -11,7 +11,7 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.processor.document_loader import (
+from asistente.conocimiento.processor.document_loader import (
     SUPPORTED_SUFFIXES,
     DocumentProcessor,
     docling_chunk_metadata,
@@ -110,7 +110,7 @@ def test_load_chunks_maps_loader_output(monkeypatch, tmp_path: Path) -> None:
     # the surrounding ``docling_chunk_metadata`` flattening logic — that
     # is the contract this test pins (raw ``dl_meta`` → flat ``title`` /
     # ``source_url`` / ``section`` fields).
-    from hacienda_gpt.processor import document_loader as dl
+    from asistente.conocimiento.processor import document_loader as dl
 
     def fake_parse_paths(paths):
         raw = _FakeLoader().load()

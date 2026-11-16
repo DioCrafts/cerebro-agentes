@@ -234,7 +234,7 @@ QUERIES: list[dict[str, str]] = [
 
 
 def _run_one(chain: Any, scenario: dict[str, str]) -> dict[str, Any]:
-    from hacienda_gpt.llm.chain import answer_with_grounding
+    from asistente.conocimiento.llm.chain import answer_with_grounding
 
     t0 = time.time()
     envelope = answer_with_grounding(chain, query=scenario["q"])
@@ -294,7 +294,7 @@ def main() -> int:
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
     print(f"Loading chain with FAISS index from {os.environ['FAISS_INDEX_PATH']}...")
-    from hacienda_gpt.llm.chain import create_openai_chain
+    from asistente.conocimiento.llm.chain import create_openai_chain
 
     chain = create_openai_chain(os.environ["OPENAI_API_KEY"], profile_name="explain")
 

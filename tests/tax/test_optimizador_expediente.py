@@ -14,23 +14,8 @@ import json
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import JOINT_TOOL, RECORD_FACTS_TOOL, Toolbox
-from hacienda_gpt.api.api import app
-from hacienda_gpt.decision.fact_extractor import (
-    _PROVIDER_SCHEMA,
-    _RESPONSE_SCHEMA,
-    EXPECTED_FACT_TYPE,
-    EXTRACTOR_FACT_NAMES,
-    OpenAIFactExtractor,
-)
-from hacienda_gpt.decision.schemas import CaseState, Fact
-from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.documentos import DOCUMENT_FACTS
-from hacienda_gpt.tax.irpf import IRPFInput
-from hacienda_gpt.tax.optimizador import (
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput
+from asistente.ambitos.fiscal.calculo.optimizador import (
     DETALLE_A_TEXTO,
     PlanOptimo,
     PreferenciasOptimizacion,
@@ -40,7 +25,9 @@ from hacienda_gpt.tax.optimizador import (
     optimizar_desde_hechos,
     preferencias_a_texto,
 )
-from hacienda_gpt.tax.profile import (
+from asistente.ambitos.fiscal.documentos import DOCUMENT_FACTS
+from asistente.ambitos.fiscal.especificaciones import AYUDA_REGISTRAR_HECHOS, JOINT_TOOL
+from asistente.ambitos.fiscal.profile import (
     DATOS_CONYUGE,
     DETALLE_FACT_TYPES,
     PREFERENCIAS_OPTIMIZACION,
@@ -49,6 +36,20 @@ from hacienda_gpt.tax.profile import (
     datos_conyuge_a_texto,
     normalizar_datos_conyuge,
 )
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import RECORD_FACTS_TOOL, Toolbox
+from asistente.nucleo.decision.fact_extractor import (
+    _PROVIDER_SCHEMA,
+    _RESPONSE_SCHEMA,
+    EXPECTED_FACT_TYPE,
+    EXTRACTOR_FACT_NAMES,
+    OpenAIFactExtractor,
+)
+from asistente.nucleo.decision.schemas import CaseState, Fact
+from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.api.api import app
 
 D = Decimal
 NOV = date(2026, 11, 13)
@@ -122,7 +123,7 @@ def test_both_are_structured_case_facts_that_no_extractor_may_emit() -> None:
         assert OpenAIFactExtractor._materialize_facts(raw) == []
         # ...but the agent may record them (validated, see below).
         assert nombre in RECORD_FACTS_TOOL.input_schema["properties"]["hechos"]["items"]["properties"]["nombre"]["enum"]
-        assert nombre in RECORD_FACTS_TOOL.description
+        assert nombre in AYUDA_REGISTRAR_HECHOS
     # Every structured fact has its validator.
     assert set(DETALLE_A_TEXTO) == set(DETALLE_FACT_TYPES)
 
@@ -489,14 +490,15 @@ def test_optimize_endpoint_uses_the_case_and_takes_the_request_over_it() -> None
 
 
 def test_the_optimiser_tool_starts_from_what_the_case_keeps(monkeypatch) -> None:
-    import hacienda_gpt.agent.tools as tools
+    import asistente.ambitos.fiscal.herramientas as herramientas
+    from asistente.ambitos.fiscal.presentacion import money
 
-    monkeypatch.setattr(tools, "hoy_en_espana", lambda: NOV)
+    monkeypatch.setattr(herramientas, "hoy_en_espana", lambda: NOV)
     toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(_guardados()))
     resultado = toolbox.execute(_call("optimizar_impuestos"))
     assert not resultado.is_error, resultado.content
     esperado = optimizar_desde_hechos(ejercicio=2026, fecha=NOV, facts=_guardados())
-    assert resultado.summary.startswith(f"ahorro {tools._money(esperado.ahorro_total)}")
+    assert resultado.summary.startswith(f"ahorro {money(esperado.ahorro_total)}")
     assert "Se han usado las cifras de tu cónyuge guardadas en tu expediente" in resultado.content
     assert "puedes aportar hasta 1.000,00 € más a tu plan de pensiones" in resultado.content
     # A constraint the agent passes replaces the stored one (and is not reported as taken from the case).
@@ -505,7 +507,7 @@ def test_the_optimiser_tool_starts_from_what_the_case_keeps(monkeypatch) -> None
     sin_aportar = optimizar_desde_hechos(
         ejercicio=2026, fecha=NOV, facts=_guardados(), restricciones={"aportacion_maxima_pensiones": 0}
     )
-    assert otro.summary.startswith(f"ahorro {tools._money(sin_aportar.ahorro_total)}")
+    assert otro.summary.startswith(f"ahorro {money(sin_aportar.ahorro_total)}")
     assert not any(p.id == "plan_pensiones_contribuyente" for p in sin_aportar.palancas)
     assert "a tu plan de pensiones antes del" not in otro.content
     assert "puedes aportar hasta 1.000,00 €" not in otro.content
@@ -540,7 +542,8 @@ def test_the_joint_tool_uses_the_stored_spouse_when_the_agent_gives_none() -> No
 
 
 def test_record_facts_validates_and_canonicalises_both() -> None:
-    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(USUARIO))
+    dicho = "Mi mujer tiene 44 años y gana 4.000 € al año; yo puedo aportar como mucho 1.000 € al plan."
+    toolbox = Toolbox(searcher=_NoSearch(), ledger=EvidenceLedger(), case=_case(USUARIO), mensajes_usuario=[dicho])
     mal = toolbox.execute(
         _call(
             "registrar_hechos",
@@ -557,12 +560,20 @@ def test_record_facts_validates_and_canonicalises_both() -> None:
         _call(
             "registrar_hechos",
             hechos=[
-                {"nombre": DATOS_CONYUGE, "valor": {"rendimiento_trabajo_bruto": 4000.0, "edad": 44}},
-                {"nombre": PREFERENCIAS_OPTIMIZACION, "valor": json.dumps({"aportacion_maxima_pensiones": 1000})},
+                {
+                    "nombre": DATOS_CONYUGE,
+                    "valor": {"rendimiento_trabajo_bruto": 4000.0, "edad": 44},
+                    "cita_del_usuario": "Mi mujer tiene 44 años y gana 4.000 €",
+                },
+                {
+                    "nombre": PREFERENCIAS_OPTIMIZACION,
+                    "valor": json.dumps({"aportacion_maxima_pensiones": 1000}),
+                    "cita_del_usuario": "puedo aportar como mucho 1.000 €",
+                },
             ],
         )
     )
-    assert not bien.is_error
+    assert not bien.is_error and "Rechazados" not in bien.content, bien.content
     hechos = {f.name: f.value for f in toolbox.case.facts}
     assert hechos[DATOS_CONYUGE] == '{"edad":44,"rendimiento_trabajo_bruto":"4000"}'
     assert hechos[PREFERENCIAS_OPTIMIZACION] == '{"aportacion_maxima_pensiones":"1000"}'

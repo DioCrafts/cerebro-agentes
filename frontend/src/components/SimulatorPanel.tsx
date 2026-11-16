@@ -8,7 +8,9 @@ import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import type { Benefit, Fact, Simulation } from "../api";
 import { ApiError, simulate } from "../api";
+import { ObligacionDeclararCard } from "./ObligacionDeclararCard";
 import { newId } from "../lib/id";
+import { OBLIGACION_SI_NO, type ObligacionDeclarar } from "../lib/obligacion";
 import { COMUNIDADES, ETAPA_LABEL, comunidadDeExpediente, factLabel, formatMoney } from "../lib/presentation";
 
 type FieldKind = "money" | "count" | "year" | "flag";
@@ -478,6 +480,11 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
     const out: Record<string, unknown> = {};
     for (const [name, raw] of Object.entries(edits)) {
       if (name in derived) continue;
+      if (OBLIGACION_SI_NO.has(name)) {
+        // «Sin indicar» keeps whatever the case says; «sí» / «no» are sent as booleans.
+        if (raw !== "" && raw !== baseline[name]) out[name] = raw === "true";
+        continue;
+      }
       if (FLAGS.has(name)) {
         if (raw !== (baseline[name] ?? "false")) out[name] = raw === "true";
         continue;
@@ -548,6 +555,8 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
   const resultado = sim ? Number(sim.resultado.resultado) : 0;
   const ahorro = simulation?.escenarios[1] ? Number(simulation.escenarios[1].ahorro_frente_a_base) : 0;
   const levers = (simulation?.beneficios ?? []).filter((b) => b.estado === "disponible" || b.estado === "por_confirmar");
+  // Whether the user must file (art. 96 LIRPF): computed by the backend with each individual result.
+  const obligacion = sim ? ((sim.resultado as { obligacion_declarar?: ObligacionDeclarar | null }).obligacion_declarar ?? null) : null;
   const hasIncome = FIELDS.some((f) => (edits[f.name] ?? baseline[f.name] ?? "") !== "" && f.name.startsWith("rendimiento"));
 
   async function saveAll() {
@@ -869,6 +878,15 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
               )}
               {!hasIncome && <p className="mt-2 text-[12.5px] text-muted">Introduce al menos tu salario bruto para obtener una estimación.</p>}
             </section>
+          )}
+
+          {obligacion && hasIncome && (
+            <ObligacionDeclararCard
+              obligacion={obligacion}
+              value={(name) => edits[name] ?? baseline[name] ?? ""}
+              onChange={(name, raw) => setEdits((prev) => ({ ...prev, [name]: raw }))}
+              dirty={(name) => name in cambios}
+            />
           )}
 
           {groups.map((group) => (

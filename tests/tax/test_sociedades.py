@@ -13,10 +13,10 @@ import re
 
 import pytest
 
-from hacienda_gpt.tax.autonomos_params import textos_de_directorio
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.sociedades import (
+from asistente.ambitos.fiscal.calculo.autonomos_params import textos_de_directorio
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.sociedades import (
     ComparacionInput,
     PagoFraccionadoSociedadesInput,
     SociedadesInput,
@@ -24,7 +24,7 @@ from hacienda_gpt.tax.sociedades import (
     calcular_sociedades,
     comparar_autonomo_vs_sociedad,
 )
-from hacienda_gpt.tax.sociedades_params import (
+from asistente.ambitos.fiscal.calculo.sociedades_params import (
     SociedadesParams,
     cifra_a_decimal,
     comprobar_evidencias,

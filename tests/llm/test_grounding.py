@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.llm.grounding import (
+from asistente.conocimiento.llm.grounding import (
     DEFAULT_ABSTAIN_MESSAGE,
     AnswerMode,
     GroundingGate,

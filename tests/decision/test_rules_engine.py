@@ -1,13 +1,13 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.rules import DecisionRule, RuleSet
-from hacienda_gpt.decision.rules_engine import (
+from asistente.nucleo.decision.rules import DecisionRule, RuleSet
+from asistente.nucleo.decision.rules_engine import (
     RulesEngine,
     _engine_for_directory,
     clear_rules_cache,
     evaluate_rules,
 )
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType, ObligationStatus
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType, ObligationStatus
 
 
 def _case_with_facts(*facts: Fact) -> CaseState:

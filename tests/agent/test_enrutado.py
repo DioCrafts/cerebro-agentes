@@ -12,13 +12,13 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.agent import enrutado
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
-from hacienda_gpt.ops import consumo
-from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider, cargar_precios
+from asistente.nucleo.agent import enrutado
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
+from asistente.plataforma import settings
+from asistente.plataforma.ops import consumo
+from asistente.plataforma.ops.consumo import ConsumoStore, MeteredProvider, cargar_precios
 from tests.agent.fakes import ScriptedProvider
 from tests.agent.fakes_http import FakeAnthropicAPI, FakeOpenAIAPI
 
@@ -293,7 +293,7 @@ def test_the_next_tier_skips_tiers_that_run_the_same_model(monkeypatch) -> None:
 
 
 def test_the_aid_calls_classifier_purpose_is_routed_to_the_small_tier() -> None:
-    from hacienda_gpt.modulos.ayudas.convocatorias import PROPOSITO_CLASIFICADOR
+    from asistente.ambitos.ayudas.convocatorias import PROPOSITO_CLASIFICADOR
 
     assert PROPOSITO_CLASIFICADOR.startswith("ayudas:")
     assert enrutado.nivel_de_tabla(PROPOSITO_CLASIFICADOR) == "pequeno"

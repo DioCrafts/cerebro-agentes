@@ -3,7 +3,7 @@ from datetime import UTC, datetime
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.decision.schemas import (
+from asistente.nucleo.decision.schemas import (
     SCHEMA_VERSION,
     ActionItem,
     CaseState,

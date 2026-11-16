@@ -1,9 +1,9 @@
 import json
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.schemas import CaseState, MissingFact, RiskLevel
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.schemas import CaseState, MissingFact, RiskLevel
 from .fakes import FakeSearcher, corpus
 
 
@@ -77,6 +77,7 @@ def test_case_tools_only_offered_with_a_case() -> None:
         "comparar_autonomo_vs_sociedad",
         "calcular_patrimonio",
         "calcular_sucesiones_donaciones",
+        "obligacion_declarar",
     }
     assert {spec.name for spec in without.specs()} == stateless
     assert without.execute(_call("consultar_expediente")).is_error
@@ -90,16 +91,17 @@ def test_case_tools_only_offered_with_a_case() -> None:
 
 
 def test_record_facts_coerces_merges_and_keeps_case_valid() -> None:
-    toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger(), case=_case())
+    dicho = "Vivo en Madrid y soy autónomo desde marzo: en 2024 facturé 45.000 €, muchos clientes."
+    toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger(), case=_case(), mensajes_usuario=[dicho])
 
     outcome = toolbox.execute(
         _call(
             "registrar_hechos",
             hechos=[
-                {"nombre": "residencia_fiscal", "valor": "ES"},
-                {"nombre": "periodo_fiscal", "valor": 2024},
+                {"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Vivo en Madrid"},
+                {"nombre": "periodo_fiscal", "valor": 2024, "cita_del_usuario": "en 2024 facturé"},
                 {"nombre": "volumen_facturacion", "valor": "45.000 €"},
-                {"nombre": "alta_actividad_economica", "valor": "sí"},
+                {"nombre": "alta_actividad_economica", "valor": "sí", "cita_del_usuario": "soy autónomo desde marzo"},
                 {"nombre": "plantilla", "valor": "muchos"},
                 {"nombre": "color_favorito", "valor": "azul"},
             ],
@@ -130,18 +132,21 @@ def test_record_facts_with_nothing_valid_is_an_error_and_leaves_case_untouched()
 
 
 def test_read_case_and_evaluate_rules() -> None:
-    toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger(), case=_case())
-    toolbox.execute(
+    dicho = "Vivo en Sevilla y en la renta 2025 solo tengo mi nómina de asalariado."
+    toolbox = Toolbox(searcher=FakeSearcher([]), ledger=EvidenceLedger(), case=_case(), mensajes_usuario=[dicho])
+    cita = "solo tengo mi nómina"
+    outcome = toolbox.execute(
         _call(
             "registrar_hechos",
             hechos=[
-                {"nombre": "residencia_fiscal", "valor": "ES"},
-                {"nombre": "periodo_fiscal", "valor": "2025"},
-                {"nombre": "tipo_renta", "valor": "trabajo"},
-                {"nombre": "menciona_ingresos", "valor": True},
+                {"nombre": "residencia_fiscal", "valor": "ES", "cita_del_usuario": "Vivo en Sevilla"},
+                {"nombre": "periodo_fiscal", "valor": "2025", "cita_del_usuario": "en la renta 2025"},
+                {"nombre": "tipo_renta", "valor": "trabajo", "cita_del_usuario": cita},
+                {"nombre": "menciona_ingresos", "valor": True, "cita_del_usuario": cita},
             ],
         )
     )
+    assert "Rechazados" not in outcome.content, outcome.content
 
     snapshot = json.loads(toolbox.execute(_call("consultar_expediente")).content)
     assert snapshot["ejercicio"] == "2025" and snapshot["hechos"]["tipo_renta"] == "trabajo"

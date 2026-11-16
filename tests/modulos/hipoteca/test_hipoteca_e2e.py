@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import date
 import json
 
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.hipoteca import MODULO
+from asistente.ambitos.hipoteca import MODULO
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 
 PERFIL = {
     "comunidad_autonoma": "Madrid",

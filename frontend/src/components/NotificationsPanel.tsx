@@ -66,7 +66,7 @@ interface NotificationsPanelProps {
 }
 
 export function NotificationsPanel({ open, onClose, notifications, hasCase, loading, error, onMarkRead, onRefresh, onAsk, moduleNames = {}, caseId = null }: NotificationsPanelProps) {
-  // «Lo que sé de tus preferencias» (hacienda_gpt/memoria), opened from this panel's header.
+  // «Lo que sé de tus preferencias» (asistente/nucleo/memoria), opened from this panel's header.
   const [preferenciasOpen, setPreferenciasOpen] = useState(false);
   useEffect(() => {
     if (!open) return;

@@ -10,13 +10,13 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.luz import MODULO, esios, herramientas
-from hacienda_gpt.modulos.luz.analisis import comparar, horas_baratas
-from hacienda_gpt.modulos.luz.consumo import compactar, importar_csv
-from hacienda_gpt.modulos.luz.factura import Contrato
-from hacienda_gpt.modulos.luz.modulo import validar_cups, validar_potencia
-from hacienda_gpt.modulos.luz.ofertas import Oferta
+from asistente.ambitos.luz import MODULO, esios, herramientas
+from asistente.ambitos.luz.analisis import comparar, horas_baratas
+from asistente.ambitos.luz.consumo import compactar, importar_csv
+from asistente.ambitos.luz.factura import Contrato
+from asistente.ambitos.luz.modulo import validar_cups, validar_potencia
+from asistente.ambitos.luz.ofertas import Oferta
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 
 D = Decimal
 
@@ -73,7 +73,7 @@ def _tool(nombre: str):  # type: ignore[no-untyped-def]
 
 
 def test_module_satisfies_the_contract_and_the_registry() -> None:
-    from hacienda_gpt.modulos.registro import registro
+    from asistente.nucleo.modulos.registro import registro
 
     assert isinstance(MODULO, Modulo)
     assert MODULO.clave == "luz"
@@ -83,6 +83,9 @@ def test_module_satisfies_the_contract_and_the_registry() -> None:
         "luz_importar_consumo",
         "luz_horas_baratas",
         "luz_potencia_optima",
+        # What luz asks of the capabilities (browser, mail): modulos/luz/capacidades.py.
+        "luz_descargar_consumo",
+        "luz_facturas_del_correo",
     }
     assert all(h.nombre.startswith("luz_") for h in MODULO.hechos)
     sensibles = {h.nombre for h in MODULO.hechos if h.sensible}
@@ -140,7 +143,7 @@ def test_esios_without_token_or_with_bad_data_explains_itself() -> None:
 
 
 def test_comparison_ranks_offers_on_the_same_year(consumo_json, sint) -> None:  # type: ignore[no-untyped-def]
-    from hacienda_gpt.modulos.luz.consumo import ConsumoGuardado
+    from asistente.ambitos.luz.consumo import ConsumoGuardado
 
     consumo = ConsumoGuardado.model_validate(consumo_json)
     ofertas = [

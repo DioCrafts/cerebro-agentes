@@ -12,6 +12,8 @@ import { ApiError, deleteCaseFact, getCase, updateCaseFact } from "../api";
 import type { AccionPendiente, CampoPropuesto, HechoInfo, HerramientaInfo, ModuloInfo, ModulosResponse, PropuestaHecho } from "../apiModulos";
 import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos";
 import { fileToBase64, relativeTime } from "../lib/presentation";
+import { CapacidadesSeccion } from "./CapacidadesSeccion";
+import { CorreoSeccion } from "./CorreoSeccion";
 
 const FIELD_CLASS =
   "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
@@ -111,6 +113,8 @@ export function ModulosPanel(props: ModulosPanelProps) {
             <ModuloCard key={m.clave} modulo={m} configurable={modulos.configurable} {...props} />
           ))}
 
+          {modulos && <CapacidadesSeccion nombres={nombres} disabled={props.disabled} />}
+
           {decididas.length > 0 && (
             <details className="rounded-xl border border-line bg-surface px-4 py-3">
               <summary className="cursor-pointer text-[13.5px] font-semibold text-ink-soft">Acciones ya decididas ({decididas.length})</summary>
@@ -138,6 +142,7 @@ const DESGLOSE: Record<string, string> = {
   capital: "Capital",
   intereses: "Intereses",
   amortizaciones_anticipadas: "Amortizaciones anticipadas",
+  comisiones_amortizacion_anticipada: "Comisiones de amortización anticipada",
 };
 
 /** Tax facts a module can fill in (e.g. the mortgage payments for the pre-2013 home deduction). */
@@ -378,6 +383,8 @@ function ModuloCard({
       {modulo.activo && modulo.lee_documentos && caseId && (
         <DocumentReader modulo={modulo} caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />
       )}
+
+      {modulo.activo && modulo.clave === "correo" && caseId && <CorreoSeccion caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />}
 
       {modulo.fuentes.length > 0 && (
         <details className="mt-3">

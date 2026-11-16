@@ -1,9 +1,9 @@
 from datetime import UTC, datetime
 
-from hacienda_gpt.decision.explainer import ExplanationComposer
-from hacienda_gpt.decision.interpreter import Intent, InterpretationResult, QuestionPrompt, Uncertainty
-from hacienda_gpt.decision.planner import PlannedAction, PlannerResult
-from hacienda_gpt.decision.schemas import (
+from asistente.nucleo.decision.explainer import ExplanationComposer
+from asistente.nucleo.decision.interpreter import Intent, InterpretationResult, QuestionPrompt, Uncertainty
+from asistente.nucleo.decision.planner import PlannedAction, PlannerResult
+from asistente.nucleo.decision.schemas import (
     ActionItem,
     CaseState,
     EvidenceRef,

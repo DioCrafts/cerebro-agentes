@@ -7,10 +7,10 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.agent.providers.anthropic_provider import AnthropicProvider
-from hacienda_gpt.agent.providers.base import Attachment
-from hacienda_gpt.agent.providers.openai_provider import OpenAIProvider
-from hacienda_gpt.tax.documentos import DocumentoNoLegibleError, analizar_documento, tipo_de_imagen
+from asistente.ambitos.fiscal.documentos import DocumentoNoLegibleError, analizar_documento, tipo_de_imagen
+from asistente.nucleo.agent.providers.anthropic_provider import AnthropicProvider
+from asistente.nucleo.agent.providers.base import Attachment
+from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 32
 TRANSCRIPCION = "CERTIFICADO DE RETENCIONES\nEjercicio 2026\nRetribuciones íntegras: 38.250,40\nRetenciones: 6.502,57"

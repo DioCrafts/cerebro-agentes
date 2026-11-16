@@ -1,4 +1,4 @@
-// Client for the user's remembered decisions (hacienda_gpt/api/routers/memoria.py): what they rejected,
+// Client for the user's remembered decisions (asistente/plataforma/api/routers/memoria.py): what they rejected,
 // accepted, prefer or cannot do, so the assistant never proposes again what they said no to.
 //
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.

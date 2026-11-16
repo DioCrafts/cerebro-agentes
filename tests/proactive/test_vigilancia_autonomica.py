@@ -8,10 +8,10 @@ from pathlib import Path
 
 from click.testing import CliRunner
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.proactive.impacto import CambioNormativo, notificar_cambio
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.fuentes import comunidad_de, desactualizadas, norma_de_parametros, normas_de_parametros
+from asistente.conocimiento.fuentes import comunidad_de, desactualizadas, norma_de_parametros, normas_de_parametros
+from asistente.nucleo.proactive.impacto import CambioNormativo, notificar_cambio
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma.cli import proactive as cli_module
 from tests.proactive import make_case
 
 CATALOGO = Path(cli_module.__file__).resolve().parent / "boe_seed_catalog.json"
@@ -69,7 +69,7 @@ def test_a_regional_change_only_reaches_residents_of_that_community(tmp_path: Pa
 
 
 def test_params_check_reports_and_can_fail(monkeypatch) -> None:
-    import hacienda_gpt.cli.boe_watch as boe_watch
+    import asistente.plataforma.cli.boe_watch as boe_watch
 
     def fake_metadata(boe_id: str, timeout: int = 30) -> dict:
         if boe_id == "BOE-A-2015-945":

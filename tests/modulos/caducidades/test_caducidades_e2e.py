@@ -3,8 +3,8 @@
 from datetime import date
 from typing import Any
 
-from hacienda_gpt.modulos.caducidades import MODULO
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
+from asistente.ambitos.caducidades import MODULO
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
 
 HOY = date(2026, 11, 13)
 

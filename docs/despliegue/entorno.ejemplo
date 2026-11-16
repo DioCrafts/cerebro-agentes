@@ -1,0 +1,33 @@
+# Variables de entorno de HaciendaGPT (plantilla). Copia a .env, rellena y protege: chmod 600 .env.
+# La tabla completa, con valores por defecto y propósito, está en docs/despliegue.md.
+
+DOMINIO=hacienda.example.org
+AUTH_MODE=required
+
+# Claves (secretos: nunca en el repositorio ni en los registros).
+HACIENDA_API_KEY=
+HACIENDA_OPERATOR_KEY=
+ANTHROPIC_API_KEY=
+# Copias cifradas: python -m asistente.plataforma.cli.plataforma nueva-clave
+PLATAFORMA_CLAVE_COPIAS=
+
+# Correo (Gmail), si se ofrece el módulo.
+CORREO_GOOGLE_CLIENT_ID=
+CORREO_GOOGLE_CLIENT_SECRET=
+CORREO_REDIRECT_URI=https://hacienda.example.org/api/correo/oauth/callback
+CORREO_URL_RETORNO=/
+CORREO_CLAVE_CIFRADO=
+
+# Avisos fuera de la aplicación.
+NOTIFY_WEBHOOK_URL=
+PUSH_VAPID_PRIVATE_KEY=
+PUSH_VAPID_PUBLIC_KEY=
+PUSH_VAPID_SUBJECT=
+
+# Vigilancia externa de las tareas programadas (healthchecks.io o similar).
+HEALTHCHECK_URL=
+
+# Plataforma.
+MIGRACIONES_AUTOMATICAS=true
+PLATAFORMA_TRABAJOS=
+PLATAFORMA_TRABAJOS_DESACTIVADOS=

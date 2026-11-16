@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.api.routers.autonomos import errores_en_espanol, router
+from asistente.plataforma.api.routers.autonomos import errores_en_espanol, router
 
 D = Decimal
 

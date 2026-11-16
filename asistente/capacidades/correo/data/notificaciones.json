@@ -1,0 +1,97 @@
+{
+  "version": "2026-11-16",
+  "descripcion": "Reglas legales que usa el módulo de correo para explicar los avisos de notificaciones administrativas y para juzgar los enlaces que dicen ser de una sede electrónica estatal. Leídas del BOE (textos consolidados). Cada cita es literal; cada cifra figura en su cita.",
+  "fuentes_principales": {
+    "BOE-A-2015-10565": {
+      "norma": "Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones Públicas (texto consolidado)",
+      "boe_id": "BOE-A-2015-10565",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2015-10565",
+      "consolidado_a": "2024-11-06",
+      "consultado_el": "2026-11-16",
+      "sha256_html": "cf6cc99f60cd2b85a945f8b19d1237a4d7001872a925afed984f1c212c0c9499"
+    },
+    "BOE-A-2021-5032": {
+      "norma": "Real Decreto 203/2021, de 30 de marzo, por el que se aprueba el Reglamento de actuación y funcionamiento del sector público por medios electrónicos (texto consolidado)",
+      "boe_id": "BOE-A-2021-5032",
+      "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2021-5032",
+      "consolidado_a": "2025-04-02",
+      "consultado_el": "2026-11-16",
+      "sha256_html": "b5e5ae98fa25d4d4a58687c7b8e3f5ed3eff7e610b583bcc989044d1c8d46410"
+    }
+  },
+  "reglas": {
+    "plazo_rechazo_notificacion": {
+      "titulo": "Diez días naturales para abrir una notificación electrónica",
+      "resumen": "Si la notificación electrónica es obligatoria para ti o la elegiste, se entiende rechazada cuando pasan diez días naturales desde que se puso a tu disposición sin que la abras, y el procedimiento sigue adelante.",
+      "fuente": {
+        "referencia": "Art. 43.2 Ley 39/2015",
+        "en_vigor_desde": "2016-10-02",
+        "verificado": true,
+        "nota": "La Ley entró en vigor al año de su publicación (BOE de 02/10/2015, disposición final séptima). El plazo cuenta desde la puesta a disposición, no desde que llega el correo de aviso; el aviso suele enviarse ese mismo día, pero el módulo no lo puede comprobar."
+      },
+      "valores": {
+        "dias_naturales": "10"
+      },
+      "evidencia": [
+        {
+          "boe_id": "BOE-A-2015-10565",
+          "articulo": "art. 43.2",
+          "cita": "Cuando la notificación por medios electrónicos sea de carácter obligatorio, o haya sido expresamente elegida por el interesado, se entenderá rechazada cuando hayan transcurrido diez días naturales desde la puesta a disposición de la notificación sin que se acceda a su contenido.",
+          "cifras": {
+            "dias_naturales": "diez días naturales"
+          }
+        }
+      ]
+    },
+    "aviso_solo_informativo": {
+      "titulo": "El correo de aviso es solo informativo",
+      "resumen": "La Administración envía un aviso por correo o al móvil cuando pone una notificación a tu disposición, pero si el aviso no llega la notificación es igualmente válida: no dependas solo del correo.",
+      "fuente": {
+        "referencia": "Art. 41.6 Ley 39/2015 y art. 43.1 del Reglamento aprobado por el Real Decreto 203/2021",
+        "en_vigor_desde": "2016-10-02",
+        "verificado": true,
+        "nota": "El Real Decreto 203/2021 entró en vigor el 2 de abril de 2021 (disposición final quinta)."
+      },
+      "valores": {},
+      "evidencia": [
+        {
+          "boe_id": "BOE-A-2015-10565",
+          "articulo": "art. 41.6",
+          "cita": "Con independencia de que la notificación se realice en papel o por medios electrónicos, las Administraciones Públicas enviarán un aviso al dispositivo electrónico y/o a la dirección de correo electrónico del interesado que éste haya comunicado, informándole de la puesta a disposición de una notificación en la sede electrónica de la Administración u Organismo correspondiente o en la dirección electrónica habilitada única. La falta de práctica de este aviso no impedirá que la notificación sea considerada plenamente válida.",
+          "cifras": {}
+        },
+        {
+          "boe_id": "BOE-A-2021-5032",
+          "articulo": "art. 43.1 del Reglamento",
+          "cita": "La falta de práctica de este aviso, de carácter meramente informativo, no impedirá que la notificación sea considerada plenamente válida.",
+          "cifras": {}
+        }
+      ]
+    },
+    "sede_estatal_gob_es": {
+      "titulo": "Las sedes electrónicas estatales usan el dominio «.gob.es»",
+      "resumen": "En el ámbito estatal (Agencia Tributaria, Seguridad Social, DGT, la Dirección Electrónica Habilitada única…) la dirección de una sede electrónica incluye el dominio «.gob.es». Un correo que dice venir de uno de esos organismos y te manda a identificarte o pagar en otro dominio es sospechoso.",
+      "fuente": {
+        "referencia": "Art. 18.2 del Reglamento aprobado por el Real Decreto 203/2021",
+        "en_vigor_desde": "2021-04-02",
+        "verificado": true,
+        "nota": "Solo obliga a las sedes del ámbito estatal: las comunidades autónomas y los ayuntamientos pueden usar otros dominios, y los portales informativos (no sedes) también. Por eso un enlace fuera de «.gob.es» es una señal, nunca una prueba."
+      },
+      "valores": {},
+      "evidencia": [
+        {
+          "boe_id": "BOE-A-2021-5032",
+          "articulo": "art. 18.2 del Reglamento",
+          "cita": "En el ámbito estatal las sedes electrónicas y sedes electrónicas asociadas se identificarán mediante certificados cualificados de autenticación de sitio web.",
+          "cifras": {}
+        },
+        {
+          "boe_id": "BOE-A-2021-5032",
+          "articulo": "art. 18.2 del Reglamento",
+          "cita": "Para facilitar su identificación, seguirán las disposiciones generales que se establezcan para la imagen institucional de la Administración General del Estado y su dirección electrónica incluirá el nombre de dominio «.gob.es».",
+          "cifras": {}
+        }
+      ]
+    }
+  }
+}

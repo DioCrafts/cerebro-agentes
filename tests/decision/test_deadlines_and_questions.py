@@ -1,10 +1,10 @@
 from datetime import UTC, date, datetime, timedelta
 
-from hacienda_gpt.decision.interpreter import interpret_turn
-from hacienda_gpt.decision.planner import Planner
-from hacienda_gpt.decision.rules import ObligationDeadline
-from hacienda_gpt.decision.rules_engine import evaluate_rules
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType, ObligationCandidate, RiskLevel
+from asistente.nucleo.decision.interpreter import interpret_turn
+from asistente.nucleo.decision.planner import Planner
+from asistente.nucleo.decision.rules import ObligationDeadline
+from asistente.nucleo.decision.rules_engine import evaluate_rules
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType, ObligationCandidate, RiskLevel
 
 
 def _fact(name: str, value) -> Fact:

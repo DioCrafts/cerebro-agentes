@@ -23,11 +23,10 @@ from typing import Any
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import proactive as cli_module
-from hacienda_gpt.tax import fuentes as fuentes_mod
-from hacienda_gpt.tax.irpf import repartir_deducciones_estatales
-from hacienda_gpt.tax.params import DATA_DIR, FuentePrincipal, RepartoDeducciones
-from hacienda_gpt.tax.recodificacion import (
+from asistente.ambitos.fiscal.calculo.irpf import repartir_deducciones_estatales
+from asistente.ambitos.fiscal.calculo.params import DATA_DIR, FuentePrincipal, RepartoDeducciones
+from asistente.conocimiento import fuentes as fuentes_mod
+from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
     Objetivo,
     aplicar_propuesta,
@@ -39,8 +38,9 @@ from hacienda_gpt.tax.recodificacion import (
     recodificar,
     todos_los_objetivos,
 )
-from hacienda_gpt.tax.recodificacion.adaptadores import CIFRAS
-from hacienda_gpt.tax.verificacion import url_de
+from asistente.conocimiento.recodificacion.adaptadores import CIFRAS
+from asistente.conocimiento.verificacion import url_de
+from asistente.plataforma.cli import proactive as cli_module
 from .test_recodificacion_irpf import (
     ANTIGUA,
     EFECTOS,
@@ -271,7 +271,11 @@ def test_the_offsetting_of_savings_balances_is_tested_through_the_lines_of_the_i
 
 def test_every_parameter_file_says_which_text_of_each_law_it_read() -> None:
     fuentes = procedencia.fuentes_de_los_parametros(DATA_DIR)
-    assert {f.fichero for f in fuentes} == {p.name for p in procedencia.ficheros_de_parametros(DATA_DIR)}
+    # The tax parameter files and, for the package's own data, the modules' legal data files (asistente.conocimiento).
+    # (the series of reference rates records no law reading: it is a list of resolutions).
+    assert {f.fichero for f in fuentes} <= {n for n, _ in procedencia.ficheros_con_lecturas(DATA_DIR)}
+    assert {p.name for p in procedencia.ficheros_de_parametros(DATA_DIR)} < {f.fichero for f in fuentes}
+    assert "modulos/caducidades/data/reglas.json" in {f.fichero for f in fuentes}
     assert {f.fichero for f in fuentes} >= {
         "irpf_2025.json",
         "irpf_2026.json",

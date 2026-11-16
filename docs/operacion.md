@@ -9,7 +9,7 @@ Esta guía cubre tres cosas:
 Todo se maneja con un único comando:
 
 ```bash
-uv run python -m hacienda_gpt.cli.ops --help
+uv run python -m asistente.plataforma.cli.ops --help
 ```
 
 | Subcomando | Qué hace |
@@ -30,44 +30,44 @@ para saber qué tareas espera (`run-daily`, `boe-watch`, `boe-impact`, `boe-nove
 SHELL=/bin/bash
 
 # Normas del catálogo que han cambiado en el BOE, y aviso a los usuarios afectados.
-30 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run boe-watch -- uv run python -m hacienda_gpt.cli.boe_watch >> logs/boe_watch.log 2>&1
-45 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run boe-impact -- uv run python -m hacienda_gpt.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
+30 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run boe-watch -- uv run python -m asistente.plataforma.cli.boe_watch >> logs/boe_watch.log 2>&1
+45 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run boe-impact -- uv run python -m asistente.plataforma.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
 
 # Normas nuevas con contenido tributario en el BOE de cada día.
-50 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run boe-novedades -- uv run python -m hacienda_gpt.cli.proactive boe-novedades >> logs/proactive.log 2>&1
+50 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run boe-novedades -- uv run python -m asistente.plataforma.cli.proactive boe-novedades >> logs/proactive.log 2>&1
 
 # Piloto de parámetros: normas que modifican leyes de las que salen parámetros → grupos
 # afectados → verificación de todos los ficheros → recodificación (si hay clave de LLM) →
 # anotación de la lectura de las leyes que quedan al día → parte al operador. Escribe en
-# hacienda_gpt/tax/data/ (fechas de lectura; y lo aplicado, con RECODE_AUTO_APPLY=true).
+# asistente/ambitos/fiscal/data/ (fechas de lectura; y lo aplicado, con RECODE_AUTO_APPLY=true).
 # --no-detect porque la línea anterior ya ha leído el BOE del día; sin ella, quita la opción
 # y el piloto lo lee él mismo. Ver el apartado 5.
-55 6 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run params-autopilot -- uv run python -m hacienda_gpt.cli.proactive params-autopilot --no-detect >> logs/proactive.log 2>&1
+55 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run params-autopilot -- uv run python -m asistente.plataforma.cli.proactive params-autopilot --no-detect >> logs/proactive.log 2>&1
 
 # Recordatorios de plazos, plan de fin de ejercicio y avisos de los módulos del hogar activados.
-0 7 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run run-daily -- uv run python -m hacienda_gpt.cli.proactive run-daily >> logs/proactive.log 2>&1
+0 7 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run run-daily -- uv run python -m asistente.plataforma.cli.proactive run-daily >> logs/proactive.log 2>&1
 
 # Índices de referencia de los préstamos hipotecarios (módulo hipoteca): resoluciones del Banco de España
-# publicadas en el BOE, los días 4 y 19 de cada mes. Escribe en hacienda_gpt/modulos/hipoteca/data/
+# publicadas en el BOE, los días 4 y 19 de cada mes. Escribe en asistente/ambitos/hipoteca/data/
 # (revísalo y súbelo al repositorio). Para que doctor lo vigile: «--max-horas hipoteca-indices=400».
 # En GitHub lo hace el workflow .github/workflows/modulos-indices.yml (deja la serie como artefacto).
-20 6 4,19 * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run hipoteca-indices -- uv run python -m hacienda_gpt.modulos.hipoteca.indices actualizar >> logs/proactive.log 2>&1
+20 6 4,19 * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run hipoteca-indices -- uv run python -m asistente.ambitos.hipoteca.indices actualizar >> logs/proactive.log 2>&1
 
 # Resumen semanal de cada caso (lo que vence, importes, acciones por decidir), los lunes.
 # Para que doctor lo vigile: «ops doctor --max-horas run-weekly=192».
-30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run run-weekly -- uv run python -m hacienda_gpt.cli.proactive run-weekly >> logs/proactive.log 2>&1
+30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run run-weekly -- uv run python -m asistente.plataforma.cli.proactive run-weekly >> logs/proactive.log 2>&1
 
 # Bus de eventos, solo si NO tienes el trabajador en marcha continua (ver «Bus de eventos»):
 # una pasada cada 5 minutos (temporizadores, reparto y entregas pendientes).
-*/5 * * * * cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.eventos worker --una-vez >> logs/eventos.log 2>&1
+*/5 * * * * cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.eventos worker --una-vez >> logs/eventos.log 2>&1
 
 # Entrega de los avisos generados arriba. Se registra sola con el nombre «deliver»;
 # envuélvela con «ops run deliver --» solo si quieres además su ping al healthcheck
 # cuando la variable genérica HEALTHCHECK_URL no está definida (ver apartado 3).
-15 7 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops deliver >> logs/ops.log 2>&1
+15 7 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops deliver >> logs/ops.log 2>&1
 
 # Revisión: ¿ha corrido todo? Una vez al día (cada ejecución con problemas envía un mensaje).
-0 9 * * *   cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops run doctor -- uv run python -m hacienda_gpt.cli.ops doctor >> logs/ops.log 2>&1
+0 9 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run doctor -- uv run python -m asistente.plataforma.cli.ops doctor >> logs/ops.log 2>&1
 ```
 
 Detalles de `ops run`:
@@ -114,7 +114,7 @@ Si la base de datos ya tiene avisos antiguos, la primera ejecución los enviarí
 Para darlos por entregados sin enviarlos:
 
 ```bash
-uv run python -m hacienda_gpt.cli.ops deliver --marcar-entregadas
+uv run python -m asistente.plataforma.cli.ops deliver --marcar-entregadas
 ```
 
 ### Variables de entorno
@@ -185,7 +185,7 @@ Por defecto espera, con un máximo de 36 horas desde el último éxito: `run-dai
 
 ```bash
 # Otra antigüedad, una tarea más, y dejar de exigir una que no usas.
-uv run python -m hacienda_gpt.cli.ops doctor \
+uv run python -m asistente.plataforma.cli.ops doctor \
     --max-horas boe-watch=72 --max-horas mi-tarea-semanal=200 --max-horas boe-impact=0
 ```
 
@@ -228,7 +228,7 @@ cron vive pero falla una tarea, lo sabrás por `doctor`.
 Para vigilar una función en lugar de un comando:
 
 ```python
-from hacienda_gpt.ops.vigia import vigilado
+from asistente.plataforma.ops.vigia import vigilado
 
 @vigilado("mi-tarea")
 def mi_tarea() -> None:
@@ -244,14 +244,35 @@ Apunta el resultado, avisa al healthcheck y deja pasar la excepción sin tocarla
 ## 4. Vigilancia en GitHub Actions
 
 `.github/workflows/vigilancia.yml` ejecuta cada lunes
-`uv run python -m hacienda_gpt.cli.proactive params-check --fail-on-stale`. Una ejecución en
+`uv run python -m asistente.plataforma.cli.proactive params-check --fail-on-stale`. Una ejecución en
 rojo significa que el BOE ha actualizado alguna de las normas de las que salen los parámetros
 de la calculadora (hay que releerla; no implica que las cifras hayan cambiado), o que no se
 pudo consultar el BOE. Solo necesita acceso a `www.boe.es`.
 
 Después ejecuta `params-verify --fail-on-mismatch` (todos los ficheros de parámetros: IRPF,
-autónomos, sociedades, patrimonio e ISD) y, siempre, `params-autopilot` (apartado 5): sin el
-secreto `ANTHROPIC_API_KEY` solo hace su parte determinista y dice qué grupos esperan.
+autónomos, sociedades, patrimonio e ISD; y los datos legales de **todos los módulos del hogar**,
+bajo `modulos`) y, siempre, `params-autopilot` (apartado 5): sin el secreto `ANTHROPIC_API_KEY`
+solo hace su parte determinista y dice qué grupos esperan.
+
+**Los módulos del hogar, en el mismo ciclo.** Cada módulo declara sus datos legales en la
+biblioteca común `asistente/conocimiento/` (`FICHEROS_LEGALES` en su fichero de comprobación):
+luz (`modulos/luz/data/regulados.json`), caducidades, ayudas (`prestaciones_<año>.json`),
+hipoteca (normativa, fundamento de la deducción y serie de índices), suscripciones y correo; más
+los pasajes que citan el planificador y el módulo fiscal desde el código. Con eso, sin nada que
+cablear:
+
+- `params-verify` comprueba cada grupo contra el BOE de hoy con el mismo comprobador que las
+  pruebas del módulo (cita literal en su ley y en su versión; cada cifra en su cita), y
+  `--fichero luz` (o la clave de cualquier módulo) limita la ejecución a uno;
+- `params-check` compara la fecha de actualización de cada ley de un módulo con la **fecha de
+  lectura guardada en el propio fichero del módulo** (`fuentes_principales[*].consultado_el`), como
+  hace con los ficheros fiscales. El fichero de estado `MODULOS_FUENTES_STATE_PATH` ya solo sirve
+  para una fuente que ningún fichero de datos registra (un módulo fuera de la biblioteca), y
+  `--marcar-modulos-revisados` solo mueve esas;
+- `params-verify` / `params-autopilot` anotan la nueva lectura en el fichero del módulo con las
+  mismas condiciones que en los fiscales (abajo), cambiando solo `consolidado_a`, `consultado_el`
+  y `sha256_html` en su sitio, sin reformatear el fichero; y el PR automático los incluye
+  (`asistente/ambitos/*/data/*.json`).
 
 `params-check` compara la fecha en que el BOE actualizó cada ley con `consultado_el`, la fecha en
 que los ficheros la leyeron. Esa fecha ya no hay que editarla a mano: `params-verify` y
@@ -287,9 +308,21 @@ no cambia.
 
 Cuando un grupo de parámetros deja de coincidir con su ley (`params-verify`),
 `params-recode` hace que un modelo relea el artículo y **proponga** datos
-nuevos. Nada llega a `hacienda_gpt/tax/data/` sin pasar un control determinista
+nuevos. Nada llega a `asistente/ambitos/fiscal/data/` sin pasar un control determinista
 y, salvo que actives la auto-aplicación, sin que tú lo apliques. Explicación y
 garantías en el README («Recodificación automática»).
+
+**Módulos del hogar.** El bucle cubre también las reglas de `caducidades`
+(`asistente/ambitos/caducidades/data/reglas.json`): sus grupos aparecen en
+`params-recode`, `params-autopilot`, `params-apply` y `params-confirm` como
+`caducidades:<Modelo>` (por ruta: `params-recode --ruta caducidades:itv`), con
+casos del revisor que pasan por la calculadora del propio módulo. Un fichero sin
+año se archiva bajo el pseudoejercicio `9999` («lo vigente»). **Una propuesta
+sobre datos de un módulo nunca se aplica sola**, ni con `RECODE_AUTO_APPLY=true`:
+siempre la aplica una persona con `params-apply`. Los demás ficheros de los
+módulos los relee una persona, y su declaración dice por qué
+(`asistente.conocimiento.recodificacion.de_modulos.solo_persona()`); la verificación
+semanal sí los cubre a todos.
 
 **Nada de esto se ha probado contra un modelo real**: las pruebas usan un
 proveedor guionizado. Antes de activar la auto-aplicación, mide el bucle con tu
@@ -412,10 +445,19 @@ actualización» de la página), sin modelo y solo si:
   ningún grupo marcado como no verificado que no compruebe nada, ni —en el
   piloto— una norma en curso o un grupo de la ejecución sin resolver.
 
+Lo mismo vale para las leyes de las que leen sus datos los módulos del hogar
+(`asistente/conocimiento/`), con una condición más: si algún grupo de un
+módulo se lee de un artículo cuya redacción se publicó después de la lectura
+anterior, no se anota aunque su cita siga literal (el cambio puede estar fuera
+de ella); lo relee una persona —o el bucle, para las reglas de `caducidades`—
+y la lectura se anota después.
+
 Entonces escribe en **todos** los ficheros que la citan la nueva fecha de
 consolidación (nunca hacia atrás), `consultado_el` de hoy y la huella de la
 página, y una línea en `revisiones` (los ficheros de autónomos, sociedades,
-patrimonio e ISD la empiezan la primera vez). Valida cada fichero con su modelo antes de escribir ninguno. Nunca
+patrimonio e ISD la empiezan la primera vez; los de los módulos no tienen
+registro y solo cambian esos tres campos, en su sitio). Valida cada fichero con su modelo (y los de los
+módulos, con su autocontrol) antes de escribir ninguno. Nunca
 toca una cifra ni una fuente fijada a una redacción con fecha o al PDF de una
 orden. La salida (`procedencia`) dice qué leyes se anotaron, cuáles están al
 día y, de las demás, todos los motivos. Con `--snapshot-dir` solo se simula
@@ -442,22 +484,22 @@ el presupuesto se agota a mitad, la ejecución se detiene, lo dice en
 
 ```bash
 # 1. Qué se releería y cuánto texto se enviaría. No llama a ningún modelo.
-python -m hacienda_gpt.cli.proactive params-recode --dry-run
+python -m asistente.plataforma.cli.proactive params-recode --dry-run
 
 # 2. Lanzar el bucle (todos los ejercicios; --comunidad / --tipo para acotar).
-python -m hacienda_gpt.cli.proactive params-recode --comunidad galicia
+python -m asistente.plataforma.cli.proactive params-recode --comunidad galicia
 
 # 3. Ver las propuestas y leer una entera.
-python -m hacienda_gpt.cli.proactive params-proposals --estado propuesta
-python -m hacienda_gpt.cli.proactive params-proposals --show <id>
+python -m asistente.plataforma.cli.proactive params-proposals --estado propuesta
+python -m asistente.plataforma.cli.proactive params-proposals --show <id>
 
 # 4. Decidir.
-python -m hacienda_gpt.cli.proactive params-apply <id>
-python -m hacienda_gpt.cli.proactive params-reject <id> --motivo "…"
+python -m asistente.plataforma.cli.proactive params-apply <id>
+python -m asistente.plataforma.cli.proactive params-reject <id> --motivo "…"
 
 # 5. Tras revisar a mano lo aplicado, quitar la marca «pendiente de revisión humana».
-python -m hacienda_gpt.cli.proactive params-proposals --pendientes
-python -m hacienda_gpt.cli.proactive params-confirm <id>
+python -m asistente.plataforma.cli.proactive params-proposals --pendientes
+python -m asistente.plataforma.cli.proactive params-confirm <id>
 ```
 
 Qué mirar en una propuesta antes de aplicarla:
@@ -513,15 +555,15 @@ ficheros que no son del IRPF hay además una comprobación sin modelo de lo
 publicado, grupo a grupo, con sus propias citas:
 
 ```bash
-python -m hacienda_gpt.tax.recodificacion.adaptadores_otros <autonomos|sociedades|patrimonio|isd> <ejercicio> <carpeta con <ID>.html>
+python -m asistente.conocimiento.recodificacion.adaptadores_otros <autonomos|sociedades|patrimonio|isd> <ejercicio> <carpeta con <ID>.html>
 ```
 
 y para las deducciones autonómicas del IRPF, el mismo control que debe superar
 una propuesta (termina con código 1 si alguna falla):
 
 ```bash
-python -m hacienda_gpt.cli.proactive params-gate              # lee las leyes del BOE
-python -m hacienda_gpt.cli.proactive params-gate --offline    # solo modelo y cifras dentro de las citas
+python -m asistente.plataforma.cli.proactive params-gate              # lee las leyes del BOE
+python -m asistente.plataforma.cli.proactive params-gate --offline    # solo modelo y cifras dentro de las citas
 ```
 
 ### Casos que no son el habitual
@@ -568,14 +610,14 @@ que la numeración no permitió aislar el apartado sin dudas.
 
 ```bash
 # Qué grupos se evaluarían y cuánto texto se enviaría. Sin modelo.
-python -m hacienda_gpt.cli.proactive params-eval -n 20 --semilla 1 --dry-run
+python -m asistente.plataforma.cli.proactive params-eval -n 20 --semilla 1 --dry-run
 
 # 20 deducciones autonómicas publicadas, sorteadas con esa semilla.
-python -m hacienda_gpt.cli.proactive params-eval -n 20 --semilla 1 --usd-por-millon 3
+python -m asistente.plataforma.cli.proactive params-eval -n 20 --semilla 1 --usd-por-millon 3
 
 # Otros tipos, una comunidad, o grupos concretos.
-python -m hacienda_gpt.cli.proactive params-eval -n 10 --tipo escala --tipo cifras
-python -m hacienda_gpt.cli.proactive params-eval --ruta comunidades/galicia/deducciones_calculables/articulo="art. 5.Siete"
+python -m asistente.plataforma.cli.proactive params-eval -n 10 --tipo escala --tipo cifras
+python -m asistente.plataforma.cli.proactive params-eval --ruta comunidades/galicia/deducciones_calculables/articulo="art. 5.Siete"
 ```
 
 Oculta al lector la codificación publicada y sus citas, lanza el bucle normal
@@ -679,7 +721,7 @@ de fuentes, supuestos y síntomas está en [`docs/formatos_inventario.md`](forma
 2. Añade una línea de cron **después** de las tareas diarias:
 
    ```cron
-   30 9 * * *  cd /srv/hacienda-asesor && uv run python -m hacienda_gpt.cli.ops formatos check --diagnose >> logs/ops.log 2>&1
+   30 9 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops formatos check --diagnose >> logs/ops.log 2>&1
    ```
 
    Sin clave de modelo, `--diagnose` no hace nada salvo decirlo (`"llm": "no configurado…"`); el
@@ -744,7 +786,7 @@ medias; se reintenta en la siguiente ejecución.
   aplica sola**. Si ha cambiado el plazo, no hay propuesta posible (el ensayo exige que la muestra
   antigua se siga leyendo igual y que los días de `calendario.json` estén en lo que dice el BOE): en un
   mismo cambio revisado, corrige el plazo en `calendario.json` (dato legal, con su fuente) y la cita
-  en `hacienda_gpt/ops/data/formatos/calendario_boe.json`; el siguiente `probe` lo da por bueno.
+  en `asistente/conocimiento/data/formatos/calendario_boe.json`; el siguiente `probe` lo da por bueno.
 
 ### Documentos de usuarios
 
@@ -786,7 +828,7 @@ una clave, valida al menos una vez:
 
 Una sola pregunta puede costar muchas llamadas al modelo: el agente da varias vueltas, en modo
 equipo intervienen además un planificador, dos investigadores y un crítico, después pasa el
-verificador, y un documento escaneado se lee dos veces. `hacienda_gpt/ops/consumo.py` apunta
+verificador, y un documento escaneado se lee dos veces. `asistente/plataforma/ops/consumo.py` apunta
 cada llamada y, si se configuran límites, corta antes de hacer la siguiente.
 
 ### Qué se guarda
@@ -803,7 +845,7 @@ los tokens y el coste vacíos.
 
 ### De dónde sale el coste
 
-De una tabla de precios que es un fichero de datos, `hacienda_gpt/ops/data/precios_llm.json`: USD
+De una tabla de precios que es un fichero de datos, `asistente/plataforma/ops/data/precios_llm.json`: USD
 por millón de tokens de entrada, salida, lectura de caché y escritura de caché para cada modelo,
 con la fecha en que se consultaron (`consultado_el`) y la fuente.
 
@@ -861,7 +903,7 @@ Lo que conviene saber antes de fiarse de ellos:
 
 ```bash
 # Total y desglose por día, propósito, usuario y caso de los últimos 7 días, en JSON.
-uv run python -m hacienda_gpt.cli.consumo resumen --dias 7
+uv run python -m asistente.plataforma.cli.consumo resumen --dias 7
 ```
 
 `GET /usage` (con la cabecera `X-API-Key` si `HACIENDA_API_KEY` está definida) devuelve los
@@ -878,7 +920,7 @@ dice qué parte del prompt salió de la caché (`proporcion_cache`), cuántas ll
 ### Varios modelos según la tarea, caché y lotes
 
 Toda llamada al modelo tiene un **propósito** (el de `ops consumo`) y cada propósito un **nivel**,
-en una tabla declarativa (`hacienda_gpt/agent/enrutado.py`, `TABLA`):
+en una tabla declarativa (`asistente/nucleo/agent/enrutado.py`, `TABLA`):
 
 | Nivel | Propósitos |
 |---|---|
@@ -977,9 +1019,9 @@ el ahorro real en `ops consumo` (`por_modelo`, `proporcion_cache`) después de u
 
 ## 6. Módulos del hogar
 
-Los módulos (`hacienda_gpt/modulos/<clave>/`) se descubren al arrancar; no hay que registrarlos.
+Los módulos (`asistente/ambitos/<clave>/`) se descubren al arrancar; no hay que registrarlos.
 
-- `uv run python -m hacienda_gpt.cli.proactive modulos` lista los módulos cargados, sus hechos,
+- `uv run python -m asistente.plataforma.cli.proactive modulos` lista los módulos cargados, sus hechos,
   herramientas (con su efecto) y fuentes, y **los que se han dejado fuera y por qué** (un módulo que no se
   importa o incumple el contrato se registra en el log con nivel ERROR y la aplicación sigue sin él).
 - `MODULOS_DESACTIVADOS=luz,ayudas` apaga módulos para todos los usuarios sin tocar su código (el fiscal
@@ -1017,8 +1059,16 @@ Los módulos (`hacienda_gpt/modulos/<clave>/`) se descubren al arrancar; no hay 
   ninguno: cada módulo conserva su aviso en la bandeja.
 - **Propuestas para la declaración** (`GET /propuestas?case_id=`): cifras que un módulo conoce y que un
   dato fiscal necesita. Hoy: `hipoteca` → `pagos_vivienda_habitual_pre2013` (capital + intereses +
-  amortizaciones anticipadas del ejercicio según el cuadro), solo si el préstamo es de la vivienda habitual
-  comprada antes de 2013 y el dato falta. Nunca se escribe sola: el usuario la acepta en «Módulos».
+  amortizaciones anticipadas + sus comisiones del ejercicio según el cuadro: lo que el art. 68.1.1.º LIRPF en
+  su redacción a 31-12-2012 cuenta de la financiación ajena), solo si el préstamo es de la vivienda habitual
+  comprada antes de 2013 y el dato falta. Nunca se escribe sola: el usuario la acepta en «Módulos» o en el
+  chat (`aceptar_propuesta`, con su «sí» literal a la cifra mostrada); un «no» queda en la memoria de
+  decisiones (`fiscal:propuesta:<puente>`) y deja de ofrecerse. Fundamento y autocomprobación:
+  `modulos/hipoteca/data/deduccion_vivienda.json` (para comprobarlo contra las páginas completas del BOE,
+  `DEDUCCION_VIVIENDA_BOE_DIR=<carpeta con BOE-A-2006-20764.html y BOE-A-2006-20764_p20121031.html>
+  uv run pytest tests/modulos/hipoteca/test_hipoteca_deduccion.py`). `params-verify` comprueba el 15 % y los
+  9.040 € de `vivienda_habitual_transitoria` contra la redacción de 31-10-2012 (`--snapshot-dir` necesita
+  `BOE-A-2006-20764_p20121031.html`).
 
 ### Variables de entorno de los módulos
 
@@ -1054,8 +1104,8 @@ borrado de cuenta cubren también el bus.
    cuando la API no está en marcha, para los temporizadores y para recalcularlos una vez al día:
 
    ```bash
-   uv run python -m hacienda_gpt.cli.eventos worker            # continuo; SIGTERM lo para limpiamente
-   uv run python -m hacienda_gpt.cli.eventos worker --una-vez  # una pasada (cron cada 5 min, ver apartado 1)
+   uv run python -m asistente.plataforma.cli.eventos worker            # continuo; SIGTERM lo para limpiamente
+   uv run python -m asistente.plataforma.cli.eventos worker --una-vez  # una pasada (cron cada 5 min, ver apartado 1)
    ```
 
    Ejemplo con systemd (`/etc/systemd/system/hacienda-eventos.service`):
@@ -1064,7 +1114,7 @@ borrado de cuenta cubren también el bus.
    [Service]
    WorkingDirectory=/srv/hacienda-asesor
    EnvironmentFile=/srv/hacienda-asesor/.env
-   ExecStart=/usr/local/bin/uv run python -m hacienda_gpt.cli.eventos worker
+   ExecStart=/usr/local/bin/uv run python -m asistente.plataforma.cli.eventos worker
    Restart=always
    ```
 
@@ -1079,7 +1129,7 @@ borrado de cuenta cubren también el bus.
 - `ops doctor` incluye la clave `eventos` (cuando el bus se ha usado) y avisa si hay entregas en la cola
   de errores o trabajo esperando más de `EVENTOS_ATRASO_MAX_MINUTOS` (por defecto 30): suele significar
   que no hay ni API ni trabajador en marcha.
-- `uv run python -m hacienda_gpt.cli.eventos estado`: atraso, entregas por estado, temporizadores,
+- `uv run python -m asistente.plataforma.cli.eventos estado`: atraso, entregas por estado, temporizadores,
   latido de cada trabajador, métricas por tipo de evento y módulo (número, reintentos, fallos, latencia
   desde el evento hasta el aviso y duración del módulo, p50/p95) y las 50 primeras entregas de la cola de
   errores con su error. Lo mismo, sin errores detallados, en `GET /eventos/salud`.
@@ -1093,8 +1143,8 @@ tras `EVENTOS_MAX_INTENTOS` (5) intentos, queda como `muerto`. Corrige la causa 
 `estado`) y:
 
 ```bash
-uv run python -m hacienda_gpt.cli.eventos reintentar          # todas
-uv run python -m hacienda_gpt.cli.eventos reintentar 12 15    # solo esas
+uv run python -m asistente.plataforma.cli.eventos reintentar          # todas
+uv run python -m asistente.plataforma.cli.eventos reintentar 12 15    # solo esas
 ```
 
 Un consumidor que no puede repartir un evento lo reintenta igual y, al agotar los intentos, lo deja en la
@@ -1106,8 +1156,8 @@ El trabajador borra a diario (y en cada `--una-vez`) las entregas terminadas y l
 hace más de 30 días; la cola de errores se conserva hasta que la reencoles o la purgues a mano.
 
 ```bash
-uv run python -m hacienda_gpt.cli.eventos purgar --dias 30    # entregas terminadas y eventos ya consumidos
-uv run python -m hacienda_gpt.cli.eventos reconciliar         # recalcula los temporizadores ahora
+uv run python -m asistente.plataforma.cli.eventos purgar --dias 30    # entregas terminadas y eventos ya consumidos
+uv run python -m asistente.plataforma.cli.eventos reconciliar         # recalcula los temporizadores ahora
 ```
 
 ### Variables de entorno
@@ -1124,14 +1174,14 @@ uv run python -m hacienda_gpt.cli.eventos reconciliar         # recalcula los te
 
 ## Evaluación continua
 
-Código en `hacienda_gpt/evaluacion/`, órdenes en `python -m hacienda_gpt.cli.evaluacion` (resumen en el README,
+Código en `asistente/nucleo/evaluacion/`, órdenes en `python -m asistente.plataforma.cli.evaluacion` (resumen en el README,
 «Evaluación continua»).
 
 ### Sin modelo (cada PR)
 
 ```bash
-uv run python -m hacienda_gpt.cli.evaluacion validar          # esquema, cifras esperadas, registro de prompts
-uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion   # guiones de referencia por el agente real
+uv run python -m asistente.plataforma.cli.evaluacion validar          # esquema, cifras esperadas, registro de prompts
+uv run python -m asistente.plataforma.cli.evaluacion run --reproduccion   # guiones de referencia por el agente real
 ```
 
 `validar` vuelve a ejecutar cada calculadora que nombra un caso. Si una cifra ya no coincide con la que tenía al
@@ -1141,9 +1191,9 @@ haber cambiado un parámetro leído del BOE), pero conviene mirar por qué (`--e
 ### Con modelo
 
 ```bash
-uv run python -m hacienda_gpt.cli.evaluacion run --out reports/evaluacion/base.json            # variante activa
-uv run python -m hacienda_gpt.cli.evaluacion run --config candidata.json --baseline reports/evaluacion/base.json
-uv run python -m hacienda_gpt.cli.evaluacion promote --config candidata.json --presupuesto-usd 10
+uv run python -m asistente.plataforma.cli.evaluacion run --out reports/evaluacion/base.json            # variante activa
+uv run python -m asistente.plataforma.cli.evaluacion run --config candidata.json --baseline reports/evaluacion/base.json
+uv run python -m asistente.plataforma.cli.evaluacion promote --config candidata.json --presupuesto-usd 10
 ```
 
 - Una **variante** es un JSON: `{"id": "breve", "prompts": {"agente": "agente@breve"}, "modelo": "…"}`; el texto
@@ -1156,14 +1206,14 @@ uv run python -m hacienda_gpt.cli.evaluacion promote --config candidata.json --p
   Un informe que se quedó sin presupuesto está marcado como incompleto y no sirve para promover.
 - Sin índice FAISS (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
   pueden aprobar; los de calculadoras y módulos sí.
-- `promote` escribe `hacienda_gpt/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si
+- `promote` escribe `asistente/nucleo/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si
   la candidata no empeora ninguna categoría crítica (`critica` en `casos/suite.json`) y mejora en conjunto. La
   variante activa guarda la huella de cada texto evaluado: si `prompts.py` cambia después, `variante` y `validar`
   avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese fichero.
 
-### Cambiar un prompt de `hacienda_gpt/agent/prompts.py`
+### Cambiar un prompt de `asistente/nucleo/agent/prompts.py`
 
-El registro `hacienda_gpt/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado; la
+El registro `asistente/nucleo/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado; la
 prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el código no coinciden. Al cambiar un
 *prompt*:
 
@@ -1178,17 +1228,17 @@ prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el cód
 ### Valoraciones de los usuarios
 
 ```bash
-uv run python -m hacienda_gpt.cli.evaluacion senales                  # recuentos, sin contenido
-uv run python -m hacienda_gpt.cli.evaluacion casos estadisticas
-uv run python -m hacienda_gpt.cli.evaluacion casos pendientes
-uv run python -m hacienda_gpt.cli.evaluacion casos ver fb_…
-uv run python -m hacienda_gpt.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
+uv run python -m asistente.plataforma.cli.evaluacion senales                  # recuentos, sin contenido
+uv run python -m asistente.plataforma.cli.evaluacion casos estadisticas
+uv run python -m asistente.plataforma.cli.evaluacion casos pendientes
+uv run python -m asistente.plataforma.cli.evaluacion casos ver fb_…
+uv run python -m asistente.plataforma.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
 # Edita el borrador: sustituye los datos sensibles por valores ficticios que reproduzcan el caso, ajusta
 # categoría y expectativas (una cifra esperada SIEMPRE es una receta de calculadora), añade un guion si quieres
 # que se reproduzca en CI.
-uv run python -m hacienda_gpt.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \
+uv run python -m asistente.plataforma.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \
     --confirmo-anonimizado --revisor "Nombre"
-uv run python -m hacienda_gpt.cli.evaluacion casos descartar fb_…
+uv run python -m asistente.plataforma.cli.evaluacion casos descartar fb_…
 ```
 
 - El contenido de un caso guardado está en la auditoría del expediente del usuario (evento
@@ -1203,5 +1253,5 @@ uv run python -m hacienda_gpt.cli.evaluacion casos descartar fb_…
 
 | Variable | Por defecto | Qué hace |
 |---|---|---|
-| `EVALUACION_VARIANTE_ACTIVA_PATH` | `hacienda_gpt/evaluacion/variante_activa.json` | Variante que ejecuta el agente; sin fichero, la de siempre. |
+| `EVALUACION_VARIANTE_ACTIVA_PATH` | `asistente/nucleo/evaluacion/variante_activa.json` | Variante que ejecuta el agente; sin fichero, la de siempre. |
 | `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

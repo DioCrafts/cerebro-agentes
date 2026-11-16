@@ -11,7 +11,7 @@ Objetivo: que en el hogar no se pase ninguna fecha. El módulo lleva la cuenta d
 Cada fecha se calcula de forma determinista con la regla leída del BOE (con cita literal) o se toma de la fecha
 impresa en el documento, **que siempre prevalece**.
 
-Código: `hacienda_gpt/modulos/caducidades/` · datos: `data/reglas.json` · pruebas: `tests/modulos/caducidades/` ·
+Código: `asistente/ambitos/caducidades/` · datos: `data/reglas.json` · pruebas: `tests/modulos/caducidades/` ·
 extractos del BOE para las pruebas: `tests/fixtures/modulos/caducidades/`.
 
 ## Reglas y fuentes (leídas en www.boe.es el 13/11/2026)
@@ -32,7 +32,7 @@ Cada grupo de `reglas.json` guarda `fuente` (referencia, en vigor desde, verific
 (`evidencia`) y cómo está escrita cada cifra en su cita (`cifras`). Comprobación:
 
 ```
-uv run python -m hacienda_gpt.modulos.caducidades.reglas <directorio con BOE-A-*.html descargados>
+uv run python -m asistente.ambitos.caducidades.reglas <directorio con BOE-A-*.html descargados>
 ```
 
 comprueba que cada cifra está en su cita y significa el dato guardado, y que cada cita está literal en la ley.

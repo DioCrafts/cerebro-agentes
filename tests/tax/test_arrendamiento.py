@@ -5,10 +5,10 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.tax.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
-from hacienda_gpt.tax.irpf import IRPFInput, calcular_irpf
-from hacienda_gpt.tax.params import load_params
-from hacienda_gpt.tax.profile import build_input
+from asistente.ambitos.fiscal.calculo.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
+from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, calcular_irpf
+from asistente.ambitos.fiscal.calculo.params import load_params
+from asistente.ambitos.fiscal.profile import build_input
 
 D = Decimal
 NUEVO = date(2026, 12, 15)

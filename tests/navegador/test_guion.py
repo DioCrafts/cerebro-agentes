@@ -8,8 +8,8 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.navegador import guion as g
-from hacienda_gpt.navegador.guion import Guion, GuionError, guion_activo, renderizar, validar_parametros
+from asistente.capacidades.navegador import guion as g
+from asistente.capacidades.navegador.guion import Guion, GuionError, guion_activo, renderizar, validar_parametros
 
 
 def _base(**cambios: Any) -> dict[str, Any]:

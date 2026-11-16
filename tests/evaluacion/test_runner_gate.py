@@ -9,13 +9,13 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.evaluacion import suite as s
-from hacienda_gpt.evaluacion.gate import decidir, promover
-from hacienda_gpt.evaluacion.modelos import CasoEvaluacion, PasoGuion, Rubrica
-from hacienda_gpt.evaluacion.reproduccion import ProveedorReproduccion
-from hacienda_gpt.evaluacion.runner import Entorno, comparar, evaluar, formatear
-from hacienda_gpt.evaluacion.variantes import VARIANTE_BASE, Variante, variante_activa
-from hacienda_gpt.ops.consumo import ConsumoStore
+from asistente.nucleo.evaluacion import suite as s
+from asistente.nucleo.evaluacion.gate import decidir, promover
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, PasoGuion, Rubrica
+from asistente.nucleo.evaluacion.reproduccion import ProveedorReproduccion
+from asistente.nucleo.evaluacion.runner import Entorno, comparar, evaluar, formatear
+from asistente.nucleo.evaluacion.variantes import VARIANTE_BASE, Variante, variante_activa
+from asistente.plataforma.ops.consumo import ConsumoStore
 from tests.agent.fakes import ScriptedProvider
 
 IDS = [
@@ -71,7 +71,7 @@ def test_a_model_run_is_metered_and_reported(casos: list[CasoEvaluacion], tmp_pa
     assert informe.resumen.por_categoria["modulo"].tasa == pytest.approx(2 / 3, abs=1e-3)
     assert informe.huellas_prompts["agente"] and informe.prompts["agente"] == VARIANTE_BASE.prompts["agente"]
     # Metered with the production purposes (routing applies as in the deployed assistant).
-    from hacienda_gpt.ops.consumo import hoy_madrid
+    from asistente.plataforma.ops.consumo import hoy_madrid
 
     entorno = _entorno(tmp_path, {})
     _run(casos[:1], VARIANTE_BASE, entorno)
@@ -106,7 +106,7 @@ def test_judge_counts_only_with_a_literal_quote(tmp_path: Path) -> None:
 
     aprobado = _run([caso], VARIANTE_BASE, _entorno(tmp_path, {}, juez=juez("me ocupo de tus impuestos")))
     assert aprobado.casos[0].aprobado and aprobado.resumen.juez_sin_cita == 0
-    from hacienda_gpt.ops.consumo import hoy_madrid
+    from asistente.plataforma.ops.consumo import hoy_madrid
 
     consumo = ConsumoStore(str(tmp_path / "consumo.sqlite3"))
     propositos = {a.clave for a in consumo.resumen(desde=hoy_madrid(), hasta=hoy_madrid()).por_proposito}
@@ -183,7 +183,7 @@ def test_the_decision_rules_refuse_what_cannot_be_compared(casos: list[CasoEvalu
 
 
 def test_reports_round_trip(casos: list[CasoEvaluacion], tmp_path: Path) -> None:
-    from hacienda_gpt.evaluacion.runner import cargar_informe, guardar
+    from asistente.nucleo.evaluacion.runner import cargar_informe, guardar
 
     informe = _run(casos[:1], VARIANTE_BASE, _entorno(tmp_path, {}))
     ruta = tmp_path / "r" / "informe.json"

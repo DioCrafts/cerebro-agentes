@@ -8,7 +8,7 @@ import json
 
 import pytest
 
-from hacienda_gpt.modulos.luz.consumo import (
+from asistente.ambitos.luz.consumo import (
     DIAS_HORARIOS,
     ConsumoGuardado,
     FormatoNoReconocidoError,
@@ -16,8 +16,8 @@ from hacienda_gpt.modulos.luz.consumo import (
     importar_csv,
     validar_consumo,
 )
-from hacienda_gpt.modulos.luz.datos import DatoNoDisponibleError
-from hacienda_gpt.modulos.luz.periodos import (
+from asistente.ambitos.luz.datos import DatoNoDisponibleError
+from asistente.ambitos.luz.periodos import (
     es_dia_valle,
     horas_del_dia,
     periodo_energia,

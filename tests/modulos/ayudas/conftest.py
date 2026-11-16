@@ -20,6 +20,6 @@ def _aislado(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
     def sin_red(*args: object, **kwargs: object) -> None:
         raise AssertionError("los tests no deben acceder a la red")
 
-    monkeypatch.setattr("hacienda_gpt.modulos.ayudas.revision._get", sin_red)
-    monkeypatch.setattr("hacienda_gpt.modulos.ayudas.bdns.descargar", sin_red)
+    monkeypatch.setattr("asistente.ambitos.ayudas.revision._get", sin_red)
+    monkeypatch.setattr("asistente.ambitos.ayudas.bdns.descargar", sin_red)
     yield store

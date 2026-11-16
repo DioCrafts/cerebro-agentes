@@ -7,20 +7,20 @@ from decimal import Decimal
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ProviderError, ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.api.api import app, get_document_provider
-from hacienda_gpt.tax.calendario import proximos_vencimientos
-from hacienda_gpt.tax.documentos import (
+from asistente.ambitos.fiscal.calculo.calendario import proximos_vencimientos
+from asistente.ambitos.fiscal.calculo.simulador import simular
+from asistente.ambitos.fiscal.documentos import (
     DocumentoEscaneadoError,
     DocumentoNoLegibleError,
     analizar_documento,
     decode_upload,
     extract_text,
 )
-from hacienda_gpt.tax.profile import DatosInvalidosError
-from hacienda_gpt.tax.simulador import simular
+from asistente.ambitos.fiscal.profile import DatosInvalidosError
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ProviderError, ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.plataforma.api.api import app, get_document_provider
 
 D = Decimal
 client = TestClient(app)

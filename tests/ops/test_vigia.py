@@ -3,9 +3,9 @@ import json
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.ops import vigia
-from hacienda_gpt.ops.vigia import (
+from asistente.plataforma import settings
+from asistente.plataforma.ops import vigia
+from asistente.plataforma.ops.vigia import (
     EstadoIlegibleError,
     avisar_healthcheck,
     leer_estado,

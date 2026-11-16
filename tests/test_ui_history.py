@@ -1,6 +1,6 @@
 from langchain_core.messages import AIMessage, HumanMessage
 
-from hacienda_gpt.ui.app import _build_chat_history
+from asistente.plataforma.ui.app import _build_chat_history
 
 
 def test_build_chat_history_maps_roles_correctly() -> None:

@@ -11,7 +11,7 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 from tests.navegador.simulacion import USUARIO_CLAVE, USUARIO_DATADIS, Sitios, arrancar
 
 _CANDIDATOS = (

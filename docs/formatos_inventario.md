@@ -2,7 +2,7 @@
 
 > Estado a 12-11-2026 (segunda tanda: CENDOJ, AEAT, códigos autonómicos, Docling, calendario, semillas). Qué formatos ajenos lee la aplicación con reglas fijas, qué da por supuesto
 > cada lector, cómo se veía hasta ahora un fallo silencioso y qué se ha hecho con cada uno.
-> Cómo se opera: `docs/operacion.md`, sección «Deriva de formatos». Código: `hacienda_gpt/ops/formatos*.py`.
+> Cómo se opera: `docs/operacion.md`, sección «Deriva de formatos». Código: `asistente/plataforma/ops/formatos*.py`.
 
 El cálculo fiscal es determinista, pero todo lo que lo alimenta se lee de sitios que cambian sin
 avisar. Cuando una ley cambia, el BOE lo dice; cuando el BOE cambia **cómo** lo dice (una clave del
@@ -14,7 +14,7 @@ tranquilo. Este inventario existe para que deje de serlo.
 
 | Columna «Estado» | Significado |
 |---|---|
-| **Spec + canarios** | El conocimiento del formato es un dato versionado (`hacienda_gpt/ops/data/formatos/<fuente>.json`, versión 1 = comportamiento anterior, con pruebas de identidad). El lector real informa a la vigilancia en cada lectura. El agente puede proponer una versión nueva. |
+| **Spec + canarios** | El conocimiento del formato es un dato versionado (`asistente/conocimiento/data/formatos/<fuente>.json`, versión 1 = comportamiento anterior, con pruebas de identidad). El lector real informa a la vigilancia en cada lectura. El agente puede proponer una versión nueva. |
 | **Canarios** | El lector informa y se comprueban invariantes, pero su conocimiento del formato sigue en el código: ante un fallo, el resultado del diagnóstico es un informe para un desarrollador. |
 | **Contadores** | Solo se cuentan resultados de una ejecución (o de los documentos del usuario, sin guardar nunca su contenido). |
 | **Sin instrumentar** | Inventariado; no se vigila todavía (ver «Lo que queda»). |
@@ -69,7 +69,7 @@ descartados. Nada más, salvo que el operador active `FORMAT_DOCUMENT_SKELETONS`
 
 ## Cómo funciona la vigilancia
 
-1. **Canarios deterministas** (`hacienda_gpt/ops/formatos_fuentes.py`). Cada fuente declara sus
+1. **Canarios deterministas** (`asistente/conocimiento/formatos_fuentes.py`). Cada fuente declara sus
    invariantes. Los lectores reales llaman a `formatos.observar(...)` en cada lectura; esa llamada
    nunca lanza excepciones ni cambia lo que el lector devuelve.
 2. **Estado** (`FORMAT_STATE_PATH`, JSON con las últimas 40 observaciones por fuente): `ok`,
@@ -85,7 +85,7 @@ descartados. Nada más, salvo que el operador active `FORMAT_DOCUMENT_SKELETONS`
    sentencias del CENDOJ solo el esqueleto (ni una palabra de la resolución fuera de la lista de
    rótulos; ni una cifra: solo su forma). Las fuentes de recuentos (`supremo_lote`, `aeat_rastreo`,
    `aeat_pdf`, `corpus_docling`) no guardan ninguna muestra.
-4. **Diagnóstico agéntico** (`hacienda_gpt/ops/formatos_agente.py`): diagnóstico con cita literal
+4. **Diagnóstico agéntico** (`asistente/conocimiento/formatos_agente.py`): diagnóstico con cita literal
    de la muestra nueva → ensayo determinista de la spec propuesta → reflexión independiente. Si no
    converge o no es un cambio de datos: informe para un desarrollador con las muestras adjuntas.
 5. **Aplicación**: `ops formatos apply` (o `FORMAT_AUTO_APPLY=true`); el ensayo se repite al aplicar.

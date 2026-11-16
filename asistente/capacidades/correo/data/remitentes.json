@@ -1,0 +1,186 @@
+{
+  "version": "2026-11-16",
+  "descripcion": "Configuración del detector de suplantaciones y del clasificador: organismos y entidades que se suelen suplantar, las palabras con que se nombran y sus dominios. NO es una cifra legal ni sale del BOE: es una lista de mantenimiento del operador. Los dominios se han escrito a mano y no se han podido comprobar desde la máquina de desarrollo (solo llega a www.boe.es); el operador debe revisarlos y puede ampliarlos con CORREO_DOMINIOS_OFICIALES_EXTRA (marca=dominio,dominio;marca=…). Un dominio que falte aquí produce como mucho una sospecha con su motivo (falso positivo visible), nunca borra ni mueve nada.",
+  "fuente": {
+    "referencia": "Lista del operador (no normativa)",
+    "verificado": false,
+    "nota": "Única regla legal aplicada: las sedes electrónicas estatales usan «.gob.es» (art. 18.2 RD 203/2021, en notificaciones.json). Todo dominio bajo .gob.es cuenta como oficial para los organismos."
+  },
+  "marcas": {
+    "aeat": {
+      "nombre": "Agencia Tributaria",
+      "tipo": "administracion",
+      "area": "fiscal",
+      "nombres": ["agencia tributaria", "agencia estatal de administracion tributaria", "aeat", "hacienda"],
+      "fichas": ["agenciatributaria", "aeat"],
+      "dominios": ["agenciatributaria.gob.es", "agenciatributaria.es", "aeat.es"]
+    },
+    "seguridad_social": {
+      "nombre": "Seguridad Social",
+      "tipo": "administracion",
+      "area": "ayudas",
+      "nombres": ["seguridad social", "tesoreria general de la seguridad social", "instituto nacional de la seguridad social"],
+      "fichas": ["segsocial", "seguridadsocial"],
+      "dominios": ["seg-social.es", "seg-social.gob.es"]
+    },
+    "dgt": {
+      "nombre": "Dirección General de Tráfico",
+      "tipo": "administracion",
+      "area": "caducidades",
+      "nombres": ["direccion general de trafico", "dgt", "trafico"],
+      "fichas": ["dgt"],
+      "dominios": ["dgt.es", "dgt.gob.es"]
+    },
+    "dehu": {
+      "nombre": "Dirección Electrónica Habilitada única (DEHú)",
+      "tipo": "administracion",
+      "area": "fiscal",
+      "nombres": ["direccion electronica habilitada unica", "dehu", "notific@", "punto de acceso general"],
+      "fichas": ["dehu", "administracion"],
+      "dominios": ["administracion.gob.es"]
+    },
+    "sepe": {
+      "nombre": "Servicio Público de Empleo Estatal",
+      "tipo": "administracion",
+      "area": "ayudas",
+      "nombres": ["servicio publico de empleo estatal", "sepe"],
+      "fichas": ["sepe"],
+      "dominios": ["sepe.es", "sepe.gob.es"]
+    },
+    "correos": {
+      "nombre": "Correos",
+      "tipo": "mensajeria",
+      "area": "",
+      "nombres": ["correos"],
+      "fichas": ["correos"],
+      "dominios": ["correos.es"]
+    },
+    "bbva": {
+      "nombre": "BBVA",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["bbva"],
+      "fichas": ["bbva"],
+      "dominios": ["bbva.es", "bbva.com"]
+    },
+    "santander": {
+      "nombre": "Banco Santander",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["banco santander", "santander"],
+      "fichas": ["santander"],
+      "dominios": ["santander.es", "bancosantander.es", "santander.com"]
+    },
+    "caixabank": {
+      "nombre": "CaixaBank",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["caixabank", "la caixa"],
+      "fichas": ["caixabank"],
+      "dominios": ["caixabank.es", "caixabank.com"]
+    },
+    "sabadell": {
+      "nombre": "Banco Sabadell",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["banco sabadell", "sabadell"],
+      "fichas": ["sabadell", "bancsabadell"],
+      "dominios": ["bancsabadell.com"]
+    },
+    "bankinter": {
+      "nombre": "Bankinter",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["bankinter"],
+      "fichas": ["bankinter"],
+      "dominios": ["bankinter.com"]
+    },
+    "ing": {
+      "nombre": "ING",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["ing direct", "banco ing"],
+      "fichas": ["ingdirect"],
+      "dominios": ["ing.es"]
+    },
+    "unicaja": {
+      "nombre": "Unicaja",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["unicaja"],
+      "fichas": ["unicaja", "unicajabanco"],
+      "dominios": ["unicajabanco.es", "unicaja.es"]
+    },
+    "kutxabank": {
+      "nombre": "Kutxabank",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["kutxabank"],
+      "fichas": ["kutxabank"],
+      "dominios": ["kutxabank.es"]
+    },
+    "abanca": {
+      "nombre": "Abanca",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["abanca"],
+      "fichas": ["abanca"],
+      "dominios": ["abanca.com", "abanca.es"]
+    },
+    "ibercaja": {
+      "nombre": "Ibercaja",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["ibercaja"],
+      "fichas": ["ibercaja"],
+      "dominios": ["ibercaja.es"]
+    },
+    "openbank": {
+      "nombre": "Openbank",
+      "tipo": "banco",
+      "area": "suscripciones",
+      "nombres": ["openbank"],
+      "fichas": ["openbank"],
+      "dominios": ["openbank.es"]
+    },
+    "paypal": {
+      "nombre": "PayPal",
+      "tipo": "pagos",
+      "area": "suscripciones",
+      "nombres": ["paypal"],
+      "fichas": ["paypal"],
+      "dominios": ["paypal.com", "paypal.es"]
+    }
+  },
+  "correo_gratuito": [
+    "gmail.com",
+    "googlemail.com",
+    "hotmail.com",
+    "hotmail.es",
+    "outlook.com",
+    "outlook.es",
+    "live.com",
+    "yahoo.com",
+    "yahoo.es",
+    "icloud.com",
+    "me.com",
+    "protonmail.com",
+    "proton.me",
+    "gmx.com",
+    "gmx.es"
+  ],
+  "comercializadoras_luz": [
+    "iberdrola",
+    "endesa",
+    "naturgy",
+    "repsol",
+    "totalenergies",
+    "holaluz",
+    "octopus energy",
+    "curenergia",
+    "energia xxi",
+    "regsiti",
+    "baser",
+    "comercializadora de referencia"
+  ]
+}

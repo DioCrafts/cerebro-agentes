@@ -3,8 +3,8 @@
 // what the user can and will do before 31 December. Reading them back and the one-line summaries
 // «Tu expediente» shows. A leaf module: presentation.ts and the optimiser screen both import it.
 //
-// The server validates and canonicalises both (hacienda_gpt/tax/profile.py `DatosConyuge`,
-// hacienda_gpt/tax/optimizador.py `PreferenciasOptimizacion`): amounts come back as decimal
+// The server validates and canonicalises both (asistente/ambitos/fiscal/profile.py `DatosConyuge`,
+// asistente/ambitos/fiscal/calculo/optimizador.py `PreferenciasOptimizacion`): amounts come back as decimal
 // strings ("12000.5"), defaults are left out.
 
 export const DATOS_CONYUGE = "datos_conyuge";

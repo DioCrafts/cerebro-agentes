@@ -1,7 +1,7 @@
 // Client for the deterministic tax optimiser (POST /optimize): the best
 // combination of the choices the law leaves to a household. No model call.
 //
-// Shapes mirror hacienda_gpt/tax/optimizador.py (PlanOptimo, Restricciones,
+// Shapes mirror asistente/ambitos/fiscal/calculo/optimizador.py (PlanOptimo, Restricciones,
 // PosicionLatente). Amounts are decimals sent as strings ("1082.46").
 // Everything goes through api.ts's `request`: session token, timeout, errors.
 

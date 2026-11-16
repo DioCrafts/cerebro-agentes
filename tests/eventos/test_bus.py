@@ -6,11 +6,11 @@ from datetime import timedelta
 import sqlite3
 import threading
 
-from hacienda_gpt.decision.schemas import CaseStatus
-from hacienda_gpt.eventos import productores
-from hacienda_gpt.eventos.bus import HECHO, MUERTO, OMITIDO, PENDIENTE, Bus
-from hacienda_gpt.eventos.salud import estado, problemas
-from hacienda_gpt.eventos.tipos import (
+from asistente.nucleo.decision.schemas import CaseStatus
+from asistente.nucleo.eventos import productores
+from asistente.nucleo.eventos.bus import HECHO, MUERTO, OMITIDO, PENDIENTE, Bus
+from asistente.nucleo.eventos.salud import estado, problemas
+from asistente.nucleo.eventos.tipos import (
     FECHA_UMBRAL,
     INDICE_PUBLICADO,
     MODULO_ACTIVADO,
@@ -333,3 +333,40 @@ def test_purge_forgets_old_finished_work_only(tmp_path) -> None:
     reloj.avanza(days=31)
     assert bus.purgar(dias=30) == {"entregas": 1, "eventos": 1}
     assert bus.salud()["eventos"] == 0
+
+
+def test_a_tasks_cursor_left_behind_no_longer_blocks_the_purge(tmp_path) -> None:
+    """The tasks worker ran once (its ``tareas`` cursor exists) and then never again: the event worker runs the
+    tasks' consumer too, so the cursor keeps up and the purge still forgets old events."""
+    from asistente.nucleo.eventos.bus import consumidores_del_trabajador
+    from asistente.nucleo.tareas.motor import ConsumidorTareas
+
+    db = str(tmp_path / "bus.sqlite3")
+    reloj = Reloj()
+    Bus(db, reloj=reloj, hoy=lambda: HOY, consumidores=[ConsumidorTareas()]).avanzar_consumidores()
+
+    solo_modulos = crear_bus(db, modulos=[FISCAL], reloj=reloj)
+    solo_modulos.emitir(MODULO_ACTIVADO, case_id="c1", payload={"modulo": "agua"})
+    solo_modulos.drenar()
+    reloj.avanza(days=31)
+    # Before: only the modules' consumer ran, the tasks' cursor stayed at 0 and nothing could be forgotten.
+    assert solo_modulos.purgar(dias=30)["eventos"] == 0
+
+    trabajador = crear_bus(db, modulos=[FISCAL], reloj=reloj)
+    trabajador.consumidores = consumidores_del_trabajador()
+    assert [c.nombre for c in trabajador.consumidores] == ["modulos", "tareas"]
+    trabajador.drenar()
+    assert trabajador.purgar(dias=30)["eventos"] == 1
+    assert trabajador.salud()["eventos"] == 0
+
+
+def test_every_event_worker_runs_the_tasks_consumer(tmp_path, monkeypatch) -> None:
+    from asistente.plataforma import trabajos
+    from asistente.plataforma.cli import eventos as cli_eventos
+
+    db = str(tmp_path / "bus.sqlite3")
+    assert [c.nombre for c in cli_eventos._bus(db).consumidores] == ["modulos", "tareas"]
+    trabajos.pasada_de_eventos(db, "w")
+    with sqlite3.connect(db) as conn:
+        cursores = {fila[0] for fila in conn.execute("SELECT consumidor FROM eventos_cursores")}
+    assert cursores == {"modulos", "tareas"}

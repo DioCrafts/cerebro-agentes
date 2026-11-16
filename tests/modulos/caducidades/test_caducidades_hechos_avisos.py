@@ -4,9 +4,9 @@ from datetime import date, timedelta
 
 import pytest
 
-from hacienda_gpt.modulos.caducidades.agenda import aviso_de, avisos_de_agenda, construir_agenda
-from hacienda_gpt.modulos.caducidades.calculo import calcular_otro_documento
-from hacienda_gpt.modulos.caducidades.hechos import (
+from asistente.ambitos.caducidades.agenda import aviso_de, avisos_de_agenda, construir_agenda
+from asistente.ambitos.caducidades.calculo import calcular_otro_documento
+from asistente.ambitos.caducidades.hechos import (
     normalizar_titular,
     umbrales,
     validar_antelaciones,

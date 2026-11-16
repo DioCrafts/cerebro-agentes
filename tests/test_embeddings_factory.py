@@ -16,7 +16,7 @@ from typing import Any
 
 import pytest
 
-from hacienda_gpt.llm import embeddings as factory
+from asistente.conocimiento.llm import embeddings as factory
 
 
 class _FakeArray:

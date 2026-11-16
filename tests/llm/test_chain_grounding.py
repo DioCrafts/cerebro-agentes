@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.llm.chain import answer_with_grounding
-from hacienda_gpt.llm.grounding import AnswerMode, GroundingGate
+from asistente.conocimiento.llm.chain import answer_with_grounding
+from asistente.conocimiento.llm.grounding import AnswerMode, GroundingGate
 
 
 class _FakeChain:

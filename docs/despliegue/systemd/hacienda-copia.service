@@ -1,0 +1,15 @@
+# Copia de seguridad cifrada de las bases de datos de HaciendaGPT (la lanza hacienda-copia.timer).
+[Unit]
+Description=HaciendaGPT: copia de seguridad cifrada
+
+[Service]
+Type=oneshot
+User=hacienda
+Group=hacienda
+WorkingDirectory=/srv/hacienda-asesor
+EnvironmentFile=/etc/hacienda/entorno
+ExecStart=/srv/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.plataforma copia --destino /var/backups/hacienda
+ExecStart=/srv/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.plataforma copia --base doctrina --destino /var/backups/hacienda
+# Conserva 30 días de copias locales (súbelas además fuera de la máquina: ver la guía).
+ExecStartPost=/usr/bin/find /var/backups/hacienda -name '*.fernet' -mtime +30 -delete
+UMask=0077

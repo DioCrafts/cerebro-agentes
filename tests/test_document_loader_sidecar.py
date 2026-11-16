@@ -5,7 +5,7 @@ from pathlib import Path
 
 from langchain_core.documents import Document
 
-from hacienda_gpt.processor.document_loader import (
+from asistente.conocimiento.processor.document_loader import (
     _load_sidecar,
     _merge_sidecar,
     _process_one_file,
@@ -86,7 +86,7 @@ def test_merge_sidecar_protects_reserved_and_skips_empty() -> None:
 # Integration — _process_one_file merges the sidecar onto every chunk
 # --------------------------------------------------------------------- #
 def test_process_one_file_merges_sidecar(tmp_path: Path) -> None:
-    from hacienda_gpt.processor import strategies
+    from asistente.conocimiento.processor import strategies
 
     doc_path = tmp_path / "criterio_10.html"
     doc_path.write_text("contenido", encoding="utf-8")

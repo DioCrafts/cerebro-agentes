@@ -7,8 +7,8 @@ from datetime import date
 import json
 import sqlite3
 
-from hacienda_gpt.proactive.jobs import plan_fin_de_ejercicio
-from hacienda_gpt.tax.profile import DATOS_CONYUGE, PREFERENCIAS_OPTIMIZACION
+from asistente.ambitos.fiscal.profile import DATOS_CONYUGE, PREFERENCIAS_OPTIMIZACION
+from asistente.nucleo.proactive.jobs import plan_fin_de_ejercicio
 from .conftest import PASSWORD, Env
 
 # Distinctive values: if any of them is left anywhere in the database file, the test sees it.
@@ -172,7 +172,7 @@ def test_removing_a_fact_also_erases_its_value_from_the_audit_trail(env: Env) ->
 
 
 def test_redacting_one_fact_leaves_other_facts_untouched() -> None:
-    from hacienda_gpt.decision.audit import ELIMINADO, redactar_hecho
+    from asistente.nucleo.decision.audit import ELIMINADO, redactar_hecho
 
     evento = {
         "event_type": "agent_answer",

@@ -3,7 +3,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt import settings
+from asistente.plataforma import settings
 
 
 @pytest.fixture(autouse=True)

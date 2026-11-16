@@ -1,0 +1,814 @@
+"""The tax module's tools as the model sees them: name, description and JSON Schema of each.
+
+Moved verbatim from the advisor's toolbox (``agent/tools.py``): the specs are byte-for-byte what the model has
+always been offered (``tests/fiscal/test_modulo_fiscal.py`` holds them to a snapshot), in the order of
+:data:`ESPECIFICACIONES`.
+"""
+
+from __future__ import annotations
+
+from typing import Any, get_args
+
+from asistente.ambitos.fiscal.calculo.params import EtapaEducativa
+from asistente.ambitos.fiscal.profile import CAMPOS_CONYUGE
+from asistente.nucleo.agent.providers.base import ToolSpec
+
+_ETAPAS_EDUCATIVAS = list(get_args(EtapaEducativa))
+
+
+# Inputs that only decide whether the user must file (art. 96 LIRPF); the tax itself does not use them.
+_OBLIGACION_FIELDS_DOC = (
+    "Para saber si está obligado a declarar (no cambian el impuesto; sin dato = desconocido): "
+    "num_pagadores_trabajo, importe_segundo_y_restantes_pagadores (lo cobrado en bruto de todos los pagadores "
+    "menos el principal), y en bool: pension_compensatoria_o_anualidades, pagador_no_obligado_a_retener, "
+    "trabajo_tipo_fijo_retencion, pensiones_procedimiento_especial, ganancias_sometidas_a_retencion, "
+    "alta_autonomo_en_el_ejercicio, deduccion_doble_imposicion_internacional, aportaciones_patrimonio_protegido, "
+    "beneficiario_ingreso_minimo_vital"
+)
+
+_INPUT_FIELDS_DOC = (
+    "comunidad_autonoma, tributacion ('individual' | 'conjunta_biparental' | 'conjunta_monoparental'), edad, "
+    "grado_discapacidad (65 si la incapacidad está declarada judicialmente), necesita_asistencia (bool: con "
+    "discapacidad, necesita ayuda de terceras personas o tiene movilidad reducida), num_descendientes, "
+    "num_descendientes_menores_3, descendientes_compartidos (bool), num_ascendientes_mayores_65, "
+    "num_ascendientes_mayores_75. Mínimo por discapacidad de descendientes y ascendientes: "
+    "num_descendientes_discapacidad (hijos con discapacidad del 33 % o más, a cualquier edad), "
+    "num_descendientes_discapacidad_65 (de ellos, del 65 % o más), num_descendientes_asistencia (del 33 % al 64 % que "
+    "necesitan ayuda de terceras personas o tienen movilidad reducida); lo mismo para los ascendientes que conviven "
+    "con el usuario: num_ascendientes_discapacidad, num_ascendientes_discapacidad_65, num_ascendientes_asistencia y "
+    "num_ascendientes_discapacidad_hasta_65 (los de 65 años o menos, que no van en num_ascendientes_mayores_65 y "
+    "también dan el mínimo por ascendientes); num_declaraciones_mismos_ascendientes (declaraciones, la del usuario "
+    "incluida, que aplican el mínimo por los mismos ascendientes: se reparte entre ellas). "
+    "rendimiento_trabajo_bruto, "
+    "cotizaciones_seguridad_social, otros_gastos_deducibles_trabajo, rendimiento_actividad_neto, "
+    "rendimiento_alquiler_neto (ya reducido), rendimiento_alquiler_vivienda_sin_reducir (la calculadora aplica la "
+    "reducción del art. 23.2 con arrendamiento_fecha_contrato AAAA-MM-DD y, si constan, arrendamiento_gran_tenedor, "
+    "arrendamiento_primer_alquiler, arrendamiento_variacion_renta en %, arrendamiento_mismo_inquilino, "
+    "arrendamiento_renta_bajo_indice, arrendamiento_zona_tensionada, arrendamiento_inquilino_joven, "
+    "arrendamiento_alquiler_social, arrendamiento_vivienda_rehabilitada, arrendamiento_prorroga_tacita), "
+    "otras_rentas_base_general, rendimiento_capital_mobiliario, ganancias_patrimoniales, "
+    "rendimientos_negativos_pendientes y perdidas_patrimoniales_pendientes (saldos negativos del ahorro de los "
+    "cuatro años anteriores, en positivo), "
+    "aportacion_plan_pensiones, contribucion_empresa_plan_pensiones, donativos, donativos_recurrentes (bool), "
+    "pagos_vivienda_habitual_pre2013, hijos_deduccion_maternidad, gastos_guarderia, retenciones. Para residentes en "
+    "Madrid, además: alquiler_vivienda_habitual, gastos_escolaridad, gastos_ensenanza_idiomas, "
+    "gastos_uniformes_escolares, num_hijos_gastos_educativos, num_hijos_primer_ciclo_infantil, "
+    "cotizaciones_empleada_hogar, hijos_nacidos_ultimos_3_ejercicios, donativos_fundaciones_madrid, familia_numerosa. Para las deducciones del resto de comunidades: "
+    "alquiler_vivienda_habitual, gastos_guarderia, gastos_libros_texto, hijos_nacidos_en_el_ejercicio, "
+    "familia_numerosa_especial (bool), familia_monoparental (bool), edad, grado_discapacidad, menores_acogidos, "
+    "hijos_adoptados_en_el_ejercicio, gastos_cuidado_familiares, "
+    "donativos_autonomicos, inversion_vivienda_habitual, inversion_empresas_nueva_creacion, "
+    "gastos_eficiencia_energetica, gastos_salud, gastos_deporte_cultura, viudedad (bool), "
+    "vivienda_en_municipio_rural "
+    "(bool), municipio_rural_o_despoblacion (bool), base_imponible_resto_unidad_familiar, miembros_unidad_familiar. "
+    "Datos más finos de las deducciones autonómicas — cónyuge: edad_conyuge, grado_discapacidad_conyuge, "
+    "necesita_asistencia_conyuge (bool); a cargo: num_familiares_discapacidad_a_cargo y "
+    "num_familiares_discapacidad_65_a_cargo (TOTAL de hijos y ascendientes con discapacidad; si los das por separado "
+    "arriba no hace falta: se suman), num_personas_acogidas_mayores_o_discapacidad; municipio: "
+    "habitantes_municipio; partes del año (días): dias_alquiler_vivienda_habitual, dias_acogimiento, dias_desempleo; "
+    "declaraciones entre las que se reparte la deducción (la del usuario incluida): "
+    "num_declaraciones_mismo_alquiler, num_declaraciones_misma_vivienda; condiciones (bool): progenitores_trabajan, "
+    "victima_violencia_genero, victima_terrorismo, vivienda_protegida, vivienda_nueva_construccion, "
+    "primera_vivienda; años (AAAA): ejercicio_viudedad, ejercicio_adquisicion_vivienda, "
+    "ejercicio_traslado_residencia; otros gastos: gastos_veterinarios, adquisicion_vehiculo_electrico, "
+    "inversion_economia_social. Algunos gastos son un TOTAL que admite desglose en partes excluyentes entre sí: "
+    "gastos_eficiencia_energetica (parte: gastos_instalaciones_renovables); gastos_deporte_cultura (gastos_deporte, "
+    "gastos_cultura); gastos_salud (gastos_honorarios_sanitarios —sin dentista ni salud mental—, "
+    "gastos_salud_bucodental, gastos_salud_mental, gastos_optica, gastos_enfermedades_raras, gastos_ela); "
+    "inversion_vivienda_habitual (pagos_adquisicion_vivienda y pagos_rehabilitacion_vivienda, ambos sin intereses, e "
+    "intereses_prestamo_vivienda); donativos_autonomicos (donativos_medio_ambiente, donativos_cultura_patrimonio, "
+    "donativos_investigacion, donativos_cooperacion_fines_sociales, donativos_lengua_propia, "
+    "donativos_fundaciones_autonomicas). Si solo das las partes, el total es su suma; si das también el total, no "
+    "puede ser menor que la suma de sus partes (el cálculo lo rechaza). Detalle de cada hijo: `descendientes`, una "
+    "lista con un objeto por hijo (ver el esquema). Con ese detalle NO indiques num_descendientes, "
+    "num_descendientes_menores_3, hijos_nacidos_en_el_ejercicio, hijos_nacidos_ultimos_3_ejercicios, "
+    "hijos_adoptados_en_el_ejercicio, num_hijos_primer_ciclo_infantil, num_descendientes_discapacidad, "
+    "num_descendientes_discapacidad_65 ni num_descendientes_asistencia, ni el total de los gastos que repartas por "
+    "hijo: se obtienen del detalle, y una cifra distinta se rechaza. " + _OBLIGACION_FIELDS_DOC
+)
+
+# One child of ``descendientes`` (calculo.irpf.Descendiente).
+_DESCENDIENTE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "edad": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Edad cumplida a 31 de diciembre del ejercicio (0 = nacido ese año).",
+        },
+        "fecha_nacimiento": {
+            "type": "string",
+            "description": "AAAA-MM-DD. Alternativa a `edad`; permite prorratear por días.",
+        },
+        "grado_discapacidad": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Grado reconocido; 65 si su incapacidad está declarada judicialmente.",
+        },
+        "necesita_asistencia": {
+            "type": "boolean",
+            "description": (
+                "Con discapacidad del 33 % al 64 %: necesita ayuda de terceras personas o tiene movilidad reducida "
+                "(añade los gastos de asistencia al mínimo por discapacidad; desde el 65 % se añaden siempre)."
+            ),
+        },
+        "etapa_educativa": {"type": "string", "enum": _ETAPAS_EDUCATIVAS},
+        "ejercicio_adopcion": {"type": "integer", "description": "Año de la adopción; omítelo si no es adoptado."},
+        "adopcion_internacional": {"type": "boolean"},
+        "parto_multiple": {
+            "type": "boolean",
+            "description": "Nacido en parto múltiple, o adoptado junto con otros en la misma fecha.",
+        },
+        "meses_guarderia": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 12,
+            "description": "Meses del ejercicio en guardería o escuela infantil.",
+        },
+        "gastos": {
+            "type": "object",
+            "description": (
+                "Gastos del año pagados por ESTE hijo, {campo: euros}, con los mismos nombres que los gastos de "
+                "`datos`: gastos_guarderia, gastos_escolaridad, gastos_libros_texto, gastos_ensenanza_idiomas, "
+                "gastos_uniformes_escolares, gastos_optica, gastos_deporte… El total de cada gasto será la suma de "
+                "los hijos."
+            ),
+            "additionalProperties": {"type": "number", "minimum": 0},
+        },
+    },
+}
+_DESCENDIENTES_SCHEMA: dict[str, Any] = {
+    "type": "array",
+    "description": (
+        "Detalle de cada hijo con derecho al mínimo por descendientes (cada uno con `edad` o `fecha_nacimiento`). "
+        "Permite aplicar las deducciones autonómicas que dependen de la edad, la etapa educativa, la discapacidad "
+        "o los gastos de cada hijo. Los recuentos de hijos se calculan a partir de esta lista. Una lista vacía "
+        "quita el detalle guardado."
+    ),
+    "items": _DESCENDIENTE_SCHEMA,
+}
+
+
+def _datos_schema(description: str) -> dict[str, Any]:
+    """Schema of a ``{campo: valor}`` object of calculator inputs.
+
+    The scalar fields are listed in the tool description (``_INPUT_FIELDS_DOC``)
+    and checked by the calculator, whose error names the offending field; only
+    the structured input is spelled out here.
+    """
+    return {"type": "object", "description": description, "properties": {"descendientes": _DESCENDIENTES_SCHEMA}}
+
+
+CALCULATE_TOOL = ToolSpec(
+    name="calcular_irpf",
+    description=(
+        "Calcula la declaración del IRPF de forma determinista con los parámetros legales del ejercicio (escalas, "
+        "mínimos, reducciones y deducciones estatales) y devuelve el desglose línea a línea con su referencia legal, "
+        "como un fragmento citable [F#]. Úsala SIEMPRE que haga falta una cuota, un ahorro o una comparación: no "
+        "calcules impuestos por tu cuenta. Parte de los datos del expediente del usuario si lo hay; `datos` añade o "
+        "sustituye cifras. Para comparar alternativas (individual frente a conjunta, aportar o no a un plan de "
+        "pensiones, vender este año o el siguiente), pasa `escenarios`: cada uno aplica sus `cambios` sobre los "
+        "datos base y el resultado indica la diferencia con el primero. Importes anuales en euros. "
+        f"Campos admitidos en `datos` y `cambios`: {_INPUT_FIELDS_DOC}. Lee los avisos del resultado: dicen qué no "
+        "se ha modelado (en particular, la parte autonómica) y debes trasladar al usuario los que le afecten."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "datos": _datos_schema("Cifras del contribuyente que añadir o corregir sobre el expediente."),
+            "escenarios": {
+                "type": "array",
+                "description": "Alternativas a comparar. Omítelo para un único cálculo.",
+                "items": {
+                    "type": "object",
+                    "additionalProperties": False,
+                    "properties": {
+                        "nombre": {"type": "string", "description": "Etiqueta corta, p. ej. 'Con plan de pensiones'."},
+                        "cambios": _datos_schema("Campos que cambian respecto a los datos base."),
+                    },
+                    "required": ["nombre", "cambios"],
+                },
+            },
+        },
+    },
+)
+
+JOINT_TOOL = ToolSpec(
+    name="comparar_declaracion_conjunta",
+    description=(
+        "Compara, para un matrimonio, presentar dos declaraciones individuales o una conjunta, calculando las tres con "
+        "la calculadora determinista, y dice cuál sale más barata y por cuánto. Úsala cuando el usuario esté casado y "
+        "pregunte cómo le conviene declarar, o cuando uno de los cónyuges tenga pocos ingresos. `conyuge_a` parte de "
+        "los datos del expediente (el usuario); `conyuge_b` son los datos del otro cónyuge. Si el expediente guarda "
+        "las cifras del cónyuge (`datos_conyuge`), se usan como base de `conyuge_b`: puedes omitirlo, y lo que pases "
+        "sustituye campo a campo (null quita un campo). Los hijos se toman como "
+        f"comunes. Importes anuales en euros. Campos admitidos en ambos: {_INPUT_FIELDS_DOC}. Devuelve fragmentos "
+        "citables [F#] y los supuestos que ha hecho: trasládalos al usuario."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "conyuge_a": _datos_schema(
+                "Cifras del usuario que añadir o corregir sobre su expediente. El detalle de los hijos comunes "
+                "(`descendientes`) va aquí."
+            ),
+            "conyuge_b": {
+                "type": "object",
+                "description": (
+                    "Cifras del otro cónyuge (salario, cotizaciones, retenciones…). No repitas aquí los gastos de "
+                    "los hijos que ya estén repartidos en `descendientes` de conyuge_a. Obligatorio si el expediente "
+                    "no guarda sus cifras; un cónyuge sin ingresos se indica con importes a 0."
+                ),
+            },
+        },
+    },
+)
+
+_NUM: dict[str, Any] = {"type": "number", "minimum": 0}
+_BOOL: dict[str, Any] = {"type": "boolean"}
+
+ACTIVITY_TOOL = ToolSpec(
+    name="calcular_rendimiento_actividad",
+    description=(
+        "Calcula el rendimiento neto anual de una actividad económica de un autónomo en estimación directa "
+        "simplificada: ingresos íntegros menos los gastos que indique el usuario por categoría, menos el porcentaje de "
+        "gastos de difícil justificación (art. 30 RIRPF) y, si proceden, las reducciones del art. 32 LIRPF. No valora "
+        "si un gasto es deducible. No sirve para módulos ni para estimación directa normal. El campo "
+        "`rendimiento_actividad_neto` del resultado es el que debe pasarse a calcular_irpf. Importes anuales sin IVA. "
+        "Traslada los avisos al usuario."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer"},
+            **{k: _NUM for k in ("ingresos_integros", "seguridad_social_autonomo", "suministros", "alquileres",
+                                 "servicios_profesionales", "otros_gastos", "amortizaciones", "cifra_negocios_ano_anterior",
+                                 "reduccion_rendimientos_trabajo")},
+            "otras_rentas_no_exentas": {"type": "number", "description": "Rentas distintas de la actividad; omítelo si no se conocen."},
+            "cumple_requisitos_reduccion_dependiente": {
+                "type": "boolean",
+                "description": "Solo si el usuario confirma TODOS los requisitos del art. 32.2.2.º LIRPF (cliente único, etc.).",
+            },
+            "discapacidad": _BOOL,
+            "discapacidad_ampliada": _BOOL,
+            "rendimientos_irregulares": {
+                "type": "number", "minimum": 0,
+                "description": "Parte del rendimiento neto generada en más de dos años o notoriamente irregular (art. 32.1 LIRPF, art. 25 RIRPF).",
+            },
+            "reduccion_inicio_actividad": {
+                "type": "boolean",
+                "description": "Solo si el usuario confirma los requisitos del art. 32.3 LIRPF (actividad nueva, primer año con rendimiento positivo o el siguiente).",
+            },
+            "ceuta_melilla": {
+                "type": "string", "enum": ["ceuta", "melilla"],
+                "description": "Actividad desarrollada en Ceuta o Melilla con derecho a la deducción del art. 68.4 LIRPF.",
+            },
+        },
+        "required": ["ingresos_integros"],
+    },
+)  # fmt: skip
+
+MODELO_130_TOOL = ToolSpec(
+    name="calcular_modelo_130",
+    description=(
+        "Calcula el pago fraccionado trimestral del IRPF (modelo 130) de una actividad en estimación directa: el 20 % "
+        "del rendimiento neto acumulado desde el 1 de enero, menos los pagos de trimestres anteriores, las retenciones "
+        "soportadas (profesionales) y la minoración del art. 110.3.c) RIRPF. El resultado nunca es negativo. Indica "
+        "además si un profesional está exonerado por tener retención en al menos el 70 % de sus ingresos del año "
+        "anterior (art. 109.2 RIRPF). Todos los importes son ACUMULADOS desde el 1 de enero. Para el trimestre "
+        "siguiente, pasa en `pagos_trimestres_anteriores` la suma de los `pago_previo_a_minoracion` anteriores y en "
+        "`minoracion_pendiente_trimestres_anteriores` la `minoracion_pendiente`."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer"},
+            "trimestre": {"type": "integer", "minimum": 1, "maximum": 4},
+            **{k: _NUM for k in ("ingresos_acumulados", "gastos_acumulados", "retenciones_acumuladas",
+                                 "pagos_trimestres_anteriores", "minoracion_pendiente_trimestres_anteriores",
+                                 "ingresos_ano_anterior", "ingresos_con_retencion_ano_anterior",
+                                 "ingresos_con_retencion_acumulados")},
+            "rendimiento_neto_ejercicio_anterior": {"type": "number"},
+            "aplicar_gastos_dificil_justificacion": _BOOL,
+            "actividad_profesional": _BOOL,
+            "inicio_actividad": _BOOL,
+            "ceuta_melilla": {
+                "type": "string", "enum": ["ceuta", "melilla"],
+                "description": "Actividad desarrollada en Ceuta o Melilla con derecho a la deducción del art. 68.4 LIRPF: el porcentaje se reduce (art. 110.2 RIRPF).",
+            },
+        },
+        "required": ["trimestre", "ingresos_acumulados"],
+    },
+)  # fmt: skip
+
+MODELO_303_TOOL = ToolSpec(
+    name="calcular_modelo_303",
+    description=(
+        "Calcula la autoliquidación trimestral del IVA (modelo 303) en régimen general con operaciones interiores: IVA "
+        "devengado por tipo (general, reducido, superreducido) a partir de las bases imponibles, menos el IVA soportado "
+        "deducible que indique el usuario y las cuotas a compensar de períodos anteriores. Devuelve el resultado a "
+        "ingresar o a compensar. No decide qué tipo corresponde a cada producto ni si una cuota es deducible. No cubre "
+        "prorrata, recargo de equivalencia, régimen simplificado, criterio de caja ni operaciones intracomunitarias."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer"},
+            "trimestre": {"type": "integer", "minimum": 1, "maximum": 4},
+            **{k: _NUM for k in ("base_tipo_general", "base_tipo_reducido", "base_tipo_superreducido",
+                                 "cuotas_soportadas_deducibles", "cuotas_soportadas_bienes_inversion",
+                                 "cuotas_a_compensar_periodos_anteriores")},
+        },
+        "required": ["trimestre"],
+    },
+)  # fmt: skip
+
+SOCIEDADES_TOOL = ToolSpec(
+    name="calcular_impuesto_sociedades",
+    description="Calcula el Impuesto sobre Sociedades de una sociedad pequeña (territorio común, art. 29.1 LIS) para un período iniciado en 2025-2028: del resultado contable a la cuota diferencial, con reserva de capitalización, compensación de bases negativas y el tipo que corresponda (general, escala de microempresas, reducida dimensión o nueva creación). Los ajustes y las deducciones son totales que aporta el usuario. Devuelve el desglose y avisos de lo no modelado, que hay que trasladar siempre.",
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["ejercicio"],
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año en que se inicia el período impositivo (2025-2028)"},
+            "resultado_contable": {
+                "type": "number",
+                "description": "Resultado contable antes del gasto por Impuesto sobre Sociedades (puede ser negativo)",
+            },
+            "ajustes_positivos": {"type": "number", "minimum": 0},
+            "ajustes_negativos": {"type": "number", "minimum": 0},
+            "cifra_negocios_anterior": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Importe neto de la cifra de negocios del período anterior. Sin él se aplica el 25 %",
+            },
+            "cifra_negocios_12_meses_anteriores": {"type": ["number", "null"], "minimum": 0},
+            "entidad_patrimonial": {"type": "boolean"},
+            "nueva_creacion_tipo_reducido": {
+                "type": "boolean",
+                "description": "El usuario afirma cumplir los requisitos del 15 % de entidades de nueva creación",
+            },
+            "incremento_fondos_propios": {"type": "number", "minimum": 0},
+            "incremento_plantilla_porcentaje": {"type": ["number", "null"], "minimum": 0},
+            "reserva_capitalizacion_pendiente": {"type": "number", "minimum": 0},
+            "bases_negativas_pendientes": {"type": "number", "minimum": 0},
+            "nueva_creacion_sin_limite_bases_negativas": {"type": "boolean"},
+            "dias_periodo": {"type": "integer", "minimum": 1, "maximum": 366},
+            "reserva_nivelacion": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Importe de reserva de nivelación (art. 105 LIS) que el usuario quiere dotar; solo entidades con la escala de microempresas.",
+            },
+            "reserva_nivelacion_maxima": {"type": "boolean", "description": "Dotar el máximo que permita la ley."},
+            "reserva_nivelacion_pendiente": {"type": "number", "minimum": 0},
+            "reserva_nivelacion_vence": {"type": "number", "minimum": 0},
+            "bonificaciones_deducciones": {"type": "number", "minimum": 0},
+            "retenciones_ingresos_cuenta": {"type": "number", "minimum": 0},
+            "pagos_fraccionados": {"type": "number", "minimum": 0},
+        },
+    },
+)
+
+SOCIEDADES_PAGO_TOOL = ToolSpec(
+    name="calcular_pago_fraccionado_sociedades",
+    description="Calcula un pago fraccionado del Impuesto sobre Sociedades (modelo 202, art. 40 LIS): modalidad 'cuota' (18 % de la cuota del último período menos deducciones y retenciones) o modalidad 'base'. Con la escala de microempresas en modalidad base aplica cinco séptimos de cada tipo a su tramo, como el modelo 202. Si el texto legal no permite una cifra exacta (cifra de negocios de 10 millones o más, último período inferior al año) devuelve importe nulo y lo explica en avisos.",
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["ejercicio"],
+        "properties": {
+            "ejercicio": {"type": "integer"},
+            "modalidad": {"type": "string", "enum": ["cuota", "base"]},
+            "cifra_negocios_anterior": {"type": ["number", "null"], "minimum": 0},
+            "cifra_negocios_12_meses_anteriores": {"type": ["number", "null"], "minimum": 0},
+            "entidad_patrimonial": {"type": "boolean"},
+            "nueva_creacion_tipo_reducido": {"type": "boolean"},
+            "cuota_integra_ultimo_periodo": {"type": "number", "minimum": 0},
+            "deducciones_bonificaciones_ultimo_periodo": {"type": "number", "minimum": 0},
+            "retenciones_ultimo_periodo": {"type": "number", "minimum": 0},
+            "ultimo_periodo_inferior_al_ano": {"type": "boolean"},
+            "base_imponible_acumulada": {"type": "number"},
+            "dias_periodo": {"type": "integer", "minimum": 1, "maximum": 366},
+            "bonificaciones": {"type": "number", "minimum": 0},
+            "retenciones_acumuladas": {"type": "number", "minimum": 0},
+            "pagos_fraccionados_anteriores": {"type": "number", "minimum": 0},
+        },
+    },
+)
+
+AUTONOMO_SOCIEDAD_TOOL = ToolSpec(
+    name="comparar_autonomo_vs_sociedad",
+    description="Compara, solo en impuestos sobre la renta, ganar el mismo beneficio como autónomo (IRPF) o a través de una sociedad que paga un salario al socio y reparte el resto como dividendo (Impuesto sobre Sociedades + IRPF del socio). Las cotizaciones a la Seguridad Social solo entran en la cuenta si el usuario las aporta (cuota_autonomos, cotizaciones_socio, cotizaciones_empresa); nunca se estiman. NO incluye las reglas del art. 27 LIRPF sobre socios profesionales, IVA ni costes de gestión, y el beneficio no repartido no tributa en el socio hasta que se distribuya. No declara qué opción es mejor: presenta siempre las cifras junto con los avisos y no concluyas más allá de la aritmética. Ejercicios 2025 y 2026.",
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["ejercicio", "beneficio_antes_retribucion"],
+        "properties": {
+            "ejercicio": {"type": "integer"},
+            "beneficio_antes_retribucion": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Beneficio anual del negocio antes de retribuir al titular",
+            },
+            "salario": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Salario bruto anual que la sociedad pagaría al socio",
+            },
+            "dividendo": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Dividendo repartido; null = todo el beneficio después de impuestos",
+            },
+            "cuota_autonomos": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Cuota anual de autónomos que paga el usuario (gasto de la actividad).",
+            },
+            "cotizaciones_socio": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Cotizaciones anuales a cargo del socio en la opción sociedad.",
+            },
+            "cotizaciones_empresa": {
+                "type": ["number", "null"],
+                "minimum": 0,
+                "description": "Cotizaciones anuales a cargo de la sociedad (gasto de la sociedad).",
+            },
+            "comunidad_autonoma": {"type": ["string", "null"]},
+            "cifra_negocios_anterior": {"type": ["number", "null"], "minimum": 0},
+            "nueva_creacion_tipo_reducido": {"type": "boolean"},
+        },
+    },
+)
+
+PATRIMONIO_TOOL = ToolSpec(
+    name="calcular_patrimonio",
+    description="Calcula el Impuesto sobre el Patrimonio y el Impuesto Temporal de Solidaridad de las Grandes Fortunas (ITSGF) de UN contribuyente residente en una comunidad de régimen común, devengo 31 de diciembre de 2026. Aplica la exención de vivienda habitual, el mínimo exento y la escala estatales o autonómicos, el límite conjunto con el IRPF (solo si se dan las dos cifras del IRPF), la bonificación general autonómica y el ITSGF, e indica si hay obligación de declarar. Los importes son los valores de la parte del contribuyente, ya valorados por el usuario. No cubre Navarra ni País Vasco, no residentes ni bonificaciones autonómicas de bienes concretos. Traslada los avisos al usuario.",
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["comunidad"],
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año del devengo (31-12). Solo 2026."},
+            "comunidad": {"type": "string", "description": "Comunidad autónoma de residencia."},
+            "vivienda_habitual": {"type": "number", "minimum": 0},
+            "otros_inmuebles": {"type": "number", "minimum": 0},
+            "depositos": {"type": "number", "minimum": 0},
+            "valores_cotizados": {"type": "number", "minimum": 0},
+            "participaciones_no_cotizadas": {"type": "number", "minimum": 0},
+            "seguros_y_rentas": {"type": "number", "minimum": 0},
+            "vehiculos_y_otros": {"type": "number", "minimum": 0},
+            "deuda_vivienda_habitual": {"type": "number", "minimum": 0},
+            "otras_deudas": {"type": "number", "minimum": 0},
+            "bienes_exentos_empresa_familiar": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Bienes afectos y participaciones que el usuario declara exentos (art. 4.Ocho).",
+            },
+            "grado_discapacidad": {"type": "number", "minimum": 0, "maximum": 100},
+            "irpf_base_imponible": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Suma de bases imponibles del IRPF, sin las ganancias de elementos con más de un año. Omítelo si no se conoce.",
+            },
+            "irpf_cuota_integra": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Suma de cuotas íntegras del IRPF, sin la parte de esas ganancias. Omítelo si no se conoce.",
+            },
+            "bienes_no_productivos": {"type": "number", "minimum": 0},
+        },
+    },
+)
+
+ISD_TOOL = ToolSpec(
+    name="calcular_sucesiones_donaciones",
+    description="Calcula el Impuesto sobre Sucesiones y Donaciones de UN heredero, legatario, beneficiario de seguro o donatario (llámala una vez por persona). Aplica la ley estatal y, si está cargada, la normativa de la comunidad autónoma (reducciones, tarifa, coeficientes y bonificaciones); están cargadas las 15 comunidades de régimen común; sin comunidad, o en Navarra y País Vasco, aplica solo la ley estatal y lo avisa. No decide qué comunidad corresponde: en herencias es la de residencia habitual del fallecido; en donaciones de inmuebles, donde esté el inmueble; en el resto de donaciones, la de residencia del donatario. Devuelve el desglose con referencias legales y avisos que SIEMPRE hay que trasladar.",
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "required": ["modo", "valor_recibido"],
+        "properties": {
+            "modo": {"type": "string", "enum": ["sucesion", "donacion"]},
+            "comunidad": {
+                "type": "string",
+                "description": "Comunidad cuya normativa se aplica; omítela para solo ley estatal.",
+            },
+            "fecha_devengo": {"type": "string", "description": "AAAA-MM-DD del fallecimiento o de la donación (2026)."},
+            "parentesco": {
+                "type": "string",
+                "description": "Parentesco del beneficiario con el fallecido o donante: conyuge, pareja_de_hecho, hijo, otro_descendiente (nieto), padre, otro_ascendiente (abuelo), hermano, sobrino, tio, colateral_afinidad (cuñado), hijastro, yerno_nuera, padrastro, suegro, colateral_cuarto_grado (primo), colateral_lejano, extrano.",
+            },
+            "grupo": {
+                "type": "string",
+                "enum": ["I", "II", "III", "IV"],
+                "description": "Solo si no se conoce el parentesco exacto.",
+            },
+            "edad": {
+                "type": "integer",
+                "description": "Edad del beneficiario; imprescindible en descendientes (menores de 21 = grupo I).",
+            },
+            "grado_discapacidad": {"type": "integer"},
+            "valor_recibido": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Valor neto de lo que recibe (ya restadas cargas, deudas y gastos deducibles), sin el seguro de vida.",
+            },
+            "incluir_ajuar": {
+                "type": "boolean",
+                "description": "Añade la presunción legal del 3 % de ajuar doméstico (solo herencias).",
+            },
+            "seguro_vida": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Importe percibido como beneficiario de seguros de vida del fallecido.",
+            },
+            "valor_vivienda_habitual": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Parte de valor_recibido que es la vivienda habitual del fallecido.",
+            },
+            "valor_total_vivienda": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Valor real de la vivienda entera, para las comunidades que gradúan el porcentaje por él (Asturias, Galicia).",
+            },
+            "participacion_vivienda": {"type": "number", "description": "Fracción (0-1) de esa vivienda que adquiere."},
+            "valor_empresa_familiar": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Parte de valor_recibido que es empresa individual, negocio profesional o participaciones con derecho a la reducción de empresa familiar, según declara el usuario. La calculadora solo la aplica si el parentesco (y, para ascendientes y colaterales, la falta de descendientes) lo permite.",
+            },
+            "valor_patrimonio_historico": {"type": "number", "minimum": 0},
+            "otras_reducciones": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Importe de otras reducciones a las que el usuario afirma tener derecho.",
+            },
+            "patrimonio_preexistente": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Patrimonio del beneficiario antes de la adquisición.",
+            },
+            "escritura_publica": {"type": "boolean", "description": "La donación consta en escritura pública."},
+            "hay_descendientes_del_causante": {
+                "type": "boolean",
+                "description": "Si el fallecido (o donante) tiene descendientes o adoptados. Pregúntalo cuando un ascendiente o colateral declare empresa o participaciones: la reducción de empresa familiar solo les corresponde si no los hay.",
+            },
+            "hay_adquirentes_grupos_i_ii": {
+                "type": "boolean",
+                "description": "Si hay otros adquirentes de los grupos I o II (descendientes, cónyuge, ascendientes). Lo usa Cantabria para la reducción de empresa de parientes hasta el cuarto grado.",
+            },
+            "hay_familiares_adquirentes_hasta_cuarto_grado": {
+                "type": "boolean",
+                "description": "Si hay otros adquirentes que sean familiares hasta el cuarto grado.",
+            },
+            "vinculo_laboral_empresa": {
+                "type": "boolean",
+                "description": "El beneficiario sin parentesco cercano tiene contrato laboral o de servicios en la empresa y tareas de dirección, con la antigüedad que exige la comunidad (Andalucía, Extremadura).",
+            },
+        },
+    },
+)
+
+BENEFITS_TOOL = ToolSpec(
+    name="listar_beneficios_fiscales",
+    description=(
+        "Revisa el catálogo de reducciones, mínimos y deducciones ESTATALES del IRPF contra la situación del "
+        "usuario y devuelve, para cada uno, si ya está aplicado, si está disponible (con el ahorro estimado por la "
+        "calculadora), o qué dato falta para saberlo. Es el punto de partida para responder a «¿cómo pago menos?». "
+        "No incluye deducciones autonómicas: el resultado indica cómo buscarlas. Admite los mismos `datos` que "
+        "calcular_irpf."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "datos": _datos_schema("Cifras del contribuyente que añadir o corregir sobre el expediente."),
+        },
+    },
+)
+
+
+_POSICION_LATENTE_SCHEMA: dict[str, Any] = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "descripcion": {"type": "string", "description": "Qué es (p. ej. 'Fondo indexado', 'Acciones X')."},
+        "importe": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Pérdida (o plusvalía) que realizaría la venta, en euros y en positivo.",
+        },
+        "tipo": {
+            "type": "string",
+            "enum": ["valores_cotizados", "valores_no_cotizados", "otro_elemento"],
+            "description": "Cambia la regla de recompra (art. 33.5 e, f y g LIRPF). Por defecto, valores cotizados.",
+        },
+        "titular": {"type": "string", "enum": ["contribuyente", "conyuge"], "description": "Por defecto, el usuario."},
+    },
+    "required": ["importe"],
+}
+# Constraints of the optimiser (calculo.optimizador.Restricciones), as tool arguments.
+_RESTRICCIONES = (
+    "aportacion_maxima_pensiones",
+    "aportacion_maxima_pensiones_conyuge",
+    "acepta_iliquidez",
+    "donativo_previsto",
+    "presupuesto_donativos",
+    "donativo_recurrente_importe_anterior",
+    "perdidas_latentes",
+    "ganancias_latentes",
+)
+
+OPTIMIZE_TOOL = ToolSpec(
+    name="optimizar_impuestos",
+    description=(
+        "Busca de forma determinista la MEJOR COMBINACIÓN de las opciones que la ley deja al contribuyente para "
+        "pagar menos IRPF en el ejercicio: aportar a planes de pensiones (cada cónyuge), declarar conjunta o "
+        "individualmente, a qué tipo de entidad donar lo que ya piensa donar (o hasta el presupuesto que diga) y "
+        "vender inversiones con pérdidas latentes. Las opciones interactúan (una aportación puede llevar la base por "
+        "debajo del límite de una deducción autonómica; la conjunta cambia todos los umbrales), así que calcula las "
+        "combinaciones con la calculadora en vez de sumar ahorros por separado. Devuelve el plan: qué hacer y antes "
+        "de cuándo, el ahorro de cada medida dentro del plan y por separado, su naturaleza (ahorro definitivo, "
+        "diferimiento o gasto), sus requisitos no comprobados y sus citas, y los cálculos actual y óptimo, todo "
+        "como fragmentos citables [F#]. Úsala para «¿cómo pago menos?», «¿qué me conviene hacer antes de fin de "
+        "año?» o «¿conjunta o individual?». Después del 31 de diciembre solo quedan las opciones de la declaración. "
+        "Parte del expediente; `datos` añade o corrige cifras del usuario y `conyuge` son las del otro cónyuge (sin "
+        "ellas no se compara la conjunta). Si el expediente guarda las cifras del cónyuge (`datos_conyuge`, se usan "
+        "si el usuario está casado) o sus preferencias (`preferencias_optimizacion`), son el punto de partida: lo que "
+        "pases sustituye campo a campo y el resultado dice qué se ha tomado del expediente. Las restricciones son las "
+        "que diga el usuario: no las inventes; si no las ha dicho, omítelas y traslada los supuestos del resultado. "
+        f"Campos admitidos en `datos` y `conyuge`: {_INPUT_FIELDS_DOC}."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "datos": _datos_schema("Cifras del usuario que añadir o corregir sobre el expediente."),
+            "conyuge": {
+                "type": "object",
+                "description": (
+                    "Cifras del otro cónyuge (salario, cotizaciones, retenciones, aportaciones…). No repitas aquí los "
+                    "gastos de los hijos que ya estén en `descendientes` del usuario."
+                ),
+            },
+            "aportacion_maxima_pensiones": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lo que el usuario puede aportar todavía este año a planes de pensiones, en euros.",
+            },
+            "aportacion_maxima_pensiones_conyuge": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lo mismo para el cónyuge.",
+            },
+            "acepta_iliquidez": {
+                "type": "boolean",
+                "description": "false si el usuario no quiere inmovilizar dinero hasta la jubilación.",
+            },
+            "donativo_previsto": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lo que el usuario va a donar este año de todos modos: el optimizador solo elige a qué "
+                "tipo de entidad y, si declaran por separado, qué cónyuge lo paga.",
+            },
+            "presupuesto_donativos": {
+                "type": "number",
+                "minimum": 0,
+                "description": "Lo máximo que estaría dispuesto a donar en total. Sin él, nunca se propone donar más.",
+            },
+            "donativo_recurrente_importe_anterior": {
+                "type": "number",
+                "exclusiveMinimum": 0,
+                "description": "Lo que donó el año pasado a una entidad a la que también donó el anterior (sin bajar "
+                "el importe): permite el porcentaje de donativos recurrentes.",
+            },
+            "perdidas_latentes": {
+                "type": "array",
+                "items": _POSICION_LATENTE_SCHEMA,
+                "description": "Inversiones que hoy darían pérdida si se vendieran.",
+            },
+            "ganancias_latentes": {
+                "type": "array",
+                "items": _POSICION_LATENTE_SCHEMA,
+                "description": "Inversiones con plusvalía latente (solo para avisar si realizarlas sale gratis).",
+            },
+        },
+    },
+)
+
+
+OBLIGACION_TOOL = ToolSpec(
+    name="obligacion_declarar",
+    description=(
+        "Dice de forma determinista si el usuario está obligado a presentar la declaración del IRPF de un ejercicio "
+        "(art. 96 LIRPF, con las cifras legales del ejercicio): «sí», «no» o «no se puede saber», con la regla que "
+        "lo decide y su cita literal, los datos que faltan y una recomendación (aunque no esté obligado, declarar "
+        "puede darle una devolución, que se calcula con la calculadora del IRPF). Devuelve un fragmento citable "
+        "[F#]. Úsala SIEMPRE ante «¿tengo que hacer la declaración?» o «¿estoy obligado a declarar?»: no lo decidas "
+        "de memoria. Parte del expediente del usuario si lo hay; `datos` añade o sustituye cifras con los mismos "
+        f"campos que calcular_irpf. {_OBLIGACION_FIELDS_DOC}. Si el resultado dice «no se puede saber», hazle al "
+        "usuario las preguntas de «Datos que faltan» (con un expediente, regístralas con registrar_hechos) y vuelve "
+        "a llamarla."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "ejercicio": {"type": "integer", "description": "Año fiscal. Por defecto, el del expediente."},
+            "datos": _datos_schema("Cifras del contribuyente que añadir o corregir sobre el expediente."),
+        },
+    },
+)
+
+
+CALENDAR_TOOL = ToolSpec(
+    name="calendario_fiscal",
+    description=(
+        "Devuelve los próximos plazos fiscales que aplican al usuario según su expediente (fin del ejercicio para "
+        "aportaciones y donativos, declaración de la Renta, IVA y pagos fraccionados si tiene actividad económica, "
+        "modelo 720 si tiene bienes en el extranjero), con su fecha, días restantes y referencia legal, como un "
+        "fragmento citable. Úsala cuando pregunte por plazos o cuando una recomendación dependa de una fecha."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {"dias": {"type": "integer", "description": "Horizonte en días (por defecto 365)."}},
+    },
+)
+
+
+# The tax facts' shapes, for the core's ``registrar_hechos`` description (``ModuloFiscal.ayuda_registrar_hechos``):
+# appended verbatim after the core's own sentences, so the model reads the same description as always.
+AYUDA_REGISTRAR_HECHOS = (
+    "Valores esperados: residencia_fiscal 'ES' o "
+    "código ISO del país; periodo_fiscal año de 4 dígitos; importes en euros como número; booleanos true/false. "
+    "`descendientes` (detalle de cada hijo) se guarda como texto JSON: una lista con un objeto por hijo, con "
+    "`edad` (a 31 de diciembre) o `fecha_nacimiento` (AAAA-MM-DD) y, si constan, grado_discapacidad, "
+    f"etapa_educativa ({' | '.join(_ETAPAS_EDUCATIVAS)}), ejercicio_adopcion, adopcion_internacional, "
+    "parto_multiple, meses_guarderia y gastos {campo: euros}; por ejemplo "
+    '[{"fecha_nacimiento": "2024-03-10", "etapa_educativa": "infantil_primer_ciclo", "gastos": '
+    '{"gastos_guarderia": 1800}}]. Envía siempre la lista completa (sustituye a la anterior); con ella no '
+    "registres num_descendientes ni los demás recuentos de hijos. `datos_conyuge` (las cifras propias del "
+    "cónyuge, que usan optimizar_impuestos y comparar_declaracion_conjunta) se guarda como texto JSON de un objeto "
+    f"con alguno de estos campos: {', '.join(CAMPOS_CONYUGE)}; por ejemplo "
+    '{"rendimiento_trabajo_bruto": 12000, "retenciones": 900, "edad": 41}. `preferencias_optimizacion` (lo que '
+    "el usuario ha dicho que puede y quiere hacer antes de fin de año, nunca supuestos tuyos) se guarda como texto "
+    "JSON de un objeto con los mismos campos de restricciones que optimizar_impuestos (aportacion_maxima_pensiones, "
+    "aportacion_maxima_pensiones_conyuge, acepta_iliquidez, donativo_previsto, presupuesto_donativos, "
+    "donativo_recurrente_importe_anterior, perdidas_latentes, ganancias_latentes) y tributacion_prevista "
+    "('individual' | 'conjunta_biparental': cómo pensaban declarar). De estos dos, envía siempre el objeto "
+    "completo: sustituye al anterior."
+)
+
+
+# The order in which the central agent offers them (right after the corpus search).
+ESPECIFICACIONES: tuple[ToolSpec, ...] = (
+    CALCULATE_TOOL,
+    JOINT_TOOL,
+    ACTIVITY_TOOL,
+    MODELO_130_TOOL,
+    MODELO_303_TOOL,
+    SOCIEDADES_TOOL,
+    SOCIEDADES_PAGO_TOOL,
+    AUTONOMO_SOCIEDAD_TOOL,
+    PATRIMONIO_TOOL,
+    ISD_TOOL,
+    BENEFITS_TOOL,
+    OPTIMIZE_TOOL,
+    CALENDAR_TOOL,
+    OBLIGACION_TOOL,
+)
+
+__all__ = [
+    "ACTIVITY_TOOL",
+    "AYUDA_REGISTRAR_HECHOS",
+    "AUTONOMO_SOCIEDAD_TOOL",
+    "BENEFITS_TOOL",
+    "CALCULATE_TOOL",
+    "CALENDAR_TOOL",
+    "ESPECIFICACIONES",
+    "ISD_TOOL",
+    "JOINT_TOOL",
+    "MODELO_130_TOOL",
+    "MODELO_303_TOOL",
+    "OBLIGACION_TOOL",
+    "OPTIMIZE_TOOL",
+    "PATRIMONIO_TOOL",
+    "SOCIEDADES_PAGO_TOOL",
+    "SOCIEDADES_TOOL",
+]

@@ -7,10 +7,10 @@ import json
 
 import pytest
 
-from hacienda_gpt.agent.agent import AgentMode, TaxAgent, TeamAgent
-from hacienda_gpt.agent.prompts import AGENT_SYSTEM_PROMPT, CASE_TOOLS_ADDENDUM, PLANIFICADOR_ADDENDUM
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.agent.agent import AgentMode, TaxAgent, TeamAgent
+from asistente.nucleo.agent.prompts import AGENT_SYSTEM_PROMPT, CASE_TOOLS_ADDENDUM, PLANIFICADOR_ADDENDUM
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 from .fakes import Llamadas, ModuloFalso, agua, instalar, seguros
 

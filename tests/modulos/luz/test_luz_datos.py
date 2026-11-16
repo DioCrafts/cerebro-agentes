@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from hacienda_gpt.modulos.luz.datos import (
+from asistente.ambitos.luz.datos import (
     DatoNoDisponibleError,
     Regulados,
     cargar_regulados,

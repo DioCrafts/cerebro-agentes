@@ -14,21 +14,21 @@ from fastapi import FastAPI
 from fastapi.testclient import TestClient
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.api.api import app, get_agent, get_case_store, get_notification_store
-from hacienda_gpt.api.routers import eventos as eventos_router
-from hacienda_gpt.api.routers.auth import get_login_limiter
-from hacienda_gpt.auth.deps import get_auth_store
-from hacienda_gpt.auth.ratelimit import LoginRateLimiter
-from hacienda_gpt.auth.store import AuthStore
-from hacienda_gpt.cli import ops as ops_module
-from hacienda_gpt.cli.eventos import cli as eventos_cli
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos import despacho, productores
-from hacienda_gpt.eventos.bus import Bus
-from hacienda_gpt.eventos.esquema import TABLAS
-from hacienda_gpt.eventos.tipos import MODULO_ACTIVADO
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos import despacho, productores
+from asistente.nucleo.eventos.bus import Bus
+from asistente.nucleo.eventos.esquema import TABLAS
+from asistente.nucleo.eventos.tipos import MODULO_ACTIVADO
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
+from asistente.plataforma.api.api import app, get_agent, get_case_store, get_notification_store
+from asistente.plataforma.api.routers import eventos as eventos_router
+from asistente.plataforma.api.routers.auth import get_login_limiter
+from asistente.plataforma.auth.deps import get_auth_store
+from asistente.plataforma.auth.ratelimit import LoginRateLimiter
+from asistente.plataforma.auth.store import AuthStore
+from asistente.plataforma.cli import ops as ops_module
+from asistente.plataforma.cli.eventos import cli as eventos_cli
 from tests.proactive import SALARIED, make_case
 from .ayudas import HOY, Llamadas, agua, aviso, contador, crear_bus, instalar, seguros
 
@@ -114,13 +114,18 @@ def test_switching_a_module_on_and_editing_its_fact_wake_only_it_and_erasure_lea
     assert case_id not in _volcado(env.db_path)
 
 
-def test_the_health_endpoint_reports_aggregates(env) -> None:
-    respuesta = env.client.get("/eventos/salud")
+def test_the_health_endpoint_reports_aggregates(env, monkeypatch) -> None:
+    # With accounts on, the service-wide figures are the operator's (docs/seguridad.md): a user session is not
+    # enough, the operator key is.
+    monkeypatch.setenv("HACIENDA_OPERATOR_KEY", "clave-del-operador")
+    assert env.client.get("/eventos/salud").status_code == 404
+    operador = {"X-Operator-Key": "clave-del-operador"}
+    respuesta = env.client.get("/eventos/salud", headers=operador)
     assert respuesta.status_code == 200
     assert respuesta.json()["salud"] == {"instalado": False}
     bus = crear_bus(env.db_path, modulos=[])
     bus.emitir(MODULO_ACTIVADO, case_id="c-secreto", payload={"modulo": "agua"})
-    cuerpo = env.client.get("/eventos/salud").json()
+    cuerpo = env.client.get("/eventos/salud", headers=operador).json()
     assert cuerpo["salud"]["instalado"] is True and cuerpo["salud"]["sin_repartir"] == {"modulos": 1}
     assert "c-secreto" not in json.dumps(cuerpo)
 

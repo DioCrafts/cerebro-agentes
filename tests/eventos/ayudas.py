@@ -8,11 +8,11 @@ from datetime import UTC, date, datetime, timedelta
 import threading
 from typing import Any
 
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos.bus import Bus, Configuracion
-from hacienda_gpt.modulos.contrato import AvisoModulo, ContextoModulo, HechoModulo, ModuloBase
-from hacienda_gpt.modulos.fiscal import MODULO as FISCAL
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.ambitos.fiscal import MODULO as FISCAL
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos.bus import Bus, Configuracion
+from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, HechoModulo, ModuloBase
+from asistente.nucleo.proactive.store import NotificationStore
 from tests.modulos_nucleo.fakes import Llamadas, ModuloFalso, agua, aviso, instalar, seguros
 
 HOY = date(2026, 11, 16)

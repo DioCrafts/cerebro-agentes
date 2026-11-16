@@ -1,0 +1,32 @@
+# Proceso «api» de HaciendaGPT (uvicorn detrás de un proxy inverso con TLS). Ejemplo (docs/despliegue.md).
+# /etc/systemd/system/hacienda-api.service   ·   systemctl enable --now hacienda-api
+[Unit]
+Description=HaciendaGPT API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=hacienda
+Group=hacienda
+WorkingDirectory=/srv/hacienda-asesor
+# Secretos y ajustes: fichero legible solo por root y el servicio (chmod 640, propietario root:hacienda).
+EnvironmentFile=/etc/hacienda/entorno
+Environment=TZ=Europe/Madrid
+# El worker reparte los eventos; la API solo los escribe.
+Environment=EVENTOS_DESPACHO_EN_API=false
+ExecStartPre=/srv/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.plataforma migrar
+ExecStart=/srv/hacienda-asesor/.venv/bin/uvicorn asistente.plataforma.api.api:app \
+    --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1
+Restart=on-failure
+RestartSec=5
+# Endurecimiento.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/srv/hacienda-asesor/data
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

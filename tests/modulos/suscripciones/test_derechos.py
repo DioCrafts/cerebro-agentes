@@ -5,14 +5,14 @@ from __future__ import annotations
 from decimal import Decimal
 from pathlib import Path
 
-from hacienda_gpt.modulos.suscripciones.derechos import (
+from asistente.ambitos.fiscal.calculo.autonomos_params import textos_de_directorio
+from asistente.ambitos.suscripciones.derechos import (
     DerechosConsumidor,
     cargar,
     cifra_a_decimal,
     comprobar,
     main,
 )
-from hacienda_gpt.tax.autonomos_params import textos_de_directorio
 
 EXTRACTOS = Path(__file__).resolve().parents[2] / "fixtures" / "modulos" / "suscripciones" / "boe"
 

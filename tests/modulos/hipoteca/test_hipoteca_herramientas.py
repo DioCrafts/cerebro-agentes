@@ -8,10 +8,10 @@ import decimal
 from hipoteca_util import serie_basica
 import pytest
 
-from hacienda_gpt.modulos.contrato import ContextoModulo
-from hacienda_gpt.modulos.hipoteca import herramientas as h
-from hacienda_gpt.modulos.hipoteca.avisos import avisos_hipoteca
-from hacienda_gpt.modulos.hipoteca.normativa import cargar_normativa
+from asistente.ambitos.hipoteca import herramientas as h
+from asistente.ambitos.hipoteca.avisos import avisos_hipoteca
+from asistente.ambitos.hipoteca.normativa import cargar_normativa
+from asistente.nucleo.modulos.contrato import ContextoModulo
 
 D = decimal.Decimal
 
@@ -113,7 +113,7 @@ def test_amortizar_ahorro_coincide_con_el_cuadro():
     entorno = h._Entorno(ctx(FIJO), serie=serie_basica())
     base = entorno.cuadro()
     r = herramienta("hipoteca_amortizar").ejecutar({"importe": 10000, "fecha": "2026-01-15"}, ctx(FIJO))
-    from hacienda_gpt.modulos.hipoteca.modelo import AmortizacionRealizada
+    from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada
 
     plazo = entorno.cuadro(amortizaciones=(AmortizacionRealizada(fecha=date(2026, 1, 15), importe=D(10000)),))
     ahorro = base.intereses_desde(date(2026, 1, 15)) - plazo.intereses_desde(date(2026, 1, 15))

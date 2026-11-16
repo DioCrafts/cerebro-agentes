@@ -1534,7 +1534,7 @@ export function OptimizerPanel({ open, onClose, caseId, facts, taxPeriod, onSave
           <span className="font-semibold">Base legal:</span> {p.referencia}
           {!p.verificado && " · cifras pendientes de contrastar con el BOE"}
         </p>
-        {/* Remembered (hacienda_gpt/memoria): the plan is recomputed without what the user rejects. */}
+        {/* Remembered (asistente/nucleo/memoria): the plan is recomputed without what the user rejects. */}
         {caseId && (
           <MemoriaBotones
             caseId={caseId}

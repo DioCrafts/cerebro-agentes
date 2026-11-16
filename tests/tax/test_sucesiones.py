@@ -1,5 +1,5 @@
 """Impuesto sobre Sucesiones y Donaciones. Expected figures are worked by hand in
-the comments from ``hacienda_gpt/tax/data/isd_2026.json``, whose figures are in
+the comments from ``asistente/ambitos/fiscal/data/isd_2026.json``, whose figures are in
 turn re-read here against literal extracts of the consolidated laws."""
 
 from datetime import date
@@ -10,9 +10,14 @@ from pathlib import Path
 from pydantic import ValidationError
 import pytest
 
-from hacienda_gpt.tax.params import EjercicioNoDisponibleError
-from hacienda_gpt.tax.sucesiones import BeneficiarioISD, calcular_isd, calcular_isd_varios, grupo_de_parentesco
-from hacienda_gpt.tax.sucesiones_params import (
+from asistente.ambitos.fiscal.calculo.params import EjercicioNoDisponibleError
+from asistente.ambitos.fiscal.calculo.sucesiones import (
+    BeneficiarioISD,
+    calcular_isd,
+    calcular_isd_varios,
+    grupo_de_parentesco,
+)
+from asistente.ambitos.fiscal.calculo.sucesiones_params import (
     ISDParams,
     NormativaAutonomicaISD,
     comprobar_evidencias,
@@ -240,8 +245,9 @@ def test_state_gift_has_no_kinship_reduction_and_business_is_a_declared_amount()
     empresa = _isd(modo="donacion", parentesco="hijo", edad=30, valor_recibido=100000, valor_empresa_familiar=100000)
     # 95 % × 100.000 = 95.000 → base 5.000 × 7,65 % = 382,50.
     assert empresa.cuota_a_ingresar == D("382.50")
-    assert _avisa(empresa, "sin comprobar ninguno de sus requisitos")
+    assert _avisa(empresa, "comprobando solo que el adquirente es de «cónyuge, descendientes o adoptados»")
     assert _avisa(empresa, "donante tenga 65 años o más")
+    assert _avisa(empresa, "se ha aplicado sin comprobar: Que a la empresa, el negocio o las participaciones")
 
 
 def test_unknown_community_falls_back_to_state_rules_and_says_so() -> None:
@@ -912,7 +918,7 @@ def test_main_home_percentage_by_the_value_of_the_property_asturias_and_galicia(
 
 
 def test_the_new_schema_fields_reject_incoherent_data() -> None:
-    from hacienda_gpt.tax.sucesiones_params import Equiparacion, ReduccionVivienda, TramoReduccion
+    from asistente.ambitos.fiscal.calculo.sucesiones_params import Equiparacion, ReduccionVivienda, TramoReduccion
 
     with pytest.raises(ValidationError, match="importe o porcentaje_base"):
         TramoReduccion()

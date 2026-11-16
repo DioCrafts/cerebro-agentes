@@ -5,25 +5,29 @@ on:
   push:
     branches: [main, master]
 
+# Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
       # Lint tools only — no need to install the project's heavy deps.
       - name: ruff
         run: uvx ruff@0.15.8 check --no-fix .
       - name: black
-        run: uvx black@26.3.1 --check --target-version py313 hacienda_gpt tests
+        run: uvx black@26.3.1 --check --target-version py313 asistente hacienda_gpt tests
 
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
           enable-cache: true
@@ -45,8 +49,8 @@ jobs:
   test-macos:
     runs-on: macos-14
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
           enable-cache: true
@@ -61,13 +65,13 @@ jobs:
     # mypy is not enforced yet (never run in CI before); keep it informational
     # so it surfaces type issues without blocking until the backlog is cleared.
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v5
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: "3.13"
           enable-cache: true
       - run: uv sync
-      - run: uv run mypy hacienda_gpt
+      - run: uv run mypy asistente hacienda_gpt
 
   # React frontend: type-check, lint and production build.
   frontend:
@@ -76,8 +80,8 @@ jobs:
       run:
         working-directory: frontend
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: lts/*
           cache: npm

@@ -1,7 +1,7 @@
 from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
-from hacienda_gpt.proactive.store import Notification, NotificationStore
+from asistente.nucleo.proactive.store import Notification, NotificationStore
 
 
 def _n(key: str, case_id: str = "c1", **extra) -> Notification:

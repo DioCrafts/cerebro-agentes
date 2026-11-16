@@ -1,17 +1,17 @@
-"""The tax module through the contract: same tools, same notices, nothing moved."""
+"""The tax module through the contract: same tools, same notices (its code now lives in modulos/fiscal)."""
 
 from __future__ import annotations
 
 from datetime import UTC, date, datetime
 
-from hacienda_gpt.agent.evidence import EvidenceLedger
-from hacienda_gpt.agent.providers.base import ToolCall
-from hacienda_gpt.agent.tools import Toolbox
-from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
-from hacienda_gpt.modulos.contrato import ContextoModulo, Modulo
-from hacienda_gpt.modulos.fiscal import MODULO
-from hacienda_gpt.proactive.jobs import ejecutar_para_caso
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.ambitos.fiscal import MODULO
+from asistente.nucleo.agent.evidence import EvidenceLedger
+from asistente.nucleo.agent.providers.base import ToolCall
+from asistente.nucleo.agent.tools import Toolbox
+from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
+from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo
+from asistente.nucleo.proactive.jobs import ejecutar_para_caso
+from asistente.nucleo.proactive.store import NotificationStore
 
 PERFIL = {"rendimiento_trabajo_bruto": 30000.0, "retenciones": 4000.0, "comunidad_autonoma": "Madrid"}
 NOV = date(2026, 11, 12)

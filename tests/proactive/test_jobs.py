@@ -3,16 +3,16 @@ from decimal import Decimal
 
 import pytest
 
-from hacienda_gpt.decision.schemas import CaseStatus
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.proactive.jobs import (
+from asistente.ambitos.fiscal.calculo.optimizador import optimizar_desde_hechos
+from asistente.nucleo.decision.schemas import CaseStatus
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.proactive.jobs import (
     ejecutar_para_caso,
     ejecutar_para_todos,
     plan_fin_de_ejercicio,
     recordatorios_de_plazos,
 )
-from hacienda_gpt.proactive.store import NotificationStore
-from hacienda_gpt.tax.optimizador import optimizar_desde_hechos
+from asistente.nucleo.proactive.store import NotificationStore
 from . import SALARIED, make_case
 
 NOV = date(2026, 11, 12)

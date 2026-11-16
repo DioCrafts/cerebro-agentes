@@ -13,9 +13,8 @@ from pathlib import Path
 from click.testing import CliRunner
 import pytest
 
-from hacienda_gpt.cli import supremo_seed
-from hacienda_gpt.crawler.cendoj import parse_cendoj_document
-from hacienda_gpt.doctrine.supremo import (
+from asistente.conocimiento.crawler.cendoj import parse_cendoj_document
+from asistente.conocimiento.doctrine.supremo import (
     MAX_PASSAGE_CHARS,
     SentenciaTS,
     analizar_documento,
@@ -25,6 +24,7 @@ from hacienda_gpt.doctrine.supremo import (
     es_objetivo_prioritario,
     sidecar_metadata,
 )
+from asistente.plataforma.cli import supremo_seed
 
 CUESTION = (
     "Determinar si los intereses de demora abonados por la Agencia Tributaria al efectuar una devolución de "

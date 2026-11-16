@@ -5,14 +5,17 @@ on:
   push:
     branches: [ main, master ]
 
+# Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
+permissions:
+  contents: read
+
 jobs:
   critical-cases:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
       - name: Install uv
-        uses: astral-sh/setup-uv@v5
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
         with:
           python-version: '3.13'
           enable-cache: true
@@ -26,7 +29,7 @@ jobs:
         # path can achieve. No OPENAI_API_KEY here, so DECISION_EXTRACTOR=regex
         # is implicit; obligation recall (LLM-only) is reported, not gated.
         run: |
-          uv run python -m hacienda_gpt.cli.check_critical_regressions \
+          uv run python -m asistente.plataforma.cli.check_critical_regressions \
             --dataset eval_data/critical_cases/tramite_year_critical_cases.jsonl \
             --min-intent-accuracy 0.80 \
             --min-fact-f1 0.75 \

@@ -2,16 +2,17 @@ import json
 
 import pytest
 
-from hacienda_gpt.agent.providers.base import ProviderError
-from hacienda_gpt.decision import fact_extractor as fx
-from hacienda_gpt.decision.fact_extractor import (
+from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.decision import fact_extractor as fx
+from asistente.nucleo.decision.fact_extractor import (
     FactExtractionError,
     OpenAIFactExtractor,
     ProviderFactExtractor,
     RegexFactExtractor,
     default_fact_extractor,
 )
-from hacienda_gpt.decision.schemas import CaseState
+from asistente.nucleo.decision.schemas import CaseState
+from asistente.plataforma.ops.consumo import MeteredProvider
 
 
 class _JsonProvider:
@@ -79,14 +80,22 @@ def test_provider_extractor_wraps_provider_failures() -> None:
 def test_default_extractor_follows_llm_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     for var in ("DECISION_EXTRACTOR", "ANTHROPIC_API_KEY", "ANTHROPIC_AUTH_TOKEN", "OPENAI_API_KEY"):
         monkeypatch.delenv(var, raising=False)
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     monkeypatch.setattr(settings, "LLM_PROVIDER", "anthropic")
     monkeypatch.setattr(settings, "LOCAL_LLM_MODEL", "")
     assert isinstance(default_fact_extractor(), RegexFactExtractor)
 
+    # Only an OpenAI key: OpenAI through the metered provider layer, never the unmetered SDK extractor (S-14).
     monkeypatch.setenv("OPENAI_API_KEY", "sk-test")
-    assert isinstance(default_fact_extractor(), OpenAIFactExtractor)
+    solo_openai = default_fact_extractor()
+    assert isinstance(solo_openai, ProviderFactExtractor) and not isinstance(solo_openai, OpenAIFactExtractor)
+    assert solo_openai._provider.name == "openai" and isinstance(solo_openai._provider, MeteredProvider)
+    assert solo_openai._provider.model == settings.OPENAI_MODEL
+    monkeypatch.setenv("DECISION_EXTRACTOR", "openai")
+    forzado = default_fact_extractor()
+    assert isinstance(forzado, ProviderFactExtractor) and isinstance(forzado._provider, MeteredProvider)
+    monkeypatch.delenv("DECISION_EXTRACTOR")
 
     # A configured Claude wins over a stray OpenAI key: LLM_PROVIDER decides.
     monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test")
@@ -107,9 +116,9 @@ def test_default_extractor_follows_llm_provider(monkeypatch: pytest.MonkeyPatch)
 def test_the_provider_extractor_is_metered_as_hechos_and_keeps_its_model(monkeypatch, tmp_path) -> None:
     """Metering adds the purpose «hechos» (routing table: small tier); without routing settings the model,
     the effort and the requests are the provider's own, as before."""
-    from hacienda_gpt import settings
-    from hacienda_gpt.agent import enrutado
-    from hacienda_gpt.ops.consumo import MeteredProvider
+    from asistente.nucleo.agent import enrutado
+    from asistente.plataforma import settings
+    from asistente.plataforma.ops.consumo import MeteredProvider
 
     for nombre in (
         "LLM_ROUTING_PROFILE",

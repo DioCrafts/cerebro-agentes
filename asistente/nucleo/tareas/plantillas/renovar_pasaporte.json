@@ -1,0 +1,61 @@
+{
+  "id": "renovar_pasaporte",
+  "version": 1,
+  "titulo": "Renovar el pasaporte",
+  "descripcion": "Mira cuándo caduca tu pasaporte, qué hay que llevar, dónde pedir cita, te lo recuerda el día antes y termina cuando confirmas que ya lo tienes.",
+  "ambito_decision": "tareas:renovar_pasaporte",
+  "vence_dias": 180,
+  "parametros": {"type": "object", "additionalProperties": false, "properties": {}},
+  "pasos": [
+    {
+      "id": "caducidad",
+      "titulo": "Mira cuándo caduca",
+      "descripcion": "Con los documentos que constan en el módulo de caducidades (si lo tienes activado).",
+      "tipo": "calculo",
+      "herramienta": "caducidades_proximas",
+      "argumentos": {"dias": 730, "incluir_vencidos": true},
+      "opcional": true
+    },
+    {
+      "id": "requisitos",
+      "titulo": "Qué tienes que llevar",
+      "descripcion": "Lo que pide el Real Decreto 896/2003 para expedir el pasaporte.",
+      "tipo": "capacidad",
+      "capacidad": "documentos",
+      "operacion": "lista_de_comprobacion",
+      "parametros": {"origen": "caducidades:pasaporte"}
+    },
+    {
+      "id": "informacion",
+      "titulo": "Dónde pedir cita",
+      "descripcion": "Solo webs oficiales.",
+      "tipo": "capacidad",
+      "capacidad": "investigacion",
+      "operacion": "webs_oficiales",
+      "parametros": {"tema": "cita previa para expedir el pasaporte", "raices": ["https://www.citapreviadnie.es/", "https://www.policia.es/"]}
+    },
+    {
+      "id": "cita",
+      "titulo": "Pide la cita previa",
+      "descripcion": "Pide cita en una oficina de expedición y, si quieres, dime la fecha para recordártelo.",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["requisitos", "informacion"]
+    },
+    {
+      "id": "recordatorio",
+      "titulo": "Te lo recuerdo el día antes",
+      "descripcion": "Si me diste la fecha de la cita, te aviso la víspera para que lleves todo.",
+      "tipo": "espera",
+      "espera": {"fecha_de_paso": "cita", "dias_antes": 1},
+      "depende_de": ["cita"],
+      "opcional": true
+    },
+    {
+      "id": "renovado",
+      "titulo": "Confirma que ya lo tienes",
+      "descripcion": "Cuando tengas el pasaporte nuevo, márcalo y apunta su nueva fecha de caducidad en el módulo de caducidades.",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["recordatorio"]
+    }
+  ]
+}

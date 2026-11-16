@@ -1,0 +1,62 @@
+{
+  "id": "cambiar_tarifa_luz",
+  "version": 1,
+  "titulo": "Cambiar de tarifa de la luz",
+  "descripcion": "Trae tu consumo real, compara tarifas con él, te deja decidir y, si cambias, prepara el borrador de la solicitud para que la envíes tú.",
+  "ambito_decision": "luz:cambio_tarifa",
+  "vence_dias": 60,
+  "parametros": {"type": "object", "additionalProperties": false, "properties": {}},
+  "pasos": [
+    {
+      "id": "consumo",
+      "titulo": "Trae tu consumo horario",
+      "descripcion": "Con el agente con navegador si lo tienes activado; si no, descargándolo tú.",
+      "tipo": "capacidad",
+      "capacidad": "navegador",
+      "operacion": "consumo_datadis",
+      "opcional": true
+    },
+    {
+      "id": "llega_consumo",
+      "titulo": "Espero a que llegue tu consumo",
+      "descripcion": "Sigo en cuanto tu consumo esté en el módulo de luz (o puedes saltarte este paso).",
+      "tipo": "espera",
+      "espera": {"evento": "perfil.cambiado", "hecho": "luz_consumo", "max_dias": 21},
+      "depende_de": ["consumo"],
+      "opcional": true
+    },
+    {
+      "id": "comparar",
+      "titulo": "Compara tarifas",
+      "descripcion": "Comparación con tu consumo y tu potencia (módulo de luz).",
+      "tipo": "calculo",
+      "herramienta": "luz_comparar_tarifas",
+      "argumentos": {},
+      "depende_de": ["llega_consumo"]
+    },
+    {
+      "id": "decidir",
+      "titulo": "Decide si cambias",
+      "descripcion": "Mira la comparación. Si quieres cambiar, márcalo; si no, cancela la tarea y dime por qué (lo recordaré).",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["comparar"]
+    },
+    {
+      "id": "borrador",
+      "titulo": "Borrador de la solicitud",
+      "descripcion": "Un borrador para que lo revises y lo envíes tú. No se envía nada.",
+      "tipo": "capacidad",
+      "capacidad": "documentos",
+      "operacion": "borrador",
+      "parametros": {"modelo": "solicitud_cambio_comercializadora"},
+      "depende_de": ["decidir"]
+    },
+    {
+      "id": "enviada",
+      "titulo": "Envía tú la solicitud",
+      "descripcion": "Cuando la hayas enviado a la comercializadora, márcalo aquí.",
+      "tipo": "confirmacion_usuario",
+      "depende_de": ["borrador"]
+    }
+  ]
+}

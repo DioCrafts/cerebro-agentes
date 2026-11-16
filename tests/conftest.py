@@ -5,7 +5,7 @@ import types
 
 import pytest
 
-# The format watch (hacienda_gpt/ops/formatos.py) records every real read under ./data by default.
+# The format watch (asistente/conocimiento/formatos.py) records every real read under ./data by default.
 # Switched off through the environment, before ``settings`` is first imported, so that it also holds
 # for module- and session-scoped fixtures and survives the tests that reload ``settings``.
 os.environ["FORMAT_WATCH"] = "false"
@@ -228,7 +228,7 @@ def pytest_sessionstart(session):
 @pytest.fixture(autouse=True)
 def _formatos_sin_rastro(monkeypatch, tmp_path):
     """The format watch writes state and samples on every real read: keep tests from touching ./data."""
-    from hacienda_gpt import settings
+    from asistente.plataforma import settings
 
     monkeypatch.setattr(settings, "FORMAT_WATCH", False, raising=False)
     monkeypatch.setattr(settings, "FORMAT_STATE_PATH", str(tmp_path / "_formatos_state.json"), raising=False)
@@ -240,7 +240,7 @@ def _registro_de_modulos_sin_rastro():
     """No test leaves its module registry behind: a fake one (``reiniciar(nuevo)``), or a real one built while
     the test had patched settings (``MODULOS_DESACTIVADOS``…), is forgotten after the test, so the next test
     discovers the real modules again. Tests that leave the registry untouched pay nothing."""
-    from hacienda_gpt.modulos import registro
+    from asistente.nucleo.modulos import registro
 
     antes = list(registro._cache)
     yield

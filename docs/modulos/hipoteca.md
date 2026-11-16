@@ -13,7 +13,7 @@ Qué responde:
 5. **Avisos**: revisión próxima con la cuota estimada, índice nuevo que mueve la estimación, y fecha en que baja la
    comisión por amortizar.
 
-Código: `hacienda_gpt/modulos/hipoteca/` · datos: `data/normativa.json` (ley) y `data/indices_referencia.json`
+Código: `asistente/ambitos/hipoteca/` · datos: `data/normativa.json` (ley) y `data/indices_referencia.json`
 (índices) · pruebas: `tests/modulos/hipoteca/` · extractos del BOE y resoluciones del Banco de España:
 `tests/fixtures/modulos/hipoteca/`.
 
@@ -45,7 +45,7 @@ mes anterior al anterior) y la de 18-5-2023 (BOE-A-2023-11879) imprime «Abril d
 2023). Sin publicar en el BOE dentro de la serie: IRPH de mayo a noviembre de 2003 y el tipo medio de la zona euro
 antes de 2012 (no se publicaba como índice oficial).
 
-Mantenimiento: `python -m hacienda_gpt.modulos.hipoteca.indices actualizar` añade las resoluciones publicadas
+Mantenimiento: `python -m asistente.ambitos.hipoteca.indices actualizar` añade las resoluciones publicadas
 desde la última guardada (red: solo www.boe.es); `… reconstruir <dir>` regenera la serie desde XML descargados.
 
 ### Qué valor del índice usa cada revisión
@@ -115,7 +115,7 @@ ampliar plazo de como máximo el 0,1 % (art. 10 Ley 2/1994); reparto de gastos d
 Todas las cifras están en `data/normativa.json` con su cita literal; `test_hipoteca_normativa.py` comprueba que
 cada cifra está en su cita y que cada cita está, palabra por palabra, en el texto consolidado (extractos en
 `tests/fixtures/modulos/hipoteca/BOE-A-*.txt`; con `HIPOTECA_BOE_DIR=<dir con las páginas completas>` se comprueba
-contra las páginas enteras). También a mano: `python -m hacienda_gpt.modulos.hipoteca.normativa <dir>`.
+contra las páginas enteras). También a mano: `python -m asistente.ambitos.hipoteca.normativa <dir>`.
 
 ## Datos del usuario (hechos del expediente)
 
@@ -170,11 +170,11 @@ riesgo y no se puede deshacer, y que los rendimientos de la alternativa tributan
 ## Integración con el módulo fiscal (no duplicada)
 
 La deducción por inversión en vivienda habitual del régimen transitorio (compras anteriores a 2013, disposición
-transitoria 18.ª LIRPF) es del módulo fiscal (`hacienda_gpt/tax/irpf.py`, dato `pagos_vivienda_habitual_pre2013`,
+transitoria 18.ª LIRPF) es del módulo fiscal (`asistente/ambitos/fiscal/calculo/irpf.py`, dato `pagos_vivienda_habitual_pre2013`,
 parámetros `vivienda_habitual_transitoria`). Este módulo solo la menciona y ofrece lo que hace falta para
 calcularla:
 
-- `hacienda_gpt.modulos.hipoteca.pagos_del_ejercicio(contexto, ejercicio)` →
+- `asistente.ambitos.hipoteca.pagos_del_ejercicio(contexto, ejercicio)` →
   `{"capital", "intereses", "amortizaciones_anticipadas"}` del año (Decimal), o `None` sin hipoteca;
 - `hipoteca_cuadro` con `ejercicio` muestra esas cifras.
 

@@ -14,7 +14,7 @@ import re
 from hipoteca_util import RESOLUCIONES
 import pytest
 
-from hacienda_gpt.modulos.hipoteca.indices import (
+from asistente.ambitos.hipoteca.indices import (
     BOE_XML_URL,
     MES_INFERIDO,
     FormatoResolucionError,

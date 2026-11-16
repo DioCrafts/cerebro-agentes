@@ -1,15 +1,16 @@
 // Client + types for the HaciendaGPT FastAPI backend.
 //
 // These shapes mirror the Pydantic models in
-//   hacienda_gpt/llm/grounding.py        -> AnswerEnvelope, Citation
-//   hacienda_gpt/decision/schemas.py     -> ObligationCandidate, RiskLevel
-//   hacienda_gpt/api/api.py              -> QARequest, TurnResponse
+//   asistente/conocimiento/llm/grounding.py        -> AnswerEnvelope, Citation
+//   asistente/nucleo/decision/schemas.py     -> ObligationCandidate, RiskLevel
+//   asistente/plataforma/api/api.py              -> QARequest, TurnResponse
 // so if the backend grows a new field, only this file changes.
 
+import { trimHistory } from "./lib/historial";
 import { type AuthMode, getSessionToken } from "./lib/session";
 
 // "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
-// the /agent verdicts (hacienda_gpt/agent/agent.py -> AgentMode).
+// the /agent verdicts (asistente/nucleo/agent/agent.py -> AgentMode).
 export type AnswerMode =
   | "cited"
   | "uncited"
@@ -70,7 +71,7 @@ export interface ToolTraceEntry {
   is_error: boolean;
 }
 
-// Mirrors hacienda_gpt/api/api.py -> AgentResponse.
+// Mirrors asistente/plataforma/api/api.py -> AgentResponse.
 export interface AgentResponse {
   answer: string;
   mode: AnswerMode;
@@ -92,7 +93,7 @@ export interface AgentResponse {
   pending_actions?: Array<{ id: string; modulo: string; herramienta: string; resumen: string; estado: string }>;
 }
 
-// Live progress of a running agent turn (hacienda_gpt/agent/agent.py -> emit).
+// Live progress of a running agent turn (asistente/nucleo/agent/agent.py -> emit).
 export type ProgressEvent =
   | { type: "thinking"; step: number }
   | { type: "text_delta"; text: string }
@@ -128,9 +129,9 @@ export interface ObligationCandidate {
   due_date_note?: string | null;
 }
 
-// Decision-engine shapes. These mirror hacienda_gpt/decision/schemas.py
+// Decision-engine shapes. These mirror asistente/nucleo/decision/schemas.py
 // (Fact, MissingFact, CaseState) and the /cases/{id}/turn response in
-// hacienda_gpt/api/api.py (TurnResponse). We only declare the fields the
+// asistente/plataforma/api/api.py (TurnResponse). We only declare the fields the
 // web UI reads; the backend may send more (extra keys are ignored).
 export type CaseStatus = "open" | "in_review" | "closed";
 
@@ -331,7 +332,7 @@ interface QAOptions {
 }
 
 export function postQA({ query, chatHistory = [], signal }: QAOptions): Promise<AnswerEnvelope> {
-  return request("/qa", { query, chat_history: chatHistory }, isAnswerEnvelope, { signal });
+  return request("/qa", { query, chat_history: trimHistory(chatHistory) }, isAnswerEnvelope, { signal });
 }
 
 export function createCase(opts: {
@@ -356,7 +357,7 @@ export function postTurn(opts: {
 }): Promise<TurnResponse> {
   return request(
     `/cases/${encodeURIComponent(opts.caseId)}/turn`,
-    { user_input: opts.userInput, chat_history: opts.chatHistory ?? [] },
+    { user_input: opts.userInput, chat_history: trimHistory(opts.chatHistory ?? []) },
     isTurnResponse,
     { signal: opts.signal },
   );
@@ -370,7 +371,7 @@ export function postAgent(opts: {
   caseId?: string | null;
   signal?: AbortSignal;
 }): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: opts.chatHistory ?? [] };
+  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
   return request("/agent", body, isAgentResponse, { signal: opts.signal, timeoutMs: AGENT_TIMEOUT_MS });
 }
@@ -400,7 +401,7 @@ export async function streamAgent(
   },
   onProgress: (event: ProgressEvent) => void,
 ): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: opts.chatHistory ?? [] };
+  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
 
   const idle = new AbortController();
@@ -645,7 +646,7 @@ export function analyzeDocument(opts: {
 export type NotificationKind = "plazo" | "fin_de_ejercicio" | "cambio_normativo" | "resumen_semanal" | `modulo:${string}`;
 export type NotificationSeverity = "info" | "aviso" | "urgente";
 
-// Mirrors hacienda_gpt/proactive/store.py -> Notification.
+// Mirrors asistente/nucleo/proactive/store.py -> Notification.
 export interface AdvisorNotification {
   id: string;
   case_id: string;
@@ -691,7 +692,7 @@ export function runProactive(opts: { caseId: string; signal?: AbortSignal }): Pr
   return request(`/cases/${encodeURIComponent(opts.caseId)}/proactive/run`, {}, isNotifications, { signal: opts.signal });
 }
 
-// ---- Accounts and privacy (hacienda_gpt/api/routers/auth.py) -----------------
+// ---- Accounts and privacy (asistente/plataforma/api/routers/auth.py) -----------------
 
 export interface AuthConfig {
   auth_mode: AuthMode;

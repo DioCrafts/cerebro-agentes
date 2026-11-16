@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from hacienda_gpt.cli.eval_interpreter import evaluate
+from asistente.plataforma.cli.eval_interpreter import evaluate
 
 
 def test_evaluate_returns_required_metrics() -> None:

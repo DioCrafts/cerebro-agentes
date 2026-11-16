@@ -7,11 +7,11 @@ import sqlite3
 
 import pytest
 
-from hacienda_gpt import settings
-from hacienda_gpt.decision.state_store_sqlite import SQLiteCaseStateStore
-from hacienda_gpt.eventos.tipos import CAMBIO_NORMATIVO
-from hacienda_gpt.proactive.impacto import procesar_eventos
-from hacienda_gpt.proactive.store import NotificationStore
+from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.eventos.tipos import CAMBIO_NORMATIVO
+from asistente.nucleo.proactive.impacto import procesar_eventos
+from asistente.nucleo.proactive.store import NotificationStore
+from asistente.plataforma import settings
 from tests.proactive.test_impacto import CASES, LIRPF_HTML, FakeProvider, _evento, _respuesta
 from .ayudas import FISCAL, crear_bus
 

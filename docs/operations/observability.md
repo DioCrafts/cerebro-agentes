@@ -6,11 +6,11 @@
 - tasa de derivación a humano
 - errores por módulo
 
-Implementación base en `hacienda_gpt/observability/metrics.py`.
+Implementación base en `asistente/plataforma/observability/metrics.py`.
 
 ## Uso sugerido
 ```python
-from hacienda_gpt.observability.metrics import MetricsCollector, emit_structured_log
+from asistente.plataforma.observability.metrics import MetricsCollector, emit_structured_log
 
 metrics = MetricsCollector()
 with metrics.timed_stage("interpreter"):

@@ -26,9 +26,9 @@ Salida esperada en:
 
 ### 2) Promoción controlada
 ```bash
-python -m hacienda_gpt.cli.promote_snapshot --env dev --snapshot 2026-05-19
-python -m hacienda_gpt.cli.promote_snapshot --env staging --snapshot 2026-05-19
-python -m hacienda_gpt.cli.promote_snapshot --env prod --snapshot 2026-05-19
+python -m asistente.plataforma.cli.promote_snapshot --env dev --snapshot 2026-05-19
+python -m asistente.plataforma.cli.promote_snapshot --env staging --snapshot 2026-05-19
+python -m asistente.plataforma.cli.promote_snapshot --env prod --snapshot 2026-05-19
 ```
 
 La promoción aplica quality gates por entorno (`ops/promotion_config.json`) y mueve puntero simbólico:
@@ -52,7 +52,7 @@ ln -s "$(readlink previous)" current
 ### Rollback con promoción explícita
 Si se conoce snapshot estable:
 ```bash
-python -m hacienda_gpt.cli.promote_snapshot --env <env> --snapshot <snapshot_estable>
+python -m asistente.plataforma.cli.promote_snapshot --env <env> --snapshot <snapshot_estable>
 ```
 
 ## Checklist pre-promoción a prod

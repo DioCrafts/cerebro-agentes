@@ -2,8 +2,8 @@ from fastapi.testclient import TestClient
 from langchain_core.documents import Document
 import pytest
 
-from hacienda_gpt.api.api import app, get_fact_extractor, get_qa_chain
-from hacienda_gpt.decision.fact_extractor import ExtractionPayload
+from asistente.nucleo.decision.fact_extractor import ExtractionPayload
+from asistente.plataforma.api.api import app, get_fact_extractor, get_qa_chain
 
 client = TestClient(app)
 
@@ -136,7 +136,7 @@ def test_qa_returns_envelope_with_citations() -> None:
 
 
 def test_get_case_store_is_cached() -> None:
-    from hacienda_gpt.api import api
+    from asistente.plataforma.api import api
 
     api._build_case_store.cache_clear()
     try:
@@ -146,7 +146,7 @@ def test_get_case_store_is_cached() -> None:
 
 
 def test_get_fact_extractor_is_cached() -> None:
-    from hacienda_gpt.api import api
+    from asistente.plataforma.api import api
 
     api._build_fact_extractor.cache_clear()
     try:
@@ -173,7 +173,7 @@ def test_qa_returns_503_when_chain_build_fails(monkeypatch) -> None:
     # No get_qa_chain override: exercise the real dependency, which must turn a
     # failed build (e.g. missing FAISS index / OPENAI_API_KEY) into a clean 503
     # instead of an opaque 500.
-    from hacienda_gpt.api import api
+    from asistente.plataforma.api import api
 
     def _boom():
         raise RuntimeError("missing FAISS index")
@@ -181,10 +181,11 @@ def test_qa_returns_503_when_chain_build_fails(monkeypatch) -> None:
     monkeypatch.setattr(api, "_build_qa_chain", _boom)
     r = client.post("/qa", json={"query": "¿IRPF?", "chat_history": []})
     assert r.status_code == 503
-    assert "missing FAISS index" in r.json()["detail"]
+    # A fixed message: the exception's text goes to the log only (docs/seguridad.md, S-11).
+    assert r.json()["detail"] == "El servicio de consulta no está disponible."
 
 
-def test_qa_returns_503_when_answering_fails() -> None:
+def test_qa_returns_503_when_answering_fails(caplog) -> None:
     class _BoomChain:
         def invoke(self, inputs: dict):
             raise RuntimeError("OpenAI unavailable")
@@ -196,13 +197,14 @@ def test_qa_returns_503_when_answering_fails() -> None:
         app.dependency_overrides.pop(get_qa_chain, None)
 
     assert r.status_code == 503
-    assert "OpenAI unavailable" in r.json()["detail"]
+    assert "OpenAI unavailable" not in r.json()["detail"] and "Inténtalo de nuevo" in r.json()["detail"]
+    assert "OpenAI unavailable" in caplog.text
 
 
 def test_thread_safe_singleton_caches_build_failure() -> None:
     # Negative caching: a broken build must NOT re-run the expensive factory on
     # every call (the multi-GB embedder reload storm). cache_clear() recovers.
-    from hacienda_gpt.api.api import _thread_safe_singleton
+    from asistente.plataforma.api.api import _thread_safe_singleton
 
     calls = {"n": 0}
 
