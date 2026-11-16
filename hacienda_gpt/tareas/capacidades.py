@@ -18,8 +18,9 @@ is deterministic, never sends or submits anything, and degrades to «the user do
 * ``investigacion`` — ``webs_oficiales``: official information about a procedure, ONLY under the official
   site roots in :func:`raices_oficiales` (from the modules' versioned data). Without a configured searcher
   (none on this machine: only www.boe.es is reachable) it points the user to those roots and says it did not
-  read them; a searcher's result outside the roots is dropped. (Kept here, with its injectable searcher; the
-  research capability ``capacidades/investigacion`` is separate.)
+  read them; a searcher's result outside the roots is dropped. By default the step uses
+  ``capacidades.investigacion.tareas.CapacidadInvestigacionTareas``, which adds ``investigar`` (the research
+  capability, through ``pedir``).
 
 Tests replace any capability with a fake through :class:`hacienda_gpt.tareas.motor.Motor`.
 """
@@ -246,11 +247,15 @@ class CapacidadInvestigacion:
 
 
 def capacidades_por_defecto(buscador: Buscador | None = None) -> dict[str, Capacidad]:
+    # The research capability's task view: ``webs_oficiales`` (above) plus ``investigar`` through ``pedir``
+    # (imported here: that module builds on this one).
+    from hacienda_gpt.capacidades.investigacion.tareas import CapacidadInvestigacionTareas
+
     return {
         "correo": CapacidadCorreo(),
         "navegador": CapacidadNavegador(),
         "documentos": CapacidadDocumentos(),
-        "investigacion": CapacidadInvestigacion(buscador),
+        "investigacion": CapacidadInvestigacionTareas(buscador),
     }
 
 

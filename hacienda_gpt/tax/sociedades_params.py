@@ -9,6 +9,8 @@ from typing import Any
 
 from hacienda_gpt.modulos.fiscal.calculo import sociedades_params as _modulo
 from hacienda_gpt.modulos.fiscal.calculo.sociedades_params import *  # noqa: F403
+from hacienda_gpt.modulos.fiscal.calculo.sociedades_params import _hojas as _hojas  # noqa: F401
+from hacienda_gpt.modulos.fiscal.calculo.sociedades_params import _load as _load  # noqa: F401
 
 if __name__ == "__main__":  # ``python -m`` on the old path still runs the command
     raise SystemExit(_modulo.main())

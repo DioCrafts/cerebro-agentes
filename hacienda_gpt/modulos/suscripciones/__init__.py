@@ -44,7 +44,7 @@ class ModuloSuscripciones(ModuloBase):
             eventos=GanchosEventos(tipos=(PERFIL_CAMBIADO, MODULO_ACTIVADO, FECHA_UMBRAL, CARGOS_IMPORTADOS)),
             ficheros_legales=tuple(FICHEROS_LEGALES),
             # «facturas de este emisor»: the receipts and charges the mail found for one sender.
-            capacidades=("correo.facturas_de_emisor",),
+            capacidades=("correo.facturas_de_emisor", "investigacion"),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

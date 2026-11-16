@@ -136,7 +136,7 @@ class ModuloFiscal:
             ),
             ficheros_legales=tuple(FICHEROS_LEGALES),
             # Tax documents (certificates, payslips…) are read by the documents capability.
-            capacidades=("documentos.leer_campos",),
+            capacidades=("documentos.leer_campos", "investigacion"),
         )
 
     # v1 views of the declaration (older callers and tests read them).

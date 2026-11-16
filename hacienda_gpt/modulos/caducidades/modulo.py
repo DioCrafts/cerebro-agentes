@@ -133,7 +133,7 @@ class ModuloCaducidades(ModuloBase):
             # A purchase found in the mail is proposed to this tool (the user confirms it).
             entradas={"compra": f"herramienta:{self.herramienta_de_documento}"},
             # «léeme este ticket»: the documents capability reads the upload.
-            capacidades=("documentos.leer_campos",),
+            capacidades=("documentos.leer_campos", "investigacion"),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

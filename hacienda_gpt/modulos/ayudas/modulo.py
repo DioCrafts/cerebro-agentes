@@ -574,6 +574,8 @@ class ModuloAyudas(ModuloBase):
             # Once a day, before the notices: the day's BOE calls for aid.
             tarea_diaria=_tarea_diaria,
             ficheros_legales=tuple(FICHEROS_LEGALES),
+            # Research with sources (read-only) for questions its data does not answer.
+            capacidades=("investigacion",),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

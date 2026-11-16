@@ -109,6 +109,8 @@ class ModuloHipoteca(ModuloBase):
             ficheros_legales=(*normativa.FICHEROS_LEGALES, *deduccion.FICHEROS_LEGALES, *indices.FICHEROS_LEGALES),
             # The pre-2013 main-home deduction: payments it knows, proposed to the tax module (never written).
             puentes=(PuenteAmbito(destino="fiscal", proponer=proponer_vivienda_pre2013),),
+            # Research with sources (read-only) for questions its data does not answer.
+            capacidades=("investigacion",),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

@@ -148,7 +148,7 @@ class ModuloLuz:
             # The contracted power a bill states, proposed from the mail and confirmed by the user.
             entradas={"potencia_contratada": f"hecho:{HECHO_P1}"},
             # «descarga mi consumo» (browser, Datadis) and «facturas de este emisor» (mail).
-            capacidades=("navegador.preparar_descarga_consumo", "correo.facturas_de_emisor"),
+            capacidades=("navegador.preparar_descarga_consumo", "correo.facturas_de_emisor", "investigacion"),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
