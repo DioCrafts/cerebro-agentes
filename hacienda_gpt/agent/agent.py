@@ -51,6 +51,7 @@ from hacienda_gpt.evaluacion.variantes import argumentos_proveedor, prompt_activ
 from hacienda_gpt.memoria.agente import MemoriaAgente
 from hacienda_gpt.modulos.acciones import AccionPendiente
 from hacienda_gpt.modulos.contrato import Modulo
+from hacienda_gpt.modulos.propuestas_chat import PropuestasChat
 from hacienda_gpt.planificador.agente import PLANIFICAR_TOOL
 
 logger = logging.getLogger(__name__)
@@ -252,6 +253,8 @@ class TaxAgent:
         especialistas = Coordinador.para(self._provider, ledger, modulos, emit)
         # The user's remembered decisions (hacienda_gpt/memoria): two tools and a context block, only with a case.
         memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
+        # Tax facts the household modules propose (modulos/puentes.py): a context block and `aceptar_propuesta`.
+        propuestas = PropuestasChat.para(case, modulos, query=query, chat_history=chat_history)
         toolbox = Toolbox(
             searcher=self._searcher,
             ledger=ledger,
@@ -261,10 +264,13 @@ class TaxAgent:
             extra=[
                 *(especialistas.herramientas() if especialistas is not None else ()),
                 *(memoria.herramientas() if memoria is not None else ()),
+                *(propuestas.herramientas() if propuestas is not None else ()),
             ],
         )
         if memoria is not None:
             memoria.vincular(toolbox)
+        if propuestas is not None:
+            propuestas.vincular(toolbox)
         # The active prompt variant (hacienda_gpt/evaluacion/variantes.py); by default prompts.AGENT_SYSTEM_PROMPT.
         system = prompt_activo("agente") + (CASE_TOOLS_ADDENDUM if case is not None else "")
         if especialistas is not None:
@@ -273,13 +279,22 @@ class TaxAgent:
         # The household planner's paragraph, only when its tool is offered (a case and household modules).
         if any(spec.name == PLANIFICAR_TOOL.name for spec in toolbox.specs()):
             system += PLANIFICADOR_ADDENDUM
+        bloque_propuestas = propuestas.contexto() if propuestas is not None else ""
+        if bloque_propuestas and propuestas is not None:
+            system += propuestas.addendum()
         conversation = self._provider.start(
             system=system,
             tools=toolbox.specs(),
             history=chat_history or [],  # type: ignore[arg-type]  # normalized by the provider
             user_message="\n\n".join(
                 part
-                for part in (_context_block(case), memoria.contexto() if memoria is not None else "", briefing, query)
+                for part in (
+                    _context_block(case),
+                    memoria.contexto() if memoria is not None else "",
+                    bloque_propuestas,
+                    briefing,
+                    query,
+                )
                 if part
             ),
         )

@@ -52,7 +52,8 @@ class PropuestaHecho:
     desglose: dict[str, str] = field(default_factory=dict)
 
 
-def _eur(amount: Decimal) -> str:
+def eur(amount: Decimal) -> str:
+    """«1.234,50 €» (Spanish thousands and decimal separators)."""
     text = f"{abs(amount):,.2f}".replace(",", " ").replace(".", ",").replace(" ", ".")
     return f"{text} €"
 
@@ -84,11 +85,11 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
     return PropuestaHecho(
         nombre=HECHO_VIVIENDA_PRE2013,
         valor=float(total),
-        titulo=f"Lo que pagas de hipoteca en {ejercicio}: {_eur(total)}",
+        titulo=f"Lo que pagas de hipoteca en {ejercicio}: {eur(total)}",
         explicacion=(
             f"Tu préstamo es de la vivienda habitual comprada antes del "
             f"{_fecha_larga(fundamento.fecha_limite_adquisicion)}. Según su cuadro de amortización, en {ejercicio} "
-            f"pagas {_eur(total)}{hasta}: es lo que la ley cuenta del préstamo para la deducción por vivienda "
+            f"pagas {eur(total)}{hasta}: es lo que la ley cuenta del préstamo para la deducción por vivienda "
             "habitual del régimen transitorio (la amortización, los intereses y los demás gastos de la financiación; "
             "art. 68.1 LIRPF en su redacción de 2012, al que remite la disposición transitoria 18.ª). Solo procede "
             "si ya te aplicaste esa deducción por esta vivienda en algún ejercicio anterior a 2013. Si lo "
@@ -98,7 +99,7 @@ def _hipoteca(case: CaseState, perfil: dict[str, Any], hoy: date) -> PropuestaHe
         ),
         modulo="hipoteca",
         desglose={
-            clave: _eur(importe)
+            clave: eur(importe)
             for clave, importe in importes.items()
             if importe or clave in ("capital", "intereses", "amortizaciones_anticipadas")
         },
@@ -114,7 +115,7 @@ def _limite_irpf(ejercicio: int) -> str:
     except Exception:  # no parameters for that year: the calculator will say so itself
         return ""
     porcentaje = format((v.tipo * 100).normalize(), "f").replace(".", ",")
-    return f" (cuenta como máximo {_eur(v.base_maxima)} al año por declarante, al {porcentaje} %)"
+    return f" (cuenta como máximo {eur(v.base_maxima)} al año por declarante, al {porcentaje} %)"
 
 
 _MESES = (
@@ -169,4 +170,4 @@ def propuestas_para(case: CaseState, modulos: Sequence[Modulo], *, hoy: date) ->
     return out
 
 
-__all__ = ["HECHO_VIVIENDA_PRE2013", "PUENTES", "PropuestaHecho", "ambito_de", "fuente_de", "propuestas_para"]
+__all__ = ["HECHO_VIVIENDA_PRE2013", "PUENTES", "PropuestaHecho", "ambito_de", "eur", "fuente_de", "propuestas_para"]

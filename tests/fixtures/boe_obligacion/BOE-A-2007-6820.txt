@@ -1,5 +1,5 @@
 # Extracto literal de https://www.boe.es/buscar/act.php?id=BOE-A-2007-6820 (copia descargada el 2026-11-12). Texto consolidado: «Última actualización publicada el 07/10/2026»
-# Arts. 60.5, 60 bis.3 y 61 del Reglamento del IRPF: lo que lee hacienda_gpt/tax/obligacion.py.
+# Arts. 60.5, 60 bis.3, 61, 76.1 y 80.1 del Reglamento del IRPF: lo que lee hacienda_gpt/tax/obligacion.py.
 
 Artículo 61. Obligación de declarar.
 1. Los contribuyentes estarán obligados a presentar y suscribir declaración por este Impuesto en los términos previstos en el artículo 96 de la Ley del Impuesto. A efectos de lo dispuesto en el apartado 4 de dicho artículo, estarán obligados a declarar en todo caso los contribuyentes que tengan derecho a deducción por doble imposición internacional o que realicen aportaciones a patrimonios protegidos de las personas con discapacidad, planes de pensiones, planes de previsión asegurados, planes de previsión social empresarial, seguros de dependencia o mutualidades de previsión social que reduzcan la base imponible, cuando ejerciten tal derecho.
@@ -24,3 +24,13 @@ Artículo 60. Procedimiento para la práctica de la deducción por maternidad y 
 
 Artículo 60 bis. Procedimiento para la práctica de las deducciones por familia numerosa o personas con discapacidad a cargo y su pago anticipado.
 3.º Cuando el importe de cada una de las deducciones no se correspondiera con el de su abono anticipado, los contribuyentes deberán regularizar tal situación en su declaración por este Impuesto. En el supuesto de contribuyentes no obligados a declarar, tal regularización se efectuará mediante el ingreso de las cantidades percibidas en exceso en el lugar, forma y plazo que determine la Ministra de Hacienda.
+
+Artículo 76. Obligados a retener o ingresar a cuenta.
+1. Con carácter general, estarán obligados a retener o ingresar a cuenta, en cuanto satisfagan rentas sometidas a esta obligación:
+a) Las personas jurídicas y demás entidades, incluidas las comunidades de propietarios y las entidades en régimen de atribución de rentas.
+b) Los contribuyentes que ejerzan actividades económicas, cuando satisfagan rentas en el ejercicio de sus actividades.
+c) Las personas físicas, jurídicas y demás entidades no residentes en territorio español, que operen en él mediante establecimiento permanente.
+
+Artículo 80. Importe de las retenciones sobre rendimientos del trabajo.
+3.º El 35 por ciento para las retribuciones que se perciban por la condición de administradores y miembros de los Consejos de Administración, de las Juntas que hagan sus veces y demás miembros de otros órganos representativos.
+4.º El 15 por ciento para los rendimientos derivados de impartir cursos, conferencias, coloquios, seminarios y similares, o derivados de la elaboración de obras literarias, artísticas o científicas, siempre que se ceda el derecho a su explotación.

@@ -33,7 +33,7 @@ proposal is recomputed from the case, never stored anywhere else.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from datetime import UTC, date, datetime
 from decimal import Decimal
 import logging
@@ -45,9 +45,9 @@ from hacienda_gpt.agent.providers.base import ToolSpec
 from hacienda_gpt.agent.tools import ExtraTool, ToolOutcome
 from hacienda_gpt.decision.schemas import CaseState, Fact, FactValueType
 from hacienda_gpt.memoria import reloj
-from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, fecha_es, normalizar_texto
+from hacienda_gpt.memoria.modelo import BLOQUEAN_AVISOS, cubre, evaluar, normalizar_texto
 from hacienda_gpt.modulos.contrato import Modulo
-from hacienda_gpt.modulos.puentes import PUENTES, PropuestaHecho, ambito_de, fuente_de, propuestas_para
+from hacienda_gpt.modulos.puentes import PUENTES, PropuestaHecho, ambito_de, eur, fuente_de, propuestas_para
 
 logger = logging.getLogger(__name__)
 
@@ -150,21 +150,19 @@ def _texto(mensaje: Any) -> str:
 
 
 def _formas_de_importe(valor: float) -> set[str]:
-    """How a message may print the amount: «5.500,50», «5500,50», «5.500,5» (spaces removed before matching)."""
+    """How a message may print the amount: «5.500,50», «5500,50», «5 500,50», «5.500,5» («5.500» if no cents)."""
     importe = Decimal(str(valor)).quantize(Decimal("0.01"))
     entero, _, centimos = f"{importe:.2f}".partition(".")
-    agrupado = f"{int(entero):,}".replace(",", ".")
-    formas = {f"{agrupado},{centimos}", f"{entero},{centimos}"}
-    if centimos.endswith("0"):
-        formas |= {f"{agrupado},{centimos[0]}", f"{entero},{centimos[0]}"}
-    if centimos == "00":
-        formas |= {agrupado, entero}
-    return formas
+    miles = f"{int(entero):,}"
+    enteros = {entero, miles.replace(",", "."), miles.replace(",", " ")}
+    decimales = {centimos} | ({centimos[0]} if centimos.endswith("0") else set())
+    formas = {f"{e},{d}" for e in enteros for d in decimales}
+    return formas | (enteros if centimos == "00" else set())
 
 
 def muestra_la_cifra(texto: str, propuesta: PropuestaHecho) -> bool:
     """Does ``texto`` show the proposal's amount (as a whole number, not part of another one)?"""
-    plano = re.sub(r"[\s  ]", "", texto)
+    plano = re.sub(r"[\u00a0\u202f]", " ", texto)
     return any(
         re.search(r"(?<![\d.,])" + re.escape(forma) + r"(?![\d]|[.,]\d)", plano)
         for forma in _formas_de_importe(propuesta.valor)
@@ -255,19 +253,19 @@ class PropuestasChat:
                     return decision
         return None
 
-    def _decisiones(self) -> list[Any]:
+    def _decisiones(self) -> list[Any] | None:
         from hacienda_gpt.memoria.servicio import decisiones_del_caso
 
         try:
             return decisiones_del_caso(settings.DECISION_STATE_DB_PATH, self._case.case_id)
         except Exception:  # unreadable memory: offer nothing rather than re-offer a rejected proposal
             logger.exception("Decision memory unreadable for case %s", self._case.case_id)
-            return [None]
+            return None
 
     def ofrecibles(self) -> list[PropuestaHecho]:
         """The proposals not held back by a decision of the user."""
         decisiones = self._decisiones()
-        if decisiones == [None]:
+        if decisiones is None:
             return []
         hechos = {f.name: f.value for f in self._caso().facts}
         return [p for p in self._propuestas if self._retenida_por(p, decisiones, hechos) is None]
@@ -297,10 +295,8 @@ class PropuestasChat:
         lineas: list[str] = []
         for propuesta in self.ofrecibles():
             desglose = ", ".join(f"{k.replace('_', ' ')} {v}" for k, v in propuesta.desglose.items())
-            from hacienda_gpt.modulos.puentes import _eur
-
             lineas.append(
-                f"- puente `{propuesta.modulo}` → dato `{propuesta.nombre}` = {_eur(Decimal(str(propuesta.valor)))}"
+                f"- puente `{propuesta.modulo}` → dato `{propuesta.nombre}` = {eur(Decimal(str(propuesta.valor)))}"
                 f"{self._cita(propuesta)} ({desglose}); para {_PARA_QUE.get(propuesta.nombre, propuesta.nombre)}. "
                 f"Ámbito de un «no»: `{ambito_de(propuesta)}`. "
                 + ("Ya ofrecida en esta conversación." if self.ya_ofrecida(propuesta) else "Aún no ofrecida.")
@@ -376,9 +372,7 @@ class PropuestasChat:
 
 
 def _cifra(propuesta: PropuestaHecho) -> str:
-    from hacienda_gpt.modulos.puentes import _eur
-
-    return _eur(Decimal(str(propuesta.valor)))
+    return eur(Decimal(str(propuesta.valor)))
 
 
 def _error(mensaje: str) -> ToolOutcome:
@@ -390,6 +384,5 @@ __all__ = [
     "ADDENDUM",
     "PropuestasChat",
     "es_confirmacion",
-    "fecha_es",
     "muestra_la_cifra",
 ]

@@ -240,8 +240,9 @@ def test_state_gift_has_no_kinship_reduction_and_business_is_a_declared_amount()
     empresa = _isd(modo="donacion", parentesco="hijo", edad=30, valor_recibido=100000, valor_empresa_familiar=100000)
     # 95 % × 100.000 = 95.000 → base 5.000 × 7,65 % = 382,50.
     assert empresa.cuota_a_ingresar == D("382.50")
-    assert _avisa(empresa, "sin comprobar ninguno de sus requisitos")
+    assert _avisa(empresa, "comprobando solo que el adquirente es de «cónyuge, descendientes o adoptados»")
     assert _avisa(empresa, "donante tenga 65 años o más")
+    assert _avisa(empresa, "se ha aplicado sin comprobar: Que a la empresa, el negocio o las participaciones")
 
 
 def test_unknown_community_falls_back_to_state_rules_and_says_so() -> None:

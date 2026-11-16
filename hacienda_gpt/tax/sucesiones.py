@@ -583,7 +583,7 @@ def _reduccion_seguro(
 # Who must be missing for a subsidiary class of acquirers (AdquirenteBienes.solo_si_no_hay): the input that says
 # whether there is someone, and how to name them to the user.
 _AUSENCIAS: dict[str, tuple[str, str]] = {
-    "descendientes": ("hay_descendientes_del_causante", "descendientes (ni adoptados) del causante o donante"),
+    "descendientes": ("hay_descendientes_del_causante", "descendientes ni adoptados del causante o donante"),
     "adquirentes_grupos_I_II": ("hay_adquirentes_grupos_i_ii", "otros adquirentes de los grupos I o II"),
     "familiares_adquirentes_hasta_cuarto_grado": (
         "hay_familiares_adquirentes_hasta_cuarto_grado",
@@ -645,9 +645,10 @@ def _adquirente(
         if not pertenece:
             afines = _AFINES.get(caso.parentesco or "", frozenset())
             if clase.afinidad_sin_precisar and afines & set(clase.parentescos):
+                cuando = f" y solo cuando no hay {_AUSENCIAS[clase.solo_si_no_hay][1]}" if clase.solo_si_no_hay else ""
                 motivos.append(
-                    f"la ley habla de «{clase.texto}» sin decir si incluye a los parientes por afinidad, como "
-                    f"{quien}; no se ha aplicado (si la Administración te la reconoce, declárala como importe en "
+                    f"la ley habla de «{clase.texto}»{cuando}, sin decir si incluye a los parientes por afinidad, "
+                    f"como {quien}; no se ha aplicado (si la Administración te la reconoce, declárala como importe en "
                     "otras_reducciones)"
                 )
             continue
