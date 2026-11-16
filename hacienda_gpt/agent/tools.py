@@ -1077,13 +1077,15 @@ class Toolbox:
             ISD_TOOL,
             BENEFITS_TOOL,
             OPTIMIZE_TOOL,
-            PLANIFICAR_TOOL,
             CALENDAR_TOOL,
         ]
         if self._graph is not None:
             specs.append(VALIDITY_TOOL)
         if self.case is not None:
             specs.extend([READ_CASE_TOOL, RECORD_FACTS_TOOL, EVALUATE_RULES_TOOL])
+            # The household planner crosses modules: offered with a case when household modules are on.
+            if any(spec.name.startswith("consultar_") for spec, _handler in self._extra):
+                specs.append(PLANIFICAR_TOOL)
         specs.extend(spec for spec, _handler in self._extra)
         if self._allowed is not None:
             specs = [spec for spec in specs if spec.name in self._allowed]

@@ -28,9 +28,18 @@ def _run(**kwargs) -> ScriptedProvider:  # type: ignore[no-untyped-def]
     return provider
 
 
-def test_integrated_prompts_are_pinned_to_their_version() -> None:
-    # Editing hacienda_gpt/agent/prompts.py without registering a new version must fail here.
+def test_the_prompt_registry_and_the_code_agree() -> None:
+    """prompts/registro.json records the content hash of every prompt in hacienda_gpt/agent/prompts.py.
+
+    It is not frozen text: when a prompt is edited, register the new version (it gets the next id and its hash)
+    with `python -m hacienda_gpt.cli.evaluacion prompts registrar --rol <rol> --informe <informe>` after
+    evaluating it, or `prompts sincronizar --motivo "<por qué no se evaluó>"`. This test only fails while the
+    registry and the code disagree.
+    """
     assert v.comprobar_integrados() == []
+    registro = v.cargar_registro()
+    for rol in v.ROLES:
+        assert registro[rol][-1].huella == v.huella(v.texto_integrado(rol))
     assert v.texto_integrado("agente") == AGENT_SYSTEM_PROMPT
     assert v.texto_integrado("modulos") == MODULES_ADDENDUM
     assert v.texto_integrado("especialista") == SPECIALIST_SYSTEM_PROMPT
@@ -39,7 +48,7 @@ def test_integrated_prompts_are_pinned_to_their_version() -> None:
 def test_a_changed_prompt_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(v._prompts, "AGENT_SYSTEM_PROMPT", AGENT_SYSTEM_PROMPT + " ")
     (problema,) = v.comprobar_integrados()
-    assert "agente@1" in problema and "promote" in problema
+    assert v.INTEGRADOS["agente"].version in problema and "promote" in problema and "sincronizar" in problema
 
 
 def test_without_an_active_file_the_agent_runs_exactly_as_before(variante_activa_aislada: Path) -> None:
@@ -102,3 +111,25 @@ def test_case_addendum_still_follows_the_active_prompt() -> None:
 
     case = CaseState(case_id="c1", user_id="u", jurisdiction="ES", tax_period="2025")
     assert _system(_run(case=case)) == AGENT_SYSTEM_PROMPT + CASE_TOOLS_ADDENDUM
+
+
+def test_the_active_variant_references_its_prompts_by_content(
+    variante_activa_aislada: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    candidata = v.Variante(id="c", prompts={"agente": "agente@c"}, textos={"agente@c": "Texto evaluado."})
+    v.escribir_activa(candidata, frente_a="base", resumen=None)
+    activa = v.variante_activa()
+    assert activa.huellas["agente"] == v.huella("Texto evaluado.")
+    assert activa.huellas["modulos"] == v.huella(MODULES_ADDENDUM)
+    assert v.desajustes(activa) == []
+
+    # An embedded text that is not the evaluated one is refused (the agent then uses the integrated text).
+    manipulada = activa.model_copy(update={"textos": {"agente@c": "Otro texto."}})
+    with pytest.raises(v.VarianteInvalidaError, match="no es el que se evaluó"):
+        v.texto_prompt(manipulada, "agente")
+
+    # prompts.py changing after the evaluation is reported, never fatal: the code's text is used.
+    monkeypatch.setattr(v._prompts, "MODULES_ADDENDUM", MODULES_ADDENDUM + "\nNuevo: {especialistas}")
+    (aviso,) = v.desajustes(activa)
+    assert "«modulos»" in aviso and "vuelve a evaluarla" in aviso
+    assert v.texto_prompt(activa, "modulos").endswith("Nuevo: {especialistas}")

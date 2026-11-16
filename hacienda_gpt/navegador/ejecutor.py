@@ -223,7 +223,7 @@ class Ejecutor:
         if self.cancelar.is_set():
             raise _CanceladoError("detenida por el usuario")
         if not self.activo():
-            raise _CanceladoError("el agente con navegador se ha desactivado")
+            raise _CanceladoError("el agente con navegador se ha desactivado o has retirado tu consentimiento")
 
     def _ruta(self, route: Any, request: Any) -> None:
         permitido, motivo = self.politica.decidir(request.url, request.method)
@@ -358,7 +358,8 @@ class Ejecutor:
         pagina.goto(url, wait_until="domcontentloaded")
         if self.usuario_simulado is not None:
             self.usuario_simulado(pagina)
-        limite = time.monotonic() + (self.espera_login_s if self.modo == "ventana" else ESPERA_SESION_S)
+        espera = self.espera_login_s if self.modo == "ventana" else min(self.espera_login_s, ESPERA_SESION_S)
+        limite = time.monotonic() + espera
         marcador = pagina.locator(login.hecho_cuando)
         while time.monotonic() < limite:
             self._comprobar_parada()

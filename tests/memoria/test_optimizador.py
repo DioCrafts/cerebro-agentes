@@ -153,3 +153,16 @@ def test_ya_lo_hice_is_not_proposed_again_and_the_plan_asks_for_the_amount(db) -
     plan = optimizar_con_memoria(case_id="c1", db_path=db, ejercicio=2026, fecha=HOY, facts=_hechos(case))
     assert plan.palancas == []
     assert "que ya lo habías hecho" in plan.supuestos[0] and "indica el importe en tus datos" in plan.supuestos[0]
+
+
+def test_rejecting_loss_harvesting_leaves_the_losses_out(db) -> None:
+    preferencias = json.dumps({"perdidas_latentes": [{"descripcion": "Fondo", "importe": 900}]})
+    case = make_case("c1", ganancias_patrimoniales=3000, preferencias_optimizacion=preferencias, **SALARIED)
+    antes = optimizar_desde_hechos(ejercicio=2026, fecha=HOY, facts=_hechos(case))
+    assert "perdidas_contribuyente" in {p.id for p in antes.palancas}
+
+    registrar(db, case_id="c1", ambito="fiscal:perdidas", tipo="rechazo", razon="no vendo el fondo", fuente="chat")
+    plan = optimizar_con_memoria(case_id="c1", db_path=db, ejercicio=2026, fecha=HOY, facts=_hechos(case))
+    assert "perdidas_contribuyente" not in {p.id for p in plan.palancas}
+    assert not any(nd.id.startswith("perdidas") for nd in plan.no_disponibles)
+    assert any("no vendo el fondo" in s for s in plan.supuestos)

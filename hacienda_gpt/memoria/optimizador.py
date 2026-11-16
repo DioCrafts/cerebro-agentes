@@ -1,7 +1,7 @@
 """The user's decisions as constraints of the tax optimiser.
 
 :func:`optimizar_con_memoria` is :func:`hacienda_gpt.tax.optimizador.optimizar_desde_hechos` for a case, with
-the case's rejections and restrictions in force turned into :class:`~hacienda_gpt.tax.optimizador.Restricciones`
+the case's rejections, restrictions and «ya lo hice» in force turned into :class:`~hacienda_gpt.tax.optimizador.Restricciones`
 (the optimiser itself is unchanged):
 
 =======================================  ====================================================================

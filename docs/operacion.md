@@ -1118,3 +1118,87 @@ uv run python -m hacienda_gpt.cli.eventos reconciliar         # recalcula los te
 | `EVENTOS_BACKOFF_SEGUNDOS` | `30` | Primera espera tras un fallo (se dobla en cada intento, máx. 1 h). |
 | `EVENTOS_ARRIENDO_SEGUNDOS` | `300` | Tiempo tras el que una entrega reclamada por un trabajador caído se retoma. |
 | `EVENTOS_ATRASO_MAX_MINUTOS` | `30` | Atraso a partir del cual `ops doctor` avisa (`0`: nunca). |
+
+## Evaluación continua
+
+Código en `hacienda_gpt/evaluacion/`, órdenes en `python -m hacienda_gpt.cli.evaluacion` (resumen en el README,
+«Evaluación continua»).
+
+### Sin modelo (cada PR)
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion validar          # esquema, cifras esperadas, registro de prompts
+uv run python -m hacienda_gpt.cli.evaluacion run --reproduccion   # guiones de referencia por el agente real
+```
+
+`validar` vuelve a ejecutar cada calculadora que nombra un caso. Si una cifra ya no coincide con la que tenía al
+escribirse el caso («Deriva»), no es un fallo: la expectativa siempre es la cifra de hoy de la calculadora (puede
+haber cambiado un parámetro leído del BOE), pero conviene mirar por qué (`--estricto` la convierte en error).
+
+### Con modelo
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion run --out reports/evaluacion/base.json            # variante activa
+uv run python -m hacienda_gpt.cli.evaluacion run --config candidata.json --baseline reports/evaluacion/base.json
+uv run python -m hacienda_gpt.cli.evaluacion promote --config candidata.json --presupuesto-usd 10
+```
+
+- Una **variante** es un JSON: `{"id": "breve", "prompts": {"agente": "agente@breve"}, "modelo": "…"}`; el texto
+  de `agente@breve` va en `prompts/agente@breve.txt` junto al fichero o en `textos`. Los *prompts* `modulos` y
+  `especialista` son plantillas y deben conservar sus campos (`{especialistas}`, `{nombre}`, `{instrucciones}`).
+- El agente evaluado se mide con los MISMOS propósitos que en producción (`agente`, `verificador`,
+  `especialista:<clave>`), así que la tabla de enrutado elige el mismo modelo que el asistente desplegado; el juez
+  usa el propósito `evaluacion-juez` y el modelo configurado (el mismo para base y candidata). El gasto queda en
+  `/usage` con el caso `eval:<ejecución>:<caso>:<repetición>`; rigen los límites diarios y `--presupuesto-usd`.
+  Un informe que se quedó sin presupuesto está marcado como incompleto y no sirve para promover.
+- Sin índice FAISS (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
+  pueden aprobar; los de calculadoras y módulos sí.
+- `promote` escribe `hacienda_gpt/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si
+  la candidata no empeora ninguna categoría crítica (`critica` en `casos/suite.json`) y mejora en conjunto. La
+  variante activa guarda la huella de cada texto evaluado: si `prompts.py` cambia después, `variante` y `validar`
+  avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese fichero.
+
+### Cambiar un prompt de `hacienda_gpt/agent/prompts.py`
+
+El registro `hacienda_gpt/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado; la
+prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el código no coinciden. Al cambiar un
+*prompt*:
+
+1. Evalúa el texto nuevo como candidata (`promote` con una variante que lo lleve en un fichero de *prompts*).
+2. Copia el texto a `prompts.py` y regístralo con el informe de la candidata:
+   `prompts registrar --rol agente --informe reports/evaluacion/promote-…-candidata-….json` (comprueba que el
+   informe evaluó exactamente ese texto, que mejora y que no empeora lo crítico). Borra después la variante activa
+   si ya no hace falta.
+3. Si no se puede evaluar (sin clave de modelo), `prompts sincronizar --motivo "…"` registra todos los que han
+   cambiado y deja el motivo escrito en el registro, a la vista en la revisión del PR.
+
+### Valoraciones de los usuarios
+
+```bash
+uv run python -m hacienda_gpt.cli.evaluacion senales                  # recuentos, sin contenido
+uv run python -m hacienda_gpt.cli.evaluacion casos estadisticas
+uv run python -m hacienda_gpt.cli.evaluacion casos pendientes
+uv run python -m hacienda_gpt.cli.evaluacion casos ver fb_…
+uv run python -m hacienda_gpt.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
+# Edita el borrador: sustituye los datos sensibles por valores ficticios que reproduzcan el caso, ajusta
+# categoría y expectativas (una cifra esperada SIEMPRE es una receta de calculadora), añade un guion si quieres
+# que se reproduzca en CI.
+uv run python -m hacienda_gpt.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \
+    --confirmo-anonimizado --revisor "Nombre"
+uv run python -m hacienda_gpt.cli.evaluacion casos descartar fb_…
+```
+
+- El contenido de un caso guardado está en la auditoría del expediente del usuario (evento
+  `evaluacion_valoracion`): quien opera la revisión lee datos personales que el usuario aceptó compartir para
+  esto; hazlo solo con ese fin. Las filas de revisión (`evaluacion_feedback`, sin texto de la conversación) están
+  en la misma base que los expedientes y se borran con el expediente por un *trigger* de SQLite.
+- `promover` rechaza el caso si encuentra algo con forma de correo, DNI/NIE, IBAN, CUPS, tarjeta o teléfono, pero
+  no detecta nombres ni direcciones: esa revisión es tuya. El usuario ve en su exportación que su caso se
+  promovió o descartó (evento `evaluacion_revision`).
+
+### Variables de entorno
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `EVALUACION_VARIANTE_ACTIVA_PATH` | `hacienda_gpt/evaluacion/variante_activa.json` | Variante que ejecuta el agente; sin fichero, la de siempre. |
+| `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

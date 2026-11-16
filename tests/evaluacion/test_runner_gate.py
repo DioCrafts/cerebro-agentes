@@ -70,6 +70,13 @@ def test_a_model_run_is_metered_and_reported(casos: list[CasoEvaluacion], tmp_pa
     assert all(r.ejecucion.coste_usd and r.ejecucion.llamadas_modelo >= 2 for r in informe.casos)
     assert informe.resumen.por_categoria["modulo"].tasa == pytest.approx(2 / 3, abs=1e-3)
     assert informe.huellas_prompts["agente"] and informe.prompts["agente"] == VARIANTE_BASE.prompts["agente"]
+    # Metered with the production purposes (routing applies as in the deployed assistant).
+    from hacienda_gpt.ops.consumo import hoy_madrid
+
+    entorno = _entorno(tmp_path, {})
+    _run(casos[:1], VARIANTE_BASE, entorno)
+    propositos = {a.clave for a in entorno.consumo.resumen(desde=hoy_madrid(), hasta=hoy_madrid()).por_proposito}
+    assert {"agente", "verificador"} <= propositos
     texto = formatear(informe)
     assert "caducidades-dni" in texto and "Coste:" in texto and "(crítica)" in texto
 
@@ -99,6 +106,11 @@ def test_judge_counts_only_with_a_literal_quote(tmp_path: Path) -> None:
 
     aprobado = _run([caso], VARIANTE_BASE, _entorno(tmp_path, {}, juez=juez("me ocupo de tus impuestos")))
     assert aprobado.casos[0].aprobado and aprobado.resumen.juez_sin_cita == 0
+    from hacienda_gpt.ops.consumo import hoy_madrid
+
+    consumo = ConsumoStore(str(tmp_path / "consumo.sqlite3"))
+    propositos = {a.clave for a in consumo.resumen(desde=hoy_madrid(), hasta=hoy_madrid()).por_proposito}
+    assert "evaluacion-juez" in propositos
     inventada = _run([caso], VARIANTE_BASE, _entorno(tmp_path, {}, juez=juez("esta pregunta no es de mi ámbito")))
     (resultado,) = inventada.casos
     assert not resultado.aprobado and inventada.resumen.juez_sin_cita == 1

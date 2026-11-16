@@ -368,3 +368,13 @@ def test_consent_without_accounts_is_the_operators_choice(monkeypatch: pytest.Mo
             return {}
 
     assert tareas.consentimiento("u1", Auth()) is False
+
+
+def test_switching_the_module_off_stops_a_running_task(env: Env) -> None:
+    ana = env.register("ana@example.com")
+    case_id = env.new_case(ana)
+    tarea_id = _crear(env, ana, case_id, iniciar=True, modo="ventana", **ACUSE).json()["id"]  # waits for the login
+    assert env.client.put("/me/modulos/navegador", json={"activo": False}, headers=ana).status_code == 200
+    tarea = env.esperar(tarea_id, ana)
+    assert tarea["estado"] == "cancelada" and "desactivado" in tarea["mensaje"]
+    assert not any(ruta.startswith("/privado/") for _s, _m, ruta in env.sitios.registro.peticiones)

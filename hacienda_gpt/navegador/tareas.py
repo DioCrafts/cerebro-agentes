@@ -522,7 +522,9 @@ class GestorTareas:
                 cancelar=tarea.cancelar,
                 cerrar=tarea.cerrar,
                 reparador=servicios.reparador,
-                activo=lambda: bool(settings.NAVEGADOR_ACTIVO),
+                # Checked between steps: the kill switch, and the user's consent (switching the module off
+                # stops a running task too).
+                activo=lambda: bool(settings.NAVEGADOR_ACTIVO) and consentimiento(tarea.user_id, servicios.auth),
                 **self.opciones_ejecutor,
             )
             sesion = None

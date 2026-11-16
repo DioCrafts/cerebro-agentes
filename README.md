@@ -458,9 +458,10 @@ rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `
   semanal se construye con lo guardado, así que nunca lista lo rechazado; al registrar una decisión se quitan
   en el acto los avisos que cubre (y el resumen de la semana si los listaba, que se rehace).
 - **Optimizador fiscal:** `memoria.optimizador.optimizar_con_memoria` (lo usan `/optimize`,
-  `optimizar_impuestos` y el plan de fin de ejercicio) convierte los rechazos y restricciones en vigor en
-  `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el primero
-  en `supuestos`, con las palabras y la fecha; quita las entradas de «no disponibles» que invitarían a hacerlo.
+  `optimizar_impuestos` y el plan de fin de ejercicio) convierte los rechazos, restricciones y «ya lo hice» en
+  vigor en `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el
+  primero en `supuestos`, con las palabras y la fecha (con «ya lo hice», pide el importe para el cálculo);
+  quita las entradas de «no disponibles» que invitarían a hacerlo.
   Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Limitación: el
   optimizador no tiene restricción para excluir una **modalidad de declaración**; si el usuario rechazó la
   conjunta y el plan óptimo la usa, el plan lo dice en `avisos` y `supuestos` en lugar de ocultarlo (cambio
@@ -477,6 +478,45 @@ rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `
 `GET /me/export` (`decisiones` de cada expediente, con su historial) y se borran con el expediente (un
 *trigger* sobre `case_states`) y con la cuenta; olvidar una decisión borra sus palabras del historial
 (`secure_delete`). Pruebas: `tests/memoria/`.
+
+### Agente con navegador
+
+`hacienda_gpt/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
+su control**. Dos usos: (1) descargar el CSV horario de **Datadis** y pasarlo al importador del módulo de luz
+(`luz_importar_consumo`, por la misma vía que una herramienta de módulo); (2) **preparar** un trámite en una
+sede electrónica y detenerse **antes** de «Firmar y enviar». Es la función con más riesgo de la aplicación, así
+que está construida para no poder hacer daño:
+
+| Garantía | Cómo se cumple | Prueba |
+|---|---|---|
+| **Credenciales** | El agente nunca inicia sesión. Modo `ventana`: Chromium se abre **con ventana** en el equipo que ejecuta el servicio (instalación personal) y el usuario entra él mismo (contraseña, Cl@ve, certificado); el agente no hace capturas ni lee la página mientras espera la marca de «sesión iniciada». Modo `sesion`: el usuario entrega para esa tarea una sesión que abrió él (`storage_state` de Playwright); se filtra a los sitios de la tarea, va directa al contexto del navegador y se descarta con él. Nada de esto se guarda, se registra ni se envía a un modelo. El guion no puede apuntar a campos de contraseña/PIN/tarjeta y el ejecutor se niega a escribir en ellos. | `tests/navegador/test_ejecutor.py` (`…own_login`, `…handed_over…`, `…password_field…`, `…reads_nothing_of_the_login_page`) |
+| **Lista de sitios** | Cada tarea declara sus orígenes; el contexto intercepta **todas** las peticiones (`route`) y aborta las de cualquier otro origen (rastreadores, CDN, enlaces externos, redirecciones). Descargas solo del tipo y tamaño declarados (CSV ≤ 5 MB). | `…navigation_outside…`, `…unexpected_downloads…` |
+| **Nada que cambie estado** | No existe ningún paso que envíe, firme, pague o acepte: `pulsar` rechaza textos como «Enviar/Firmar/Pagar/Aceptar» y botones *submit*; y, mientras trabaja el agente, la red es **solo lectura** (cualquier POST se aborta en el navegador aunque algo fallara antes). El último paso de un trámite (`detener`) localiza «Firmar y enviar», hace una captura y un resumen de lo que se enviaría, **no lo pulsa** y deja una acción pendiente (`navegador_presentar_tramite`, `efecto="actua"`) cuya confirmación **no presenta nada**: en esta fase presentar, firmar y pagar no están implementados. En modo `ventana`, al terminar, la ventana queda para el usuario (que puede presentarlo él); el agente ya no ejecuta nada. | `…no_form_can_be_submitted…`, `…stops_before_signing`, `test_tareas_api.py::…pending_action_that_submits_nothing` |
+| **Determinismo** | Cada tarea es un guion declarativo y versionado (`navegador/guiones/*.json`, mismo sobre que las specs de formatos). Un modelo solo puede **proponer** un selector nuevo si la página cambió (opcional, `NAVEGADOR_REPARAR_SELECTORES`); se usa solo si una puerta determinista lo acepta en la página real (un único elemento, mismo `name`, etiqueta literal, nunca un control que cambie algo) y queda como propuesta en la vigilancia de formatos para que la revise una persona (`vigilancia.aplicar_reparacion`). | `test_seguridad.py`, `…repaired_selector…` |
+| **Vigilancia de formatos** | Cada guion es una fuente `nav_<tarea>`: un paso que no encuentra su elemento es un fallo grave (`ops formatos status`, `ops doctor`). No se guardan muestras de páginas privadas. | `…broken_page_is_reported…` |
+| **Minimización** | Capturas solo en memoria y solo para la tarea (se descartan al cerrarla o a los 30 min). En el expediente queda que la tarea empezó y terminó, sus pasos y los sitios bloqueados, **sin valores**. Si un paso falla se guarda un esqueleto **anonimizado** de la página (etiquetas genéricas, nada escrito, datos personales enmascarados) 30 días, y se borra con el expediente o la cuenta. | `…without values`, `…erased_with_the_account` |
+| **Interruptores** | `NAVEGADOR_ACTIVO` (por defecto **false**: nada arranca y la API responde 503); consentimiento por usuario = activar el módulo «Agente con navegador» él mismo (con cuentas, un valor por defecto no cuenta) + aceptar el texto vigente en cada tarea; límites: una tarea a la vez por usuario, `NAVEGADOR_MAX_TAREAS_DIA` (6) en 24 h, `NAVEGADOR_MAX_SIMULTANEAS` (2) en el servicio; «Detener» corta entre pasos. | `…kill_switch…`, `…consent…`, `…rate_limits…` |
+
+**Uso.** En la interfaz, botón «Navegador» (solo aparece si el operador lo activó): eliges la tarea, rellenas
+fechas/CUPS o los datos del trámite, lees y aceptas lo que hará, y pulsas «Empezar»; ves los pasos en vivo con la
+última captura, y puedes detenerla. En el chat, `navegador_descargar_consumo_datadis` solo **prepara** la tarea
+(no abre nada hasta que el usuario pulsa «Empezar»). API: `GET /navegador/estado`, `POST /navegador/tareas`,
+`POST /navegador/tareas/{id}/iniciar|detener|cerrar`, `GET /navegador/tareas[/{id}[/captura]]`.
+
+**Modo ventana (con pantalla).** Pensado para una instalación personal: el servicio y el navegador corren en el
+ordenador del usuario. Se abre una ventana de Chromium con la página de acceso; el usuario inicia sesión como
+siempre (Cl@ve, certificado o usuario y contraseña de Datadis) y, en cuanto aparece la marca de «sesión iniciada»
+del guion, el agente sigue solo (puede verse en la propia ventana). Sin pantalla (un servidor) usa el modo
+`sesion` o `xvfb-run` para probar. `NAVEGADOR_CHROMIUM` indica el ejecutable si no es el que instala Playwright.
+
+**Qué no se ha probado contra la realidad.** Desde la máquina de desarrollo no se llega a datadis.es ni a ninguna
+sede: los guiones y las simulaciones locales (`tests/navegador/simulacion.py`, páginas en `tests/navegador/paginas/`)
+reproducen los **flujos** documentados, no las páginas reales. El guion de Datadis está marcado «sin probar en el
+sitio real» y la sede es una demostración (`*.ejemplo.invalid`, solo se ofrece si `NAVEGADOR_ORIGENES_SUSTITUTOS`
+la apunta a sitios locales). La primera ejecución real que no encuentre un elemento fallará sin hacer nada y lo
+avisará la vigilancia de formatos. Para probarlo a mano: `python -m tests.navegador.simulacion` (imprime el valor
+de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las pruebas con navegador necesitan Chromium
+(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose.
 
 ---
 
@@ -835,6 +875,93 @@ Respuesta (`PlanOptimo`, recortada):
 Los importes son cadenas decimales (euros con céntimos); `ahorro_marginal` de las
 palancas no suma `ahorro_total` en general, y `ahorro_aislado` puede ser negativo
 (una palanca que por sí sola empeora y dentro del plan ahorra).
+
+### Planificador del hogar
+
+«Tengo 20.000 €: ¿amortizo la hipoteca, aporto al plan de pensiones o los guardo?». El planificador
+(`hacienda_gpt/planificador/`) reparte de forma **determinista** una cantidad (o un excedente mensual hasta
+diciembre) entre las palancas del hogar y calcula sus interacciones con cada módulo; el agente solo formula el
+problema (importe, horizonte, colchón, rentabilidad alternativa, palancas descartadas).
+
+| Palanca | Quién la calcula | Naturaleza |
+|---|---|---|
+| Amortizar la hipoteca, reduciendo plazo o cuota | módulo de hipoteca: cuadro (`calculo.py`) y comisión máxima legal (`comisiones.py`) | ahorro definitivo (intereses), irreversible |
+| Aportar al plan de pensiones de cada cónyuge | optimizador fiscal (`tax/optimizador.py`) | diferimiento: tributa al rescatar (art. 17.2.a).3.ª LIRPF) |
+| Donativo dentro del presupuesto | optimizador fiscal (destino y donante que más deducen) | requiere gastar |
+| Mantener líquido (con colchón de emergencia) | el resto | — |
+
+**Objetivo**, explícito: la **posición neta al final del horizonte** (1 a 30 años) frente a dejar todo el dinero
+líquido a la **rentabilidad alternativa que diga el usuario** (aritmética, nunca consejo de inversión):
+IRPF ahorrado este año (el de la combinación, con la forma de declarar más barata) + cambio de la deducción por
+vivienda de los años siguientes + intereses ahorrados en el horizonte − comisión − rendimiento que daría ese
+dinero + rendimiento de la cuota que se deja de pagar − lo donado − penalización por quedar bajo el colchón (o el
+colchón como límite, por defecto). El IRPF se nota al declarar (30 de junio del año siguiente) y todo se lleva a la
+fecha del horizonte con la rentabilidad alternativa (también en euros de hoy). Las aportaciones a pensiones se
+muestran en **dos vistas**: diferimiento (el ahorro de hoy) y ahorro definitivo (descontando el impuesto al
+rescatar, al tipo que diga el usuario o, si no lo dice, al mismo tipo al que ahorra hoy); la búsqueda maximiza la
+elegida (`valorar_pensiones`; «definitivo» por defecto si se da `tipo_rescate_pct`). Ninguna cifra de dos módulos se
+suma sin haber calculado la combinación: cada parte sale del calculador de su módulo sobre el escenario del reparto.
+
+**Interacciones calculadas** (solo donde la norma las establece):
+- **Deducción por vivienda anterior a 2013**: si consta `pagos_vivienda_habitual_pre2013` o el préstamo dice
+  `adquisicion_antes_2013` (entonces se usa la cifra que el puente `modulos/puentes.py` propone: lo pagado en el año
+  según el cuadro), lo amortizado se suma a la base del año y una cuota menor rebaja la de los siguientes; con
+  `parte_hipoteca_conyuge`, cada cónyuge deduce por su parte en las individuales. La aportación a pensiones baja la
+  cuota y puede dejar la deducción sin cuota contra la que aplicarse: el plan lo calcula y lo explica.
+- **Ayudas** (si el módulo de ayudas está activado), re-evaluadas con los evaluadores del módulo:
+  - bono social eléctrico (y térmico): usa la **base imponible** general y del ahorro (art. 4.1 Orden
+    ETU/943/2017); la aportación a planes reduce la base **liquidable** (arts. 50.1 y 51 LIRPF), así que no mueve
+    su límite — el plan lo dice y lo demuestra con las bases de la calculadora;
+  - ingreso mínimo vital y complemento de ayuda para la infancia: sus ingresos restan el **IRPF devengado** (art.
+    20.3 Ley 19/2021), así que cada euro de IRPF ahorrado los **sube** un euro; su patrimonio cuenta cuentas y planes
+    de pensiones por igual y excluye las deudas de la vivienda habitual (art. 20.4.b), así que amortizar o donar lo
+    baja. Con `proteger_ayudas` (por defecto) el plan no propone nada que haga perder o rebaje una ayuda que hoy
+    corresponde (busca el margen exacto por bisección sobre el evaluador del módulo);
+  - prestación por nacimiento («ingresos de cualquier naturaleza») y asignación por hijo con discapacidad (sin
+    límite de ingresos): ninguna palanca las cambia.
+- Luz, suscripciones y caducidades: estas palancas no cambian nada que esos módulos calculen (no se inventan
+  interacciones).
+
+**Búsqueda**: exhaustiva sobre una rejilla con paso informado (`busqueda.resolucion`, el más fino que cabe en
+40.000 combinaciones y 3.000 cálculos del IRPF): cero, máximos, los umbrales del optimizador (tramos, límites de
+deducciones, 30 % de rendimientos…), el tope de la deducción por vivienda, cancelar el préstamo y **cada importe en
+que «reducir plazo» elimina una cuota** (el módulo redondea al alza el número de cuotas, así que el valor va a
+saltos); para cada combinación, la amortización que agota el dinero y, para cada amortización, la aportación que lo
+agota. Las amortizaciones fuera de la rejilla se ordenan interpolando y las 40 mejores combinaciones se recalculan
+exactamente; después, un afinado local a una décima del paso. `Decimal` en todo, desempates fijos (más valor, menos
+dinero comprometido, menos palancas, importes redondos): la misma entrada da el mismo plan, byte a byte, con
+cualquier `PYTHONHASHSEED`. Una pareja con hipoteca anterior a 2013 se resuelve en unos 2 s; un hogar sin hipoteca,
+en décimas.
+
+**Resultado** (`PlanHogar`): tabla de reparto, posición neta línea a línea con su naturaleza y módulo, las dos
+vistas, el valor de cada palanca **dentro del plan y sola** y por qué la combinación difiere (dinero compartido,
+acoplamiento fiscal calculado, colchón, forma de declarar, margen de las ayudas), escenarios de comparación (no hacer
+nada, todo a la hipoteca, pensiones al máximo), resumen de la hipoteca, efecto en cada ayuda con la cita de su
+norma, el plan fiscal del optimizador para el reparto elegido (`plan_fiscal`, con su traza y sus citas), supuestos,
+avisos (p. ej. que el 15 % y los 9.040 € de la deducción por vivienda no están verificados), lo no modelado y la
+búsqueda.
+
+**Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas`, `maximos`, `motivos`, `origen`)
+es el punto de enganche de la memoria de decisiones (`hacienda_gpt/memoria/`): su adaptador puede traducir los
+rechazos (`fiscal:plan_pensiones:contribuyente` → `plan_pensiones_contribuyente`, `fiscal:donativo` → `donativo`,
+`hipoteca` → `amortizar_hipoteca`) sin que el planificador importe ese paquete.
+
+**Dónde se usa**: `POST /planificar` (sin modelo de lenguaje; mismas reglas de acceso que `/optimize`: sesión,
+propiedad del expediente, 404 si no es tuyo, 422 con una frase en español; los datos de hipoteca y ayudas solo si el
+usuario tiene esos módulos activados; no guarda nada), la herramienta del agente `planificar_hogar` (con
+expediente y módulos del hogar activados; el plan es un fragmento citable `[F#]`) y el panel **Planificar** de la
+web.
+
+```json
+{"case_id": "case_…", "importe_disponible": 20000, "horizonte_anos": 5, "rentabilidad_alternativa_pct": 2,
+ "gastos_mensuales": 2000, "meses_colchon": 6, "liquidez_actual": 6000, "tipo_rescate_pct": 30,
+ "restricciones": {"excluidas": ["donativo"], "origen": "memoria"}}
+```
+
+**No modelado**: rentabilidad propia del plan de pensiones (se supone la de la alternativa) y sus comisiones; el
+IRPF de años futuros se calcula con las cifras y reglas del ejercicio; gastos de notaría o registro y el interés del
+periodo roto al amortizar; tributación de la rentabilidad alternativa (dala neta); amortizaciones mes a mes del
+excedente; límites de renta de convocatorias autonómicas y municipales.
 
 ### Simulador, calendario y documentos
 
@@ -1415,6 +1542,72 @@ compara cada respuesta con la conclusión de la DGT (`correcta` / `parcial` /
 contradicen a la DGT. Ambos comandos avisan de cuántas llamadas van a hacer y
 piden confirmación (`--yes` para omitirla); `--limit N` permite una prueba
 corta antes de la ejecución completa.
+
+### Evaluación continua
+
+Cada vez que el asistente se equivoca o el usuario lo corrige, el caso puede
+convertirse en una prueba de regresión; y antes de cambiar un *prompt* o un
+modelo se ejecuta la suite y el cambio solo se aplica si mejora
+(`hacienda_gpt/evaluacion/`, `python -m hacienda_gpt.cli.evaluacion`).
+
+- **Valoración en cada respuesta** (web): 👍 / 👎 y «Corregir» (cifra
+  equivocada, ámbito equivocado, dato pasado por alto, afirmación inventada,
+  otro; y, si quiere, la respuesta o la cifra correctas). Un voto **no guarda
+  la conversación**. Guardarla como caso de evaluación exige marcar, en ESA
+  respuesta, una casilla con su texto de consentimiento (versión incluida). Se
+  guarda dentro del expediente del usuario —pregunta, respuesta, corrección,
+  traza de herramientas y una instantánea **solo de los datos que usó la
+  respuesta**, con correos, DNI/NIE, IBAN, CUPS, tarjetas y teléfonos
+  ocultados—, así que se exporta con `/me/export`, se anonimiza si borra uno de
+  esos datos, se puede retirar (`DELETE /evaluacion/feedback/{id}`) y se borra
+  con la cuenta. API: `GET /evaluacion/consentimiento`,
+  `POST|GET /evaluacion/feedback`, `DELETE /evaluacion/feedback/{id}`.
+- **Nada entra solo en la suite.** Una persona revisa cada caso guardado
+  (`casos pendientes`, `casos ver`), prepara un borrador (`casos borrador`:
+  propone qué especialista debía o no consultarse y, si el usuario dio la
+  cifra correcta y una calculadora de la traza la produce, una expectativa que
+  la lee de ESA calculadora), lo edita y lo incorpora con `casos promover
+  … --confirmo-anonimizado --revisor …`, que rechaza lo que aún parezca un dato
+  personal. El fichero de la suite es anónimo (una referencia no reversible,
+  ni expediente ni usuario) y esa copia anónima no se borra con la cuenta, como
+  dice el texto del consentimiento.
+- **Señales automáticas**, leídas de la auditoría que ya existe (nada nuevo se
+  guarda): afirmaciones que el verificador rechazó, errores de herramientas,
+  especialistas consultados que no usaron ninguna herramienta (posible
+  «no es mi ámbito») y repreguntas. `senales` da recuentos sin contenido;
+  etiquetan las valoraciones.
+- **La suite** (`hacienda_gpt/evaluacion/casos/<categoría>/<id>.json`,
+  versionada) tiene 30 casos sembrados: cálculo fiscal, cifras de cada módulo,
+  enrutado, preguntas que cruzan ámbitos, «no sumar cifras de módulos
+  distintos», confirmación de lo que `actua` y borradores, y fuera de ámbito.
+  Las expectativas son deterministas siempre que se puede: qué herramienta o
+  especialista debe (o no) llamarse, qué cifra debe aparecer —**calculada
+  volviendo a ejecutar la calculadora sobre la instantánea, nunca escrita a
+  mano ni tomada de un modelo**—, qué afirmaciones no deben aparecer, cuántas
+  citas, qué modos valen y si una acción debe quedar pendiente. Opcionalmente,
+  una rúbrica para un juez LLM con una puerta determinista: un criterio solo
+  cuenta como cumplido si el juez **cita literalmente** la respuesta y el
+  programa encuentra la cita. `importar-dgt` convierte el conjunto de la DGT
+  (`eval_agent build`) en casos de la categoría `dgt`.
+- **Ejecutar**: `validar` y `run --reproduccion` no usan modelo (cada caso
+  lleva un guion de referencia que se reproduce por el agente, las
+  herramientas y los especialistas reales); `run [--config variante.json]`
+  ejecuta el asistente central con un proveedor real y da tasa de aprobados por
+  categoría, regresiones frente a un informe base (`--baseline`), coste y
+  latencia.
+- **La puerta**: los *prompts* son artefactos versionados por su huella
+  (`hacienda_gpt/evaluacion/prompts/registro.json`) y una variante (versión de
+  cada *prompt* + proveedor/modelo/esfuerzo) es lo que el agente ejecuta; la
+  ACTIVA está en `variante_activa.json` (sin ese fichero, la de siempre).
+  `promote --config candidata.json` ejecuta base y candidata y escribe la
+  candidata como activa **solo si** no empeora ninguna categoría crítica y es
+  estrictamente mejor en conjunto; si no, la rechaza con el informe.
+- **CI** (`.github/workflows/evaluacion.yml`): la parte sin modelo en cada PR;
+  la suite completa con el modelo solo si existe el secreto `ANTHROPIC_API_KEY`.
+
+**Nada de la parte con modelo se ha ejecutado contra un modelo real**: las
+pruebas usan proveedores guionizados. Detalle y procedimiento en
+[`docs/operacion.md`](docs/operacion.md#evaluación-continua).
 
 ---
 

@@ -59,6 +59,10 @@ def test_the_agent_phase_is_read_only_while_the_user_may_log_in() -> None:
     politica.posts_permitidos = (("https://datadis.es", "/api/consulta"),)
     assert politica.decidir("https://datadis.es/api/consulta/1", "POST")[0]
     assert not politica.decidir("https://datadis.es/api/otra", "POST")[0]
+    # Handed over to the user (headed window, after the agent stopped): the user may submit, still only there.
+    politica.fase = "usuario"
+    assert politica.decidir("https://datadis.es/x", "POST")[0]
+    assert not politica.decidir("https://evil.example/x", "POST")[0]
     politica.fase = "cerrada"
     assert not politica.decidir("https://datadis.es/login", "GET")[0]
 

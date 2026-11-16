@@ -48,7 +48,7 @@ from hacienda_gpt.evaluacion.modelos import (
 from hacienda_gpt.evaluacion.reproduccion import ProveedorReproduccion
 from hacienda_gpt.evaluacion.suite import CifrasEsperadas, cifras_esperadas, comprobar, modulos_de
 from hacienda_gpt.evaluacion.variantes import Variante, argumentos_proveedor, usar_variante
-from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider, contexto_consumo, hoy_madrid
+from hacienda_gpt.ops.consumo import ConsumoStore, MeteredProvider, Presupuesto, contexto_consumo, hoy_madrid
 
 logger = logging.getLogger(__name__)
 
@@ -89,12 +89,23 @@ class Entorno:
     equipo: str | None = None
     presupuesto_usd: Decimal | None = None
     avisos: list[str] = field(default_factory=list)
+    # The service's daily spending limits (``Presupuesto.desde_settings``); None = only ``presupuesto_usd``.
+    limites: Presupuesto | None = None
     # (provider, model) of the first case run, for the report.
     identidad: tuple[str, str] | None = None
 
 
-def _metered(provider: LLMProvider, store: ConsumoStore, purpose: str) -> MeteredProvider:
-    return MeteredProvider(provider, store, purpose=purpose, compartido=True)
+# Purposes of the calls of a run. The agent under test is metered with the SAME purposes as in production
+# ("agente", "verificador"; the specialists add "especialista:<clave>"), so the routing table
+# (hacienda_gpt/agent/enrutado.py) picks the same model per purpose as the deployed assistant would; the case
+# id of every record is "eval:<run>:<case>:<repetition>", which keeps evaluation spend apart in /usage.
+PROPOSITO_AGENTE = "agente"
+PROPOSITO_VERIFICADOR = "verificador"
+PROPOSITO_JUEZ = "evaluacion-juez"
+
+
+def _metered(provider: LLMProvider, entorno: Entorno, purpose: str) -> MeteredProvider:
+    return MeteredProvider(provider, entorno.consumo, purpose=purpose, presupuesto=entorno.limites, compartido=True)
 
 
 def _ejecucion_de(result: AgentResult) -> Ejecucion:
@@ -141,7 +152,7 @@ def ejecutar_caso(
     veredictos: list[VeredictoJuez] = []
     inicio = time.perf_counter()
     try:
-        provider = _metered(entorno.proveedor(variante, caso, esperadas.cifras), entorno.consumo, "evaluacion:agente")
+        provider = _metered(entorno.proveedor(variante, caso, esperadas.cifras), entorno, PROPOSITO_AGENTE)
         if entorno.identidad is None:
             entorno.identidad = (provider.name, provider.model)
         buscador: CorpusSearcher = entorno.buscador
@@ -150,7 +161,7 @@ def ejecutar_caso(
         agente = TeamAgent(
             provider=provider,
             searcher=buscador,
-            verifier=Verifier(provider.con_proposito("evaluacion:verificador")),
+            verifier=Verifier(provider.con_proposito(PROPOSITO_VERIFICADOR)),
             mode=entorno.equipo or ("never" if entorno.modo == "reproduccion" else settings.AGENT_TEAM_MODE),
         )
         modulos = modulos_de(caso)
@@ -167,7 +178,7 @@ def ejecutar_caso(
                 if entorno.juez is None:
                     avisos.append("Rúbrica no evaluada: esta ejecución no tiene juez.")
                 else:
-                    juez = _metered(entorno.juez(), entorno.consumo, "evaluacion:juez")
+                    juez = _metered(entorno.juez(), entorno, PROPOSITO_JUEZ)
                     try:
                         veredictos = juzgar(
                             juez, pregunta=caso.pregunta, respuesta=ejecucion.respuesta, rubrica=caso.rubrica
@@ -390,6 +401,9 @@ def formatear(informe: InformeEvaluacion) -> str:
 
 
 __all__ = [
+    "PROPOSITO_AGENTE",
+    "PROPOSITO_JUEZ",
+    "PROPOSITO_VERIFICADOR",
     "Entorno",
     "FabricaProveedor",
     "buscador_por_defecto",

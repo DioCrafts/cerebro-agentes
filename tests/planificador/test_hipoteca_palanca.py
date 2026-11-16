@@ -91,7 +91,9 @@ def test_the_fee_is_the_mortgage_module_cap() -> None:
     assert efecto.comision.es_maximo
     # What a repayment can take with a budget: amount + fee within it.
     tope = palanca.maximo_con(D(10000))
-    assert tope + palanca.comision(tope).importe <= 10000 < tope + D("0.01") + palanca.comision(tope + D("0.01")).importe
+    assert (
+        tope + palanca.comision(tope).importe <= 10000 < tope + D("0.01") + palanca.comision(tope + D("0.01")).importe
+    )
 
 
 def test_growth_is_monthly_compounding_of_the_annual_rate() -> None:

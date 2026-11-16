@@ -114,7 +114,8 @@ def comprobar_integrados() -> list[str]:
                 f"«{integrado.version}». Un cambio de prompt es una versión nueva: evalúalo (`python -m "
                 "hacienda_gpt.cli.evaluacion promote` con una variante que lleve el texto nuevo) y regístralo con "
                 f"`python -m hacienda_gpt.cli.evaluacion prompts registrar --rol {rol} --informe <informe>` "
-                '(o, si no se ha podido evaluar, con --sin-evaluar "<motivo>", que queda escrito en el registro).'
+                '(o, si no se ha podido evaluar, `prompts sincronizar --motivo "<motivo>"`, que registra todos los '
+                "que han cambiado y deja el motivo escrito en el registro)."
             )
     return problemas
 
@@ -165,6 +166,9 @@ class Variante(BaseModel):
     proveedor: str | None = None
     modelo: str | None = None
     esfuerzo: Literal["low", "medium", "high", "xhigh", "max"] | None = None
+    # SHA-256 of the text of each role when the variant was evaluated/promoted: the variant references its
+    # prompts by CONTENT, so a text that changed afterwards is detected (see :func:`desajustes`).
+    huellas: dict[Rol, str] = Field(default_factory=dict)
 
     @field_validator("prompts")
     @classmethod
@@ -204,11 +208,16 @@ VARIANTE_BASE = Variante(
 def texto_prompt(variante: Variante, rol: Rol, *, prompts_dir: Path | None = None) -> str:
     """The text a variant uses for ``rol``. Raises :class:`VarianteInvalidaError`."""
     version = variante.prompts.get(rol, INTEGRADOS[rol].version)
+    esperada = variante.huellas.get(rol)
     if version == INTEGRADOS[rol].version:
+        # The code decides; a drift from the evaluated text is reported by desajustes(), never fatal.
         return texto_integrado(rol)
     texto = variante.textos.get(version)
     if texto is None:
-        if any(v.version == version for v in cargar_registro()[rol]):
+        anterior = any(v.version == version for v in cargar_registro()[rol])
+        if anterior and esperada is not None and esperada == huella(texto_integrado(rol)):
+            return texto_integrado(rol)  # same content, registered again under a newer id
+        if anterior:
             raise VarianteInvalidaError(
                 f"«{version}» es una versión integrada anterior: su texto ya no está en prompts.py (está en el "
                 "historial de git). Ponlo en un fichero de prompts o en «textos» para usarlo."
@@ -222,6 +231,8 @@ def texto_prompt(variante: Variante, rol: Rol, *, prompts_dir: Path | None = Non
             raise VarianteInvalidaError(f"No encuentro el texto del prompt «{version}» ({ruta}).") from exc
     if not texto.strip():
         raise VarianteInvalidaError(f"El prompt «{version}» está vacío.")
+    if esperada is not None and huella(texto) != esperada:
+        raise VarianteInvalidaError(f"El texto del prompt «{version}» no es el que se evaluó (su huella no coincide).")
     esperados = _campos(texto_integrado(rol))
     try:
         encontrados = _campos(texto)
@@ -238,11 +249,26 @@ def texto_prompt(variante: Variante, rol: Rol, *, prompts_dir: Path | None = Non
 def autocontenida(variante: Variante, *, prompts_dir: Path | None = None) -> Variante:
     """The variant with the text of every non-integrated version embedded (validated)."""
     textos: dict[str, str] = {}
+    huellas: dict[Rol, str] = {}
     for rol in ROLES:
         version = variante.prompts[rol]
+        texto = texto_prompt(variante, rol, prompts_dir=prompts_dir)
+        huellas[rol] = huella(texto)
         if version != INTEGRADOS[rol].version:
-            textos[version] = texto_prompt(variante, rol, prompts_dir=prompts_dir)
-    return variante.model_copy(update={"textos": textos})
+            textos[version] = texto
+    return variante.model_copy(update={"textos": textos, "huellas": huellas})
+
+
+def desajustes(variante: Variante) -> list[str]:
+    """Roles whose integrated text changed since the variant recorded its content hash (warnings)."""
+    avisos: list[str] = []
+    for rol, esperada in variante.huellas.items():
+        if variante.prompts.get(rol) == INTEGRADOS[rol].version and huella(texto_integrado(rol)) != esperada:
+            avisos.append(
+                f"La variante «{variante.id}» se evaluó con otro texto del prompt «{rol}» (prompts.py ha cambiado "
+                "después): vuelve a evaluarla."
+            )
+    return avisos
 
 
 def cargar_variante(ruta: Path, *, prompts_dir: Path | None = None) -> Variante:
@@ -391,6 +417,7 @@ __all__ = [
     "autocontenida",
     "cargar_variante",
     "comprobar_integrados",
+    "desajustes",
     "escribir_activa",
     "huella",
     "prompt_activo",

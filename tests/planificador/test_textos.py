@@ -18,10 +18,8 @@ def _compacto(texto: str) -> str:
 def test_every_quote_is_verbatim_in_its_law() -> None:
     leyes = {p.stem: _compacto(p.read_text(encoding="utf-8")) for p in FIXTURES.glob("BOE-A-*.txt")}
     for referencia, texto in TEXTOS.items():
-        if texto.boe_id not in leyes:
-            # The optimiser's own quotes, checked by the tax tests.
-            assert referencia in {"art. 17.2.a).3.ª LIRPF", "art. 12 LIRPF"}, referencia
-            continue
+        if referencia in {"art. 17.2.a).3.ª LIRPF", "art. 12 LIRPF"}:
+            continue  # the optimiser's own quotes, reused as they are
         assert _compacto(texto.texto) in leyes[texto.boe_id], referencia
 
 

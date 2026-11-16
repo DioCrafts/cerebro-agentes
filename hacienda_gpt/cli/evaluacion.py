@@ -66,9 +66,11 @@ def cli() -> None:
 @click.option("--estricto", is_flag=True, help="Falla también si alguna cifra registrada ha cambiado (deriva).")
 def validar(casos_dir: Path, estricto: bool) -> None:
     """Comprueba la suite sin modelo: esquema, categorías, módulos y que cada cifra esperada se calcula."""
-    from hacienda_gpt.evaluacion.variantes import comprobar_integrados
+    from hacienda_gpt.evaluacion.variantes import comprobar_integrados, desajustes, variante_activa
 
     informe = suite_mod.validar(casos_dir)
+    for aviso in desajustes(variante_activa()):
+        click.echo(f"Aviso: {aviso}")
     problemas = list(informe.errores) + comprobar_integrados()
     click.echo(
         f"{informe.casos} casos ({informe.deterministicos} sin juez, {informe.con_guion} con guion de referencia)."
@@ -100,7 +102,7 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
         proveedor_real,
         proveedor_reproduccion,
     )
-    from hacienda_gpt.ops.consumo import ConsumoStore, almacen_por_defecto
+    from hacienda_gpt.ops.consumo import ConsumoStore, Presupuesto, almacen_por_defecto
 
     if reproduccion:
         temporal = Path(tempfile.mkdtemp(prefix="evaluacion-")) / "consumo.sqlite3"
@@ -124,9 +126,12 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
 
         return create_provider()
 
+    consumo = almacen_por_defecto()
     return Entorno(
         proveedor=proveedor_real,
-        consumo=almacen_por_defecto(),
+        consumo=consumo,
+        # The service's daily limits apply to evaluation spend too; --presupuesto-usd caps the run.
+        limites=Presupuesto.desde_settings(consumo),
         modo="modelo",
         buscador=buscador,
         juez=None if sin_juez else juez,
@@ -281,7 +286,13 @@ def promote(
 @cli.command()
 def variante() -> None:
     """Muestra la variante activa y la integridad de los prompts registrados."""
-    from hacienda_gpt.evaluacion.variantes import INTEGRADOS, comprobar_integrados, ruta_activa, variante_activa
+    from hacienda_gpt.evaluacion.variantes import (
+        INTEGRADOS,
+        comprobar_integrados,
+        desajustes,
+        ruta_activa,
+        variante_activa,
+    )
 
     activa = variante_activa()
     click.echo(f"Variante activa: {activa.id} ({ruta_activa()}{'' if ruta_activa().exists() else ', sin fichero'})")
@@ -291,6 +302,8 @@ def variante() -> None:
     click.echo(f"  proveedor: {activa.proveedor or settings.LLM_PROVIDER}; modelo: {activa.modelo or 'el de settings'}")
     for problema in comprobar_integrados():
         click.echo(f"Error: {problema}", err=True)
+    for aviso in desajustes(activa):
+        click.echo(f"Aviso: {aviso}")
 
 
 @cli.group()
@@ -367,6 +380,21 @@ def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> Non
     except ValueError as exc:
         raise click.ClickException(str(exc)) from exc
     click.echo(f"Registrada {nueva.version} ({nueva.huella[:12]}).")
+
+
+@prompts.command("sincronizar")
+@click.option("--motivo", required=True, help="Por qué se registra sin evaluación (queda escrito en el registro).")
+def prompts_sincronizar(motivo: str) -> None:
+    """Registra como versión nueva cada prompt de prompts.py cuyo texto ya no coincide con el registro."""
+    from hacienda_gpt.evaluacion.variantes import INTEGRADOS, ROLES, huella, registrar_version, texto_integrado
+
+    cambiados = [rol for rol in ROLES if huella(texto_integrado(rol)) != INTEGRADOS[rol].huella]
+    if not cambiados:
+        click.echo("El registro y prompts.py ya coinciden.")
+        return
+    for rol in cambiados:
+        nueva = registrar_version(rol, nota=f"Sin evaluar: {motivo}")
+        click.echo(f"Registrada {nueva.version} ({nueva.huella[:12]}).")
 
 
 @cli.command("importar-dgt")

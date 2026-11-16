@@ -180,6 +180,39 @@ suscripciones, hipoteca…), cada uno en un **módulo**. Lo que cambia para la p
 - **Acciones fuera de la aplicación.** Ninguna se ejecuta sin que el dueño del caso la confirme; la
   confirmación y su resultado quedan en la auditoría.
 
+### Agente con navegador
+
+El módulo «Agente con navegador» (`hacienda_gpt/navegador/`) maneja un navegador en webs oficiales en nombre del
+usuario (descargar su consumo de Datadis, preparar un trámite sin presentarlo). Lo que trata y cómo:
+
+- **Interruptor y consentimiento.** No funciona si el operador no pone `NAVEGADOR_ACTIVO=true`. Con cuentas, el
+  usuario tiene que activar **él mismo** el módulo (la elección queda en `user_module_choices`, con fecha, se
+  exporta y se borra con la cuenta; un valor por defecto del operador no cuenta) y aceptar en cada tarea el texto
+  que explica qué hará (su versión queda en la auditoría). Con `AUTH_MODE=off` decide el operador.
+- **Credenciales: nunca.** La contraseña de Datadis, el PIN de Cl@ve o el certificado los usa el usuario en la
+  ventana del navegador; la aplicación no los ve, no los guarda, no los registra y no los envía a ningún modelo.
+  Si el usuario entrega una sesión para una tarea (modo «sesión»), se filtra a los sitios de la tarea, se carga en
+  un navegador nuevo y se descarta con él; no se escribe en disco ni en la auditoría.
+- **Capturas y páginas: solo durante la tarea.** La última captura y el resumen de lo que se enviaría viven en la
+  memoria del servicio, solo los ve el dueño del expediente (`Cache-Control: no-store`) y se descartan al cerrar
+  la tarea o 30 minutos después de terminar. Mientras el usuario inicia sesión no se hace ninguna captura.
+- **Lo que queda en el expediente.** En la auditoría, que la tarea empezó y terminó, sus pasos y su resultado,
+  los **nombres** de los parámetros y los sitios bloqueados, **sin valores** (ni CUPS, ni fechas, ni datos del
+  trámite). El consumo descargado lo guarda el módulo de luz como sus propios hechos (`luz_consumo`, `luz_cups`).
+  Un trámite detenido deja una acción pendiente con las **etiquetas** de los campos, no sus valores.
+- **Diagnóstico anonimizado.** Si un paso falla porque la página cambió, se guarda un esqueleto de la página
+  (estructura y etiquetas genéricas; nada escrito por el usuario; identificadores, correos, teléfonos y nombres
+  tras un saludo enmascarados) en `NAVEGADOR_DIR/diagnostico/<expediente>/`, como máximo 30 días; se borra con
+  el expediente o la cuenta (en cuanto el servicio detecta que el expediente ya no existe) y lo puede borrar
+  `vigilancia.borrar_de_caso`. La vigilancia de formatos solo guarda qué paso falló, nunca la página.
+- **Modelo de lenguaje.** No interviene en la tarea. Solo si el operador activa `NAVEGADOR_REPARAR_SELECTORES`,
+  cuando una página cambió se le envía el paso **sin su valor** y el esqueleto anonimizado para que proponga un
+  selector; nunca la página de acceso, nunca un dato del usuario, y su propuesta solo se usa si la comprueba una
+  regla determinista.
+- **Terceros.** El navegador solo se conecta a los sitios de la tarea (Datadis, la sede y su pasarela de
+  identificación): cualquier otra petición (rastreadores, analítica) se bloquea. Esos sitios tratan los datos
+  como responsables propios; la aplicación no les envía nada en nombre del usuario (no presenta, no firma, no paga).
+
 ## Memoria de decisiones («Lo que sé de tus preferencias»)
 
 El asistente guarda lo que el usuario **decide** sobre lo que se le propone (no quiere planes de pensiones

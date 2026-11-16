@@ -159,8 +159,10 @@ class PalancaHipoteca:
             alto_n, bajo_n = cuotas(hasta), cuotas(desde)
         except ValueError:
             return []
+        # The module keeps the schedule's own count when the computed one is not lower.
+        restantes = self.base.filas[-1].numero - fila.numero
         out: list[Decimal] = []
-        for k in range(alto_n, bajo_n):
+        for k in range(alto_n, min(bajo_n, restantes)):
             if len(out) >= maximo:
                 break
             bajo, alto = desde, hasta  # cuotas(bajo) > k >= cuotas(alto)

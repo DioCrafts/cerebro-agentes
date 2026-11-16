@@ -124,7 +124,7 @@ def test_a_session_handed_over_for_the_run_is_filtered_and_used(chromium: str | 
 
 def test_an_invalid_session_does_nothing(chromium: str | None, sitios: Sitios) -> None:
     sesion = {"cookies": [{"name": "sesion_datadis", "value": "falsa", "domain": "127.0.0.1", "path": "/"}]}
-    resultado, _ = correr(chromium, sitios, modo="sesion", sesion=sesion, usuario=None)
+    resultado, _ = correr(chromium, sitios, modo="sesion", sesion=sesion, usuario=None, espera_login_s=2)
     assert resultado.estado == "login_no_completado"
     assert not resultado.llego_a_agente and resultado.pasos == []
     assert sitios.registro.descargas == 0
@@ -315,10 +315,10 @@ def test_a_repaired_selector_is_used_only_if_the_deterministic_gate_accepts_it(
 
     # Same id, but the label changed meaning: the gate refuses the proposal and nothing is downloaded.
     sitios.registro.variante = "etiqueta_cambiada"
-    resultado, _ = correr(chromium, sitios, reparador=Reparador("#suministro"))
+    resultado, _ = correr(chromium, sitios, reparador=Reparador("#suministro"), timeout_paso_ms=2_000)
     assert resultado.estado == "fallido" and "no supera la comprobación" in resultado.pasos[-1].detalle
     # A proposal pointing at another control (a submit button) is refused too.
-    resultado, _ = correr(chromium, sitios, reparador=Reparador("#baja"))
+    resultado, _ = correr(chromium, sitios, reparador=Reparador("#baja"), timeout_paso_ms=2_000)
     assert resultado.estado == "fallido" and sitios.registro.posts_datadis == []
 
 
