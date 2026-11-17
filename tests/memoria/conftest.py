@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
-from datetime import date
+from datetime import UTC, date, datetime, time
 
 import pytest
 
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
-from asistente.nucleo.memoria import reloj
+from asistente.nucleo.memoria import almacen, modelo, reloj, servicio
 from asistente.nucleo.memoria.almacen import olvidar_almacenes
 from asistente.nucleo.modulos import registro
 from asistente.nucleo.proactive.store import NotificationStore
@@ -43,6 +43,14 @@ def registro_limpio() -> Iterator[None]:
 def reloj_fijo(monkeypatch: pytest.MonkeyPatch) -> Iterator[Reloj]:
     fijo = Reloj()
     monkeypatch.setattr(reloj, "hoy", fijo)
+
+    # The moment a decision is recorded follows the same day (midday UTC), so the date a test reads in a
+    # message («el 16/11/2026 nos dijiste…») does not depend on the day the suite runs.
+    def ahora_fijo() -> datetime:
+        return datetime.combine(fijo.dia, time(12), tzinfo=UTC)
+
+    for modulo in (modelo, almacen, servicio):
+        monkeypatch.setattr(modulo, "ahora", ahora_fijo)
     yield fijo
     olvidar_almacenes()
 
