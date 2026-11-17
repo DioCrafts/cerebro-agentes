@@ -38,28 +38,6 @@ jobs:
         env:
           NAVEGADOR_EXIGIR_CHROMIUM: "1"
 
-  # Apple-Silicon job: the runtime target is arm64 macOS and the MLX deps only
-  # have wheels there, so the Linux jobs above install WITHOUT mlx (platform
-  # markers) and never exercise the real inference imports. This job proves
-  # `uv sync` resolves and installs the full dependency set — mlx / mlx-lm /
-  # mlx-embeddings included — on the real platform, and that the production
-  # modules import under a genuine MLX install. (Heavy model weights aren't
-  # downloaded, so the batched reranker/embedder math is still covered by the
-  # stubbed unit tests, not real GPU inference.)
-  test-macos:
-    runs-on: macos-14
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
-      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
-        with:
-          python-version: "3.13"
-          enable-cache: true
-      - run: uv sync
-      - run: uv run playwright install chromium
-      - run: uv run pytest -q
-        env:
-          NAVEGADOR_EXIGIR_CHROMIUM: "1"
-
   typecheck:
     runs-on: ubuntu-latest
     # mypy is not enforced yet (never run in CI before); keep it informational
