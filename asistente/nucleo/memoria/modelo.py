@@ -204,7 +204,8 @@ class Decision(_Modelo):
     razon: str = Field(min_length=1, max_length=500)
     fuente: FuenteDecision
     boton: Boton | None = None
-    fecha: datetime = Field(default_factory=ahora)
+    # Looked up at call time (not bound here), so a fixed clock in the tests also dates the decisions.
+    fecha: datetime = Field(default_factory=lambda: ahora())
     # Last day... exclusive: the decision is in force while today < caducidad. None: until changed.
     caducidad: date | None = None
     condiciones_de_reapertura: list[Condicion] = Field(default_factory=list, max_length=MAX_CONDICIONES)
