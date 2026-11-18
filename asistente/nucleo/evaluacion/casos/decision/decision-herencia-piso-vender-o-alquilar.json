@@ -1,0 +1,97 @@
+{
+  "id": "decision-herencia-piso-vender-o-alquilar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Piso heredado entre hermanos: vender o alquilar; equilibrado con riesgo de conflicto.",
+  "pregunta": "Mis dos hermanos y yo hemos heredado el piso de mis padres. ¿Lo vendemos o lo alquilamos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "herencia",
+    "expediente": {
+      "pregunta": "¿Conviene vender el piso heredado a partes iguales entre tres hermanos o alquilarlo?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Vender el piso y repartir el dinero"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Alquilar el piso y repartir las rentas"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "hermanos",
+          "texto": "Uno de los hermanos vive en otra ciudad y prefiere no ocuparse de gestiones.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "estado",
+          "texto": "El piso necesita pintura y cambiar la caldera antes de alquilarse.",
+          "origen": "especialista",
+          "referencia": "vivienda"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "precio estimado de venta",
+          "valor": "210000",
+          "literal": "210.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "alquiler estimado",
+          "valor": "980",
+          "literal": "980 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C3",
+          "especialista": "vivienda",
+          "concepto": "inversión necesaria antes de alquilar",
+          "valor": "7500",
+          "literal": "7.500 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C4",
+          "especialista": "fiscal",
+          "concepto": "IRPF estimado por cada hermano sobre su parte del alquiler",
+          "valor": "560",
+          "literal": "560 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "calcular_irpf"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "conflicto",
+          "frase": "La copropiedad entre hermanos puede generar desacuerdos sobre la gestión",
+          "patron": "desacuerd|conflict|copropiedad|proindiviso|hermanos no se pon"
+        },
+        {
+          "id": "impago",
+          "frase": "Un inquilino puede dejar de pagar o dañar el piso",
+          "patron": "impago|dej\\w+ de pagar|da[nñ]\\w+ el piso|inquilino problem"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

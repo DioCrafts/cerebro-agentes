@@ -1,0 +1,83 @@
+{
+  "id": "decision-trabajo-oferta-con-traslado",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Oferta mejor pagada en otra ciudad con la pareja trabajando aquí: equilibrado.",
+  "pregunta": "Me ofrecen 6.000 € más al año en Valencia. ¿Me voy?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "empleo",
+    "expediente": {
+      "pregunta": "¿Conviene aceptar una oferta de trabajo mejor pagada que obliga a mudarse a otra ciudad?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Aceptar la oferta y mudarse"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Rechazarla y quedarse"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "pareja",
+          "texto": "La pareja tiene un empleo indefinido en la ciudad actual.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "hijos",
+          "texto": "Dos hijos escolarizados en la ciudad actual.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "empleo",
+          "concepto": "aumento salarial bruto de la oferta",
+          "valor": "6000",
+          "literal": "6.000 €/año",
+          "unidad": "EUR/año"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "diferencia de alquiler estimada en la nueva ciudad",
+          "valor": "150",
+          "literal": "150 €/mes",
+          "unidad": "EUR/mes"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Es la oportunidad de mi vida, no quiero dejarla pasar."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "pareja",
+          "frase": "La pareja podría perder o tener que buscar empleo",
+          "patron": "pareja.{0,80}(emple|trabajo)|(emple|trabajo).{0,80}pareja"
+        },
+        {
+          "id": "hijos",
+          "frase": "El cambio de colegio y de entorno afecta a los hijos",
+          "patron": "hijos|colegio|escolar"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

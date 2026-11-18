@@ -1,0 +1,103 @@
+{
+  "id": "decision-hipoteca-reducir-cuota-o-plazo",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Amortizar reduciendo cuota o plazo con margen holgado: lo correcto es plazo (más ahorro de intereses).",
+  "pregunta": "Voy a amortizar 15.000 €. ¿Reduzco cuota o plazo?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "hipoteca",
+    "expediente": {
+      "pregunta": "Al amortizar anticipadamente parte de la hipoteca, ¿conviene reducir la cuota mensual o el plazo?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Reducir la cuota mensual manteniendo el plazo"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Reducir el plazo manteniendo la cuota mensual"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "presupuesto",
+          "texto": "La cuota actual supone el 22 % de los ingresos netos del hogar y les sobra dinero cada mes.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "colchon",
+          "texto": "Tienen un fondo de emergencia de ocho meses de gastos aparte de lo que van a amortizar.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "hipoteca",
+          "concepto": "intereses ahorrados reduciendo plazo",
+          "valor": "9870",
+          "literal": "9.870 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_amortizar"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "intereses ahorrados reduciendo cuota",
+          "valor": "4310",
+          "literal": "4.310 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_amortizar"
+        },
+        {
+          "id": "C3",
+          "especialista": "hipoteca",
+          "concepto": "nueva cuota si se reduce la cuota",
+          "valor": "618.25",
+          "literal": "618,25 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "hipoteca_amortizar"
+        },
+        {
+          "id": "C4",
+          "especialista": "hipoteca",
+          "concepto": "cuota actual",
+          "valor": "702.9",
+          "literal": "702,90 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "hipoteca_cuadro"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {
+        "edad": "38",
+        "descendientes a cargo": "1"
+      },
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "mas_intereses",
+          "frase": "Reducir cuota ahorra muchos menos intereses que reducir plazo",
+          "patron": "(menos|m[aá]s) intereses|ahorr\\w* (de )?intereses|intereses ahorrados"
+        },
+        {
+          "id": "flexibilidad",
+          "frase": "Reducir plazo deja menos margen mensual si los ingresos bajan",
+          "patron": "margen|flexibilidad|liquidez|ingresos (bajan|caen|disminuy)"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ]
+    }
+  ]
+}

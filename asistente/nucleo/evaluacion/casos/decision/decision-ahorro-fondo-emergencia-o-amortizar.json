@@ -1,0 +1,80 @@
+{
+  "id": "decision-ahorro-fondo-emergencia-o-amortizar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Sin colchón de emergencia: primero el fondo de emergencia, no amortizar.",
+  "pregunta": "Tengo 10.000 € ahorrados. ¿Los uso para amortizar hipoteca?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "ahorro",
+    "expediente": {
+      "pregunta": "¿Conviene usar el ahorro disponible para amortizar hipoteca o mantenerlo como fondo de emergencia?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Amortizar hipoteca con el ahorro"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Mantenerlo como fondo de emergencia"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "colchon",
+          "texto": "Esos 10.000 € son todo el ahorro del hogar; equivalen a unos dos meses de gastos.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "ingresos",
+          "texto": "Un solo sueldo en el hogar.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "ahorro disponible",
+          "valor": "10000",
+          "literal": "10.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "intereses ahorrados amortizando",
+          "valor": "3900",
+          "literal": "3.900 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_amortizar"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Odio deber dinero al banco."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "imprevistos",
+          "frase": "Sin colchón, un imprevisto obligaría a endeudarse",
+          "patron": "liquidez|colch[oó]n|imprevist|emergencia|sin margen|endeud"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ]
+    }
+  ]
+}

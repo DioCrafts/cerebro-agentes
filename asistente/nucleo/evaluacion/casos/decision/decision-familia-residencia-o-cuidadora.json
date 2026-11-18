@@ -1,0 +1,94 @@
+{
+  "id": "decision-familia-residencia-o-cuidadora",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Madre dependiente: residencia o cuidadora en casa; equilibrado.",
+  "pregunta": "Mi madre tiene 84 años y ya no puede vivir sola. ¿Residencia o una cuidadora interna?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "familia",
+    "expediente": {
+      "pregunta": "Para el cuidado de la madre dependiente, ¿conviene una residencia o una cuidadora interna en su casa?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Ingreso en una residencia"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Cuidadora interna en su domicilio"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "deseo",
+          "texto": "La madre ha expresado que prefiere seguir en su casa.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "noches",
+          "texto": "Necesita ayuda algunas noches.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "dependencia",
+          "texto": "Tiene reconocido un grado II de dependencia.",
+          "origen": "especialista",
+          "referencia": "ayudas"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ayudas",
+          "concepto": "coste mensual de la residencia",
+          "valor": "2200",
+          "literal": "2.200 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "ayudas",
+          "concepto": "coste mensual de la cuidadora interna con cotizaciones",
+          "valor": "1750",
+          "literal": "1.750 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C3",
+          "especialista": "ayudas",
+          "concepto": "prestación de dependencia estimada",
+          "valor": "310",
+          "literal": "310 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "ayudas_dependencia"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "noches",
+          "frase": "La atención nocturna puede no estar cubierta con una sola cuidadora",
+          "patron": "noche|nocturn|descanso de la cuidadora"
+        },
+        {
+          "id": "deseo",
+          "frase": "La madre prefiere quedarse en casa",
+          "patron": "(prefiere|quiere|deseo).{0,60}(casa|domicilio)|su casa"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

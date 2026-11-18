@@ -1,0 +1,99 @@
+{
+  "id": "decision-vivienda-vender-o-comprar-primero",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Cambiar de vivienda: vender primero o comprar primero; caso equilibrado con plazo de reinversión.",
+  "pregunta": "Queremos cambiarnos a un piso más grande. ¿Vendemos primero el nuestro o compramos primero?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "Para cambiar de vivienda habitual, ¿conviene vender primero la actual o comprar primero la nueva?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Vender primero y vivir de alquiler temporalmente"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Comprar primero con un préstamo puente y vender después"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "mercado",
+          "texto": "Los pisos como el suyo se están vendiendo en tres a seis meses en su barrio.",
+          "origen": "especialista",
+          "referencia": "vivienda"
+        },
+        {
+          "clave": "reinversion",
+          "texto": "El especialista fiscal indica que la ganancia por vender la vivienda habitual puede quedar exenta si se reinvierte en otra vivienda habitual en plazo [F1].",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "precio estimado de venta del piso actual",
+          "valor": "285000",
+          "literal": "285.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "coste estimado del préstamo puente durante un año",
+          "valor": "6900",
+          "literal": "6.900 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_simular"
+        },
+        {
+          "id": "C3",
+          "especialista": "vivienda",
+          "concepto": "alquiler temporal estimado",
+          "valor": "1100",
+          "literal": "1.100 €/mes",
+          "unidad": "EUR/mes"
+        }
+      ],
+      "fragmentos": [
+        {
+          "id": "F1",
+          "titulo": "Ley 35/2006, del IRPF, artículo 38.1",
+          "texto": "Podrán excluirse de gravamen las ganancias patrimoniales obtenidas por la transmisión de la vivienda habitual del contribuyente, siempre que el importe total obtenido se reinvierta en la adquisición de una nueva vivienda habitual, en las condiciones que reglamentariamente se determinen.",
+          "autoridad": "BOE"
+        }
+      ],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Cuánto tardará en venderse el piso actual y a qué precio."
+      ]
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "doble_pago",
+          "frase": "Comprar primero puede obligar a pagar dos viviendas a la vez",
+          "patron": "dos (viviendas|hipotecas|pisos)|doble (pago|carga|hipoteca|coste)|pagar (las )?dos"
+        },
+        {
+          "id": "mudanza_doble",
+          "frase": "Vender primero supone vivir de alquiler un tiempo y hacer dos mudanzas",
+          "patron": "dos mudanzas|mudarse dos veces|doble mudanza|vivir de alquiler (un tiempo|temporalmente|mientras)"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

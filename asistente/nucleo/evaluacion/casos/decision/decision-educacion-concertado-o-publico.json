@@ -1,0 +1,75 @@
+{
+  "id": "decision-educacion-concertado-o-publico",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Colegio concertado con cuota o público cercano: equilibrado con preferencia sellada.",
+  "pregunta": "¿Llevamos a la niña al concertado (180 € al mes) o al público de al lado?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "educacion",
+    "expediente": {
+      "pregunta": "¿Qué colegio conviene a la hija: el concertado con cuota o el público cercano?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Colegio concertado"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Colegio público cercano"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "distancia",
+          "texto": "El público está a cinco minutos andando; el concertado, a veinte minutos en coche.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "proyecto",
+          "texto": "Los dos colegios tienen buenas opiniones de otras familias del barrio.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "cuota mensual del concertado",
+          "valor": "180",
+          "literal": "180 €/mes",
+          "unidad": "EUR/mes"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Me fío más del concertado."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "coste",
+          "frase": "El concertado supone un gasto mensual durante años",
+          "patron": "(gasto|coste|cuota).{0,40}(mensual|años|al mes)|180"
+        },
+        {
+          "id": "desplazamiento",
+          "frase": "El concertado obliga a desplazarse en coche cada día",
+          "patron": "desplaz|coche|distancia|trayecto"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

@@ -1,0 +1,102 @@
+{
+  "id": "decision-energia-placas-solares",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Instalar placas solares con posible mudanza: depende de los años que sigan en la casa.",
+  "pregunta": "¿Ponemos placas solares? Nos piden 6.500 €.",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "energia",
+    "expediente": {
+      "pregunta": "¿Conviene instalar placas solares de autoconsumo en la vivienda?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Instalar las placas solares"
+        },
+        {
+          "id": "o2",
+          "descripcion": "No instalarlas por ahora"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "vivienda",
+          "texto": "Unifamiliar en propiedad con buena orientación al sur.",
+          "origen": "especialista",
+          "referencia": "luz"
+        },
+        {
+          "clave": "mudanza",
+          "texto": "Se plantean mudarse más cerca del trabajo en unos años, sin decidir.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "luz",
+          "concepto": "coste de la instalación",
+          "valor": "6500",
+          "literal": "6.500 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "luz",
+          "concepto": "ahorro anual estimado en la factura",
+          "valor": "780",
+          "literal": "780 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_autoconsumo"
+        },
+        {
+          "id": "C3",
+          "especialista": "luz",
+          "concepto": "años de recuperación de la inversión",
+          "valor": "8.3",
+          "literal": "8,3 años",
+          "unidad": "años",
+          "herramienta": "luz_autoconsumo"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Si se mudarán y cuándo.",
+        "La evolución de los precios de la electricidad."
+      ],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Me hace mucha ilusión producir mi propia luz."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "recuperacion",
+          "frase": "La inversión tarda años en recuperarse",
+          "patron": "recuper|amortiz|años en (pagarse|compensar)"
+        },
+        {
+          "id": "mudanza",
+          "frase": "Si se mudan antes, no recuperarían toda la inversión",
+          "patron": "mud|vend\\w+ la casa|irse"
+        }
+      ],
+      "admitidas": [
+        "depende"
+      ],
+      "depende": {
+        "frase": "Depende de si seguirán viviendo en la casa más años de los que tarda en recuperarse la inversión",
+        "patron": "(seguir|quedar|vivir|permanec|mudar).{0,80}(años|casa|tiempo)|(años|tiempo).{0,60}(recuper|amortiz)"
+      }
+    }
+  ]
+}

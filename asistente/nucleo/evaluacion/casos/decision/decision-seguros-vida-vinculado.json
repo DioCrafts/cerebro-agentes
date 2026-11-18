@@ -1,0 +1,84 @@
+{
+  "id": "decision-seguros-vida-vinculado",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Seguro de vida vinculado a la hipoteca o independiente: con las cifras de la calculadora, el vinculado sale más barato.",
+  "pregunta": "El banco me cobra 420 € al año por el seguro de vida. Fuera me lo dan por 210 €. ¿Lo cambio?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "seguros",
+    "expediente": {
+      "pregunta": "¿Conviene mantener el seguro de vida vinculado a la hipoteca o contratar uno independiente?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Mantener el seguro vinculado"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Contratar un seguro independiente"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "bonificacion",
+          "texto": "Contratar el seguro fuera hace perder la bonificación del tipo de interés.",
+          "origen": "especialista",
+          "referencia": "hipoteca"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "seguros",
+          "concepto": "prima del seguro vinculado",
+          "valor": "420",
+          "literal": "420 €/año",
+          "unidad": "EUR/año"
+        },
+        {
+          "id": "C2",
+          "especialista": "seguros",
+          "concepto": "prima del seguro independiente",
+          "valor": "210",
+          "literal": "210 €/año",
+          "unidad": "EUR/año"
+        },
+        {
+          "id": "C3",
+          "especialista": "hipoteca",
+          "concepto": "coste total anual de la opción independiente, intereses incluidos",
+          "valor": "520",
+          "literal": "520 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "hipoteca_bonificaciones"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o2",
+        "texto": "No me fío del banco, prefiero un seguro por mi cuenta."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "bonificacion",
+          "frase": "Perder la bonificación encarece los intereses de la hipoteca",
+          "patron": "bonificaci"
+        }
+      ],
+      "admitidas": [
+        "o1"
+      ]
+    }
+  ]
+}

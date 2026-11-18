@@ -1,0 +1,96 @@
+{
+  "id": "decision-ahorro-pagar-tarjeta-revolving",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Deuda de tarjeta revolving al 24 % con ahorro al 2 %: pagar la deuda, conservando un mínimo.",
+  "pregunta": "Debo 4.800 € de la tarjeta y tengo 6.000 € en una cuenta. ¿Pago la tarjeta?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "ahorro",
+    "expediente": {
+      "pregunta": "¿Conviene usar el ahorro para cancelar la deuda de la tarjeta revolving?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Cancelar la deuda de la tarjeta con el ahorro"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Mantener el ahorro y seguir pagando la tarjeta a plazos"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "revolving",
+          "texto": "La tarjeta es de pago aplazado revolving.",
+          "origen": "especialista",
+          "referencia": "ahorro"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "deuda de la tarjeta",
+          "valor": "4800",
+          "literal": "4.800 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "ahorro",
+          "concepto": "TAE de la tarjeta",
+          "valor": "24",
+          "literal": "24 %",
+          "unidad": "%"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "remuneración del ahorro",
+          "valor": "2",
+          "literal": "2 %",
+          "unidad": "%"
+        },
+        {
+          "id": "C4",
+          "especialista": "ahorro",
+          "concepto": "saldo de la cuenta",
+          "valor": "6000",
+          "literal": "6.000 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o2",
+        "texto": "Prefiero no tocar mis ahorros, me dan seguridad."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "coste_deuda",
+          "frase": "La deuda revolving cuesta mucho más de lo que rinde el ahorro",
+          "patron": "(cuesta|inter[eé]s|TAE).{0,80}(m[aá]s|mucho)|revolving"
+        },
+        {
+          "id": "colchon",
+          "frase": "Conviene no quedarse sin ningún colchón tras pagar",
+          "patron": "liquidez|colch[oó]n|imprevist|emergencia|sin margen|endeud"
+        }
+      ],
+      "admitidas": [
+        "o1"
+      ]
+    }
+  ]
+}

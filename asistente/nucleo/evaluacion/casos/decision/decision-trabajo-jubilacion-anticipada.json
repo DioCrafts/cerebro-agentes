@@ -1,0 +1,82 @@
+{
+  "id": "decision-trabajo-jubilacion-anticipada",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Jubilarse a los 63 con reducción o esperar a los 65: equilibrado.",
+  "pregunta": "Puedo jubilarme ya a los 63 con algo menos de pensión. ¿Lo hago o aguanto dos años?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "empleo",
+    "expediente": {
+      "pregunta": "¿Conviene jubilarse anticipadamente con reducción de la pensión o esperar a la edad ordinaria?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Jubilarse ahora de forma anticipada"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Esperar a la edad ordinaria"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "salud",
+          "texto": "Se encuentra bien de salud pero el trabajo le resulta cada vez más pesado.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "reduccion",
+          "texto": "La reducción por jubilación anticipada es permanente, según el especialista.",
+          "origen": "especialista",
+          "referencia": "seguridad_social"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "seguridad_social",
+          "concepto": "pensión estimada jubilándose ahora",
+          "valor": "1640",
+          "literal": "1.640 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "pension_simular"
+        },
+        {
+          "id": "C2",
+          "especialista": "seguridad_social",
+          "concepto": "pensión estimada en la edad ordinaria",
+          "valor": "1890",
+          "literal": "1.890 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "pension_simular"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "reduccion_permanente",
+          "frase": "La pensión reducida se cobra de por vida",
+          "patron": "(de por vida|para siempre|permanente|toda la vida)"
+        },
+        {
+          "id": "bienestar",
+          "frase": "Seguir trabajando dos años más tiene un coste personal",
+          "patron": "cansancio|pesado|salud|calidad de vida|bienestar|desgaste|coste personal"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

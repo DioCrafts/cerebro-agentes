@@ -236,6 +236,15 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         # The brain's proactive pass (asistente/plataforma/api/routers/repaso.py).
         ("get", f"/cases/{case_id}/repaso", None),
         ("get", f"/cases/{case_id}/repaso?notification_id={notification_id}", None),
+        # The household council (asistente/plataforma/api/routers/consejo.py).
+        ("get", f"/cases/{case_id}/consejo", None),
+        ("post", f"/cases/{case_id}/consejo", {"pregunta": "¿Me conviene amortizar la hipoteca o invertir?"}),
+        ("post", f"/cases/{case_id}/consejo/detectar", {"pregunta": "¿Acepto la herencia o renuncio?"}),
+        ("get", f"/cases/{case_id}/consejo/{{sesion_id}}", None),
+        ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/confirmar", {}),
+        ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/rechazar", {}),
+        ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/cancelar", {}),
+        ("delete", f"/cases/{case_id}/consejo/{{sesion_id}}", None),
     ]
 
 
@@ -308,6 +317,12 @@ def test_the_owner_reaches_every_case_endpoint(env: Env) -> None:
             response = env.client.request(method, path, json=body, headers=ana)
             if "{decision_id}" in path:  # past ownership: the (made-up) decision itself is what is missing
                 assert (response.status_code, response.json()) == (404, {"detail": "decision not found"}), path
+                continue
+            if "{sesion_id}" in path:  # past ownership: the (made-up) council session itself is what is missing
+                assert (response.status_code, response.json()) == (
+                    404,
+                    {"detail": "No existe esa sesión del consejo."},
+                ), path
                 continue
             if "/repaso" in path:  # past ownership: the case has no proactive pass yet
                 assert (response.status_code, response.json()) == (

@@ -1,0 +1,93 @@
+{
+  "id": "decision-hipoteca-subrogar-otro-banco",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Cambiar la hipoteca a otro banco con gastos: depende de cuántos años más la mantenga.",
+  "pregunta": "Otro banco me mejora el tipo pero el cambio tiene gastos. ¿Me la llevo?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "hipoteca",
+    "expediente": {
+      "pregunta": "¿Conviene trasladar la hipoteca a otra entidad que ofrece mejor tipo, asumiendo los gastos del cambio?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Trasladar la hipoteca a la otra entidad"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Mantener la hipoteca en la entidad actual"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "plan_vivienda",
+          "texto": "Puede que vendan la vivienda para mudarse, pero no lo tienen decidido.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "gastos",
+          "texto": "Los gastos del cambio se pagan una sola vez al firmar.",
+          "origen": "especialista",
+          "referencia": "hipoteca"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "hipoteca",
+          "concepto": "ahorro anual en intereses con la nueva entidad",
+          "valor": "640",
+          "literal": "640 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "hipoteca_comparar"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "gastos totales del cambio",
+          "valor": "2100",
+          "literal": "2.100 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_comparar"
+        },
+        {
+          "id": "C3",
+          "especialista": "hipoteca",
+          "concepto": "años para recuperar los gastos",
+          "valor": "3.3",
+          "literal": "3,3 años",
+          "unidad": "años",
+          "herramienta": "hipoteca_comparar"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Si venderán la vivienda en los próximos años."
+      ]
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "venta_temprana",
+          "frase": "Si venden la vivienda pronto, los gastos del cambio no se recuperan",
+          "patron": "(vend|mud).{0,80}(no se recuper|perd|gastos)|gastos.{0,60}no se recuper"
+        }
+      ],
+      "admitidas": [
+        "depende"
+      ],
+      "depende": {
+        "frase": "Depende de si mantendrán la hipoteca más años de los que se tarda en recuperar los gastos del cambio",
+        "patron": "(mantener|mantendr|conserv|segu\\w+ con|quedar|vender|vend\\w+|mudar).{0,80}(años|plazo)|(años|plazo).{0,80}(recuper|gastos)"
+      }
+    }
+  ]
+}

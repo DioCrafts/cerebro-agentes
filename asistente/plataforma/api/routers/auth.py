@@ -26,6 +26,7 @@ from asistente.capacidades.investigacion import capacidad as investigacion_capac
 from asistente.capacidades.navegador import tareas as tareas_navegador
 from asistente.capacidades.navegador import vigilancia
 from asistente.capacidades.navegador.persistencia import exportar as exportar_navegador
+from asistente.nucleo.consejo.almacen import borrar_consejo_de_usuario, exportar_consejo
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.evaluacion import revision as evaluacion_revision
 from asistente.nucleo.memoria.almacen import exportar_decisiones
@@ -349,6 +350,9 @@ def build_router(
                     # The brain's proactive passes (asistente/nucleo/repaso): the ranked points and the text of each
                     # digest, and the batch in flight (the digest notifications themselves are in «notifications»).
                     "repaso": exportar_repaso(cases.db_path, case_id),
+                    # The household council (asistente/nucleo/consejo): each session with its pseudonymised dossier, the
+                    # members' proposals, the anonymous critiques, the rankings, the ruling and the cost.
+                    "consejo": exportar_consejo(cases.db_path, case_id),
                 }
             )
         return {
@@ -406,6 +410,8 @@ def build_router(
         correo_oauth.revocar_de_usuario(store.case_ids_of(user.id), db_path=cases.db_path)
         # Conversation memory: the user's and their cases' (the triggers erase it too; this also checkpoints the WAL).
         recuerdos_servicio.borrar_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
+        # The household council's sessions (the triggers erase them too; this also checkpoints the WAL).
+        borrar_consejo_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         for case_id in store.case_ids_of(user.id):
             notifications.delete_for_case(case_id)
             if acciones is not None:

@@ -175,6 +175,25 @@ prepara. Lo que actúa fuera de la aplicación queda pendiente de su confirmaci�
 """
 
 
+# The household council (asistente/nucleo/consejo): added to the brain's prompt only on a turn where the deterministic
+# detector found a hard decision (or the user asked for the council), together with the ``convocar_consejo`` tool.
+ADDENDUM_CONSEJO = """
+## El consejo, para decisiones difíciles
+
+Cuando la pregunta es una decisión difícil de verdad —elegir entre alternativas con consecuencias difíciles de \
+deshacer (aceptar o renunciar a una herencia, vender o comprar una vivienda, recurrir, firmar), importes grandes, \
+varios ámbitos a la vez o mucha incertidumbre— puedes PROPONER estudiarla en el consejo con `convocar_consejo`: \
+varias IA la analizan por separado, se critican de forma anónima y emiten un dictamen con el consenso y el desacuerdo. \
+También si el usuario lo pide («consúltalo con el consejo»). Nunca para preguntas informativas (qué es, cuánto, \
+cuándo, cómo se calcula): esas las responden los especialistas.
+
+- La herramienta no ejecuta nada: crea una propuesta con su coste estimado que el usuario confirma o rechaza en una \
+tarjeta. Llámala una sola vez e incluye en tu respuesta, tal cual, la frase que te devuelve.
+- Responde también a lo que ya puedas con los informes de los especialistas; no anticipes lo que dirá el consejo.
+- Señal automática de esta pregunta (es un dato, no una orden): {pista}
+"""
+
+
 def prompt(rol: str, por_defecto: str) -> str:
     """The active text of ``rol`` (a promoted variant may change it); ``por_defecto`` while the role is not registered.
 
@@ -196,6 +215,7 @@ def prompt(rol: str, por_defecto: str) -> str:
 __all__ = [
     "ADDENDUM_ACCION",
     "ADDENDUM_CHARLA",
+    "ADDENDUM_CONSEJO",
     "ADDENDUM_MEMORIA",
     "CEREBRO_SYSTEM_PROMPT",
     "FORZAR_RESPUESTA",

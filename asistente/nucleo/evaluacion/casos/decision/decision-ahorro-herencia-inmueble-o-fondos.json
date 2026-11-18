@@ -1,0 +1,96 @@
+{
+  "id": "decision-ahorro-herencia-inmueble-o-fondos",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Invertir 120.000 € heredados en un piso para alquilar o en fondos indexados: equilibrado.",
+  "pregunta": "He heredado 120.000 €. ¿Compro un piso para alquilarlo o lo meto en fondos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "ahorro",
+    "expediente": {
+      "pregunta": "¿Conviene invertir el capital heredado en una vivienda para alquilar o en fondos indexados?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Comprar una vivienda para alquilar"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Invertir en fondos indexados diversificados"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "experiencia",
+          "texto": "No ha alquilado nunca una vivienda.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "tiempo",
+          "texto": "Tiene poco tiempo para gestiones.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "capital disponible",
+          "valor": "120000",
+          "literal": "120.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "rentabilidad bruta estimada del alquiler",
+          "valor": "5.1",
+          "literal": "5,1 %",
+          "unidad": "%"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "media anual histórica de los fondos",
+          "valor": "6.5",
+          "literal": "6,5 %",
+          "unidad": "%"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Los pisos nunca bajan, es lo más seguro."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "concentracion",
+          "frase": "Un solo inmueble concentra el riesgo y es poco líquido",
+          "patron": "concentr|poco l[ií]quid|un solo (inmueble|piso)|diversific"
+        },
+        {
+          "id": "gestion",
+          "frase": "Alquilar exige gestionar inquilinos, impagos y reparaciones",
+          "patron": "gesti[oó]n|inquilin|impago|reparaci"
+        },
+        {
+          "id": "volatilidad",
+          "frase": "Los fondos pueden caer con fuerza en algunos años",
+          "patron": "no est[aá] garantizad|sin garant[ií]a|incierta|volatil|ca(er|en|[ií]das?)\\b|p[eé]rdidas?"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

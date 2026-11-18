@@ -1,0 +1,85 @@
+{
+  "id": "decision-vivienda-alquilar-habitacion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Alquilar una habitación de la propia vivienda: ingresos frente a intimidad; equilibrado con preferencia sellada.",
+  "pregunta": "Me sobra una habitación. ¿La alquilo para ayudarme con los gastos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "¿Conviene alquilar una habitación de la vivienda habitual para obtener ingresos?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Alquilar la habitación"
+        },
+        {
+          "id": "o2",
+          "descripcion": "No alquilarla"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "situacion",
+          "texto": "Vive sola en un piso de tres habitaciones con hipoteca.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "fiscal",
+          "texto": "El especialista fiscal indica que los ingresos del alquiler tributan en el IRPF como rendimientos del capital inmobiliario.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "alquiler de mercado de una habitación en la zona",
+          "valor": "420",
+          "literal": "420 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "IRPF estimado de esos ingresos",
+          "valor": "610",
+          "literal": "610 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "calcular_irpf"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Necesito el dinero, la verdad."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "intimidad",
+          "frase": "Compartir la vivienda supone perder intimidad y convivir con un desconocido",
+          "patron": "intimidad|convivencia|desconocid|compartir"
+        },
+        {
+          "id": "impago",
+          "frase": "El inquilino puede dejar de pagar o causar problemas",
+          "patron": "impago|dej\\w+ de pagar|problemas con el inquilino|conflict"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

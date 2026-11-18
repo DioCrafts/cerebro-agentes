@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import type { AdvisorNotification } from "../api";
 import { moduloDeKind } from "../apiModulos";
 import { formatDate, formatMoney, relativeTime } from "../lib/presentation";
+import { AvisoConsejo } from "./DictamenConsejo";
 import { MemoriaBotones } from "./MemoriaBotones";
 import { PreferenciasPanel } from "./PreferenciasPanel";
 import { RepasoCard } from "./RepasoCard";
@@ -40,7 +41,8 @@ function groupByModule(notifications: AdvisorNotification[], moduleNames: Record
   const groups = new Map<string, Group>();
   for (const n of notifications) {
     const clave = moduloDeKind(n.kind) ?? "resumen";
-    const title = clave === "resumen" ? "Resumen semanal" : clave === "fiscal" ? "Impuestos" : (moduleNames[clave] ?? clave);
+    const title =
+      clave === "resumen" ? "Resumen semanal" : clave === "fiscal" ? "Impuestos" : clave === "consejo" ? "Consejo del hogar" : (moduleNames[clave] ?? clave);
     const group = groups.get(clave) ?? { key: clave, title, items: [] };
     group.items.push(n);
     groups.set(clave, group);
@@ -137,6 +139,10 @@ export function NotificationsPanel({ open, onClose, notifications, hasCase, load
             // The weekly/daily digest: the brain's structured repaso (falls back to the text when there is none).
             if (n.kind === "resumen_semanal" && caseId) {
               return <RepasoCard key={n.id} notification={n} caseId={caseId} onMarkRead={onMarkRead} onRefresh={onRefresh} onAsk={onAsk} />;
+            }
+            // The household council's ruling: its text, and the ruling itself on demand.
+            if (n.kind === "modulo:consejo" && caseId) {
+              return <AvisoConsejo key={n.id} notification={n} caseId={caseId} onMarkRead={onMarkRead} />;
             }
             const kind = kindInfo(n.kind, moduleNames);
             const Icon = kind.icon;

@@ -1,0 +1,80 @@
+{
+  "id": "decision-seguros-salud-privado",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Contratar un seguro de salud privado familiar: equilibrado.",
+  "pregunta": "¿Merece la pena pagar 95 € al mes por un seguro de salud para la familia?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "seguros",
+    "expediente": {
+      "pregunta": "¿Conviene contratar un seguro de salud privado para la familia?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Contratar el seguro de salud"
+        },
+        {
+          "id": "o2",
+          "descripcion": "No contratarlo y seguir solo con la sanidad pública"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "listas",
+          "texto": "En su zona, la espera para algunos especialistas de la sanidad pública supera los tres meses.",
+          "origen": "especialista",
+          "referencia": "seguros"
+        },
+        {
+          "clave": "salud",
+          "texto": "Nadie en la familia tiene enfermedades crónicas.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "seguros",
+          "concepto": "prima mensual familiar",
+          "valor": "95",
+          "literal": "95 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "seguros",
+          "concepto": "copago estimado por consulta",
+          "valor": "5",
+          "literal": "5 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "coste_fijo",
+          "frase": "La prima se paga todos los meses aunque no se use",
+          "patron": "(aunque no|se use o no|todos los meses|gasto fijo)"
+        },
+        {
+          "id": "esperas",
+          "frase": "La sanidad pública tiene esperas largas para algunos especialistas",
+          "patron": "esperas?|listas"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

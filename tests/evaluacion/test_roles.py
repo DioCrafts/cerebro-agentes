@@ -17,11 +17,13 @@ from asistente.nucleo.evaluacion import variantes as v
 CEREBRO = "asistente.nucleo.cerebro.prompts"
 REPASO = "asistente.nucleo.repaso.prompts"
 RECUERDOS = "asistente.nucleo.recuerdos.prompts"
+CONSEJO = "asistente.nucleo.consejo.prompts"
+CONSEJO_EXPEDIENTE = "asistente.nucleo.consejo.prompts_expediente"
 
 
 @pytest.fixture
 def paquetes(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, types.ModuleType]]:
-    """Stand-in modules for the three packages (whatever the real ones say today)."""
+    """Stand-in modules for the packages that hold prompts (whatever the real ones say today)."""
     falsos: dict[str, types.ModuleType] = {}
     for nombre, atributos in {
         CEREBRO: {
@@ -31,6 +33,13 @@ def paquetes(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, types.Module
         },
         REPASO: {"REPASO_SYSTEM_PROMPT": "Resume la semana."},
         RECUERDOS: {"RESUMEN_SYSTEM_PROMPT": "Resume la conversación."},
+        CONSEJO: {
+            "MIEMBRO_SYSTEM_PROMPT": "Analiza la decisión.",
+            "CRITICA_SYSTEM_PROMPT": "Critica las propuestas anónimas.",
+            "REVISION_SYSTEM_PROMPT": "Revisa tu propuesta.",
+            "PRESIDENTE_SYSTEM_PROMPT": "Redacta el dictamen.",
+        },
+        CONSEJO_EXPEDIENTE: {"EXPEDIENTE_SYSTEM_PROMPT": "Instruye el expediente."},
     }.items():
         modulo = types.ModuleType(nombre)
         for clave, valor in atributos.items():
@@ -56,6 +65,11 @@ def test_the_roles_and_where_their_text_lives() -> None:
         "cerebro_sintesis",
         "repaso",
         "memoria_resumen",
+        "consejo_miembro",
+        "consejo_critica",
+        "consejo_revision",
+        "consejo_presidente",
+        "consejo_expediente",
     }
     assert v.origen_de("cerebro") == (CEREBRO, "CEREBRO_SYSTEM_PROMPT")
     assert v.origen_de("repaso") == (REPASO, "REPASO_SYSTEM_PROMPT")

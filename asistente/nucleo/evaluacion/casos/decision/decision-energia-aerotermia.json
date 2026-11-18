@@ -1,0 +1,91 @@
+{
+  "id": "decision-energia-aerotermia",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Sustituir la caldera de gas por aerotermia con ayuda incierta: equilibrado.",
+  "pregunta": "La caldera tiene 12 años. ¿La cambio ya por aerotermia?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "energia",
+    "expediente": {
+      "pregunta": "¿Conviene sustituir ahora la caldera de gas por un sistema de aerotermia?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Instalar aerotermia ahora"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Mantener la caldera de gas y decidir cuando falle"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "caldera",
+          "texto": "La caldera funciona bien y ha pasado la última revisión.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "ayuda",
+          "texto": "Hay una ayuda autonómica anunciada para aerotermia, pendiente de convocatoria.",
+          "origen": "especialista",
+          "referencia": "ayudas"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "luz",
+          "concepto": "coste de la aerotermia instalada",
+          "valor": "9000",
+          "literal": "9.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "luz",
+          "concepto": "ahorro anual estimado en calefacción",
+          "valor": "620",
+          "literal": "620 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_comparar"
+        },
+        {
+          "id": "C3",
+          "especialista": "ayudas",
+          "concepto": "ayuda máxima anunciada",
+          "valor": "3000",
+          "literal": "3.000 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Si se convocará la ayuda y cuándo."
+      ]
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "ayuda_incierta",
+          "frase": "La ayuda no está convocada y podría no llegar",
+          "patron": "ayuda.{0,60}(no est[aá]|pendiente|incierta|podr[ií]a no|convoca)|subvenci"
+        },
+        {
+          "id": "inversion",
+          "frase": "La inversión inicial es alta",
+          "patron": "inversi[oó]n (inicial )?(es )?(alta|elevada|importante)|inversi[oó]n inicial|desembolso|coste inicial"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

@@ -1,0 +1,72 @@
+{
+  "id": "decision-energia-coche-y-tarifa-nocturna",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Cambiar a una tarifa con discriminación horaria al comprar un coche eléctrico con garaje: claro, conviene.",
+  "pregunta": "Ya tengo el coche eléctrico y cargo en el garaje por la noche. ¿Cambio a una tarifa con horas valle?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "energia",
+    "expediente": {
+      "pregunta": "Con un coche eléctrico que carga de noche en casa, ¿conviene una tarifa con precios distintos por horas?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Tarifa con discriminación horaria"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Tarifa con precio único todo el día"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "carga",
+          "texto": "Carga el coche en su garaje entre la una y las siete de la mañana.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "luz",
+          "concepto": "coste anual estimado con discriminación horaria",
+          "valor": "980",
+          "literal": "980 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_calcular_factura"
+        },
+        {
+          "id": "C2",
+          "especialista": "luz",
+          "concepto": "coste anual estimado con precio único",
+          "valor": "1210",
+          "literal": "1.210 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_calcular_factura"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "habitos",
+          "frase": "El ahorro depende de seguir cargando en las horas baratas",
+          "patron": "hor(as|ario) (valle|barat|nocturn)|de noche|h[aá]bitos"
+        }
+      ],
+      "admitidas": [
+        "o1"
+      ]
+    }
+  ]
+}

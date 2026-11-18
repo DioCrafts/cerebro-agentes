@@ -1,0 +1,104 @@
+{
+  "id": "decision-vivienda-segunda-residencia",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Comprar una casa en el pueblo que usarían cuatro semanas al año: costes fijos e imputación de rentas.",
+  "pregunta": "Nos venden la casa del pueblo por 85.000 €. ¿La compramos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "¿Conviene comprar una segunda vivienda en el pueblo para uso propio unas semanas al año?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Comprar la casa del pueblo"
+        },
+        {
+          "id": "o2",
+          "descripcion": "No comprarla y alquilar cuando vayan"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "uso",
+          "texto": "Calculan usarla unas cuatro semanas al año.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "estado",
+          "texto": "La casa necesita reformas en el tejado según el vendedor.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "imputacion",
+          "texto": "El especialista fiscal indica que una segunda vivienda no alquilada genera una imputación de rentas en el IRPF.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "precio de la casa",
+          "valor": "85000",
+          "literal": "85.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "costes fijos anuales estimados de la casa",
+          "valor": "2300",
+          "literal": "2.300 €/año",
+          "unidad": "EUR/año"
+        },
+        {
+          "id": "C3",
+          "especialista": "fiscal",
+          "concepto": "IRPF adicional estimado por la imputación de rentas",
+          "valor": "190",
+          "literal": "190 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "calcular_irpf"
+        },
+        {
+          "id": "C4",
+          "especialista": "vivienda",
+          "concepto": "alquiler de una casa similar por semana",
+          "valor": "450",
+          "literal": "450 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "costes_fijos",
+          "frase": "Una segunda vivienda tiene costes fijos aunque no se use",
+          "patron": "costes? fijos|gastos fijos|mantenimiento|IBI|aunque no se use"
+        },
+        {
+          "id": "reformas",
+          "frase": "Las reformas pendientes pueden encarecer la compra",
+          "patron": "reforma|tejado|obras"
+        }
+      ],
+      "admitidas": [
+        "o2",
+        "depende"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "id": "decision-educacion-master-con-prestamo",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Pagar un máster con préstamo sin retorno asegurado: equilibrado.",
+  "pregunta": "¿Pido un préstamo de 14.000 € para hacer un máster?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "educacion",
+    "expediente": {
+      "pregunta": "¿Conviene financiar un máster con un préstamo personal?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Hacer el máster con el préstamo"
+        },
+        {
+          "id": "o2",
+          "descripcion": "No hacerlo por ahora"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "sector",
+          "texto": "En su sector, el máster es valorado pero no imprescindible.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "coste del máster",
+          "valor": "14000",
+          "literal": "14.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "ahorro",
+          "concepto": "cuota del préstamo",
+          "valor": "268",
+          "literal": "268 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "prestamo_simular"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "intereses totales del préstamo",
+          "valor": "2080",
+          "literal": "2.080 €",
+          "unidad": "EUR",
+          "herramienta": "prestamo_simular"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Si el máster se traducirá en un mejor sueldo."
+      ]
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "deuda",
+          "frase": "El préstamo es una deuda fija aunque el máster no mejore el sueldo",
+          "patron": "deuda|pr[eé]stamo|cuota"
+        },
+        {
+          "id": "retorno_incierto",
+          "frase": "No está garantizado que el máster aumente los ingresos",
+          "patron": "(no est[aá] garantizad|incierto|no asegura|puede que no).{0,80}(sueldo|ingres|retorno|salario)|retorno"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

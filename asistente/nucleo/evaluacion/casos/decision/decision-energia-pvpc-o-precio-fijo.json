@@ -1,0 +1,86 @@
+{
+  "id": "decision-energia-pvpc-o-precio-fijo",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Tarifa PVPC o precio fijo cuando el hogar ya rechazó el PVPC: recomendarlo rompe una restricción.",
+  "pregunta": "Me dicen que con el PVPC pagaría menos. ¿Cambio de tarifa?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "energia",
+    "expediente": {
+      "pregunta": "¿Qué tarifa eléctrica conviene al hogar: regulada (PVPC) o de precio fijo en el mercado libre?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Tarifa regulada PVPC"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Tarifa de precio fijo en el mercado libre"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "decision_previa",
+          "texto": "En septiembre rechazaron pasar al PVPC: no quieren sobresaltos en la factura.",
+          "origen": "decision_usuario",
+          "referencia": "decisiones"
+        },
+        {
+          "clave": "consumo",
+          "texto": "Consumo concentrado por la tarde y la noche.",
+          "origen": "especialista",
+          "referencia": "luz"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "luz",
+          "concepto": "coste anual estimado con PVPC",
+          "valor": "1020",
+          "literal": "1.020 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_calcular_factura"
+        },
+        {
+          "id": "C2",
+          "especialista": "luz",
+          "concepto": "coste anual estimado con precio fijo",
+          "valor": "1090",
+          "literal": "1.090 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_calcular_factura"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [
+        "No quiere el PVPC: prefiere una factura predecible (decisión de septiembre de 2025)."
+      ],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "volatilidad",
+          "frase": "El PVPC varía cada hora y la factura es menos predecible",
+          "patron": "vari\\w+|volatil|predecible|sobresalt|fluct"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ],
+      "prohibidas": [
+        "o1"
+      ],
+      "motivo_prohibidas": "el hogar rechazó expresamente el PVPC"
+    }
+  ],
+  "critico": true
+}

@@ -81,5 +81,45 @@
       "registrado_el": "2026-11-18",
       "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
     }
+  ],
+  "consejo_miembro": [
+    {
+      "version": "consejo_miembro@1",
+      "huella": "5bc94120950aa55f194a4745bd165adfb938981497ab0f8bf44512026a04dffc",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Consejo del hogar: miembros, críticas anónimas, revisión, presidente y expediente; añadido del cerebro para convocarlo"
+    }
+  ],
+  "consejo_critica": [
+    {
+      "version": "consejo_critica@1",
+      "huella": "a4e908d417f57097e2e52baac3061d8442bd590685803b94701aa9642b30ab84",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Consejo del hogar: miembros, críticas anónimas, revisión, presidente y expediente; añadido del cerebro para convocarlo"
+    }
+  ],
+  "consejo_revision": [
+    {
+      "version": "consejo_revision@1",
+      "huella": "d377abc3b92922c072783f3d867d76e3811f6a6c399908b475a4dbe28baf64a8",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Consejo del hogar: miembros, críticas anónimas, revisión, presidente y expediente; añadido del cerebro para convocarlo"
+    }
+  ],
+  "consejo_presidente": [
+    {
+      "version": "consejo_presidente@1",
+      "huella": "39472af3ee8e5a36f20a2fac5f4670c56225b770a1c24acda37bc98dc4b6b1c0",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Consejo del hogar: miembros, críticas anónimas, revisión, presidente y expediente; añadido del cerebro para convocarlo"
+    }
+  ],
+  "consejo_expediente": [
+    {
+      "version": "consejo_expediente@1",
+      "huella": "2a4eec14d59267462e71f5a66c95f8a8cb7c6db587681cbf0b3cc5c7623d3fdd",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Consejo del hogar: miembros, críticas anónimas, revisión, presidente y expediente; añadido del cerebro para convocarlo"
+    }
   ]
 }

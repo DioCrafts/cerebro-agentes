@@ -532,3 +532,61 @@ EVALUACION_CASOS_REALES_DB_PATH = os.environ.get("EVALUACION_CASOS_REALES_DB_PAT
 EVALUACION_GATE_MIN_CASOS = int(os.environ.get("EVALUACION_GATE_MIN_CASOS", "30"))
 EVALUACION_GATE_COSTE_MAX_RELATIVO = float(os.environ.get("EVALUACION_GATE_COSTE_MAX_RELATIVO", "1.10"))
 EVALUACION_GATE_LATENCIA_MAX_RELATIVA = float(os.environ.get("EVALUACION_GATE_LATENCIA_MAX_RELATIVA", "1.25"))
+
+# --- consejo (household council) ------------------------------------------------------
+# The council of AIs for HARD household decisions (asistente/nucleo/consejo, docs/consejo/arquitectura.md): convened
+# by the brain or the user, always with a cost estimate the user confirms, run in the background, delivered as a
+# «Dictamen del consejo». false: the brain never offers it and the API refuses to convene (what exists stays readable).
+CONSEJO_ACTIVO = _env_bool("CONSEJO_ACTIVO", default=True)
+# Model families for the members' diversity, comma separated («anthropic,openai»): a member's preferred family is used
+# when configured. Empty: every member on the configured provider (diversity by role, instructions and temperature).
+CONSEJO_FAMILIAS = os.environ.get("CONSEJO_FAMILIAS", "")
+# Members working at the same time in one phase (1 = one after another).
+CONSEJO_MAX_PARALELO = int(os.environ.get("CONSEJO_MAX_PARALELO", "3"))
+# Hard cap of a session = the estimate shown to the user × this factor, never above CONSEJO_TOPE_MAX_USD (an estimate
+# above that maximum cannot be convened). Past the cap no further model call is made: the engine rules with what it has
+# (a partial ruling written by code, labelled «Dictamen parcial») or the session ends «fallida»; nothing is invented.
+CONSEJO_FACTOR_TOPE = os.environ.get("CONSEJO_FACTOR_TOPE", "2.0")
+CONSEJO_TOPE_MAX_USD = os.environ.get("CONSEJO_TOPE_MAX_USD", "3.00")
+# Model calls one session may make in all (the dossier's specialists included): the session's own «per question» cap.
+CONSEJO_MAX_LLAMADAS = int(os.environ.get("CONSEJO_MAX_LLAMADAS", "150"))
+# Single-process deployments: start a confirmed session at once in a background thread of the API process (the job
+# `consejo` is the safety net and runs what is left queued). false: only the job runs sessions.
+CONSEJO_EN_SEGUNDO_PLANO = _env_bool("CONSEJO_EN_SEGUNDO_PLANO", default=True)
+# Seconds a worker holds a running session (renewed on every phase); past it, another run may take it over.
+CONSEJO_ARRIENDO_S = int(os.environ.get("CONSEJO_ARRIENDO_S", "900"))
+# Runs of one session at most (a crash mid-session is retried once, then the session is marked «fallida»).
+CONSEJO_MAX_INTENTOS = int(os.environ.get("CONSEJO_MAX_INTENTOS", "2"))
+# A convocation the user neither confirms nor declines expires after these hours.
+CONSEJO_CADUCIDAD_HORAS = int(os.environ.get("CONSEJO_CADUCIDAD_HORAS", "72"))
+# Finished sessions (with their dossier and deliberation) are kept this many days, then purged by the job.
+CONSEJO_RETENCION_DIAS = int(os.environ.get("CONSEJO_RETENCION_DIAS", "365"))
+# Amount (EUR) from which a decision counts as «large» for the detector of hard decisions.
+CONSEJO_IMPORTE_GRANDE_EUR = os.environ.get("CONSEJO_IMPORTE_GRANDE_EUR", "10000")
+
+# --- consejo.deliberacion ---
+# The council's deliberation engine (asistente/nucleo/consejo/deliberacion.py, docs/consejo/deliberacion.md). Seats of
+# the council, comma separated, in order (3 to 7; known ids: prudente, fiscal, liquidez_familia, abogado_del_diablo,
+# largo_plazo — an unknown id is skipped with a warning). CONSEJO_FAMILIAS and CONSEJO_MAX_PARALELO: the block above.
+CONSEJO_MIEMBROS = os.environ.get("CONSEJO_MIEMBROS", "prudente,fiscal,liquidez_familia,abogado_del_diablo")
+# Seed of the anonymous presentation orders (an integer). Empty: each session derives its own from its id, so a
+# session is reproducible and two sessions do not share the same orders.
+CONSEJO_SEMILLA = os.environ.get("CONSEJO_SEMILLA", "")
+
+# --- evaluacion.consejo (household council) -------------------------------------------
+# Evaluation of the council (asistente/nucleo/evaluacion/consejo_eval.py, docs/consejo/evaluacion.md). Its cases
+# (categories decision and sesgo) are expensive: a model run of the suite includes them only with this switch on (or
+# through `python -m asistente.nucleo.evaluacion.consejo_eval comparar`, which always runs them).
+EVALUACION_CONSEJO = _env_bool("EVALUACION_CONSEJO", default=False)
+# «¿Merece la pena el consejo?» — how much more than the brain alone the council may cost, RELATIVE to it: this many
+# times when it is not worse, plus this many times per percentage point of rubric gain it demonstrates (the lower
+# bound of the gain's 95 % interval), never above the maximum. Its p95 latency may be this many times the brain's
+# (it runs in the background).
+EVALUACION_CONSEJO_COSTE_RELATIVO_SIN_MEJORA = float(
+    os.environ.get("EVALUACION_CONSEJO_COSTE_RELATIVO_SIN_MEJORA", "3.0")
+)
+EVALUACION_CONSEJO_COSTE_RELATIVO_POR_PUNTO = float(
+    os.environ.get("EVALUACION_CONSEJO_COSTE_RELATIVO_POR_PUNTO", "0.5")
+)
+EVALUACION_CONSEJO_COSTE_RELATIVO_MAX = float(os.environ.get("EVALUACION_CONSEJO_COSTE_RELATIVO_MAX", "12.0"))
+EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA = float(os.environ.get("EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA", "40.0"))

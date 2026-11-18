@@ -846,6 +846,7 @@ class Cerebro:
             chat_history=turno.historial,
             modulos=turno.modulos,
             consultar=self._consultar(turno),
+            intencion=turno.intencion,
         )
         charla = turno.intencion.tipo == "charla" and not turno.informes
         specs = [] if charla else herramientas.caja.specs()

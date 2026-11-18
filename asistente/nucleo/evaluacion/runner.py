@@ -13,6 +13,10 @@ runs through it (:mod:`asistente.nucleo.evaluacion.ejecutores`: the brain built 
 and verifier), and its :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro` is what the brain's
 expectations read. A case whose code is not installed yet, or a replay of a case without a reference script, is
 OMITTED with the reason: it counts nowhere (neither passed nor failed) and the report lists it.
+
+A case that ``requiere`` the household council runs through :mod:`asistente.nucleo.evaluacion.consejo_eval` with the
+council (``consejo``) or, to compare, the brain in one pass (``un_paso``). It is expensive (several members, several
+rounds), so a model run includes it only when asked (``EVALUACION_CONSEJO=true``, or ``consejo_eval comparar``).
 """
 
 from __future__ import annotations
@@ -66,7 +70,8 @@ logger = logging.getLogger(__name__)
 
 Modo = Literal["modelo", "reproduccion"]
 # Which system runs a case: "auto" (the brain when the case requires it, else the central agent), or forced.
-Motor = Literal["auto", "agente", "cerebro"]
+# "consejo" / "un_paso": the household council's cases with the council, or with the brain in one pass.
+Motor = Literal["auto", "agente", "cerebro", "consejo", "un_paso"]
 # (variant, case, expected figures) -> provider for the agent and the verifier.
 FabricaProveedor = Callable[[Variante, CasoEvaluacion, dict[str, str]], LLMProvider]
 
@@ -109,6 +114,9 @@ class Entorno:
     identidad: tuple[str, str] | None = None
     # "cerebro" runs every case through the household brain (the legacy cases too: «does the brain keep them?»).
     motor: Motor = "auto"
+    # The council engine for ``consejo`` cases: (case, provider per purpose) -> MotorDeliberacion. None = F's engine
+    # (``consejo_eval.motor_por_defecto``); scripted runs pass ``consejo_eval.fabrica_oraculo``.
+    fabrica_consejo: Callable[[CasoEvaluacion, Callable[[str], LLMProvider]], Any] | None = None
 
 
 # Purposes of the calls of a run. The agent under test is metered with the SAME purposes as in production
@@ -125,6 +133,8 @@ def motor_de(caso: CasoEvaluacion, entorno: Entorno) -> str:
     """The system that runs ``caso``: the proactive pass, the household brain or the central agent."""
     if "repaso" in caso.requiere:
         return "repaso"
+    if "consejo" in caso.requiere:
+        return "un_paso" if entorno.motor in ("un_paso", "cerebro") else "consejo"
     if "cerebro" in caso.requiere or entorno.motor == "cerebro":
         return "cerebro"
     return "agente"
@@ -138,11 +148,22 @@ def _sin_guion(caso: CasoEvaluacion, entorno: Entorno) -> bool:
 
 def motivo_de_omision(caso: CasoEvaluacion, entorno: Entorno) -> str | None:
     """Why ``caso`` is not run in this environment (Spanish), or None."""
-    motivos = pendientes(caso)
+    # A scripted council engine (``fabrica_consejo``) needs no council code installed.
+    motivos = pendientes(caso, excepto=("consejo",) if entorno.fabrica_consejo is not None else ())
     if entorno.motor == "cerebro" and "cerebro" not in caso.requiere:
         motivos += [m for m in [pendiente("cerebro")] if m is not None]
     if motivos:
         return "; ".join(motivos)
+    if (
+        "consejo" in caso.requiere
+        and entorno.modo == "modelo"
+        and entorno.motor not in ("consejo", "un_paso")
+        and not getattr(settings, "EVALUACION_CONSEJO", False)
+    ):
+        return (
+            "caso del consejo: es caro y solo se ejecuta al compararlo con el cerebro (consejo_eval comparar) o con "
+            "EVALUACION_CONSEJO=true"
+        )
     if (
         entorno.modo == "reproduccion"
         and caso.guion is None
@@ -228,6 +249,16 @@ def ejecutar_caso(
                 salida = ejecutar_repaso(caso, proveedor=provider.con_proposito(PROPOSITO_REPASO))
                 result = None
                 ejecucion = Ejecucion(respuesta=salida.texto, modo="verified", repaso=salida.model_dump(mode="json"))
+            elif motor in ("consejo", "un_paso"):
+                from asistente.nucleo.evaluacion.consejo_eval import ejecutar_decision
+
+                result = None
+                ejecucion = ejecutar_decision(
+                    caso,
+                    proveedor=provider,
+                    sistema="un_paso" if motor == "un_paso" else "consejo",
+                    fabrica_motor=entorno.fabrica_consejo,
+                )
             elif motor == "cerebro":
                 result = ejecutar_cerebro(
                     caso,
@@ -353,7 +384,7 @@ def evaluar(
     incompleto = False
     for caso in casos:
         categoria = config.categorias.get(caso.categoria)
-        critica = bool(categoria and categoria.critica)
+        critica = bool(categoria and categoria.critica) or caso.critico
         omision = motivo_de_omision(caso, entorno)
         if omision is not None:
             resultado = ResultadoCaso(

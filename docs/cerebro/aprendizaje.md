@@ -30,7 +30,8 @@ flowchart LR
 | `ejecutores.py` | The stable adapters to the brain's packages (`requiere`: `cerebro`, `recuerdos`, `repaso`), resolved lazily; a case whose code is missing is skipped with the reason. |
 | `estadistica.py`, `gate.py` | Paired bootstrap, exact McNemar, the promotion rules and the auditable decision report. |
 | `reproduccion.py` | Script replays; `guion_de_captura` turns a captured run into a script (the accepted case's standing negative control). |
-| `variantes.py` | Prompt roles, including those whose text lives in other packages (`cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso`, `memoria_resumen`). |
+| `variantes.py` | Prompt roles, including those whose text lives in other packages (`cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso`, `memoria_resumen`, and the council's `consejo_miembro`, `consejo_critica`, `consejo_revision`, `consejo_presidente`, `consejo_expediente`). |
+| `consejo_eval.py`, `sesgos.py`, `sesgos_falsos.py`, `calibracion.py`, `modelos_consejo.py` | The household council's evaluation: `decision` and `sesgo` cases (`requiere: ["consejo"]`), the bias harness, calibration and «¿Merece la pena el consejo?» — see [../consejo/evaluacion.md](../consejo/evaluacion.md). |
 
 ## Where candidates come from
 

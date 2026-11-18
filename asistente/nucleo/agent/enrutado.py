@@ -71,6 +71,10 @@ TABLA: tuple[Proposito, ...] = (
     # The household brain (asistente/nucleo/cerebro). Exact names: "cerebro" must not swallow "cerebro:*".
     Proposito("cerebro", "grande", "Cerebro del hogar: une los informes de los especialistas en una respuesta."),
     Proposito("cerebro:intencion", "pequeno", "Entiende la petición y reparte encargos cuando las reglas dudan."),
+    # The household council (asistente/nucleo/consejo): members deliberate, the chair rules, the dossier is prepared.
+    Proposito("consejo:miembro:*", "mediano", "Miembro del consejo: propone, critica de forma anónima y revisa."),
+    Proposito("consejo:presidente", "grande", "Presidente del consejo: agrega, mide el acuerdo y redacta el dictamen."),
+    Proposito("consejo:expediente", "pequeno", "Reformula la pregunta de forma neutral y extrae las opciones."),
     Proposito("verificador", "grande", "Revisa cada afirmación de la respuesta contra sus fuentes."),
     Proposito("equipo:planificador", "pequeno", "Clasifica la consulta (¿compleja?) y reparte encargos."),
     Proposito("equipo:investigador*", "mediano", "Busca normativa o doctrina con herramientas y resume."),

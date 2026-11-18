@@ -21,6 +21,9 @@ What each requirement needs (the only coupling, in one table, :data:`REQUISITOS`
   the case's ``entrada_repaso`` (``{"hoy", "senales": [{"id", "tipo", "titulo", "detalle", "fecha", "importe"}]}``)
   returning :class:`SalidaRepaso` (``{"texto", "afirmaciones": [{"texto", "senales": [ids]}], "propuestas":
   [{"texto", "senal": id | None}]}``). That function is the repaso package's side of this contract.
+* ``consejo`` — the household council's engine, ``asistente.nucleo.consejo.deliberacion.Deliberacion`` (and its
+  factory ``construir_motor``): a ``decision``/``sesgo`` case runs the engine on the case's dossier fixture (no
+  specialists), through :mod:`asistente.nucleo.evaluacion.consejo_eval`.
 """
 
 from __future__ import annotations
@@ -56,6 +59,10 @@ REQUISITOS: dict[str, tuple[tuple[str, str], ...]] = {
         ("asistente.nucleo.recuerdos.almacen", "Titular"),
     ),
     "repaso": (("asistente.nucleo.repaso.evaluacion", "ejecutar"),),
+    "consejo": (
+        ("asistente.nucleo.consejo.deliberacion", "Deliberacion"),
+        ("asistente.nucleo.consejo.deliberacion", "construir_motor"),
+    ),
 }
 
 
@@ -75,9 +82,10 @@ def pendiente(requisito: str) -> str | None:
     return None
 
 
-def pendientes(caso: CasoEvaluacion) -> list[str]:
-    """The reasons a case cannot run here (empty: it can)."""
-    return [motivo for r in caso.requiere if (motivo := pendiente(r)) is not None]
+def pendientes(caso: CasoEvaluacion, *, excepto: Sequence[str] = ()) -> list[str]:
+    """The reasons a case cannot run here (empty: it can). ``excepto``: requirements the caller provides itself
+    (e.g. a scripted council engine)."""
+    return [motivo for r in caso.requiere if r not in excepto and (motivo := pendiente(r)) is not None]
 
 
 # --------------------------------------------------------------------------- #

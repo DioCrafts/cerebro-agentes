@@ -10,7 +10,12 @@ A **prompt version** is an id ``<rol>@<version>`` for one of the prompts a varia
   ``SINTESIS_SYSTEM_PROMPT``);
 * ``repaso`` — the proactive weekly pass (``asistente.nucleo.repaso.prompts.REPASO_SYSTEM_PROMPT``);
 * ``memoria_resumen`` — the conversation summary of the memory (``asistente.nucleo.recuerdos.prompts.
-  RESUMEN_SYSTEM_PROMPT``).
+  RESUMEN_SYSTEM_PROMPT``);
+* ``consejo_miembro``, ``consejo_critica``, ``consejo_revision``, ``consejo_presidente`` — the household council's
+  member, anonymous critique, revision and chair prompts (``asistente.nucleo.consejo.prompts``:
+  ``MIEMBRO_SYSTEM_PROMPT``, ``CRITICA_SYSTEM_PROMPT``, ``REVISION_SYSTEM_PROMPT``, ``PRESIDENTE_SYSTEM_PROMPT``);
+* ``consejo_expediente`` — the council's dossier builder (``asistente.nucleo.consejo.prompts_expediente.
+  EXPEDIENTE_SYSTEM_PROMPT``).
 
 The first three live in :mod:`asistente.nucleo.agent.prompts` (imported here, as always). The others live in
 packages that may not be installed or may not exist yet: they are imported LAZILY, the first time their text is
@@ -69,6 +74,11 @@ Rol = Literal[
     "cerebro_sintesis",
     "repaso",
     "memoria_resumen",
+    "consejo_miembro",
+    "consejo_critica",
+    "consejo_revision",
+    "consejo_presidente",
+    "consejo_expediente",
 ]
 ROLES: tuple[Rol, ...] = get_args(Rol)
 
@@ -97,6 +107,12 @@ ROLES_EXTERNOS: dict[Rol, tuple[str, str]] = {
     "cerebro_sintesis": ("asistente.nucleo.cerebro.prompts", "SINTESIS_SYSTEM_PROMPT"),
     "repaso": ("asistente.nucleo.repaso.prompts", "REPASO_SYSTEM_PROMPT"),
     "memoria_resumen": ("asistente.nucleo.recuerdos.prompts", "RESUMEN_SYSTEM_PROMPT"),
+    # The household council (asistente/nucleo/consejo, docs/consejo/evaluacion.md).
+    "consejo_miembro": ("asistente.nucleo.consejo.prompts", "MIEMBRO_SYSTEM_PROMPT"),
+    "consejo_critica": ("asistente.nucleo.consejo.prompts", "CRITICA_SYSTEM_PROMPT"),
+    "consejo_revision": ("asistente.nucleo.consejo.prompts", "REVISION_SYSTEM_PROMPT"),
+    "consejo_presidente": ("asistente.nucleo.consejo.prompts", "PRESIDENTE_SYSTEM_PROMPT"),
+    "consejo_expediente": ("asistente.nucleo.consejo.prompts_expediente", "EXPEDIENTE_SYSTEM_PROMPT"),
 }
 
 

@@ -198,9 +198,13 @@ def herramientas_del_cerebro(
     modulos: Sequence[Modulo] | None,
     consultar: ExtraTool | None = None,
     planificador: bool = True,
+    intencion: Intencion | None = None,
 ) -> HerramientasCerebro:
     """The brain's tools for one turn. Each part is optional and fails alone (logged): a broken store never breaks
-    the user's turn, the brain simply works without that tool."""
+    the user's turn, the brain simply works without that tool.
+
+    ``intencion``: the turn's plan, when the caller has it (the council's detector counts several specialists as a
+    signal of a hard decision)."""
     caja = CajaCerebro(expediente, [consultar] if consultar is not None else [])
     addenda: list[str] = []
     contextos: list[str] = []
@@ -259,10 +263,25 @@ def herramientas_del_cerebro(
         caja.anadir([(PLANIFICAR_TOOL, ejecutar)])
         addenda.append(PLANIFICADOR_ADDENDUM)
 
+    def consejo() -> None:
+        # The household council (asistente/nucleo/consejo): offered only when the deterministic detector finds a hard
+        # decision (or the user asks for it). The tool never runs the council: it proposes it with its cost estimate
+        # and the user confirms it in the chat's card.
+        from asistente.nucleo.consejo.servicio import herramienta_convocar
+
+        herramienta = herramienta_convocar(
+            case=case, consulta=consulta, intencion=intencion, chat_history=chat_history, modulos=modulos
+        )
+        if herramienta is None:
+            return
+        caja.anadir(herramienta.herramientas)
+        addenda.append(herramienta.addendum)
+
     intentar("memoria", memoria)
     intentar("tareas", tareas)
     intentar("investigacion", investigacion)
     intentar("planificador", planificar)
+    intentar("consejo", consejo)
     return HerramientasCerebro(
         caja=caja, addendum="".join(addenda), contexto="\n\n".join(contextos), nombres=caja.nombres()
     )

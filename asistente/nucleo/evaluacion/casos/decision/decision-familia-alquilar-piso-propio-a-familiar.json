@@ -1,0 +1,80 @@
+{
+  "id": "decision-familia-alquilar-piso-propio-a-familiar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Alquilar el piso vacío a un sobrino por debajo de mercado: equilibrado.",
+  "pregunta": "Mi sobrino me pide alquilarle el piso vacío por 500 €, menos de lo que pagaría otro. ¿Se lo alquilo?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "familia",
+    "expediente": {
+      "pregunta": "¿Conviene alquilar la vivienda vacía a un familiar por debajo del precio de mercado?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Alquilársela al familiar"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Alquilarla a precio de mercado a un tercero"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "confianza",
+          "texto": "El sobrino es de confianza y cuidaría el piso.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "fiscal",
+          "texto": "Según el especialista fiscal, Hacienda puede computar un rendimiento mínimo cuando el alquiler a un familiar es bajo.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "alquiler pedido por el sobrino",
+          "valor": "500",
+          "literal": "500 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "alquiler de mercado estimado",
+          "valor": "780",
+          "literal": "780 €/mes",
+          "unidad": "EUR/mes"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "relacion",
+          "frase": "Un conflicto como casero puede dañar la relación familiar",
+          "patron": "relaci[oó]n|familia|conflict"
+        },
+        {
+          "id": "fiscal_minimo",
+          "frase": "Hacienda puede computar un rendimiento mínimo por el alquiler bajo",
+          "patron": "rendimiento m[ií]nimo|Hacienda|fiscal"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}
