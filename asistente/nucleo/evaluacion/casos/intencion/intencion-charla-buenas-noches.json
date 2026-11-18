@@ -1,0 +1,36 @@
+{
+  "id": "intencion-charla-buenas-noches",
+  "categoria": "intencion",
+  "descripcion": "Saludo o agradecimiento: el cerebro contesta solo, sin especialistas ni cifras.",
+  "pregunta": "Nada más por hoy, buenas noches.",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "charla"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "exactamente": true
+    },
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "directa"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

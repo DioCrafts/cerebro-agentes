@@ -13,10 +13,15 @@ What is stored, and where (privacy by design):
   row is erased with the case by a SQLite trigger on ``case_states`` (same database file).
 * The user can withdraw a stored case at any time (``DELETE /evaluacion/feedback/{id}``): its content is
   removed from the audit trail.
-* **Nothing reaches the suite automatically.** An operator reviews each stored case, writes a draft
-  (:func:`borrador_de_caso`), removes anything personal and promotes it (``casos promover``), which
-  refuses text that still looks personal. The promoted suite file is anonymous — no case id, no user id,
-  only a non-reversible reference — and, as the consent text says, that anonymous copy is not erased.
+* **With the household brain**, the stored case also carries what the brain did on that turn
+  (:class:`~asistente.nucleo.cerebro.contrato.InformeCerebro`: the plan, the specialists and their modes, the
+  figures each gave, the figures gate's verdict and the ids — never the text — of the memories used), the
+  prompt variant in use and the model that served each purpose.
+* **Every «esto está mal» becomes a CANDIDATE case** (:mod:`asistente.nucleo.evaluacion.revision`): masked
+  (names, identifiers, addresses — amounts kept), deduplicated and prioritised in a review queue. Nothing
+  reaches the evaluation without a human accepting it there (the owner of the case, or the operator); an
+  accepted case is stored in the PRIVATE evaluation database (:mod:`asistente.nucleo.evaluacion.privado`),
+  never in the repository, and leaves with the user's export and erasure.
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from collections.abc import Mapping, Sequence
 from datetime import UTC, date, datetime
 import hashlib
 import json
+import logging
 from pathlib import Path
 import re
 import sqlite3
@@ -46,25 +52,41 @@ from asistente.nucleo.evaluacion.modelos import (
     Origen,
     Rubrica,
 )
+from asistente.nucleo.evaluacion.redaccion import identificadores_en, seudonimizar
 from asistente.nucleo.evaluacion.senales import Senal, es_repregunta, respuestas, senales_de_turno
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.migraciones.catalogo import evaluacion as _esquema
 
-CONSENTIMIENTO_VERSION = "2026-11-16"
+logger = logging.getLogger(__name__)
+
+CONSENTIMIENTO_VERSION = "2026-11-18"
 CONSENTIMIENTO_TEXTO = (
     "Guardar esta conversación para mejorar el asistente. Se guardan, dentro de tu expediente, tu pregunta, la "
-    "respuesta, tu corrección, las herramientas que usó el asistente y solo los datos de tu expediente que usó "
-    "para responder (con identificadores como correos, DNI, IBAN o CUPS ocultados). Puedes retirarlo cuando "
-    "quieras; se exporta y se borra con tu cuenta. Una persona del equipo lo revisará y, si sirve, lo convertirá "
-    "en una prueba ANÓNIMA (sin datos que te identifiquen) del conjunto de evaluación; esa copia anónima ya no se "
-    "borra. Nada se usa sin esa revisión."
+    "respuesta, tu corrección, cómo la preparó el asistente (a qué especialistas consultó, las cifras que dio "
+    "cada uno y las herramientas que usó) y solo los datos de tu expediente que usó para responder. Antes de que "
+    "nadie la revise se ocultan tu nombre, correos, DNI, IBAN, tarjetas, teléfonos y direcciones; las cifras se "
+    "conservan. La revisarás tú en «Revisión de casos» (o una persona del equipo) y, si sirve, se convertirá en "
+    "una prueba ENMASCARADA que se guarda aparte, en privado (nunca en el código del programa), para comprobar "
+    "que el error no vuelve. Puedes retirarla cuando quieras; se exporta y se borra con tu cuenta. Nada se usa "
+    "sin esa revisión."
 )
 
-TipoCorreccion = Literal["cifra_erronea", "modulo_erroneo", "hecho_omitido", "afirmacion_inventada", "otro"]
+TipoCorreccion = Literal[
+    "cifra_erronea",
+    "modulo_erroneo",
+    "hecho_omitido",
+    "afirmacion_inventada",
+    "suma_indebida",
+    "memoria_erronea",
+    "otro",
+]
 ETIQUETAS_CORRECCION: dict[str, str] = {
     "cifra_erronea": "Cifra equivocada",
     "modulo_erroneo": "Ha consultado el ámbito equivocado",
     "hecho_omitido": "Ha pasado por alto un dato",
     "afirmacion_inventada": "Afirma algo que no es cierto",
+    "suma_indebida": "Ha sumado cifras que no se pueden sumar",
+    "memoria_erronea": "Recuerda mal algo que le dije",
     "otro": "Otro",
 }
 EstadoFeedback = Literal["solo_valoracion", "pendiente", "promovido", "descartado"]
@@ -83,31 +105,8 @@ _LEEN_PERFIL_FISCAL = frozenset(
 
 
 # --------------------------------------------------------------------------- #
-# Pseudonymisation
+# Pseudonymisation (the patterns live in redaccion.py; re-exported here)
 # --------------------------------------------------------------------------- #
-
-_IDENTIFICADORES: tuple[tuple[re.Pattern[str], str], ...] = (
-    (re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+"), "[correo]"),
-    (re.compile(r"\bES\d{2}(?:[ -]?\d{4}){5}\b", re.IGNORECASE), "[iban]"),
-    (re.compile(r"\b[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]{4}){3,7}\b"), "[iban]"),
-    (re.compile(r"\bES\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?[A-Z]{2}(?:\s?\d[A-Z])?\b", re.IGNORECASE), "[cups]"),
-    (re.compile(r"\b[XYZ]-?\d{7}-?[A-Z]\b", re.IGNORECASE), "[documento]"),
-    (re.compile(r"\b\d{8}-?[A-Z]\b", re.IGNORECASE), "[documento]"),
-    (re.compile(r"\b(?:\d[ -]?){13,19}\b"), "[tarjeta]"),
-    (re.compile(r"(?<![\d.,])(?:\+34[ -]?)?[6789]\d{2}[ -]?\d{3}[ -]?\d{3}(?![\d.,])"), "[teléfono]"),
-)
-
-
-def seudonimizar(texto: str) -> str:
-    """Replace identifiers (e-mail, IBAN, CUPS, DNI/NIE, card and phone numbers) by placeholders."""
-    for patron, sustituto in _IDENTIFICADORES:
-        texto = patron.sub(sustituto, texto)
-    return texto
-
-
-def identificadores_en(texto: str) -> list[str]:
-    """Kinds of identifier still present in ``texto`` (empty = none found by the patterns)."""
-    return sorted({sustituto for patron, sustituto in _IDENTIFICADORES if patron.search(texto)})
 
 
 def _seudonimizar_valor(valor: Any) -> Any:
@@ -126,12 +125,16 @@ def _valor_legible(nombre: str, valor: Any) -> Any:
     return valor_de_perfil(nombre, valor)
 
 
-def hechos_usados(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) -> list[str]:
+def hechos_usados(
+    case: CaseState | None, traza: Sequence[Mapping[str, Any]], especialistas: Sequence[str] = ()
+) -> list[str]:
     """Names of the case facts the answer used, judged from the tool trace (data minimisation).
 
     * a tax tool that reads the profile (``calcular_irpf``, ``optimizar_impuestos``, the case tools…) used
       the tax profile (every fact that is not a module's);
-    * consulting a module specialist used that module's facts and the shared ones;
+    * consulting a module specialist used that module's facts and the shared ones — the central agent's
+      ``consultar_<x>``, a call by ``especialista_<x>`` in the trace, or a specialist the household brain reported
+      from (``especialistas``, its ``InformeCerebro``);
     * a fact named as a tool argument was used.
 
     The model also sees every fact in its context, so a fact used only in prose is not captured: the
@@ -145,6 +148,16 @@ def hechos_usados(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) ->
     de_modulo = {nombre: dueno.clave for nombre, (dueno, _h) in registro().hechos().items()}
     compartidos = hechos_compartidos()
     usados: set[str] = set()
+    consultados = {e for e in especialistas if e and e != "fiscal"}
+    consultados |= {
+        str(t.get("agent")).removeprefix("especialista_")
+        for t in traza
+        if str(t.get("agent") or "").startswith("especialista_") and not t.get("is_error")
+    }
+    for modulo in consultados:
+        usados |= {n for n in nombres if de_modulo.get(n) == modulo or n in compartidos}
+    if "fiscal" in especialistas:
+        usados |= {n for n in nombres if n not in de_modulo}
     for entrada in traza:
         herramienta = str(entrada.get("tool") or "")
         if entrada.get("is_error"):
@@ -169,13 +182,15 @@ def hechos_usados(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) ->
     return sorted(usados)
 
 
-def instantanea_de(case: CaseState | None, traza: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
+def instantanea_de(
+    case: CaseState | None, traza: Sequence[Mapping[str, Any]], especialistas: Sequence[str] = ()
+) -> dict[str, Any]:
     """Pseudonymised snapshot of the facts used: ``{tax_period, jurisdiction, hechos, sensibles}``."""
     if case is None:
         return {"hechos": {}, "sensibles": []}
     from asistente.nucleo.modulos.perfil import hecho_de_modulo
 
-    usados = set(hechos_usados(case, traza))
+    usados = set(hechos_usados(case, traza, especialistas))
     hechos = {f.name: _seudonimizar_valor(_valor_legible(f.name, f.value)) for f in case.facts if f.name in usados}
     sensibles = sorted(n for n in hechos if (propio := hecho_de_modulo(n)) is not None and propio[1].sensible)
     return {
@@ -261,6 +276,28 @@ _TRIGGER = """
 """
 
 
+def preparar(conn: sqlite3.Connection) -> None:
+    """Every table of the evaluation in the cases' database (migrations first; the old-code path otherwise)."""
+    asegurar_esquema(conn, "evaluacion")  # migrations (asistente/plataforma)
+    conn.execute(_TABLA)
+    conn.execute("CREATE INDEX IF NOT EXISTS idx_evaluacion_feedback_case ON evaluacion_feedback(case_id)")
+    conn.execute(_esquema.TABLA_CANDIDATOS)
+    conn.execute(_esquema.INDICE_CANDIDATOS_CASO)
+    conn.execute(_esquema.INDICE_CANDIDATOS_GRUPO)
+    conn.execute(_esquema.TABLA_APRENDIZAJE)
+
+
+def preparar_disparadores(conn: sqlite3.Connection) -> bool:
+    """The «erase with the case» triggers, once ``case_states`` exists. True when they are in place."""
+    existe = conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'case_states'").fetchone()
+    if existe is None:
+        return False
+    with conn:
+        conn.execute(_TRIGGER)
+        conn.execute(_esquema.DISPARADOR_CANDIDATOS)
+    return True
+
+
 class FeedbackStore:
     """Review rows of the feedback (no conversation text). Same SQLite file as the cases.
 
@@ -282,18 +319,10 @@ class FeedbackStore:
             conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
-                asegurar_esquema(conn, "evaluacion")  # migrations (asistente/plataforma)
-                conn.execute(_TABLA)
-                conn.execute("CREATE INDEX IF NOT EXISTS idx_evaluacion_feedback_case ON evaluacion_feedback(case_id)")
+                preparar(conn)
             self._conn = conn
         if not self._con_trigger:
-            existe = self._conn.execute(
-                "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'case_states'"
-            ).fetchone()
-            if existe is not None:
-                with self._conn:
-                    self._conn.execute(_TRIGGER)
-                self._con_trigger = True
+            self._con_trigger = preparar_disparadores(self._conn)
         return self._conn
 
     def close(self) -> None:
@@ -440,18 +469,95 @@ def senales_para(eventos: Sequence[dict[str, Any]], indice: int) -> list[Senal]:
     return senales
 
 
+def modelos_por_proposito(turno: Mapping[str, Any], especialistas: Sequence[str] = ()) -> dict[str, str]:
+    """The model that serves each purpose of the turn, from the routing table NOW (the audit event does not say).
+
+    Used only when the turn's event carries no ``modelos`` of its own: the result is labelled «configuración» in
+    the candidate, since the routing may have changed between the answer and the feedback.
+    """
+    from asistente.nucleo.agent import enrutado
+    from asistente.plataforma import settings
+
+    proveedor = str(turno.get("provider") or settings.LLM_PROVIDER)
+    base = str(turno.get("model") or "")
+    propositos = ["agente", "verificador"]
+    if isinstance(turno.get("cerebro"), dict):
+        propositos += ["cerebro", "cerebro:intencion"]
+    propositos += [f"especialista:{e}" for e in especialistas if e not in ("fiscal", "cerebro")]
+    salida: dict[str, str] = {}
+    for proposito in propositos:
+        try:
+            ruta = enrutado.resolver(proposito, proveedor=proveedor)
+        except ValueError:  # a broken routing setting: the candidate simply lacks this line
+            continue
+        modelo = ruta.modelo_efectivo(base) if base else (ruta.modelo or "")
+        if modelo:
+            salida[proposito] = modelo
+    return salida
+
+
+def informe_del_turno(turno: Mapping[str, Any]) -> Any:
+    """The turn's full :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro` (under ``informe_cerebro`` or
+    ``cerebro`` in the ``agent_answer`` event), or None when the event holds none or only a summary."""
+    from asistente.nucleo.cerebro.contrato import InformeCerebro
+
+    for clave in ("informe_cerebro", "cerebro"):
+        bruto = turno.get(clave)
+        if isinstance(bruto, dict) and "intencion" in bruto:
+            try:
+                return InformeCerebro.model_validate(bruto)
+            except ValueError:
+                logger.warning("The turn's brain report does not validate against the contract: left out")
+    return None
+
+
+def resumen_del_turno(turno: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The brain's SUMMARY the ``agent_answer`` event may carry instead of the full report (``ruta``, ``tipo``,
+    ``especialistas``, ``violaciones_cifras``…), or None."""
+    bruto = turno.get("cerebro")
+    if isinstance(bruto, dict) and "intencion" not in bruto and "especialistas" in bruto:
+        return dict(bruto)
+    return None
+
+
+def _del_cerebro(turno: Mapping[str, Any]) -> dict[str, Any]:
+    """What the stored case keeps of the household brain's turn (InformeCerebro): plan, specialists and their
+    modes, figures, the gate's verdict, the ids of the memories used — never their text. With only the summary
+    the event carries, that summary."""
+    informe = informe_del_turno(turno)
+    if informe is not None:
+        return {
+            "cerebro": informe.model_dump(mode="json"),
+            "modos_especialistas": {i.especialista: i.modo for i in informe.informes},
+        }
+    resumen = resumen_del_turno(turno)
+    if resumen is not None:
+        return {
+            "cerebro_resumen": resumen,
+            "modos_especialistas": {str(e): None for e in resumen.get("especialistas") or []},
+        }
+    return {}
+
+
 def capturar(
     entrada: FeedbackEntrada,
     store: FeedbackStore,
     *,
     case: CaseState | None,
     cases: Any = None,
+    user_id: str | None = None,
+    nombres_extra: Sequence[str] = (),
 ) -> FeedbackRegistrado:
     """Record one feedback. ``case`` (already access-checked) and ``cases`` (the case store) go together.
+
+    A 👎 becomes a candidate case of the review queue (:mod:`asistente.nucleo.evaluacion.revision`) when the user
+    ticked the box for this answer, or when automatic learning is on for the case; ``user_id`` and
+    ``nombres_extra`` (e.g. the account's e-mail) only help mask and link it.
 
     Raises :class:`RespuestaNoEncontradaError` when the answer is not in the case's audit trail, and
     ``ValueError`` when a case is to be stored without a case to store it in.
     """
+    from asistente.nucleo.evaluacion import revision
     from asistente.nucleo.evaluacion.variantes import variante_activa
 
     if entrada.guardar_para_evaluacion and (case is None or cases is None):
@@ -472,6 +578,8 @@ def capturar(
 
     eventos = cases.list_audit_events(case.case_id)
     indice, turno = _turno(eventos, entrada.pregunta)
+    if isinstance(turno.get("variante"), str):
+        registro.variante = turno["variante"]  # the variant that really answered, when the turn recorded it
     senales = senales_para(eventos, indice)
     registro.etiquetas = sorted({s.tipo for s in senales} | ({entrada.tipo} if entrada.tipo else set()))
     evento: dict[str, Any] = {
@@ -482,8 +590,15 @@ def capturar(
         "guardado_para_evaluacion": entrada.guardar_para_evaluacion,
         "etiquetas": registro.etiquetas,
     }
+    correccion = {
+        "tipo": entrada.tipo,
+        "comentario": entrada.comentario,
+        "respuesta_correcta": entrada.respuesta_correcta,
+        "cifra_correcta": entrada.cifra_correcta,
+    }
+    traza = [t for t in turno.get("tool_trace") or [] if isinstance(t, dict)]
+    del_cerebro = _del_cerebro(turno)
     if entrada.guardar_para_evaluacion:
-        traza = [t for t in turno.get("tool_trace") or [] if isinstance(t, dict)]
         evento["consentimiento"] = {"version": CONSENTIMIENTO_VERSION, "otorgado_el": ahora.isoformat()}
         evento["caso"] = {
             "pregunta": entrada.pregunta,
@@ -492,19 +607,52 @@ def capturar(
             "proveedor": turno.get("provider"),
             "modelo": turno.get("model"),
             "variante": registro.variante,
-            "correccion": {
-                "tipo": entrada.tipo,
-                "comentario": entrada.comentario,
-                "respuesta_correcta": entrada.respuesta_correcta,
-                "cifra_correcta": entrada.cifra_correcta,
-            },
+            "correccion": correccion,
             "tool_trace": traza,
             "claims": turno.get("claims") or [],
             "senales": [s.model_dump(mode="json") for s in senales],
-            "instantanea": instantanea_de(case, traza),
+            "instantanea": instantanea_de(case, traza, list(del_cerebro.get("modos_especialistas") or {})),
+            **del_cerebro,
+            "modelos": (
+                turno.get("modelos")
+                if isinstance(turno.get("modelos"), dict)
+                else modelos_por_proposito(turno, list(del_cerebro.get("modos_especialistas") or {}))
+            ),
         }
     store.add(registro)
     cases.append_audit_event(case.case_id, evento)
+
+    # The review queue: with the box ticked, or with automatic learning on for this case.
+    if entrada.valoracion == "negativa":
+        candidatos = revision.candidatos_para(store.db_path)
+        consentido = candidatos.consentimiento(case.case_id) is not None
+        if entrada.guardar_para_evaluacion or consentido:
+            try:
+                contenido = revision.construir_contenido(
+                    pregunta=entrada.pregunta,
+                    respuesta=entrada.respuesta,
+                    turno=turno,
+                    case=case,
+                    nombres_extra=nombres_extra,
+                    correccion=correccion,
+                    senales=senales,
+                    variante=registro.variante,
+                )
+                candidatos.anadir(
+                    revision.nuevo_candidato(
+                        contenido,
+                        tipo=revision.tipo_de_correccion(entrada.tipo),
+                        origen="valoracion" if entrada.guardar_para_evaluacion else "voto",
+                        case_id=case.case_id,
+                        user_id=user_id or case.user_id,
+                        referencia_turno=str(turno.get("event_time") or indice),
+                        feedback_id=registro.id,
+                    )
+                )
+            except Exception:  # the vote is recorded whatever happens to its candidate
+                logger.exception("Could not turn a feedback into a candidate case")
+        if consentido:
+            revision.detectar_en_caso(candidatos, cases, case, user_id=user_id, nombres_extra=nombres_extra)
     return registro
 
 
@@ -683,6 +831,11 @@ __all__ = [
     "hechos_usados",
     "identificadores_en",
     "instantanea_de",
+    "informe_del_turno",
+    "modelos_por_proposito",
+    "resumen_del_turno",
+    "preparar",
+    "preparar_disparadores",
     "referencia_anonima",
     "registrar_revision",
     "senales_para",

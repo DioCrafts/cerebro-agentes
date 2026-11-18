@@ -457,3 +457,78 @@ INVESTIGACION_PRECIO_BUSQUEDA_USD = os.environ.get("INVESTIGACION_PRECIO_BUSQUED
 INVESTIGACION_CACHE_DIAS = os.environ.get("INVESTIGACION_CACHE_DIAS", "7")
 INVESTIGACION_DB_PATH = os.environ.get("INVESTIGACION_DB_PATH", "./data/investigacion.sqlite3")
 INVESTIGACION_AGENTE = _env_bool("INVESTIGACION_AGENTE", default=False)
+
+# --- cerebro (household brain) ---
+# "hogar" (default): the household brain answers (it understands the request, consults the specialists and writes one
+# answer; the tax advisor is one of them). "fiscal": the single tax advisor exactly as it was (legacy mode).
+CEREBRO_MODO = os.environ.get("CEREBRO_MODO", "hogar")
+# Below this confidence in what was asked (0..1) the brain asks one clarifying question instead of guessing.
+CEREBRO_UMBRAL_CONFIANZA = float(os.environ.get("CEREBRO_UMBRAL_CONFIANZA", "0.45"))
+# The small model (purpose cerebro:intencion) is asked only when the rules are not sure; false: rules only.
+CEREBRO_INTENCION_MODELO = _env_bool("CEREBRO_INTENCION_MODELO", default=True)
+# The brain's synthesis: model steps (tools included) and revisions after a failed gate (figures or claims).
+CEREBRO_MAX_PASOS = int(os.environ.get("CEREBRO_MAX_PASOS", "6"))
+CEREBRO_MAX_REVISIONES = int(os.environ.get("CEREBRO_MAX_REVISIONES", "2"))
+# How many times the brain may consult the specialists again (replanning) in one turn. How many run at once is the
+# collaboration runtime's CEREBRO_MAX_PARALELO (its block, below).
+CEREBRO_MAX_REPLANES = int(os.environ.get("CEREBRO_MAX_REPLANES", "2"))
+# Remembered items (conversation memory) handed to the brain per turn.
+CEREBRO_MEMORIA_LIMITE = int(os.environ.get("CEREBRO_MEMORIA_LIMITE", "8"))
+
+# --- recuerdos (household brain) -------------------------------------------------------
+# Conversation memory (asistente/nucleo/recuerdos, docs/cerebro/memoria.md): the server keeps each conversation, a
+# summary of it and «lo que sé de ti» (every item with the user's literal words). false: nothing new is stored or
+# retrieved (what was stored can still be seen, exported and erased).
+MEMORIA_CONVERSACIONES = _env_bool("MEMORIA_CONVERSACIONES", default=True)
+# Days the raw messages are kept (then purged; the summary and the remembered items stay). Minimum 1.
+MEMORIA_RETENCION_MENSAJES_DIAS = int(os.environ.get("MEMORIA_RETENCION_MENSAJES_DIAS", "30"))
+# Active remembered items per user and case (the oldest context items go first when it is reached).
+MEMORIA_MAX_RECUERDOS = int(os.environ.get("MEMORIA_MAX_RECUERDOS", "200"))
+# A conversation is summarised once it has been idle this many minutes (job `memoria-resumir`).
+MEMORIA_RESUMEN_TRAS_MINUTOS = int(os.environ.get("MEMORIA_RESUMEN_TRAS_MINUTOS", "30"))
+# Summaries go through the provider's batch API when it has one (cheaper; results in a later run of the job).
+MEMORIA_RESUMEN_LOTES = _env_bool("MEMORIA_RESUMEN_LOTES", default=True)
+# Also summarise from the API process, in a background thread, when a user comes back (deployments without worker).
+MEMORIA_RESUMEN_EN_SEGUNDO_PLANO = _env_bool("MEMORIA_RESUMEN_EN_SEGUNDO_PLANO", default=False)
+# Rank with the project's embedder too (EMBEDDING_MODEL, MLX only); never required: lexical ranking otherwise.
+MEMORIA_EMBEDDINGS = _env_bool("MEMORIA_EMBEDDINGS", default=False)
+
+# --- repaso (household brain) ----------------------------------------------------------
+# The brain's proactive pass (asistente/nucleo/repaso, docs/cerebro/repaso.md): a weekly or daily review of what is
+# new (inbox, mail, deadlines, BOE changes, tasks, the user's decisions) that writes ONE prioritised digest, in the
+# weekly digest's place. Code collects and ranks; the small model (purpose cerebro:repaso) only writes, behind a
+# deterministic gate. false (default): the weekly digest stays the deterministic one, exactly as before.
+REPASO_ACTIVO = _env_bool("REPASO_ACTIVO", default=False)
+# semanal (one digest per ISO week, the weekly digest's key) | diaria (one per day).
+REPASO_FRECUENCIA = os.environ.get("REPASO_FRECUENCIA", "semanal")
+# Weekly pass: the day (0 = lunes … 6 = domingo) and the time (Spanish, HH:MM) from which the `repaso` job writes it.
+REPASO_DIA = int(os.environ.get("REPASO_DIA", "0"))
+REPASO_HORA = os.environ.get("REPASO_HORA", "07:00")
+# The job sends the cases' requests as ONE batch of the provider's batch API (cheaper; collected on a later run of
+# the job). false, or a provider without batches: one synchronous call per case.
+REPASO_POR_LOTES = _env_bool("REPASO_POR_LOTES", default=True)
+# Points in one digest at most (the rest are counted: «y N avisos más en tu bandeja»).
+REPASO_MAX_PUNTOS = int(os.environ.get("REPASO_MAX_PUNTOS", "7"))
+
+# --- cerebro.colaboracion (household brain) -------------------------------------------
+# The collaboration runtime (asistente/nucleo/cerebro/colaboracion, docs/cerebro/colaboracion.md): the specialists one
+# turn consults run as a DAG of encargos, in parallel. Specialists running at the same time (1 = one after another,
+# fully deterministic).
+CEREBRO_MAX_PARALELO = int(os.environ.get("CEREBRO_MAX_PARALELO", "4"))
+# Seconds one specialist may take on one encargo, its requests to other specialists included; past it the report says
+# so and the specialist stops at its next model call. 0: no limit.
+CEREBRO_TIMEOUT_ENCARGO_S = float(os.environ.get("CEREBRO_TIMEOUT_ENCARGO_S", "180"))
+# How deep a request between specialists may go (1: a specialist may ask another, which may not ask a third). Never
+# above the contract's MAX_PROFUNDIDAD_PETICIONES (2): a larger value is lowered to it.
+CEREBRO_MAX_PROFUNDIDAD_PETICIONES = int(os.environ.get("CEREBRO_MAX_PROFUNDIDAD_PETICIONES", "2"))
+
+# --- evaluacion (household brain) -----------------------------------------------------
+# Learning from real mistakes (asistente/nucleo/evaluacion, docs/cerebro/aprendizaje.md). Accepted real cases (users'
+# corrections turned into regression cases, masked) live in a PRIVATE SQLite file, never in the repository: empty =
+# evaluacion_casos_reales.sqlite3 next to the cases' database (DECISION_STATE_DB_PATH).
+EVALUACION_CASOS_REALES_DB_PATH = os.environ.get("EVALUACION_CASOS_REALES_DB_PATH", "")
+# Promotion gate (`evaluacion promote`): paired cases needed to decide at all (fewer = «evidencia insuficiente»), and
+# the candidate's cost and p95 latency allowed, relative to the active variant's on the same cases.
+EVALUACION_GATE_MIN_CASOS = int(os.environ.get("EVALUACION_GATE_MIN_CASOS", "30"))
+EVALUACION_GATE_COSTE_MAX_RELATIVO = float(os.environ.get("EVALUACION_GATE_COSTE_MAX_RELATIVO", "1.10"))
+EVALUACION_GATE_LATENCIA_MAX_RELATIVA = float(os.environ.get("EVALUACION_GATE_LATENCIA_MAX_RELATIVA", "1.25"))

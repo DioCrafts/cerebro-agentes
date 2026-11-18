@@ -148,17 +148,20 @@ def test_the_operator_reviews_and_promotes_a_case(tmp_path: Path, suite_copia: P
 
     ok = runner.invoke(cli, [*base, "--revisor", "Operadora", "--confirmo-anonimizado"])
     assert ok.exit_code == 0, ok.output
-    (fichero,) = (suite_copia / "regresion").glob("*.json")
-    promovido = json.loads(fichero.read_text(encoding="utf-8"))
-    assert promovido["origen"]["revisado_por"] == "Operadora" and promovido["origen"]["referencia"].startswith("fb-")
-    assert "case_1" not in fichero.read_text(encoding="utf-8") and feedback_id not in fichero.read_text(
-        encoding="utf-8"
-    )
+    # A real case never enters the repository: it is in the PRIVATE database, linked to its case for erasure.
+    assert not (suite_copia / "regresion").exists()
+    from asistente.nucleo.evaluacion.privado import store_de
+
+    (real,) = store_de(db).todos()
+    assert real.case_id == "case_1" and real.feedback_id == feedback_id
+    assert real.caso.origen.revisado_por == "Operadora" and real.caso.origen.referencia.startswith("fb-")
     assert FeedbackStore(db).get(feedback_id).estado == "promovido"  # type: ignore[union-attr]
     revision = SQLiteCaseStateStore(db).list_audit_events("case_1")[-1]
     assert revision["event_type"] == "evaluacion_revision" and revision["estado"] == "promovido"
-    # The promoted case is part of the suite now and replays its expectations from the calculator.
-    assert s.validar(suite_copia).ok
+    # It runs with the suite and its expected figure still comes from the calculator.
+    assert s.validar(suite_copia, casos=[real.caso]).ok
+    listado = runner.invoke(cli, ["casos-reales", "listar", "--casos-reales-db", store_de(db).db_path])
+    assert real.id in listado.output and "vigente" in listado.output
     otra_vez = runner.invoke(cli, [*base, "--revisor", "Operadora", "--confirmo-anonimizado"])
     assert otra_vez.exit_code != 0 and "no pendiente" in otra_vez.output
 
@@ -189,3 +192,58 @@ def test_registering_a_prompt_version(tmp_path: Path, monkeypatch: pytest.Monkey
     assert nueva.version == "modulos@2" and v.cargar_registro(registro)["modulos"][-1].nota == "Probado sin modelo"
     # The repository's registry was not touched.
     assert v.cargar_registro()["modulos"][-1].version == "modulos@1"
+
+
+SINTETICOS = Path(__file__).parent / "datos" / "casos_reales_sinteticos.json"
+
+
+def test_the_review_queue_from_the_command_line(tmp_path: Path) -> None:
+    db, _feedback_id = _db_con_feedback(tmp_path, cifra_correcta="474,21 €")
+    runner = CliRunner()
+    cola = runner.invoke(cli, ["casos", "cola", "--db", db])
+    assert cola.exit_code == 0 and "Cifra equivocada" in cola.output and "[correo]" in cola.output
+    candidato_id = cola.output.split()[0]
+    detalle = runner.invoke(cli, ["casos", "candidato", candidato_id, "--db", db])
+    assert "example.com" not in detalle.output and "enmascarado" in detalle.output
+
+    edicion = tmp_path / "edicion.json"
+    edicion.write_text(
+        json.dumps(
+            {
+                "categoria": "regresion",
+                "esperado": {
+                    "especialistas_obligatorios": ["hipoteca"],
+                    "cifras_prohibidas": ["500,00 €"],
+                    "cifra_esperada": {"herramienta": "hipoteca_cuadro", "argumentos": {"fecha": "2026-03-20"}},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    ok = runner.invoke(cli, ["casos", "aceptar", candidato_id, "--db", db, "--desde", str(edicion)])
+    assert ok.exit_code == 0, ok.output
+    assert "base privada" in ok.output
+    otra = runner.invoke(cli, ["casos", "rechazar", candidato_id, "--db", db, "--motivo", "ya está"])
+    assert otra.exit_code != 0 and "aceptado" in otra.output
+    assert "No hay casos candidatos" in runner.invoke(cli, ["casos", "cola", "--db", db]).output
+    assert runner.invoke(cli, ["casos", "detectar", "--db", db]).exit_code == 0
+
+
+def test_real_cases_replay_without_a_model_and_only_opt_in_with_a_model() -> None:
+    runner = CliRunner()
+    comprobar = runner.invoke(cli, ["casos-reales", "comprobar", "--desde", str(SINTETICOS)])
+    assert comprobar.exit_code == 0, comprobar.output
+    assert "3 casos reales siguen detectando su error" in comprobar.output
+    sin_opt_in = runner.invoke(cli, ["casos-reales", "reproducir", "--desde", str(SINTETICOS)])
+    assert sin_opt_in.exit_code != 0 and "--modelo-real" in sin_opt_in.output
+    sin_tope = runner.invoke(cli, ["casos-reales", "reproducir", "--desde", str(SINTETICOS), "--modelo-real"])
+    assert sin_tope.exit_code != 0 and "--presupuesto-usd" in sin_tope.output
+
+
+def test_the_synthetic_real_cases_are_not_real_data() -> None:
+    datos = json.loads(SINTETICOS.read_text(encoding="utf-8"))
+    assert all(d["case_id"] is None and d["user_id"] is None for d in datos)
+    from asistente.nucleo.evaluacion.captura import comprobar_anonimizado
+    from asistente.nucleo.evaluacion.privado import CasoReal
+
+    assert all(comprobar_anonimizado(CasoReal.model_validate(d).caso) == [] for d in datos)

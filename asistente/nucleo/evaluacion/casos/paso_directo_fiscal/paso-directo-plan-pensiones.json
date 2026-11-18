@@ -1,0 +1,59 @@
+{
+  "id": "paso-directo-plan-pensiones",
+  "categoria": "paso_directo_fiscal",
+  "pregunta": "Si aporto 1.500 € a mi plan de pensiones antes de fin de año, ¿cuánto me ahorro en la renta de 2025?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 42000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "paso_directo"
+      ]
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025,
+          "escenarios": [
+            {
+              "nombre": "Sin aportación",
+              "cambios": {}
+            },
+            {
+              "nombre": "Con aportación de 1.500 €",
+              "cambios": {
+                "aportacion_plan_pensiones": 1500
+              }
+            }
+          ]
+        },
+        "patron": "Frente a «[^»]+»: ahorra (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "538,50 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "inmoviliz|rescat|diferi",
+      "motivo": "advierte del rescate o la liquidez"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

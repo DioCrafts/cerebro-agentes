@@ -1,0 +1,61 @@
+{
+  "id": "enrutado-bono-con-hipoteca-y-luz",
+  "categoria": "enrutado",
+  "pregunta": "Con mis ingresos, ¿puedo pedir el bono social eléctrico?",
+  "modulos": [
+    "ayudas",
+    "hipoteca"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "ayudas"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    }
+  ],
+  "guion": {
+    "especialista:ayudas": [
+      {
+        "herramientas": [
+          {
+            "nombre": "ayudas_comprobar",
+            "argumentos": {
+              "prestacion": "bono_social_electrico"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Hecho {fragmento:ayudas_comprobar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_ayudas",
+            "argumentos": {
+              "pregunta": "Con mis ingresos, ¿puedo pedir el bono social eléctrico?"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te lo explico según tu especialista {fragmento:ayudas_comprobar}."
+      }
+    ]
+  },
+  "version": 1
+}

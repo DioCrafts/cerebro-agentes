@@ -22,6 +22,14 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from asistente.nucleo.cerebro.contrato import (
+    InformeCerebro,
+    RecuerdoMemoria,
+    RutaRespuesta,
+    TipoIntencion,
+    TipoViolacion,
+)
+
 
 class _Modelo(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -161,6 +169,102 @@ class ExpSinAccionPendiente(_Modelo):
     tipo: Literal["sin_accion_pendiente"]
 
 
+class ExpCifraAusente(_Modelo):
+    """A figure that must NOT appear (any Spanish formatting): the wrong number a user reported, for instance.
+
+    Unlike an expected figure, a forbidden one may be written by hand: it is the mistake, not the truth."""
+
+    tipo: Literal["cifra_ausente"]
+    valor: str = Field(min_length=1, max_length=40)
+    motivo: str = ""
+
+
+# --- the household brain (they read the turn's InformeCerebro; the case must ``requiere`` "cerebro") -------- #
+
+
+class ExpEspecialistas(_Modelo):
+    """Which specialists the brain involved: in its plan (``plan``) or in the reports it got (``informes``)."""
+
+    tipo: Literal["especialistas"]
+    incluye: list[str] = Field(default_factory=list)
+    excluye: list[str] = Field(default_factory=list)
+    # True: exactly ``incluye``, nobody else.
+    exactamente: bool = False
+    fuente: Literal["plan", "informes"] = "plan"
+
+
+class ExpIntencion(_Modelo):
+    """How the brain understood the request: the kind, a clarification question, parallel or dependent work."""
+
+    tipo: Literal["intencion"]
+    tipos: list[TipoIntencion] = Field(default_factory=list)
+    # True: it must ask ONE clarification question (and plan nothing); False: it must not ask.
+    aclaracion: bool | None = None
+    # True: two or more encargos and none waits for another; False: at least one waits for another.
+    paralelo: bool | None = None
+    # [especialista que espera, especialista del que depende] pairs that must be in the plan.
+    dependencias: list[tuple[str, str]] = Field(default_factory=list)
+
+
+class ExpRuta(_Modelo):
+    """The path of the answer: ``directa`` (the brain alone), ``paso_directo`` (the tax advisor's own answer),
+    ``sintesis`` (several reports merged)."""
+
+    tipo: Literal["ruta"]
+    permitidas: list[RutaRespuesta] = Field(min_length=1)
+
+
+class ExpFlujoDato(_Modelo):
+    """A datum of specialist ``de`` reaches specialist ``a`` THROUGH the brain: a ``pedir_dato`` request (a→de) or
+    an encargo of ``a`` that waits for one of ``de`` — either is a correct way to collaborate."""
+
+    tipo: Literal["flujo_dato"]
+    de: str = Field(min_length=1)
+    a: str = Field(min_length=1)
+    via: Literal["cualquiera", "peticion", "dependencia"] = "cualquiera"
+
+
+class ExpPuerta(_Modelo):
+    """The figures gate's verdict on the final answer (after its revisions)."""
+
+    tipo: Literal["puerta"]
+    sin_violaciones: bool = True
+    tipos_prohibidos: list[TipoViolacion] = Field(default_factory=list)
+    min_atribuciones: int = Field(default=0, ge=0)
+
+
+class ExpCifraAtribuida(_Modelo):
+    """The calculator's figure named ``nombre`` (an ``ExpCifra`` of the same case) appears AND the gate attributes
+    it to ``especialista`` (procedencia: which figure comes from whom)."""
+
+    tipo: Literal["cifra_atribuida"]
+    nombre: str = Field(min_length=1, pattern=r"^[a-z0-9_]+$")
+    especialista: str = Field(min_length=1)
+
+
+class ExpRecuerdos(_Modelo):
+    """Which remembered items (``memoria`` of the case) the brain used for the answer."""
+
+    tipo: Literal["recuerdos"]
+    usados_incluye: list[str] = Field(default_factory=list)
+    usados_excluye: list[str] = Field(default_factory=list)
+    ninguno: bool = False
+
+
+class ExpRepaso(_Modelo):
+    """The proactive pass: every claim and proposal grounded in an input signal, nothing invented."""
+
+    tipo: Literal["repaso"]
+    afirmaciones_fundadas: bool = True
+    propuestas_fundadas: bool = True
+    # Signal ids the summary must cover / must leave out.
+    menciona: list[str] = Field(default_factory=list)
+    no_menciona: list[str] = Field(default_factory=list)
+    # When set, only these signals may carry a proposal.
+    propuestas_solo_de: list[str] | None = None
+    max_propuestas: int | None = Field(default=None, ge=0)
+
+
 Expectativa = Annotated[
     ExpHerramientaLlamada
     | ExpHerramientaNoLlamada
@@ -173,9 +277,28 @@ Expectativa = Annotated[
     | ExpCitas
     | ExpModo
     | ExpAccionPendiente
-    | ExpSinAccionPendiente,
+    | ExpSinAccionPendiente
+    | ExpCifraAusente
+    | ExpEspecialistas
+    | ExpIntencion
+    | ExpRuta
+    | ExpFlujoDato
+    | ExpPuerta
+    | ExpCifraAtribuida
+    | ExpRecuerdos
+    | ExpRepaso,
     Field(discriminator="tipo"),
 ]
+# Expectation types that read the brain's report: a case that has one must ``requiere`` "cerebro".
+EXPECTATIVAS_DEL_CEREBRO = (
+    ExpEspecialistas,
+    ExpIntencion,
+    ExpRuta,
+    ExpFlujoDato,
+    ExpPuerta,
+    ExpCifraAtribuida,
+    ExpRecuerdos,
+)
 
 
 # --------------------------------------------------------------------------- #
@@ -222,7 +345,8 @@ class Expediente(_Modelo):
 
 
 class Origen(_Modelo):
-    tipo: Literal["sintetico", "dgt", "feedback"]
+    # «feedback»: a user's correction; «senal»: an automatic signal of a real turn (both: private, never in git).
+    tipo: Literal["sintetico", "dgt", "feedback", "senal"]
     # DGT consulta number, or the (non-reversible) reference of the reviewed feedback.
     referencia: str | None = None
     etiquetas: list[str] = Field(default_factory=list)
@@ -230,6 +354,29 @@ class Origen(_Modelo):
     revisado_el: date | None = None
 
 
+class RecuerdoCaso(RecuerdoMemoria):
+    """A remembered item the case's memory holds, and whose it is (``usuario``: the case's user unless said)."""
+
+    usuario: str | None = None
+
+
+class SenalRepaso(_Modelo):
+    """One new thing the proactive pass reads (mail, event, deadline, BOE change, decision), as data."""
+
+    id: str = Field(pattern=r"^[a-z0-9_-]{1,40}$")
+    tipo: str = Field(min_length=1, max_length=40)
+    titulo: str = Field(min_length=1, max_length=300)
+    detalle: str = Field(default="", max_length=2000)
+    fecha: date | None = None
+    importe: str | None = None
+
+
+class EntradaRepaso(_Modelo):
+    hoy: date
+    senales: list[SenalRepaso] = Field(min_length=1)
+
+
+Requisito = Literal["cerebro", "repaso", "recuerdos"]
 CATEGORIA_RE = r"^[a-z0-9_]+$"
 
 
@@ -251,11 +398,33 @@ class CasoEvaluacion(_Modelo):
     # DGT consulta hidden from retrieval while this case runs (the answer key).
     ocultar_fuente: str | None = None
     origen: Origen = Field(default_factory=lambda: Origen(tipo="sintetico"))
+    # Code of the household-brain packages the case needs (asistente.nucleo.cerebro, .repaso, .recuerdos): while
+    # it is not installed the runner skips the case with the reason (see ejecutores.py).
+    requiere: list[Requisito] = Field(default_factory=list)
+    # The user the case runs as (memory cases: the memory belongs to someone).
+    usuario: str = Field(default="evaluacion", pattern=r"^[A-Za-z0-9_.-]{1,64}$")
+    # What the conversation memory holds for this case (its own items, and other users' that must never show).
+    memoria: list[RecuerdoCaso] = Field(default_factory=list)
+    # The input of the proactive pass (``requiere`` "repaso").
+    entrada_repaso: EntradaRepaso | None = None
 
     @model_validator(mode="after")
     def _coherente(self) -> CasoEvaluacion:
         if not self.expectativas and self.rubrica is None:
             raise ValueError("un caso necesita al menos una expectativa o una rúbrica")
+        if any(isinstance(e, EXPECTATIVAS_DEL_CEREBRO) for e in self.expectativas) and "cerebro" not in self.requiere:
+            raise ValueError('las expectativas del cerebro necesitan «requiere»: ["cerebro"]')
+        if any(isinstance(e, ExpRepaso) for e in self.expectativas) and (
+            "repaso" not in self.requiere or self.entrada_repaso is None
+        ):
+            raise ValueError('una expectativa «repaso» necesita «requiere»: ["repaso"] y «entrada_repaso»')
+        cifras = {e.nombre for e in self.expectativas if isinstance(e, ExpCifra)}
+        for e in self.expectativas:
+            if isinstance(e, ExpCifraAtribuida) and e.nombre not in cifras:
+                raise ValueError(f"«cifra_atribuida» nombra la cifra «{e.nombre}», que no es una cifra esperada")
+        ids = [r.id for r in self.memoria]
+        if len(ids) != len(set(ids)):
+            raise ValueError("ids de recuerdo repetidos en «memoria»")
         nombres = [e.nombre for e in self.expectativas if isinstance(e, ExpCifra)]
         if len(nombres) != len(set(nombres)):
             raise ValueError("los nombres de las cifras esperadas deben ser únicos")
@@ -317,6 +486,10 @@ class Ejecucion(_Modelo):
     tokens: dict[str, int] = Field(default_factory=dict)
     coste_usd: Decimal | None = None
     llamadas_sin_coste: int = 0
+    # What the household brain did (its InformeCerebro), when the case ran through it.
+    cerebro: InformeCerebro | None = None
+    # The proactive pass's output as the evaluation reads it (``SalidaRepaso``), for «repaso» cases.
+    repaso: dict[str, Any] | None = None
 
 
 class VeredictoJuez(_Modelo):
@@ -340,6 +513,9 @@ class ResultadoCaso(_Modelo):
     avisos: list[str] = Field(default_factory=list)
     juez: list[VeredictoJuez] = Field(default_factory=list)
     ejecucion: Ejecucion
+    # Not run (its code is not installed yet, or a replay without a script): out of every rate, with the reason.
+    omitido: bool = False
+    motivo_omision: str | None = None
 
 
 class ResumenCategoria(_Modelo):
@@ -361,6 +537,9 @@ class ResumenInforme(_Modelo):
     latencia_media_s: float = 0.0
     latencia_p95_s: float = 0.0
     juez_sin_cita: int = 0
+    # Cases not run, by reason (they count nowhere else).
+    omitidos: int = 0
+    omitidos_por_motivo: dict[str, int] = Field(default_factory=dict)
 
 
 class Comparacion(_Modelo):
@@ -391,9 +570,12 @@ class InformeEvaluacion(_Modelo):
     # True when some case did not run (budget exhausted): such a report can never justify a promotion.
     incompleto: bool = False
     avisos: list[str] = Field(default_factory=list)
+    # Accepted real cases (private) were part of the run: keep the report out of the repository.
+    con_casos_reales: int = 0
 
 
 __all__ = [
+    "EXPECTATIVAS_DEL_CEREBRO",
     "CalculoEsperado",
     "CasoEvaluacion",
     "CategoriaSuite",
@@ -402,8 +584,18 @@ __all__ = [
     "ConfigSuite",
     "Ejecucion",
     "ExpAccionPendiente",
+    "EntradaRepaso",
     "ExpCifra",
+    "ExpCifraAtribuida",
+    "ExpCifraAusente",
     "ExpCitas",
+    "ExpEspecialistas",
+    "ExpFlujoDato",
+    "ExpIntencion",
+    "ExpPuerta",
+    "ExpRecuerdos",
+    "ExpRepaso",
+    "ExpRuta",
     "ExpHerramientaLlamada",
     "ExpHerramientaNoLlamada",
     "ExpModo",
@@ -420,9 +612,12 @@ __all__ = [
     "LlamadaRegistrada",
     "Origen",
     "PasoGuion",
+    "RecuerdoCaso",
+    "Requisito",
     "ResultadoCaso",
     "ResumenCategoria",
     "ResumenInforme",
     "Rubrica",
+    "SenalRepaso",
     "VeredictoJuez",
 ]

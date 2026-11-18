@@ -1,0 +1,51 @@
+{
+  "id": "memoria-real-revision-hipoteca",
+  "categoria": "memoria",
+  "descripcion": "Con el almacén de memoria real: la memoria de otra persona está guardada bajo SU usuario y caso.",
+  "pregunta": "¿Te acuerdas de cuándo se revisa mi hipoteca?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria",
+        "ambito"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "marzo",
+      "motivo": "usa lo que el usuario dijo"
+    }
+  ],
+  "requiere": [
+    "cerebro",
+    "recuerdos"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "Su hipoteca es variable y se revisa cada marzo",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-10-02",
+        "cita": "mi hipoteca es variable y se revisa cada marzo"
+      }
+    }
+  ],
+  "version": 1
+}

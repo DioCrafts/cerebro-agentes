@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 
 from asistente.nucleo.evaluacion import suite as s
-from asistente.nucleo.evaluacion.gate import decidir, promover
+from asistente.nucleo.evaluacion.gate import Umbrales, decidir, promover
 from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, PasoGuion, Rubrica
 from asistente.nucleo.evaluacion.reproduccion import ProveedorReproduccion
 from asistente.nucleo.evaluacion.runner import Entorno, comparar, evaluar, formatear
@@ -124,7 +124,10 @@ def test_judge_counts_only_with_a_literal_quote(tmp_path: Path) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _promover(casos, tmp_path, malos, candidata_id="candidata", base=None):  # type: ignore[no-untyped-def]
+POCOS = Umbrales(min_casos=3)
+
+
+def _promover(casos, tmp_path, malos, candidata_id="candidata", base=None, umbrales=POCOS):  # type: ignore[no-untyped-def]
     return promover(
         Variante(id=candidata_id, modelo="otro-modelo"),
         _entorno(tmp_path, malos),
@@ -132,6 +135,7 @@ def _promover(casos, tmp_path, malos, candidata_id="candidata", base=None):  # t
         config=s.cargar_config(),
         suite_huella="h",
         base=base,
+        umbrales=umbrales,
     )
 
 
@@ -143,16 +147,24 @@ def test_a_better_candidate_is_promoted(
     assert decision.ruta_activa == variante_activa_aislada and variante_activa().id == "candidata"
     activa = json.loads(variante_activa_aislada.read_text(encoding="utf-8"))
     assert activa["frente_a"] == "base" and activa["resumen"]["tasa_candidata"] == 1.0
+    assert activa["resumen"]["decision"]["decision"] == "promovida"
     assert decision.candidata.comparacion is not None
     assert decision.candidata.comparacion.mejoras == ["caducidades-dni", "luz-factura-oferta"]
+    assert decision.informe is not None and decision.informe.estadisticos.mejoras == 2
 
 
-def test_an_equal_candidate_is_refused(
+def test_an_equal_candidate_is_promoted_only_with_enough_evidence(
     casos: list[CasoEvaluacion], tmp_path: Path, variante_activa_aislada: Path
 ) -> None:
-    decision = _promover(casos, tmp_path, {})
-    assert not decision.aplicada and any("estrictamente mejor" in m for m in decision.motivos)
+    # Five cases are far too few to say that nothing got worse: never promoted on that.
+    decision = _promover(casos, tmp_path, {}, umbrales=Umbrales())
+    assert not decision.aplicada and decision.informe is not None
+    assert decision.informe.decision == "evidencia_insuficiente"
+    assert any("Evidencia insuficiente" in m for m in decision.motivos)
     assert not variante_activa_aislada.exists()
+    # With a (test) minimum met, «just as good» is enough: not worse is the rule, not «strictly better».
+    igual = _promover(casos, tmp_path, {})
+    assert igual.aplicada, igual.motivos
 
 
 def test_better_overall_but_worse_on_a_critical_category_is_refused(
@@ -165,7 +177,8 @@ def test_better_overall_but_worse_on_a_critical_category_is_refused(
     decision = _promover(casos, tmp_path, malos)
     assert decision.candidata.resumen.tasa > decision.base.resumen.tasa
     assert not decision.aplicada
-    assert decision.motivos == ["Empeora la categoría crítica «confirmacion_actua»: 0.0% frente a 100.0%."]
+    assert decision.informe is not None and decision.informe.regresiones_criticas == ["actua-baja-queda-pendiente"]
+    assert any("categorías críticas: actua-baja-queda-pendiente" in m for m in decision.motivos)
     assert not variante_activa_aislada.exists()
 
 
@@ -173,10 +186,10 @@ def test_the_decision_rules_refuse_what_cannot_be_compared(casos: list[CasoEvalu
     base = _run(casos, VARIANTE_BASE, _entorno(tmp_path, {"base": {"caducidades-dni"}}))
     mejor = _run(casos, Variante(id="c"), _entorno(tmp_path, {}))
     config = s.cargar_config()
-    assert decidir(base, mejor, config)[0]
-    assert not decidir(base, mejor.model_copy(update={"suite_huella": "otra"}), config)[0]
-    assert not decidir(base, mejor.model_copy(update={"incompleto": True}), config)[0]
-    ok, motivos = decidir(base, mejor.model_copy(update={"modo": "reproduccion"}), config)
+    assert decidir(base, mejor, config, POCOS)[0]
+    assert not decidir(base, mejor.model_copy(update={"suite_huella": "otra"}), config, POCOS)[0]
+    assert not decidir(base, mejor.model_copy(update={"incompleto": True}), config, POCOS)[0]
+    ok, motivos = decidir(base, mejor.model_copy(update={"modo": "reproduccion"}), config, POCOS)
     assert not ok and "Una reproducción" in motivos[0]
     mismo = _promover(casos, tmp_path, {}, candidata_id="base", base=VARIANTE_BASE)
     assert not mismo.aplicada and "mismo id" in mismo.motivos[0]

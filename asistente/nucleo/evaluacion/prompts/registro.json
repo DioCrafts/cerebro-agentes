@@ -41,5 +41,45 @@
       "registrado_el": "2026-11-16",
       "nota": "SPECIALIST_SYSTEM_PROMPT al introducir el registro de versiones."
     }
+  ],
+  "cerebro": [
+    {
+      "version": "cerebro@1",
+      "huella": "95e1ddd6066e96ac5458b687681134af15259893e0cbfca8543f2c52cebf0966",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    }
+  ],
+  "cerebro_intencion": [
+    {
+      "version": "cerebro_intencion@1",
+      "huella": "7a3d4ee1e540bc34cb4042f647d02da3fbcb2b7010e39f8125d46ad703638837",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    }
+  ],
+  "cerebro_sintesis": [
+    {
+      "version": "cerebro_sintesis@1",
+      "huella": "bbc6c5400df694a5aab2a0df3b83f9787abe9cf1554bdaee20d3181fc3cc1ae5",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    }
+  ],
+  "repaso": [
+    {
+      "version": "repaso@1",
+      "huella": "97df7973fc5408766347b715fc9019efb4abbc3a7a4306770fef238a2c6ac7c0",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    }
+  ],
+  "memoria_resumen": [
+    {
+      "version": "memoria_resumen@1",
+      "huella": "310922b84eb1a24558e56deed3291bf36dee89f8e7292ae816047b5b136627ce",
+      "registrado_el": "2026-11-18",
+      "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    }
   ]
 }

@@ -32,6 +32,26 @@ if TYPE_CHECKING:
 Efecto = Literal["lectura", "prepara", "actua"]
 TipoHecho = Literal["string", "number", "boolean", "json"]
 Gravedad = Literal["info", "aviso", "urgente"]
+# The same values as ``asistente.nucleo.cerebro.contrato.Unidad`` (a test keeps them equal; repeated here so this
+# contract does not import the brain's).
+UnidadCifra = Literal["EUR", "EUR/mes", "EUR/año", "%", "kWh", "kW", "dias", "meses", "años", "unidades"]
+
+
+@dataclass(frozen=True)
+class CifraHerramienta:
+    """A figure a tool computed, declared in structure (optional, see ``ResultadoHerramienta.cifras``).
+
+    The household brain ties every figure of its final answer to the tool that produced it. A module that declares
+    its figures here is attributed exactly; without them the core reads the figures from ``contenido`` (Spanish
+    number parsing, ``cerebro/colaboracion/cifras.py``). ``literal`` is how the figure is written in ``contenido``
+    («812,34 €»); ``valor`` is exact (Decimal, never float).
+    """
+
+    concepto: str  # «cuota mensual», «ahorro anual estimado»
+    valor: Decimal
+    unidad: UnidadCifra | None = None
+    ejercicio: int | None = None
+    literal: str = ""
 
 
 @dataclass(frozen=True)
@@ -39,13 +59,15 @@ class ResultadoHerramienta:
     """What a module tool returns to the agent.
 
     ``contenido`` is the full text the model reads (figures, sources, caveats, in Spanish); ``resumen`` a
-    one-line summary for the trace; ``citas`` the sources (BOE ids, URLs) the answer may cite.
+    one-line summary for the trace; ``citas`` the sources (BOE ids, URLs) the answer may cite; ``cifras`` (optional)
+    the figures of ``contenido`` in structure, for the household brain's figures gate.
     """
 
     contenido: str
     resumen: str
     es_error: bool = False
     citas: tuple[str, ...] = ()
+    cifras: tuple[CifraHerramienta, ...] = ()
 
 
 @dataclass(frozen=True)

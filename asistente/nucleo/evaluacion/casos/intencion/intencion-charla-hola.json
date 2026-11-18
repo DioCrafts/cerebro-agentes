@@ -1,0 +1,36 @@
+{
+  "id": "intencion-charla-hola",
+  "categoria": "intencion",
+  "descripcion": "Saludo o agradecimiento: el cerebro contesta solo, sin especialistas ni cifras.",
+  "pregunta": "¡Hola! ¿Qué tal estás?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "charla"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "exactamente": true
+    },
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "directa"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

@@ -1,0 +1,37 @@
+{
+  "id": "intencion-aclarar-cuando-vence",
+  "categoria": "intencion",
+  "descripcion": "Consulta ambigua sin contexto: una pregunta de aclaración en vez de suponer.",
+  "pregunta": "¿Y eso cuándo vence?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "aclaracion": true
+    },
+    {
+      "tipo": "especialistas",
+      "excluye": [
+        "hipoteca",
+        "luz",
+        "caducidades",
+        "ayudas",
+        "suscripciones",
+        "fiscal"
+      ]
+    },
+    {
+      "tipo": "sin_accion_pendiente"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

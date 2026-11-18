@@ -12,6 +12,7 @@ import { moduloDeKind } from "../apiModulos";
 import { formatDate, formatMoney, relativeTime } from "../lib/presentation";
 import { MemoriaBotones } from "./MemoriaBotones";
 import { PreferenciasPanel } from "./PreferenciasPanel";
+import { RepasoCard } from "./RepasoCard";
 import { RichText } from "./RichText";
 
 const KIND: Record<string, { icon: typeof Bell; label: string }> = {
@@ -133,6 +134,10 @@ export function NotificationsPanel({ open, onClose, notifications, hasCase, load
                 {group.title} <span className="font-normal text-muted">({group.items.length})</span>
               </h3>
           {group.items.map((n) => {
+            // The weekly/daily digest: the brain's structured repaso (falls back to the text when there is none).
+            if (n.kind === "resumen_semanal" && caseId) {
+              return <RepasoCard key={n.id} notification={n} caseId={caseId} onMarkRead={onMarkRead} onRefresh={onRefresh} onAsk={onAsk} />;
+            }
             const kind = kindInfo(n.kind, moduleNames);
             const Icon = kind.icon;
             const unread = !n.read_at;

@@ -27,6 +27,34 @@ HaciendaGPT combina recuperación semántica (RAG), reglas de decisión fiscal y
 4. **Decision Engine**: evalúa reglas por periodo fiscal y hechos detectados.
 5. **UI/API**: expone experiencia de usuario e integración.
 
+### Cerebro del hogar
+
+El asistente ya no es un asesor fiscal con módulos añadidos: es un **cerebro generalista** que entiende la
+pregunta, decide a qué especialistas consultar (en paralelo si son independientes, uno tras otro si uno necesita una
+cifra de otro), une sus informes en una sola respuesta y la comprueba antes de enseñarla. El asesor fiscal es uno de
+sus especialistas, con su rigor intacto (citas del BOE y verificador). `CEREBRO_MODO=hogar` es el modo por defecto;
+`CEREBRO_MODO=fiscal` mantiene el asesor único de siempre.
+
+- [**Arquitectura**](docs/cerebro/arquitectura.md): el recorrido de un turno (memoria, intención con reglas primero
+  y el modelo pequeño solo si hay duda, paso directo fiscal, colaboración, síntesis), las puertas que lo vigilan, su
+  coste y lo que aún no está verificado. La decisión y sus alternativas, en el
+  [ADR 0003](docs/adr/0003-cerebro-del-hogar.md).
+- [**Colaboración entre especialistas**](docs/cerebro/colaboracion.md): los encargos se ejecutan como un grafo en
+  paralelo; un especialista pide un dato a otro **a través del cerebro** (`pedir_dato`), y la puerta de cifras exige
+  que cada número de la respuesta salga de una herramienta o de las palabras del usuario, atribuido a quien lo dio y
+  sin sumar cifras de especialistas distintos que ninguna herramienta haya combinado.
+- [**Memoria de conversaciones**](docs/cerebro/memoria.md): un resumen de cada conversación y «lo que sé de ti», cada
+  dato con su origen (la conversación, la fecha y las palabras literales del usuario). El usuario lo ve, lo corrige y
+  lo borra; va en la exportación y en el borrado de la cuenta.
+- [**Repaso proactivo**](docs/cerebro/repaso.md): una vez por semana (o por día) repasa lo nuevo —correo, avisos,
+  plazos, cambios del BOE, decisiones— y escribe UN resumen priorizado («esta semana importa esto, por esto, y te
+  propongo esto»). El código decide qué hay y qué se propone; el modelo pequeño solo redacta, tras una puerta
+  determinista, y las propuestas pasan por la confirmación de siempre.
+- [**Aprender de los errores reales**](docs/cerebro/aprendizaje.md): cada «esto está mal» se convierte en un caso
+  candidato enmascarado que una persona acepta (como prueba de regresión privada, nunca en el código) o rechaza; un
+  cambio de *prompt* o de modelo solo se aplica si no empeora la evaluación, con estadística pareada, sin regresiones
+  en casos críticos y dentro del presupuesto.
+
 ### Estructura del código (`asistente/`)
 
 | Paquete | Qué contiene |
@@ -1836,65 +1864,76 @@ corta antes de la ejecución completa.
 
 ### Evaluación continua
 
-Cada vez que el asistente se equivoca o el usuario lo corrige, el caso puede
-convertirse en una prueba de regresión; y antes de cambiar un *prompt* o un
-modelo se ejecuta la suite y el cambio solo se aplica si mejora
-(`asistente/nucleo/evaluacion/`, `python -m asistente.plataforma.cli.evaluacion`).
+Cada vez que el asistente se equivoca o el usuario lo corrige, el caso se
+convierte en un **candidato** de prueba; una persona lo revisa; y antes de
+cambiar un *prompt* o un modelo se ejecuta la evaluación y el cambio solo se
+aplica si **no la empeora** (`asistente/nucleo/evaluacion/`,
+`python -m asistente.plataforma.cli.evaluacion`). Diseño completo en
+[`docs/cerebro/aprendizaje.md`](docs/cerebro/aprendizaje.md).
 
 - **Valoración en cada respuesta** (web): 👍 / 👎 y «Corregir» (cifra
   equivocada, ámbito equivocado, dato pasado por alto, afirmación inventada,
-  otro; y, si quiere, la respuesta o la cifra correctas). Un voto **no guarda
-  la conversación**. Guardarla como caso de evaluación exige marcar, en ESA
-  respuesta, una casilla con su texto de consentimiento (versión incluida). Se
-  guarda dentro del expediente del usuario —pregunta, respuesta, corrección,
-  traza de herramientas y una instantánea **solo de los datos que usó la
-  respuesta**, con correos, DNI/NIE, IBAN, CUPS, tarjetas y teléfonos
-  ocultados—, así que se exporta con `/me/export`, se anonimiza si borra uno de
-  esos datos, se puede retirar (`DELETE /evaluacion/feedback/{id}`) y se borra
-  con la cuenta. API: `GET /evaluacion/consentimiento`,
-  `POST|GET /evaluacion/feedback`, `DELETE /evaluacion/feedback/{id}`.
-- **Nada entra solo en la suite.** Una persona revisa cada caso guardado
-  (`casos pendientes`, `casos ver`), prepara un borrador (`casos borrador`:
-  propone qué especialista debía o no consultarse y, si el usuario dio la
-  cifra correcta y una calculadora de la traza la produce, una expectativa que
-  la lee de ESA calculadora), lo edita y lo incorpora con `casos promover
-  … --confirmo-anonimizado --revisor …`, que rechaza lo que aún parezca un dato
-  personal. El fichero de la suite es anónimo (una referencia no reversible,
-  ni expediente ni usuario) y esa copia anónima no se borra con la cuenta, como
-  dice el texto del consentimiento.
-- **Señales automáticas**, leídas de la auditoría que ya existe (nada nuevo se
-  guarda): afirmaciones que el verificador rechazó, errores de herramientas,
-  especialistas consultados que no usaron ninguna herramienta (posible
-  «no es mi ámbito») y repreguntas. `senales` da recuentos sin contenido;
-  etiquetan las valoraciones.
+  suma de cifras que no se suman, algo que recuerda mal, otro; y, si quiere, la
+  respuesta o la cifra correctas). Un voto **no guarda la conversación**.
+  Guardarla exige marcar, en ESA respuesta, una casilla con su texto de
+  consentimiento (versión incluida). Se guarda dentro del expediente del
+  usuario —pregunta, respuesta, corrección, cómo la preparó el cerebro
+  (especialistas, su modo, sus cifras, la puerta de cifras; de la memoria, solo
+  identificadores), la variante y el modelo de cada propósito, y una
+  instantánea **solo de los datos que usó la respuesta**—; se exporta con
+  `/me/export`, se puede retirar (`DELETE /evaluacion/feedback/{id}`) y se borra
+  con la cuenta.
+- **Candidatos y cola de revisión.** Cada 👎 guardado se convierte en un caso
+  candidato **enmascarado**: nombre, correos, DNI/NIE, IBAN, tarjetas,
+  teléfonos, direcciones y códigos ocultos, **las cifras se conservan**, y la
+  lista de lo ocultado a la vista. Si el dueño activa «aprender de los fallos»
+  para un expediente (desactivado por defecto, revocable), también un 👎 sin la
+  casilla y las **señales débiles** de la auditoría: la puerta de cifras aún
+  descontenta con la respuesta final, afirmaciones que el verificador rechazó,
+  que el usuario vuelva a preguntar lo mismo o una abstención. La cola agrupa
+  duplicados y ordena por una prioridad explicada (categoría crítica, lo que
+  dijo el usuario, frecuencia, dinero en juego). La revisa el dueño en la web
+  («Revisión de casos») o quien opera (`casos cola`, `casos aceptar`,
+  `casos rechazar`); el candidato de otra persona responde 404.
+- **Aceptar** es describir el comportamiento esperado: especialistas que debe o
+  no consultar, citas, cifras que no debe dar, una cifra esperada que **siempre
+  sale de una calculadora**, abstenerse, preguntar antes, puerta de cifras
+  limpia. Se rechaza si algo aún parece personal, si una cifra no se puede
+  calcular o si la respuesta que se dio pasaría esas comprobaciones (control
+  negativo). Lo aceptado va a una **base privada** de casos reales
+  (`EVALUACION_CASOS_REALES_DB_PATH`), **nunca al repositorio**: se evalúa en
+  cada ejecución, sale en `/me/export` y se borra con el expediente o la
+  cuenta. `casos promover` ya no escribe en la suite.
 - **La suite** (`asistente/nucleo/evaluacion/casos/<categoría>/<id>.json`,
-  versionada) tiene 30 casos sembrados: cálculo fiscal, cifras de cada módulo,
-  enrutado, preguntas que cruzan ámbitos, «no sumar cifras de módulos
-  distintos», confirmación de lo que `actua` y borradores, y fuera de ámbito.
-  Las expectativas son deterministas siempre que se puede: qué herramienta o
-  especialista debe (o no) llamarse, qué cifra debe aparecer —**calculada
-  volviendo a ejecutar la calculadora sobre la instantánea, nunca escrita a
-  mano ni tomada de un modelo**—, qué afirmaciones no deben aparecer, cuántas
-  citas, qué modos valen y si una acción debe quedar pendiente. Opcionalmente,
-  una rúbrica para un juez LLM con una puerta determinista: un criterio solo
-  cuenta como cumplido si el juez **cita literalmente** la respuesta y el
-  programa encuentra la cita. `importar-dgt` convierte el conjunto de la DGT
-  (`eval_agent build`) en casos de la categoría `dgt`.
-- **Ejecutar**: `validar` y `run --reproduccion` no usan modelo (cada caso
-  lleva un guion de referencia que se reproduce por el agente, las
-  herramientas y los especialistas reales); `run [--config variante.json]`
-  ejecuta el asistente central con un proveedor real y da tasa de aprobados por
-  categoría, regresiones frente a un informe base (`--baseline`), coste y
-  latencia.
-- **La puerta**: los *prompts* son artefactos versionados por su huella
-  (`asistente/nucleo/evaluacion/prompts/registro.json`) y una variante (versión de
-  cada *prompt* + proveedor/modelo/esfuerzo) es lo que el agente ejecuta; la
-  ACTIVA está en `variante_activa.json` (sin ese fichero, la de siempre).
-  `promote --config candidata.json` ejecuta base y candidata y escribe la
-  candidata como activa **solo si** no empeora ninguna categoría crítica y es
-  estrictamente mejor en conjunto; si no, la rechaza con el informe.
+  versionada) tiene 163 casos: cálculo fiscal, cifras de cada módulo, enrutado,
+  cruces de ámbitos, «no sumar», confirmación de lo que `actua`, borradores y
+  fuera de ámbito, y los del cerebro del hogar: intención (a quién consultar, en
+  paralelo o esperando, preguntar si es ambiguo), colaboración, procedencia de
+  cada cifra, memoria (con su origen, nunca la de otra persona, manda la
+  corrección), repaso y paso directo fiscal. Las expectativas son
+  deterministas: qué herramienta, especialista o plan, qué cifra —**calculada
+  volviendo a ejecutar la calculadora, nunca escrita a mano ni tomada de un
+  modelo**—, qué no debe decir, citas, modos, acciones pendientes, la puerta de
+  cifras. Opcionalmente, una rúbrica para un juez LLM que solo cuenta si cita
+  literalmente la respuesta. `importar-dgt` añade la categoría `dgt`.
+- **Ejecutar**: `validar` y `run --reproduccion` no usan modelo (los casos con
+  guion se reproducen por el agente, las herramientas y los especialistas
+  reales; los del cerebro, que requieren modelo, se omiten con el motivo);
+  `run [--config variante.json] [--motor cerebro]` usa un proveedor real y da
+  tasa por categoría, regresiones, coste y latencia.
+- **La puerta**: los *prompts* (también los del cerebro, el repaso y la memoria)
+  están versionados por su huella y una variante es lo que el asistente
+  ejecuta. `promote --config candidata.json` ejecuta la activa y la candidata
+  sobre la suite y los casos reales y escribe la candidata **solo si no
+  empeora**: al menos 30 casos comparables (si no, «evidencia insuficiente»),
+  ningún caso de una categoría crítica empeora, el intervalo del 95 %
+  (*bootstrap* pareado) de la diferencia media no baja de 0 y McNemar no
+  muestra más regresiones que mejoras, y coste y latencia dentro de presupuesto.
+  La decisión y su evidencia quedan en un informe (JSON y resumen).
 - **CI** (`.github/workflows/evaluacion.yml`): la parte sin modelo en cada PR;
-  la suite completa con el modelo solo si existe el secreto `ANTHROPIC_API_KEY`.
+  la suite con modelo solo si existe el secreto `ANTHROPIC_API_KEY`; y, a
+  demanda, la reproducción de casos reales sobre casos **sintéticos** (nunca
+  datos de usuarios).
 
 **Nada de la parte con modelo se ha ejecutado contra un modelo real**: las
 pruebas usan proveedores guionizados. Detalle y procedimiento en

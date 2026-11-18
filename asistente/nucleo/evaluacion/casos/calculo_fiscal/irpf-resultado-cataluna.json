@@ -1,0 +1,53 @@
+{
+  "id": "irpf-resultado-cataluna",
+  "categoria": "calculo_fiscal",
+  "descripcion": "Resultado de la renta en Cataluña: la cifra sale de calcular_irpf y se cita.",
+  "pregunta": "Vivo en Barcelona y cobro 24.000 € brutos al año. ¿Cuánto me sale la renta de 2025?",
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Cataluña",
+      "rendimiento_trabajo_bruto": 24000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf",
+      "agente": "asesor"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "3.703,25 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Con tus datos, la declaración de 2025 saldría {cifra:resultado} (positivo: a ingresar) {fragmento:calcular_irpf}. Es una simulación."
+      }
+    ]
+  },
+  "version": 1
+}

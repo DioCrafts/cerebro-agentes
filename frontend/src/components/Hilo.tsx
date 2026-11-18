@@ -14,6 +14,7 @@ import { DoctrineNotice } from "./DoctrineNotice";
 import { EmptyState } from "./EmptyState";
 import { EvaluacionFeedback } from "./EvaluacionFeedback";
 import { ObligationCardList } from "./ObligationCard";
+import { ConsultadosLinea, PlanEnVivo, ProcedenciaRespuesta, type TurnoConCerebro } from "./ProcedenciaRespuesta";
 import { RichText } from "./RichText";
 import { SourceCardList } from "./SourceCard";
 import { TrustStrip } from "./TrustStrip";
@@ -103,7 +104,13 @@ export function Hilo({ active, pending, busy, highlightedId, onSubmit, onCite, l
               ) : (
                 <>
                   <RichText text={t.envelope.answer} citations={t.envelope.citations} onCite={(fragmentId) => onCite(t.id, fragmentId)} />
+                  <ConsultadosLinea cerebro={(t as TurnoConCerebro).cerebro} />
                   <TrustStrip mode={t.envelope.mode} detail={claimsSummary} />
+                  <ProcedenciaRespuesta
+                    cerebro={(t as TurnoConCerebro).cerebro}
+                    citations={t.envelope.citations}
+                    onCite={(fragmentId) => onCite(t.id, fragmentId)}
+                  />
                   <DoctrineNotice conflicts={t.envelope.conflicts ?? []} unsettled={t.envelope.sinCriterioFirme ?? false} />
                   <VerificationPanel claims={t.claims} otherWarnings={otherWarnings} onCite={(fragmentId) => onCite(t.id, fragmentId)} />
                   <SourceCardList citations={t.envelope.citations} scope={t.id} highlightedId={highlightedId} />
@@ -126,6 +133,7 @@ export function Hilo({ active, pending, busy, highlightedId, onSubmit, onCite, l
         <section className="flex flex-col gap-4">
           <UserBubble text={pending.text} />
           <AssistantBubble>
+            <PlanEnVivo eventos={pending.cerebro ?? []} />
             <LiveActivity events={pending.events} startedAt={pending.startedAt} draft={pending.draft} />
           </AssistantBubble>
         </section>

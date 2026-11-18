@@ -1,0 +1,29 @@
+{
+  "id": "intencion-fuera-receta",
+  "categoria": "intencion",
+  "descripcion": "Fuera de lo que cubre el asistente del hogar: nadie es consultado.",
+  "pregunta": "¿Cómo se hace una tortilla de patatas jugosa?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "fuera_de_ambito"
+      ]
+    },
+    {
+      "tipo": "especialistas",
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

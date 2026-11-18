@@ -1,0 +1,80 @@
+{
+  "id": "irpf-plan-pensiones-galicia",
+  "categoria": "calculo_fiscal",
+  "pregunta": "Si meto 1.500 € en el plan de pensiones este año. ¿cuánto me ahorro en la renta de 2025?",
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Galicia",
+      "rendimiento_trabajo_bruto": 60000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025,
+          "escenarios": [
+            {
+              "nombre": "Sin aportación",
+              "cambios": {}
+            },
+            {
+              "nombre": "Con aportación de 1.500 €",
+              "cambios": {
+                "aportacion_plan_pensiones": 1500
+              }
+            }
+          ]
+        },
+        "patron": "Frente a «[^»]+»: ahorra (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "553,50 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "inmoviliz|rescat|diferi",
+      "motivo": "advierte de la liquidez o del rescate"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025,
+              "escenarios": [
+                {
+                  "nombre": "Sin aportación",
+                  "cambios": {}
+                },
+                {
+                  "nombre": "Con aportación de 1.500 €",
+                  "cambios": {
+                    "aportacion_plan_pensiones": 1500
+                  }
+                }
+              ]
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La aportación te ahorraría {cifra:ahorro} en la renta de 2025 {fragmento:calcular_irpf}; el dinero queda inmovilizado y tributa al rescatarlo."
+      }
+    ]
+  },
+  "version": 1
+}

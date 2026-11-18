@@ -1,0 +1,54 @@
+{
+  "id": "memoria-corregido-tarifa",
+  "categoria": "memoria",
+  "pregunta": "¿Qué tarifa de luz te dije que tengo?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "PVPC|regulada",
+      "motivo": "la versión corregida"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "0,14",
+      "motivo": "no la cita anterior"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "Tiene la tarifa regulada PVPC",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-04-11",
+        "cita": "tengo una tarifa fija de 0,14"
+      },
+      "corregido": true
+    }
+  ],
+  "version": 1
+}

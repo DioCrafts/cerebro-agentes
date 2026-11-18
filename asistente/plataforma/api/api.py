@@ -9,7 +9,7 @@ import threading
 from typing import Annotated, Any
 from uuid import uuid4
 
-from fastapi import APIRouter, Depends, FastAPI, HTTPException, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
@@ -79,6 +79,8 @@ from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES, DatosInvalidosE
 from asistente.conocimiento.llm.grounding import AnswerEnvelope
 from asistente.nucleo.agent.agent import AgentResult, TaxAgent
 from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
+from asistente.nucleo.cerebro.cerebro import Cerebro
+from asistente.nucleo.cerebro.contrato import TurnoConversacion
 from asistente.nucleo.decision.audit import build_recommendation_audit_event
 from asistente.nucleo.decision.fact_extractor import (
     EXPECTED_FACT_TYPE,
@@ -120,6 +122,8 @@ from asistente.plataforma.api.routers import navegador as navegador_router
 from asistente.plataforma.api.routers import planificador as planificador_router
 from asistente.plataforma.api.routers import plataforma as plataforma_router
 from asistente.plataforma.api.routers import push as push_router
+from asistente.plataforma.api.routers import recuerdos as recuerdos_router
+from asistente.plataforma.api.routers import repaso as repaso_router
 from asistente.plataforma.api.routers import tareas as tareas_router
 from asistente.plataforma.api.security import (
     BodySizeLimitMiddleware,
@@ -507,6 +511,13 @@ class AgentRequest(BaseModel):
     # Optional: attach a case so the agent can read/update the user's fiscal
     # facts and run the rules engine. Without it the agent only searches.
     case_id: str | None = None
+    # Optional: the client's id of this chat (one per conversation; a new chat, a new id). The household brain
+    # retrieves the conversation memory with it and hands the finished turn to the memory.
+    conversacion_id: str | None = Field(default=None, pattern=r"^[A-Za-z0-9_-]{8,64}$")
+
+
+# The agent behind /agent: the household brain (CEREBRO_MODO=hogar) or the single tax advisor (fiscal).
+Agente = TaxAgent | Cerebro
 
 
 class AgentResponse(AgentResult):
@@ -524,14 +535,14 @@ class AgentResponse(AgentResult):
 
 
 @_thread_safe_singleton
-def _build_agent() -> TaxAgent:
+def _build_agent() -> Agente:
     """Build the agent once (loads the embedder + FAISS index, like the QA chain)."""
     from asistente.nucleo.agent.agent import build_agent
 
     return build_agent()
 
 
-def get_agent() -> TaxAgent:
+def get_agent() -> Agente:
     """FastAPI dependency returning the cached agent; a failed build is a 503.
 
     Kept as a thin wrapper so tests can override it via ``app.dependency_overrides``.
@@ -578,6 +589,101 @@ def _modulos_del_turno(case_id: str | None, access: CaseAccess) -> dict[str, Any
     return {"modulos": modulos} if any(tiene_especialista(m) for m in modulos) else {}
 
 
+def _del_cerebro(agent: Any, conversacion_id: str | None, user_id: str | None) -> dict[str, Any]:
+    """``conversacion_id`` and ``user_id`` for the household brain's ``run`` (its memory is read for the same owner
+    the turn is stored under); nothing for the plain advisor (whose ``run`` has no such arguments), so the legacy
+    mode is called exactly as before."""
+    if not getattr(agent, "ES_CEREBRO", False):
+        return {}
+    extra: dict[str, Any] = {}
+    if conversacion_id:
+        extra["conversacion_id"] = conversacion_id
+    if user_id:
+        extra["user_id"] = user_id
+    return extra
+
+
+def _usuario_del_turno(access: CaseAccess, case: CaseState | None) -> str | None:
+    """Whose turn this is: the signed-in account, else the case's owner (the memory reads and stores for them)."""
+    return access.user.id if access.user is not None else (case.user_id if case is not None else None)
+
+
+def _registrar_en_memoria(
+    agent: Any, payload: AgentRequest, case: CaseState | None, result: AgentResult, access: CaseAccess
+) -> None:
+    """Hand the finished turn to the conversation memory (``ProveedorMemoria.registrar_turno`` of the brain's memory
+    service). Only brain turns with a ``conversacion_id``; never fails the request (the memory is optional)."""
+    memoria = getattr(agent, "memoria", None) if getattr(agent, "ES_CEREBRO", False) else None
+    if memoria is None or not payload.conversacion_id or result.cerebro is None:
+        return
+    try:
+        turno = TurnoConversacion(
+            conversacion_id=payload.conversacion_id,
+            case_id=payload.case_id,
+            user_id=_usuario_del_turno(access, case),
+            fecha=datetime.now(UTC),
+            pregunta=payload.query[:40_000],
+            respuesta=result.answer[:60_000],
+            especialistas=[i.especialista for i in result.cerebro.informes],
+            modo=result.mode.value,
+            recuerdos_usados=list(result.cerebro.recuerdos_usados),
+        )
+        memoria.registrar_turno(turno)
+    except Exception:
+        _logger.exception("conversation memory: the turn could not be registered")
+
+
+# The audit event of a turn stays bounded: the answer's text and the brain's report are capped.
+_MAX_RESPUESTA_AUDITADA = 20_000
+_MAX_EN_INFORME: dict[str, int] = {"informes": 12, "cifras": 30, "fragment_ids": 30, "peticiones": 8}
+_MAX_EN_PUERTA: dict[str, int] = {"violaciones": 20, "atribuciones": 40, "ignorados": 20}
+
+
+def _informe_cerebro_acotado(result: AgentResult) -> dict[str, Any] | None:
+    """The brain's full report for the audit trail (the evaluation reads it), with its lists capped: still a valid
+    ``InformeCerebro``, never an unbounded event."""
+    if result.cerebro is None:
+        return None
+    datos = result.cerebro.model_dump(mode="json")
+    datos["informes"] = datos["informes"][: _MAX_EN_INFORME["informes"]]
+    for informe in datos["informes"]:
+        informe["cifras"] = informe["cifras"][: _MAX_EN_INFORME["cifras"]]
+        informe["fragment_ids"] = informe["fragment_ids"][: _MAX_EN_INFORME["fragment_ids"]]
+    datos["peticiones"] = datos["peticiones"][: _MAX_EN_INFORME["peticiones"]]
+    if isinstance(datos.get("puerta"), dict):
+        for clave, tope in _MAX_EN_PUERTA.items():
+            datos["puerta"][clave] = datos["puerta"][clave][:tope]
+    return datos
+
+
+def _modelos_del_turno(agent: Any, result: AgentResult) -> dict[str, str]:
+    """``{purpose: model}`` for the purposes the turn used: the brain says it; for the plain advisor, its own
+    provider and verifier. Empty when it cannot be read (never fails the turn)."""
+    try:
+        modelos_de = getattr(agent, "modelos_del_turno", None)
+        if callable(modelos_de):
+            return dict(modelos_de(result))
+        modelos = {"agente": result.model}
+        verificador = getattr(getattr(getattr(agent, "_verifier", None), "_provider", None), "model", None)
+        if isinstance(verificador, str) and verificador:
+            modelos["verificador"] = verificador
+        return modelos
+    except Exception:
+        _logger.exception("could not read the turn's models for the audit trail")
+        return {}
+
+
+def _variante_en_uso() -> str | None:
+    """The prompt/model variant that answered (``evaluacion.variantes``), or None if it cannot be read."""
+    try:
+        from asistente.nucleo.evaluacion.variantes import variante_en_uso
+
+        return str(variante_en_uso().id)
+    except Exception:
+        _logger.exception("could not read the prompt variant in use for the audit trail")
+        return None
+
+
 def _guardar_acciones(result: AgentResult, acciones: AccionStore) -> list[AccionPendiente]:
     """Store the actions the specialists proposed (once each: a repeated identical call is one action)."""
     vistas: set[str] = set()
@@ -597,8 +703,14 @@ def _finish_agent_turn(
     result: AgentResult,
     store: SQLiteCaseStateStore,
     acciones: AccionStore | None = None,
+    agent: Any = None,
 ) -> AgentResponse:
-    """Persist what the agent changed on the case, audit the turn, build the response."""
+    """Persist what the agent changed on the case, audit the turn, build the response.
+
+    The audit event holds the conversation's record for this case (the question, the answer, the tool trace, the
+    verified claims), under the case's rules: exported with the account, erased with the case or the account. With
+    the brain it also carries its full report (capped), the prompt variant in use and the model of each purpose,
+    which the evaluation reads when the user says an answer was wrong."""
     case_updated = False
     pendientes: list[AccionPendiente] = []
     if payload.case_id is not None:
@@ -613,7 +725,7 @@ def _finish_agent_turn(
             case_updated = True
         if result.acciones_propuestas and acciones is not None:
             pendientes = _guardar_acciones(result, acciones)
-        event = {
+        event: dict[str, Any] = {
             "event_type": "agent_answer",
             "input": payload.query,
             "mode": result.mode.value,
@@ -628,6 +740,27 @@ def _finish_agent_turn(
             event["pending_actions"] = [
                 {"id": a.id, "modulo": a.modulo, "herramienta": a.herramienta} for a in pendientes
             ]
+        # The answer's text, next to the question (``input``) it answers: the record of the conversation.
+        event["answer"] = result.answer[:_MAX_RESPUESTA_AUDITADA]
+        variante = _variante_en_uso()
+        if variante is not None:
+            event["variante"] = variante
+        modelos = _modelos_del_turno(agent, result)
+        if modelos:
+            event["modelos"] = modelos
+        informe_cerebro = _informe_cerebro_acotado(result)
+        if informe_cerebro is not None:
+            event["informe_cerebro"] = informe_cerebro
+        if result.cerebro is not None:
+            # What the household brain did: its plan, who it consulted and what its gates said.
+            event["cerebro"] = {
+                "ruta": result.cerebro.ruta,
+                "tipo": result.cerebro.intencion.tipo,
+                "origen": result.cerebro.intencion.origen,
+                "especialistas": [i.especialista for i in result.cerebro.informes],
+                "revisiones_sintesis": result.cerebro.revisiones_sintesis,
+                "violaciones_cifras": len(result.cerebro.puerta.violaciones) if result.cerebro.puerta else 0,
+            }
         store.append_audit_event(payload.case_id, event)
 
     final_case = result.updated_case or case
@@ -645,10 +778,11 @@ def _finish_agent_turn(
 @app.post("/agent", response_model=AgentResponse, dependencies=[Depends(require_api_key)])
 def post_agent(
     payload: AgentRequest,
-    agent: Annotated[TaxAgent, Depends(get_agent)],
+    agent: Annotated[Agente, Depends(get_agent)],
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     access: Annotated[CaseAccess, Depends(get_case_access)],
     acciones: Annotated[AccionStore, Depends(get_accion_store)],
+    tareas_de_fondo: BackgroundTasks,
 ) -> AgentResponse:
     """Tool-using advisor: searches the corpus, cites fragments, verifies claims.
 
@@ -668,12 +802,16 @@ def post_agent(
                 chat_history=recortar_historial(payload.chat_history),
                 case=case,
                 **_modulos_del_turno(payload.case_id, access),
+                **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
             )
     except PresupuestoAgotadoError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except ProviderError as exc:
         raise _no_disponible(_PROVEEDOR_NO_RESPONDE, exc) from exc
-    return _finish_agent_turn(payload, case, result, store, acciones)
+    response = _finish_agent_turn(payload, case, result, store, acciones, agent)
+    # After the response is sent: the memory may summarise, the user does not wait for it.
+    tareas_de_fondo.add_task(_registrar_en_memoria, agent, payload, case, result, access)
+    return response
 
 
 # Seconds between keep-alive lines while the model is working, so proxies and
@@ -684,7 +822,7 @@ _STREAM_HEARTBEAT_SECONDS = 10.0
 @app.post("/agent/stream", dependencies=[Depends(require_api_key)])
 def post_agent_stream(
     payload: AgentRequest,
-    agent: Annotated[TaxAgent, Depends(get_agent)],
+    agent: Annotated[Agente, Depends(get_agent)],
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     access: Annotated[CaseAccess, Depends(get_case_access)],
     acciones: Annotated[AccionStore, Depends(get_accion_store)],
@@ -717,9 +855,12 @@ def post_agent_stream(
                     case=case,
                     on_event=lambda event: events.put({"event": "progress", "data": event}),
                     **modulos,
+                    **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
                 )
-            response = _finish_agent_turn(payload, case, result, store, acciones)
+            response = _finish_agent_turn(payload, case, result, store, acciones, agent)
             events.put({"event": "result", "data": response.model_dump(mode="json")})
+            # The user already has the answer: the memory may take its time.
+            _registrar_en_memoria(agent, payload, case, result, access)
         except PresupuestoAgotadoError as exc:
             events.put({"event": "error", "data": {"status": 429, "detail": str(exc)}})
         except ProviderError as exc:
@@ -1271,6 +1412,8 @@ app.include_router(correo_router.build_router(get_case_store=get_case_store))
 app.include_router(push_router.build_router(get_case_store=get_case_store))
 app.include_router(plataforma_router.build_router(get_case_store=get_case_store))
 app.include_router(tareas_router.build_router(get_case_store=get_case_store))
+app.include_router(recuerdos_router.build_router(get_case_store=get_case_store))
+app.include_router(repaso_router.build_router(get_case_store=get_case_store))
 app.include_router(capacidades_router.build_router())
 app.include_router(investigacion_router.router)
 # --- /routers ---

@@ -1,0 +1,48 @@
+{
+  "id": "intencion-paralelo-bono-y-pasaporte",
+  "categoria": "intencion",
+  "descripcion": "Dos preguntas independientes: dos especialistas, en paralelo, sin que uno espere al otro.",
+  "pregunta": "¿Tengo derecho al bono social? Y, por cierto, ¿cuándo me caduca el pasaporte?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "cruzada"
+      ],
+      "aclaracion": false,
+      "paralelo": true
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "ayudas",
+        "caducidades"
+      ],
+      "excluye": [
+        "hipoteca",
+        "luz",
+        "suscripciones"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

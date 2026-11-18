@@ -91,6 +91,77 @@ export interface AgentResponse {
   model: string;
   // Actions a module specialist prepared in this turn; they wait for the user's confirmation.
   pending_actions?: Array<{ id: string; modulo: string; herramienta: string; resumen: string; estado: string }>;
+  // What the household brain did on this turn (null from the legacy single advisor).
+  cerebro?: InformeCerebro | null;
+}
+
+// ---- The household brain's report (asistente/nucleo/cerebro/contrato.py -> InformeCerebro) ----
+export interface EncargoCerebro {
+  id: string;
+  especialista: string;
+  pregunta: string;
+  depende_de: string[];
+  motivo: string;
+}
+
+export interface IntencionCerebro {
+  tipo: "charla" | "memoria" | "ambito" | "cruzada" | "accion" | "fuera_de_ambito";
+  encargos: EncargoCerebro[];
+  necesita_memoria: boolean;
+  confianza: number;
+  origen: "reglas" | "modelo" | "mixto" | "respaldo";
+  resumen: string;
+  aclaracion?: string | null;
+}
+
+export interface CifraCerebro {
+  id: string;
+  especialista: string;
+  concepto: string;
+  valor: string; // Decimal, as JSON text
+  unidad?: string | null;
+  fragment_id?: string | null;
+  herramienta?: string | null;
+  ejercicio?: number | null;
+  literal: string;
+}
+
+export interface ResumenInformeCerebro {
+  encargo_id: string;
+  especialista: string;
+  nombre: string;
+  estado: "ok" | "sin_respuesta" | "error" | "denegado" | "presupuesto";
+  modo?: string | null;
+  cifras: CifraCerebro[];
+  fragment_ids: string[];
+  duracion_ms: number;
+}
+
+export interface AtribucionCifraCerebro {
+  literal: string;
+  valor: string;
+  cifra_id?: string | null;
+  especialista?: string | null;
+  fragment_id?: string | null;
+  del_usuario: boolean;
+}
+
+export interface PuertaCerebro {
+  violaciones: Array<{ tipo: string; literal: string; detalle: string; cifras: string[] }>;
+  atribuciones: AtribucionCifraCerebro[];
+  ignorados: string[];
+}
+
+export interface InformeCerebro {
+  intencion: IntencionCerebro;
+  ruta: "directa" | "paso_directo" | "sintesis";
+  informes: ResumenInformeCerebro[];
+  peticiones: Array<{ id: string; solicitante: string; destinatario: string; dato: string; motivo: string; profundidad: number }>;
+  puerta?: PuertaCerebro | null;
+  recuerdos_usados: string[];
+  conversacion_id?: string | null;
+  revisiones_sintesis: number;
+  duracion_ms: number;
 }
 
 // Live progress of a running agent turn (asistente/nucleo/agent/agent.py -> emit).
@@ -103,7 +174,14 @@ export type ProgressEvent =
   // Team mode (complex questions): planner, researchers and critic at work.
   | { type: "team"; stage: string; agent: string; status: string; complex?: boolean; objections?: boolean; modulo?: string }
   | { type: "verifying"; citations: number }
-  | { type: "revising"; problems: number };
+  | { type: "revising"; problems: number }
+  // The household brain: its plan (again on a replan), each specialist's run, requests between them, the synthesis
+  // and the figures gate (asistente/nucleo/cerebro/contrato.py -> EVENTO_*).
+  | { type: "plan"; intencion: IntencionCerebro; replan?: boolean }
+  | { type: "especialista"; clave: string; nombre: string; encargo_id: string; estado: string; resultado?: string }
+  | { type: "peticion"; peticion?: { solicitante: string; destinatario: string; dato: string }; estado?: string }
+  | { type: "sintesis"; especialistas: string[] }
+  | { type: "puerta"; violaciones: number };
 
 /** An API failure with the server's human-readable `detail`, when it sent one. */
 export class ApiError extends Error {
@@ -261,7 +339,7 @@ function isCaseState(value: unknown): value is CaseState {
 export interface RequestOptions {
   signal?: AbortSignal;
   timeoutMs?: number;
-  method?: "POST" | "PUT" | "DELETE" | "GET";
+  method?: "POST" | "PUT" | "PATCH" | "DELETE" | "GET";
 }
 
 /** FastAPI errors are `{"detail": "..."}`; surface that sentence, not raw JSON. */
@@ -369,18 +447,38 @@ export function postAgent(opts: {
   // Attach the case so the agent can read/record the user's facts and run the
   // rules engine; omit to get a search-only answer.
   caseId?: string | null;
+  // This chat's id (one per conversation): the household brain's conversation memory.
+  conversacionId?: string | null;
   signal?: AbortSignal;
 }): Promise<AgentResponse> {
   const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
+  if (opts.conversacionId && CONVERSACION_ID.test(opts.conversacionId)) body.conversacion_id = opts.conversacionId;
   return request("/agent", body, isAgentResponse, { signal: opts.signal, timeoutMs: AGENT_TIMEOUT_MS });
 }
+
+// The shape the backend accepts for a chat's id (AgentRequest.conversacion_id); anything else is not sent.
+const CONVERSACION_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 // If the stream goes silent for this long the connection is dead: the server
 // sends a keep-alive line every ~10 s even while the model is thinking.
 const STREAM_IDLE_TIMEOUT_MS = 60_000;
 
-const PROGRESS_TYPES: ReadonlySet<string> = new Set(["thinking", "text_delta", "tool_call", "tool_result", "team", "verifying", "revising"]);
+const PROGRESS_TYPES: ReadonlySet<string> = new Set([
+  "thinking",
+  "text_delta",
+  "tool_call",
+  "tool_result",
+  "team",
+  "verifying",
+  "revising",
+  // The household brain's events.
+  "plan",
+  "especialista",
+  "peticion",
+  "sintesis",
+  "puerta",
+]);
 
 function isProgressEvent(value: unknown): value is ProgressEvent {
   return isRecord(value) && typeof value.type === "string" && PROGRESS_TYPES.has(value.type);
@@ -397,12 +495,14 @@ export async function streamAgent(
     query: string;
     chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
     caseId?: string | null;
+    conversacionId?: string | null;
     signal?: AbortSignal;
   },
   onProgress: (event: ProgressEvent) => void,
 ): Promise<AgentResponse> {
   const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
   if (opts.caseId) body.case_id = opts.caseId;
+  if (opts.conversacionId && CONVERSACION_ID.test(opts.conversacionId)) body.conversacion_id = opts.conversacionId;
 
   const idle = new AbortController();
   const combined = opts.signal ? AbortSignal.any([opts.signal, idle.signal]) : idle.signal;
@@ -690,6 +790,77 @@ export function markNotificationRead(opts: { caseId: string; notificationId: str
 /** Run the deterministic proactive jobs (deadlines, year-end plan) for this case now. */
 export function runProactive(opts: { caseId: string; signal?: AbortSignal }): Promise<NotificationsResponse> {
   return request(`/cases/${encodeURIComponent(opts.caseId)}/proactive/run`, {}, isNotifications, { signal: opts.signal });
+}
+
+// ---- The brain's proactive pass (asistente/plataforma/api/routers/repaso.py) --------
+// The structured weekly/daily digest behind a `resumen_semanal` notification. Its proposals are answered through
+// their own endpoints (acciones, tareas, correo); this endpoint never acts.
+
+export type TipoPropuestaRepaso = "accion" | "tarea" | "paso" | "correo" | "plantilla";
+// Read now from the layer that owns the proposal: decided elsewhere since → no buttons.
+export type EstadoPropuestaRepaso = "pendiente" | "decidida" | "desconocido";
+
+export interface PropuestaRepaso {
+  id: string;
+  tipo: TipoPropuestaRepaso;
+  ref: string; // the id its own endpoint takes (acc_…, tar_…, prop_…, or a template id)
+  paso?: string | null;
+  parametros: Record<string, string | number | boolean | null>;
+  objetivo?: string | null;
+  etiqueta: string;
+  resumen: string;
+  estado: EstadoPropuestaRepaso;
+}
+
+export interface FuenteRepaso {
+  tipo: string;
+  id: string;
+  modulo?: string | null;
+  nombre_modulo?: string | null;
+  titulo: string;
+  fecha?: string | null;
+  notification_id?: string | null;
+}
+
+export interface PuntoRepaso {
+  id: string;
+  rango: number;
+  titulo: string;
+  texto: string;
+  por_que: string;
+  motivos: string[]; // the reasons code computed (the deterministic priority)
+  urgente: boolean;
+  gravedad: NotificationSeverity;
+  vence?: string | null;
+  ambitos: Array<{ clave: string; nombre: string }>;
+  fuentes: FuenteRepaso[];
+  propuestas: PropuestaRepaso[];
+  origen: "modelo" | "determinista";
+}
+
+export interface Repaso {
+  case_id: string;
+  notification_id: string | null;
+  periodo: string;
+  frecuencia: "semanal" | "diaria";
+  origen: "modelo" | "mixto" | "determinista" | null;
+  titular: string;
+  puntos: PuntoRepaso[];
+  restantes: number;
+  actualizado: string;
+}
+
+function isRepaso(value: unknown): value is { repaso: Repaso } {
+  return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso as Record<string, unknown>).puntos);
+}
+
+/** The structured digest of a `resumen_semanal` notification (404 when the brain did not write it). */
+export function getRepaso(opts: { caseId: string; notificationId?: string; signal?: AbortSignal }): Promise<Repaso> {
+  const q = opts.notificationId ? `?notification_id=${encodeURIComponent(opts.notificationId)}` : "";
+  return request(`/cases/${encodeURIComponent(opts.caseId)}/repaso${q}`, undefined, isRepaso, {
+    signal: opts.signal,
+    method: "GET",
+  }).then((resp) => resp.repaso);
 }
 
 // ---- Accounts and privacy (asistente/plataforma/api/routers/auth.py) -----------------

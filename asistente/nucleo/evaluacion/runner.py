@@ -8,7 +8,11 @@ Two modes:
   key, no cost. It is the deterministic part CI runs on every pull request.
 
 Either way the agent is the production one (``TeamAgent`` with the evidence ledger, the verifier, the
-specialists and the pending actions); only the provider differs.
+specialists and the pending actions); only the provider differs. A case that ``requiere`` the household brain
+runs through it (:mod:`asistente.nucleo.evaluacion.ejecutores`: the brain built with the same provider, searcher
+and verifier), and its :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro` is what the brain's
+expectations read. A case whose code is not installed yet, or a replay of a case without a reference script, is
+OMITTED with the reason: it counts nowhere (neither passed nor failed) and the report lists it.
 """
 
 from __future__ import annotations
@@ -30,6 +34,13 @@ from asistente.nucleo.agent.search import CorpusSearcher
 from asistente.nucleo.agent.verifier import Verifier
 from asistente.nucleo.evals.agent_eval import ExcludingSearcher
 from asistente.nucleo.evaluacion.cifras import SinCorpus, caso_desde_expediente
+from asistente.nucleo.evaluacion.ejecutores import (
+    ejecutar_cerebro,
+    ejecutar_repaso,
+    memoria_para,
+    pendiente,
+    pendientes,
+)
 from asistente.nucleo.evaluacion.juez import juzgar
 from asistente.nucleo.evaluacion.modelos import (
     CasoEvaluacion,
@@ -37,6 +48,7 @@ from asistente.nucleo.evaluacion.modelos import (
     Comparacion,
     ConfigSuite,
     Ejecucion,
+    Expediente,
     InformeEvaluacion,
     LlamadaRegistrada,
     ResultadoCaso,
@@ -53,6 +65,8 @@ from asistente.plataforma.ops.consumo import ConsumoStore, MeteredProvider, Pres
 logger = logging.getLogger(__name__)
 
 Modo = Literal["modelo", "reproduccion"]
+# Which system runs a case: "auto" (the brain when the case requires it, else the central agent), or forced.
+Motor = Literal["auto", "agente", "cerebro"]
 # (variant, case, expected figures) -> provider for the agent and the verifier.
 FabricaProveedor = Callable[[Variante, CasoEvaluacion, dict[str, str]], LLMProvider]
 
@@ -93,6 +107,8 @@ class Entorno:
     limites: Presupuesto | None = None
     # (provider, model) of the first case run, for the report.
     identidad: tuple[str, str] | None = None
+    # "cerebro" runs every case through the household brain (the legacy cases too: «does the brain keep them?»).
+    motor: Motor = "auto"
 
 
 # Purposes of the calls of a run. The agent under test is metered with the SAME purposes as in production
@@ -102,6 +118,39 @@ class Entorno:
 PROPOSITO_AGENTE = "agente"
 PROPOSITO_VERIFICADOR = "verificador"
 PROPOSITO_JUEZ = "evaluacion-juez"
+PROPOSITO_REPASO = "cerebro:repaso"
+
+
+def motor_de(caso: CasoEvaluacion, entorno: Entorno) -> str:
+    """The system that runs ``caso``: the proactive pass, the household brain or the central agent."""
+    if "repaso" in caso.requiere:
+        return "repaso"
+    if "cerebro" in caso.requiere or entorno.motor == "cerebro":
+        return "cerebro"
+    return "agente"
+
+
+def _sin_guion(caso: CasoEvaluacion, entorno: Entorno) -> bool:
+    """A case that runs model-free without a script: the proactive pass (``repaso``) answers with its deterministic
+    rendering when the provider cannot (the replay provider answers no ``repaso`` call), behind the same gate."""
+    return motor_de(caso, entorno) == "repaso"
+
+
+def motivo_de_omision(caso: CasoEvaluacion, entorno: Entorno) -> str | None:
+    """Why ``caso`` is not run in this environment (Spanish), or None."""
+    motivos = pendientes(caso)
+    if entorno.motor == "cerebro" and "cerebro" not in caso.requiere:
+        motivos += [m for m in [pendiente("cerebro")] if m is not None]
+    if motivos:
+        return "; ".join(motivos)
+    if (
+        entorno.modo == "reproduccion"
+        and caso.guion is None
+        and not _sin_guion(caso, entorno)
+        and (caso.requiere or caso.origen.tipo != "sintetico")
+    ):
+        return "sin guion de referencia: solo se evalúa con un modelo"
+    return None
 
 
 def _metered(provider: LLMProvider, entorno: Entorno, purpose: str) -> MeteredProvider:
@@ -109,7 +158,9 @@ def _metered(provider: LLMProvider, entorno: Entorno, purpose: str) -> MeteredPr
 
 
 def _ejecucion_de(result: AgentResult) -> Ejecucion:
+    cerebro = getattr(result, "cerebro", None)
     return Ejecucion(
+        cerebro=cerebro,
         respuesta=result.answer,
         modo=result.mode.value,
         herramientas=[
@@ -166,14 +217,36 @@ def ejecutar_caso(
         )
         modulos = modulos_de(caso)
         extra: dict[str, Any] = {"modulos": modulos} if modulos else {}
+        motor = motor_de(caso, entorno)
         with usar_variante(variante), contexto_consumo(case_id=clave_consumo):
-            result = agente.run(
-                caso.pregunta,
-                chat_history=list(caso.historial),
-                case=caso_desde_expediente(caso.expediente, case_id=f"eval_{caso.id}"),
-                **extra,
-            )
-            ejecucion = _ejecucion_de(result)
+            # A case with a memory belongs to someone even without facts: the brain asks the memory for that user.
+            expediente = caso.expediente or (Expediente() if caso.memoria else None)
+            caso_estado = caso_desde_expediente(expediente, case_id=f"eval_{caso.id}")
+            if caso_estado is not None and caso.usuario != caso_estado.user_id:
+                caso_estado = caso_estado.model_copy(update={"user_id": caso.usuario})
+            if motor == "repaso":
+                salida = ejecutar_repaso(caso, proveedor=provider.con_proposito(PROPOSITO_REPASO))
+                result = None
+                ejecucion = Ejecucion(respuesta=salida.texto, modo="verified", repaso=salida.model_dump(mode="json"))
+            elif motor == "cerebro":
+                result = ejecutar_cerebro(
+                    caso,
+                    asesor=agente,
+                    proveedor=provider,
+                    verificador=agente._verifier,
+                    modulos=modulos,
+                    case=caso_estado,
+                    memoria=memoria_para(caso),
+                )
+            else:
+                result = agente.run(
+                    caso.pregunta,
+                    chat_history=list(caso.historial),
+                    case=caso_estado,
+                    **extra,
+                )
+            if result is not None:
+                ejecucion = _ejecucion_de(result)
             if caso.rubrica is not None:
                 if entorno.juez is None:
                     avisos.append("Rúbrica no evaluada: esta ejecución no tiene juez.")
@@ -200,7 +273,14 @@ def ejecutar_caso(
     return ejecucion, veredictos, avisos
 
 
-def resumir(resultados: Sequence[ResultadoCaso], config: ConfigSuite) -> ResumenInforme:
+def resumir(todos: Sequence[ResultadoCaso], config: ConfigSuite) -> ResumenInforme:
+    """Rates over the cases that ran (omitted ones are only counted, by reason)."""
+    resultados = [r for r in todos if not r.omitido]
+    omitidos: dict[str, int] = {}
+    for r in todos:
+        if r.omitido:
+            clave = r.motivo_omision or "omitido"
+            omitidos[clave] = omitidos.get(clave, 0) + 1
     por_categoria: dict[str, ResumenCategoria] = {}
     for nombre, categoria in config.categorias.items():
         por_categoria[nombre] = ResumenCategoria(critica=categoria.critica)
@@ -225,13 +305,15 @@ def resumir(resultados: Sequence[ResultadoCaso], config: ConfigSuite) -> Resumen
         latencia_media_s=round(statistics.fmean(latencias), 3) if latencias else 0.0,
         latencia_p95_s=latencias[min(len(latencias) - 1, int(0.95 * len(latencias)))] if latencias else 0.0,
         juez_sin_cita=sum(1 for r in resultados for v in r.juez if not v.cita_valida),
+        omitidos=sum(omitidos.values()),
+        omitidos_por_motivo=dict(sorted(omitidos.items())),
     )
 
 
 def comparar(actual: InformeEvaluacion, base: InformeEvaluacion) -> Comparacion:
     """Regressions (passed in ``base``, fail now) and improvements, on the cases both ran."""
-    antes = {r.id: r.aprobado for r in base.casos}
-    ahora = {r.id: r.aprobado for r in actual.casos}
+    antes = {r.id: r.aprobado for r in base.casos if not r.omitido}
+    ahora = {r.id: r.aprobado for r in actual.casos if not r.omitido}
     comunes = sorted(set(antes) & set(ahora))
     categorias = set(actual.resumen.por_categoria) | set(base.resumen.por_categoria)
     delta: dict[str, float] = {}
@@ -258,8 +340,12 @@ def evaluar(
     suite_huella: str,
     repeticiones: int = 1,
     progreso: Callable[[CasoEvaluacion, ResultadoCaso], None] | None = None,
+    casos_reales: int = 0,
 ) -> InformeEvaluacion:
-    """Run every case ``repeticiones`` times; a case passes only if every repetition passes."""
+    """Run every case ``repeticiones`` times; a case passes only if every repetition passes.
+
+    ``casos_reales``: how many of ``casos`` are accepted real cases (private): the report says so.
+    """
     ejecucion_id = uuid4().hex[:12]
     resultados: list[ResultadoCaso] = []
     avisos = list(entorno.avisos)
@@ -268,6 +354,22 @@ def evaluar(
     for caso in casos:
         categoria = config.categorias.get(caso.categoria)
         critica = bool(categoria and categoria.critica)
+        omision = motivo_de_omision(caso, entorno)
+        if omision is not None:
+            resultado = ResultadoCaso(
+                id=caso.id,
+                version=caso.version,
+                categoria=caso.categoria,
+                critica=critica,
+                aprobado=False,
+                omitido=True,
+                motivo_omision=omision,
+                ejecucion=Ejecucion(),
+            )
+            resultados.append(resultado)
+            if progreso is not None:
+                progreso(caso, resultado)
+            continue
         if entorno.presupuesto_usd is not None and gastado >= entorno.presupuesto_usd:
             incompleto = True
             resultados.append(
@@ -289,7 +391,7 @@ def evaluar(
         aprobadas = 0
         ejecucion = Ejecucion()
         for repeticion in range(1, repeticiones + 1):
-            if entorno.modo == "reproduccion" and caso.guion is None:
+            if entorno.modo == "reproduccion" and caso.guion is None and not _sin_guion(caso, entorno):
                 ejecucion = Ejecucion(error="el caso no tiene guion de referencia")
                 fallos_rep = ["sin guion de referencia: no se puede reproducir sin modelo"]
                 juez_rep: list[VeredictoJuez] = []
@@ -324,15 +426,19 @@ def evaluar(
     if incompleto:
         avisos.append("Presupuesto agotado: el informe está incompleto y no sirve para promover una variante.")
     nombre_proveedor, modelo = _identidad(variante, entorno)
-    from asistente.nucleo.evaluacion.variantes import ROLES, huella, texto_prompt
+    from asistente.nucleo.evaluacion.variantes import ROLES, huellas_de
 
+    if casos_reales:
+        avisos.append(
+            f"Incluye {casos_reales} casos reales aceptados (privados): guarda este informe fuera del repositorio."
+        )
     return InformeEvaluacion(
         variante=variante.id,
         descripcion_variante=variante.descripcion,
         proveedor=nombre_proveedor,
         modelo=modelo,
         prompts={rol: variante.prompts[rol] for rol in ROLES},
-        huellas_prompts={rol: huella(texto_prompt(variante, rol)) for rol in ROLES},
+        huellas_prompts={str(rol): h for rol, h in huellas_de(variante).items()},
         modo=entorno.modo,
         suite_version=config.version,
         suite_huella=suite_huella,
@@ -342,6 +448,7 @@ def evaluar(
         casos=resultados,
         incompleto=incompleto,
         avisos=avisos,
+        con_casos_reales=casos_reales,
     )
 
 
@@ -379,6 +486,9 @@ def formatear(informe: InformeEvaluacion) -> str:
         lineas.append(f"  - {nombre}{marca}: {cat.aprobados}/{cat.total} ({cat.tasa:.1%})")
     if r.juez_sin_cita:
         lineas.append(f"Veredictos del juez descartados por no citar la respuesta: {r.juez_sin_cita}")
+    if r.omitidos:
+        lineas.append(f"Omitidos (no cuentan): {r.omitidos}")
+        lineas.extend(f"  - {n} × {motivo}" for motivo, n in r.omitidos_por_motivo.items())
     if informe.comparacion is not None:
         c = informe.comparacion
         lineas.append(f"Frente a «{c.frente_a}»: {c.delta_tasa:+.1%}; coste {c.delta_coste_usd:+} USD")
@@ -386,7 +496,7 @@ def formatear(informe: InformeEvaluacion) -> str:
             lineas.append("  Regresiones: " + ", ".join(c.regresiones))
         if c.mejoras:
             lineas.append("  Mejoras: " + ", ".join(c.mejoras))
-    fallidos = [caso for caso in informe.casos if not caso.aprobado]
+    fallidos = [caso for caso in informe.casos if not caso.aprobado and not caso.omitido]
     if fallidos:
         lineas.append("Casos que fallan:")
         for caso in fallidos:
@@ -402,6 +512,10 @@ def formatear(informe: InformeEvaluacion) -> str:
 
 __all__ = [
     "PROPOSITO_AGENTE",
+    "PROPOSITO_REPASO",
+    "Motor",
+    "motivo_de_omision",
+    "motor_de",
     "PROPOSITO_JUEZ",
     "PROPOSITO_VERIFICADOR",
     "Entorno",

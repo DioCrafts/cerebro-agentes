@@ -1,0 +1,41 @@
+{
+  "id": "intencion-un-especialista-itv",
+  "categoria": "intencion",
+  "descripcion": "Una sola pregunta de «caducidades» con todos los ámbitos activos: solo ese especialista.",
+  "pregunta": "¿Cuándo tengo que pasar la ITV del coche? Se matriculó en abril de 2018.",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "ambito",
+        "accion"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "caducidades"
+      ],
+      "excluye": [
+        "hipoteca",
+        "luz",
+        "ayudas",
+        "suscripciones",
+        "fiscal"
+      ],
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

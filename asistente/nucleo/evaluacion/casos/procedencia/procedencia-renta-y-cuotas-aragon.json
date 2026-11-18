@@ -1,0 +1,88 @@
+{
+  "id": "procedencia-renta-y-cuotas-aragon",
+  "categoria": "procedencia",
+  "pregunta": "Entre lo que me sale la renta de 2025 y lo que pagué de hipoteca en 2025, ¿cuánto dinero se me fue en total?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Aragón",
+      "rendimiento_trabajo_bruto": 42000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "cifra",
+      "nombre": "renta",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "9.339,54 €"
+      }
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuotas",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "ejercicio": 2025,
+          "fecha": "2026-03-20"
+        },
+        "patron": "^Año \\d{4}: cuotas por (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "5.690,52 €"
+      }
+    },
+    {
+      "tipo": "cifra_atribuida",
+      "nombre": "renta",
+      "especialista": "fiscal"
+    },
+    {
+      "tipo": "cifra_atribuida",
+      "nombre": "cuotas",
+      "especialista": "hipoteca"
+    },
+    {
+      "tipo": "suma_ausente",
+      "calculos": [
+        {
+          "herramienta": "calcular_irpf",
+          "argumentos": {
+            "ejercicio": 2025
+          },
+          "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        },
+        {
+          "herramienta": "hipoteca_cuadro",
+          "argumentos": {
+            "ejercicio": 2025,
+            "fecha": "2026-03-20"
+          },
+          "patron": "^Año \\d{4}: cuotas por (?P<cifra>-?[\\d.]+,\\d{2} €)"
+        }
+      ],
+      "motivo": "renta y cuotas salen de especialistas distintos"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

@@ -1,0 +1,41 @@
+{
+  "id": "colaboracion-bono-con-renta-2",
+  "categoria": "colaboracion",
+  "descripcion": "«ayudas» necesita un dato de «fiscal»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "Según mi última declaración, ¿podría pedir el bono social eléctrico?",
+  "modulos": [
+    "ayudas",
+    "caducidades"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Canarias",
+      "rendimiento_trabajo_bruto": 17000,
+      "ayudas_adultos_hogar": 1,
+      "ayudas_menores_hogar": 2,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "fiscal",
+      "a": "ayudas"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "ayudas",
+        "fiscal"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

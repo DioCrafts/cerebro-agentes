@@ -1,0 +1,22 @@
+{
+  "id": "intencion-modulo-apagado",
+  "categoria": "intencion",
+  "descripcion": "El ámbito de hipoteca no está activo: no se consulta a un especialista apagado.",
+  "pregunta": "¿Cuánto me queda de hipoteca?",
+  "modulos": [
+    "luz",
+    "caducidades"
+  ],
+  "expectativas": [
+    {
+      "tipo": "especialistas",
+      "excluye": [
+        "hipoteca"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

@@ -67,6 +67,8 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
 | `doctor` | 09:00 | `asistente.plataforma.cli.ops doctor` | sí |
 | `correo-sincronizar` | cada 30 min | `asistente.capacidades.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
 | `indice-corpus` | 03:40 | `asistente.plataforma.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
+| `memoria-resumir` | cada 15 min | `asistente.nucleo.recuerdos resumir` | sí (resume las conversaciones inactivas, por lotes si el proveedor los admite; sin modelo configurado solo aplica la retención) |
+| `repaso` | cada 30 min | `asistente.plataforma.cli.repaso trabajo` | sí (sin `REPASO_ACTIVO` no hace nada; recoge los lotes en curso y, cuando toca por `REPASO_DIA`/`REPASO_HORA`, escribe el repaso priorizado de cada caso: [cerebro/repaso.md](cerebro/repaso.md)) |
 
 - **Una sola ejecución por turno, con varios workers.** Antes de lanzar una tarea, el worker reclama su
   turno en la tabla `plataforma_trabajos` dentro de una transacción `BEGIN IMMEDIATE`. Si hay dos workers
@@ -175,7 +177,7 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 | `proactive_entrega` | `asistente.nucleo.proactive` | casos | `notification_deliveries` | | 1 | Qué aviso se entregó por qué canal. |
 | `acciones` | `asistente.nucleo.modulos` | casos | `acciones_pendientes` | `idx_acciones_case` | 1 | Acciones de los módulos pendientes de confirmación. |
 | `memoria` | `asistente.nucleo.memoria` | casos | `decisiones`, `decisiones_historial` | `idx_decisiones_case`, `idx_decisiones_historial_case`, `decisiones_borrar_con_caso` | 2 | Decisiones del usuario y su historial. La v2 (disparador) espera a que exista `case_states`. |
-| `evaluacion` | `asistente.nucleo.evaluacion` | casos | `evaluacion_feedback` | `idx_evaluacion_feedback_case`, `evaluacion_feedback_borra_con_el_caso` | 2 | Valoraciones de respuestas (el contenido vive en `audit_events`). |
+| `evaluacion` | `asistente.nucleo.evaluacion` | casos | `evaluacion_feedback`, `evaluacion_candidatos`, `evaluacion_aprendizaje` | `idx_evaluacion_feedback_case`, `evaluacion_feedback_borra_con_el_caso`, `idx_evaluacion_candidatos_case`, `idx_evaluacion_candidatos_grupo`, `evaluacion_candidatos_borra_con_el_caso` | 4 | Valoraciones de respuestas (el contenido vive en `audit_events`), casos candidatos enmascarados de la cola de revisión y el consentimiento por expediente para aprender de los fallos. Los casos reales ACEPTADOS van a una base privada aparte (`EVALUACION_CASOS_REALES_DB_PATH`, por defecto `evaluacion_casos_reales.sqlite3` junto a esta): cópiala también. |
 | `eventos` | `asistente.nucleo.eventos` | casos | `eventos`, `eventos_cursores`, `eventos_entregas`, `eventos_temporizadores`, `eventos_trabajadores` | `idx_eventos_case`, `idx_entregas_estado`, `idx_entregas_case`, `idx_temporizadores_fecha` | 1 | Bus de eventos. |
 | `correo` | `asistente.capacidades.correo` | casos | `correo_conexiones`, `correo_oauth_estados`, `correo_elementos`, `correo_propuestas`, `correo_contactos` | `idx_correo_elementos_fecha` | 1 | Gmail: token cifrado, estados OAuth, elementos derivados, propuestas, contactos. |
 | `consumo` | `asistente.plataforma.ops` | casos | `llm_usage` | `idx_llm_usage_ts` | 1 | Llamadas al LLM: tokens y coste estimado. |
@@ -183,6 +185,8 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 | `plataforma` | `asistente.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. |
 | `tareas` | `asistente.nucleo.tareas` | casos | `tareas`, `tareas_historial`, `tareas_senales` | `idx_tareas_case`, `idx_tareas_estado`, `idx_tareas_historial`, `idx_tareas_historial_case`, `idx_tareas_senales`, `tareas_borrar_con_caso` | 2 | Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus. La v2 (disparador) espera a que exista `case_states`. |
 | `push` | `asistente.plataforma.push` | casos | `push_suscripciones`, `push_consentimientos` | `idx_push_suscripciones_propietario`, `idx_push_consentimientos`, `push_borrar_suscripciones_con_usuario` | 1 | Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario. |
+| `recuerdos` | `asistente.nucleo.recuerdos` | casos | `recuerdos_conversaciones`, `recuerdos_mensajes`, `recuerdos`, `recuerdos_lotes`, `recuerdos_interruptor` | `idx_recuerdos_conversaciones_titular`, `idx_recuerdos_conversaciones_estado`, `idx_recuerdos_mensajes_conversacion`, `idx_recuerdos_mensajes_fecha`, `idx_recuerdos_titular`, `idx_recuerdos_lotes_lote`, `recuerdos_borrar_con_caso`, `recuerdos_borrar_con_usuario` | 1 | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): conversaciones con su resumen, mensajes (se purgan a los `MEMORIA_RETENCION_MENSAJES_DIAS`), «lo que sé de ti» con su origen, lotes pendientes (solo identificadores) y el interruptor del usuario. Se borra con el caso y con la cuenta (disparadores). Depende de `decision` y `auth`. |
+| `repaso` | `asistente.nucleo.repaso` | casos | `repaso_pasadas` | `idx_repaso_pasadas_lote`, `repaso_borrar_con_caso` | 2 | Repaso proactivo del cerebro ([cerebro/repaso.md](cerebro/repaso.md)): una fila por caso y periodo con los puntos priorizados tal como se redactaron, el texto aceptado por la puerta, el aviso que escribió y, mientras hay un lote en curso, su identificador (los `custom_id` son *hashes*, sin datos del caso). Marca de agua de la pasada siguiente. Se borra con el caso (la v2, disparador, espera a que exista `case_states`); se purga a los 120 días salvo la última de cada caso. |
 | `doctrina` | `asistente.conocimiento.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
 
 Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrations` (el registro).
@@ -231,6 +235,7 @@ Por tabla:
 | `acciones_pendientes` | `seq` identidad; `payload_json` → `jsonb`; FK a `case_states` en vez del borrado explícito. |
 | `decisiones`, `decisiones_historial` | `seq` identidad; `jsonb`; el disparador pasa a FK `ON DELETE CASCADE` (la redacción al borrar una decisión sigue en código). |
 | `evaluacion_feedback` | `seq` identidad; `jsonb`; disparador → FK `ON DELETE CASCADE` (`case_id` admite NULL). |
+| `evaluacion_candidatos`, `evaluacion_aprendizaje` | `seq` identidad; `jsonb`; disparador → FK `ON DELETE CASCADE`; `INSERT OR IGNORE` por `clave` → `ON CONFLICT (clave) DO NOTHING`. |
 | `eventos` | `id` identidad: el cursor por `id` supone que el orden de `id` es el de confirmación, cierto en SQLite (un escritor) pero **no** en PostgreSQL; hay que pasar a una secuencia por confirmación (p. ej. `pg_current_xact_id` con *snapshot*) o a `LISTEN/NOTIFY` + tabla de entregas. |
 | `eventos_cursores` | fechas → `timestamptz`. |
 | `eventos_entregas` | el arriendo (`bloqueado_por`, `bloqueado_hasta`) → `SELECT … FOR UPDATE SKIP LOCKED`; fechas → `timestamptz`; `duracion_ms`/`latencia_ms` → `double precision`. |
@@ -316,6 +321,19 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `API_BASE_URL` | `http://127.0.0.1:8000` | Dirección de la API para esa interfaz. |
 | `VITE_API_BASE` | `/api` | (Compilación de la interfaz React) prefijo de la API. |
 | `VITE_API_PROXY` | `http://127.0.0.1:8000` | (Solo desarrollo con Vite) destino del proxy `/api`. |
+| `MEMORIA_CONVERSACIONES` | `true` | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): guardar las conversaciones, su resumen y «lo que sé de ti». Con `false` no se guarda ni se usa nada nuevo (lo guardado se puede seguir viendo, exportando y borrando). |
+| `MEMORIA_RETENCION_MENSAJES_DIAS` | `30` | Días que se guardan los mensajes tal cual (mínimo 1); los resúmenes y los recuerdos quedan hasta que el usuario los borre. |
+| `MEMORIA_MAX_RECUERDOS` | `200` | Recuerdos activos por usuario y caso (al llegar, se van primero los de contexto más antiguos). |
+| `MEMORIA_RESUMEN_TRAS_MINUTOS` | `30` | Minutos de inactividad tras los que se resume una conversación (tarea `memoria-resumir`). |
+| `MEMORIA_RESUMEN_LOTES` | `true` | Resumir con la API de lotes del proveedor cuando la tiene (más barato; el resultado llega en una pasada posterior). |
+| `MEMORIA_RESUMEN_EN_SEGUNDO_PLANO` | `false` | Resumir también desde la API, en un hilo, cuando el usuario empieza una conversación nueva (despliegues sin worker). |
+| `MEMORIA_EMBEDDINGS` | `false` | Ordenar también con el modelo de *embeddings* del proyecto (`EMBEDDING_MODEL`, solo MLX). Nunca imprescindible. |
+| `REPASO_ACTIVO` | `false` | Repaso proactivo del cerebro ([cerebro/repaso.md](cerebro/repaso.md)): con `true` y un modelo configurado, el resumen semanal (o diario) lo escribe el repaso priorizado, con su puerta; sin modelo, su versión determinista. Con `false`, el resumen semanal determinista de siempre. |
+| `REPASO_FRECUENCIA` | `semanal` | `semanal` (un resumen por semana ISO, la clave del resumen semanal) o `diaria` (uno por día). |
+| `REPASO_DIA` | `0` | Día de la pasada semanal (0 = lunes … 6 = domingo); si ese día no corrió, se hace el siguiente de la misma semana. |
+| `REPASO_HORA` | `07:00` | Hora peninsular (`HH:MM`) a partir de la que la tarea `repaso` hace la pasada del periodo. |
+| `REPASO_POR_LOTES` | `true` | La tarea `repaso` envía las peticiones de todos los casos en UN lote de la API de lotes del proveedor (más barato; lo recoge en una pasada posterior, como mucho 12 h). Sin lotes o si algo falla, una llamada síncrona por caso. |
+| `REPASO_MAX_PUNTOS` | `7` | Puntos como mucho en un repaso (1–12); el resto se cuenta («y N avisos más en tu bandeja»). |
 
 ### 3.4 Modelos de lenguaje
 

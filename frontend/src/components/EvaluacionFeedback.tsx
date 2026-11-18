@@ -1,6 +1,8 @@
 // Feedback under each answer: 👍 / 👎 and «Corregir» (what was wrong, and optionally the right answer or
 // figure). Storing the conversation for evaluation is a separate, unticked checkbox with its consent text,
-// for THIS answer only; without it only the vote is recorded. A stored conversation can be withdrawn here.
+// for THIS answer only; without it only the vote is recorded (unless the user switched on «aprender de los
+// fallos» for the case, in «Revisión de casos»). A stored 👎 becomes a masked candidate case the user can
+// review there; a stored conversation can be withdrawn here.
 
 import { PencilLine, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
@@ -22,6 +24,8 @@ const TIPOS_POR_DEFECTO: ConsentimientoEvaluacion["tipos"] = [
   { clave: "modulo_erroneo", etiqueta: "Ha consultado el ámbito equivocado" },
   { clave: "hecho_omitido", etiqueta: "Ha pasado por alto un dato" },
   { clave: "afirmacion_inventada", etiqueta: "Afirma algo que no es cierto" },
+  { clave: "suma_indebida", etiqueta: "Ha sumado cifras que no se pueden sumar" },
+  { clave: "memoria_erronea", etiqueta: "Recuerda mal algo que le dije" },
   { clave: "otro", etiqueta: "Otro" },
 ];
 
@@ -85,7 +89,7 @@ export function EvaluacionFeedback({ caseId, question, answer }: Props) {
   if (estado === "enviado" && resultado) {
     return (
       <div role="status" className="mt-2 text-[12.5px] text-muted">
-        {retirado ? "Has retirado la conversación: ya no se guarda para evaluación." : resultado.mensaje}
+        {retirado ? "Has retirado la conversación: ya no se guarda para evaluación ni como caso a revisar." : resultado.mensaje}
         {resultado.guardado_para_evaluacion && !retirado && (
           <button type="button" onClick={retirar} className="ml-2 font-semibold text-ink-soft underline hover:text-ink">
             Retirar

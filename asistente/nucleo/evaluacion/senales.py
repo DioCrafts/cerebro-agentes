@@ -8,11 +8,16 @@ nothing is kept after the case is erased:
 * ``error_herramienta`` — a tool returned an error;
 * ``especialista_sin_resultado`` — the central agent consulted a module specialist that answered without
   using any of its tools (typically «no es mi ámbito»): a likely misroute;
-* ``repregunta`` — the user asked (almost) the same thing again right after, or opened with a correction.
+* ``repregunta`` — the user asked (almost) the same thing again right after, or opened with a correction;
+* ``puerta_cifras`` — the household brain's figures gate still found problems in the FINAL answer (after its
+  revisions): a figure with no origin, a sum no tool made, a figure attributed to the wrong specialist;
+* ``abstencion`` — the assistant abstained.
 
 They label a user's feedback and are aggregated (counts only, no content) by
-``python -m asistente.plataforma.cli.evaluacion senales``. They are hints for the operator, never test cases:
-storing a case for evaluation always needs the user's explicit opt-in.
+``python -m asistente.plataforma.cli.evaluacion senales``. Four of them are WEAK signals of a mistake
+(:data:`SENALES_DEBILES`): when the owner of the case has switched on automatic learning for it, each becomes a
+low-priority CANDIDATE case for the review queue (:mod:`asistente.nucleo.evaluacion.revision`), masked like any
+other; without that consent they stay hints, never content.
 """
 
 from __future__ import annotations
@@ -25,7 +30,16 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict
 
-TipoSenal = Literal["afirmacion_rechazada", "error_herramienta", "especialista_sin_resultado", "repregunta"]
+TipoSenal = Literal[
+    "afirmacion_rechazada",
+    "error_herramienta",
+    "especialista_sin_resultado",
+    "repregunta",
+    "puerta_cifras",
+    "abstencion",
+]
+# Signals that, with the owner's standing consent, become candidate cases (lower priority than a 👎).
+SENALES_DEBILES: frozenset[str] = frozenset({"puerta_cifras", "afirmacion_rechazada", "repregunta", "abstencion"})
 
 _SIN_FRAGMENTOS_RE = re.compile(r"especialista \S+: 0 fragmento")
 _PALABRA_RE = re.compile(r"\w{4,}", re.UNICODE)
@@ -100,6 +114,25 @@ def senales_de_turno(evento: dict[str, Any], turno: int) -> list[Senal]:
                     detalle="el especialista no usó ninguna herramienta (posible consulta fuera de su ámbito)",
                 )
             )
+    if evento.get("mode") == "abstained":
+        senales.append(Senal(tipo="abstencion", turno=turno, detalle="el asistente se abstuvo"))
+    for clave in ("informe_cerebro", "cerebro"):
+        cerebro = evento.get(clave)
+        if not isinstance(cerebro, dict):
+            continue
+        puerta = cerebro.get("puerta")
+        violaciones = (
+            [v for v in puerta.get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+        )
+        if violaciones:
+            por_tipo = Counter(str(v.get("tipo")) for v in violaciones)
+            detalle = ", ".join(f"{n} {t}" for t, n in sorted(por_tipo.items()))
+            senales.append(Senal(tipo="puerta_cifras", turno=turno, detalle=detalle))
+            break
+        contadas = cerebro.get("violaciones_cifras")  # the summary the audit event may carry instead
+        if isinstance(contadas, int) and not isinstance(contadas, bool) and contadas > 0:
+            senales.append(Senal(tipo="puerta_cifras", turno=turno, detalle=f"{contadas} violaciones"))
+            break
     return senales
 
 
@@ -152,6 +185,7 @@ def agregar(senales: Iterable[Senal]) -> dict[str, Any]:
 
 
 __all__ = [
+    "SENALES_DEBILES",
     "Senal",
     "TipoSenal",
     "agregar",

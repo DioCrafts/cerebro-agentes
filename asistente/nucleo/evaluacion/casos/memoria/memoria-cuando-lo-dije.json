@@ -1,0 +1,48 @@
+{
+  "id": "memoria-cuando-lo-dije",
+  "categoria": "memoria",
+  "pregunta": "¿Cuándo te dije que quería cambiar de compañía de luz?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "15/09/2026|15 de septiembre",
+      "motivo": "dice de cuándo es lo que recuerda"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "preferencia",
+      "texto": "Quiere cambiar de compañía de luz antes del invierno",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-09-15",
+        "cita": "quiero cambiar de compañía de luz antes del invierno"
+      }
+    }
+  ],
+  "version": 1
+}

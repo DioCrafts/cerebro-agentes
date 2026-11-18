@@ -1,0 +1,53 @@
+{
+  "id": "intencion-paralelo-dni-e-hipoteca",
+  "categoria": "intencion",
+  "descripcion": "Dos preguntas independientes: dos especialistas, en paralelo, sin que uno espere al otro.",
+  "pregunta": "¿Cuándo caduca mi DNI (lo renové el 1 de marzo de 2021, nací en 1990) y cuánto pago de cuota de hipoteca?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "cruzada"
+      ],
+      "aclaracion": false,
+      "paralelo": true
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "caducidades",
+        "hipoteca"
+      ],
+      "excluye": [
+        "luz",
+        "ayudas",
+        "suscripciones"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

@@ -1,0 +1,29 @@
+{
+  "id": "repaso-garantia",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s1"
+      ]
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "caducidad",
+        "titulo": "La garantía de la lavadora acaba el 3/12/2026",
+        "fecha": "2026-12-03"
+      }
+    ]
+  },
+  "version": 1
+}

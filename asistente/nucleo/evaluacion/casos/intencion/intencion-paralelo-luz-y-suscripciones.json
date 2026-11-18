@@ -1,0 +1,39 @@
+{
+  "id": "intencion-paralelo-luz-y-suscripciones",
+  "categoria": "intencion",
+  "descripcion": "Dos preguntas independientes: dos especialistas, en paralelo, sin que uno espere al otro.",
+  "pregunta": "Dime cuánto me costará la luz este mes y qué suscripciones tengo activas.",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "cruzada"
+      ],
+      "aclaracion": false,
+      "paralelo": true
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "luz",
+        "suscripciones"
+      ],
+      "excluye": [
+        "hipoteca",
+        "caducidades",
+        "ayudas"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

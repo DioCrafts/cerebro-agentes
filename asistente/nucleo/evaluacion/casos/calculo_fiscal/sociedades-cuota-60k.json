@@ -1,0 +1,48 @@
+{
+  "id": "sociedades-cuota-60k",
+  "categoria": "calculo_fiscal",
+  "pregunta": "Mi sociedad limitada cerró 2025 con 60.000 € de beneficio contable. sin ajustes. ¿Qué cuota del Impuesto sobre Sociedades le corresponde?",
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_impuesto_sociedades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "calcular_impuesto_sociedades",
+        "argumentos": {
+          "ejercicio": 2025,
+          "resultado_contable": 60000
+        },
+        "patron": "Cuota diferencial[^:]*: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "15.000,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_impuesto_sociedades",
+            "argumentos": {
+              "ejercicio": 2025,
+              "resultado_contable": 60000
+            }
+          }
+        ]
+      },
+      {
+        "texto": "La cuota sería {cifra:cuota} {fragmento:calcular_impuesto_sociedades}."
+      }
+    ]
+  },
+  "version": 1
+}

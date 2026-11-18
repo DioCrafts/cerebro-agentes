@@ -1,0 +1,59 @@
+{
+  "id": "enrutado-dni-con-luz-y-ayudas",
+  "categoria": "enrutado",
+  "pregunta": "Renové el DNI el 1 de marzo de 2021 y nací el 10 de mayo de 1990: ¿cuándo caduca?",
+  "modulos": [
+    "caducidades",
+    "luz",
+    "ayudas"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "caducidades"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "ayudas"
+    }
+  ],
+  "guion": {
+    "especialista:caducidades": [
+      {
+        "herramientas": [
+          {
+            "nombre": "caducidades_calcular",
+            "argumentos": {
+              "regla": "dni",
+              "fecha_nacimiento": "1990-05-10",
+              "fecha_expedicion": "2021-03-01"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Hecho {fragmento:caducidades_calcular}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_caducidades",
+            "argumentos": {
+              "pregunta": "Renové el DNI el 1 de marzo de 2021 y nací el 10 de mayo de 1990: ¿cuándo caduca"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te lo explico según tu especialista {fragmento:caducidades_calcular}."
+      }
+    ]
+  },
+  "version": 1
+}

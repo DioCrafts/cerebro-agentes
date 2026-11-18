@@ -1,0 +1,74 @@
+{
+  "id": "caducidades-dni-mayor",
+  "categoria": "modulo",
+  "pregunta": "Nací en septiembre de 1958 (el 30) y renové el DNI el 5 de octubre de 2020. ¿Hasta cuándo vale?",
+  "modulos": [
+    "caducidades"
+  ],
+  "expediente": {
+    "tax_period": "2026"
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "caducidades"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "caducidades_calcular",
+      "agente": "especialista_caducidades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "caduca",
+      "calculo": {
+        "herramienta": "caducidades_calcular",
+        "argumentos": {
+          "regla": "dni",
+          "fecha_nacimiento": "1958-09-30",
+          "fecha_expedicion": "2020-10-05"
+        },
+        "patron": "^DNI: (?P<cifra>\\d{2}/\\d{2}/\\d{4})",
+        "registrada": "05/10/2030"
+      }
+    },
+    {
+      "tipo": "citas"
+    }
+  ],
+  "guion": {
+    "especialista:caducidades": [
+      {
+        "herramientas": [
+          {
+            "nombre": "caducidades_calcular",
+            "argumentos": {
+              "regla": "dni",
+              "fecha_nacimiento": "1958-09-30",
+              "fecha_expedicion": "2020-10-05"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Caduca el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_caducidades",
+            "argumentos": {
+              "pregunta": "Validez del DNI"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Tu DNI vale hasta el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ]
+  },
+  "version": 1
+}

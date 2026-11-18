@@ -1,0 +1,69 @@
+{
+  "id": "memoria-real-otro-usuario-hijos",
+  "categoria": "memoria",
+  "descripcion": "Con el almacén de memoria real: la memoria de otra persona está guardada bajo SU usuario y caso.",
+  "pregunta": "¿Cuántos hijos te dije que tengo?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ],
+      "usados_excluye": [
+        "r2"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "\\bdos\\b|\\b2\\b",
+      "motivo": "su dato"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "\\btres\\b|\\b3 hijos",
+      "motivo": "no el de otra persona"
+    }
+  ],
+  "requiere": [
+    "cerebro",
+    "recuerdos"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "Tiene dos hijos",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-06-03",
+        "cita": "tengo dos hijos"
+      }
+    },
+    {
+      "id": "r2",
+      "tipo": "dato",
+      "texto": "Tiene tres hijos",
+      "origen": {
+        "conversacion_id": "conv_r2_0001",
+        "fecha": "2026-06-04",
+        "cita": "tengo tres hijos"
+      },
+      "usuario": "otra_persona"
+    }
+  ],
+  "version": 1
+}

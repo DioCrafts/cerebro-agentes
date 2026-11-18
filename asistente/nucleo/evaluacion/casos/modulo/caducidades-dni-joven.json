@@ -1,0 +1,74 @@
+{
+  "id": "caducidades-dni-joven",
+  "categoria": "modulo",
+  "pregunta": "Nací el 11/02/2004 y saqué el DNI el 1 de julio de 2022. ¿Hasta cuándo vale?",
+  "modulos": [
+    "caducidades"
+  ],
+  "expediente": {
+    "tax_period": "2026"
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "caducidades"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "caducidades_calcular",
+      "agente": "especialista_caducidades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "caduca",
+      "calculo": {
+        "herramienta": "caducidades_calcular",
+        "argumentos": {
+          "regla": "dni",
+          "fecha_nacimiento": "2004-02-11",
+          "fecha_expedicion": "2022-07-01"
+        },
+        "patron": "^DNI: (?P<cifra>\\d{2}/\\d{2}/\\d{4})",
+        "registrada": "01/07/2027"
+      }
+    },
+    {
+      "tipo": "citas"
+    }
+  ],
+  "guion": {
+    "especialista:caducidades": [
+      {
+        "herramientas": [
+          {
+            "nombre": "caducidades_calcular",
+            "argumentos": {
+              "regla": "dni",
+              "fecha_nacimiento": "2004-02-11",
+              "fecha_expedicion": "2022-07-01"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Caduca el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_caducidades",
+            "argumentos": {
+              "pregunta": "Validez del DNI"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Tu DNI vale hasta el {cifra:caduca} {fragmento:caducidades_calcular}."
+      }
+    ]
+  },
+  "version": 1
+}

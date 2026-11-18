@@ -103,6 +103,19 @@ TRABAJOS: tuple[Trabajo, ...] = (
         orden=("asistente.plataforma.cli.processor", "--incremental"),
         por_defecto=False,
     ),
+    Trabajo(
+        "memoria-resumir",
+        "Memoria de conversaciones: resume las inactivas y borra los mensajes literales caducados.",
+        Programacion(cada_minutos=15),
+        orden=("asistente.nucleo.recuerdos", "resumir"),
+    ),
+    Trabajo(
+        "repaso",
+        "Repaso del asistente: el resumen priorizado de la semana o del día (lotes del modelo; sin REPASO_ACTIVO no "
+        "hace nada).",
+        Programacion(cada_minutos=30),
+        orden=("asistente.plataforma.cli.repaso", "trabajo"),
+    ),
 )
 
 # Finished deliveries and consumed events are kept this long (the same as ``cli.eventos``).

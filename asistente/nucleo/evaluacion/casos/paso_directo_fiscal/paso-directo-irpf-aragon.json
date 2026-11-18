@@ -1,0 +1,62 @@
+{
+  "id": "paso-directo-irpf-aragon",
+  "categoria": "paso_directo_fiscal",
+  "descripcion": "Pregunta solo fiscal con otros ámbitos activos: la respuesta del asesor fiscal, tal cual, citada.",
+  "pregunta": "Zaragoza, 55.000 € brutos de nómina. ¿Qué me sale en la renta del 2025?",
+  "modulos": [
+    "hipoteca",
+    "luz"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Aragón",
+      "rendimiento_trabajo_bruto": 55000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "paso_directo"
+      ]
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "fiscal"
+      ],
+      "exactamente": true
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "14.159,54 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    },
+    {
+      "tipo": "modo",
+      "permitidos": [
+        "verified",
+        "partially_verified"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

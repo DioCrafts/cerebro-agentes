@@ -1,0 +1,37 @@
+{
+  "id": "repaso-factura-alta",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s1",
+        "s2"
+      ]
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "luz",
+        "titulo": "La factura de octubre subió un 38 %",
+        "detalle": "84,20 € frente a 61,02 €",
+        "importe": "84.20"
+      },
+      {
+        "id": "s2",
+        "tipo": "plazo",
+        "titulo": "IBI: segundo plazo el 5/11/2026",
+        "fecha": "2026-11-05"
+      }
+    ]
+  },
+  "version": 1
+}

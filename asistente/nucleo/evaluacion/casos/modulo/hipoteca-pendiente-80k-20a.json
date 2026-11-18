@@ -1,0 +1,76 @@
+{
+  "id": "hipoteca-pendiente-80k-20a",
+  "categoria": "modulo",
+  "pregunta": "¿Cuánto me falta por pagar de capital de la hipoteca a 20 de marzo de 2026?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "80000",
+        "fecha_firma": "2019-03-01",
+        "plazo_meses": 240,
+        "tipo": "fijo",
+        "tipo_inicial": "3.5",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "pendiente",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Capital pendiente: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "58.083,00 €"
+      }
+    },
+    {
+      "tipo": "citas"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Pendiente {cifra:pendiente} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Capital pendiente a 20/03/2026"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "A 20 de marzo de 2026 te quedan {cifra:pendiente} de capital {fragmento:hipoteca_cuadro}."
+      }
+    ]
+  },
+  "version": 1
+}

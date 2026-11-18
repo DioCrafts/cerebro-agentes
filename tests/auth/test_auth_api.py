@@ -233,6 +233,9 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         ("put", f"/cases/{case_id}/decisiones/{{decision_id}}", {"razon": "Otra razón"}),
         ("delete", f"/cases/{case_id}/decisiones/{{decision_id}}", None),
         ("post", f"/cases/{case_id}/decisiones/aviso/{notification_id}", {"boton": "no_me_interesa"}),
+        # The brain's proactive pass (asistente/plataforma/api/routers/repaso.py).
+        ("get", f"/cases/{case_id}/repaso", None),
+        ("get", f"/cases/{case_id}/repaso?notification_id={notification_id}", None),
     ]
 
 
@@ -305,6 +308,12 @@ def test_the_owner_reaches_every_case_endpoint(env: Env) -> None:
             response = env.client.request(method, path, json=body, headers=ana)
             if "{decision_id}" in path:  # past ownership: the (made-up) decision itself is what is missing
                 assert (response.status_code, response.json()) == (404, {"detail": "decision not found"}), path
+                continue
+            if "/repaso" in path:  # past ownership: the case has no proactive pass yet
+                assert (response.status_code, response.json()) == (
+                    404,
+                    {"detail": "No hay ningún repaso de este caso."},
+                ), path
                 continue
             # 503: the request got past ownership and reached the (unavailable) model.
             expected = 503 if path.endswith(("/documents", "/agent")) else 200

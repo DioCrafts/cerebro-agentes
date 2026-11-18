@@ -9,13 +9,32 @@ name: evaluacion
 # * con-modelo — the full suite against the configured model, ONLY when the ANTHROPIC_API_KEY secret exists
 #   (never on PRs from forks, which get no secrets). No FAISS index in CI: cases that need the corpus (DGT)
 #   cannot pass here and are reported as such. Spending is capped by EVALUACION_PRESUPUESTO_USD (repository
-#   variable, default 5).
+#   variable, default 5). The household brain's cases (``requiere``) run here through it; the accepted real cases
+#   never do (they live in the operator's private database, never in GitHub).
+# * casos-reales — OPT-IN only (Actions → evaluacion → Run workflow, «casos_reales»): the replay machinery of the
+#   accepted real cases, run on SYNTHETIC real-shaped cases (tests/evaluacion/datos/casos_reales_sinteticos.json):
+#   never real user data in CI. Without a model it checks that each case still catches the mistake it was
+#   accepted for; with «modelo_real» (and the secret) it re-runs them against the model with a USD cap. The
+#   operator replays the REAL ones on the server with the same commands, reading the private database.
 
 on:
   pull_request:
   push:
     branches: [main, master]
   workflow_dispatch:
+    inputs:
+      casos_reales:
+        description: "Reproducir los casos reales (sintéticos en CI; nunca datos de usuarios)"
+        type: boolean
+        default: false
+      modelo_real:
+        description: "Además, contra el modelo (cuesta dinero; necesita el secreto ANTHROPIC_API_KEY)"
+        type: boolean
+        default: false
+      presupuesto_usd:
+        description: "Tope de gasto de la reproducción con modelo (USD)"
+        type: string
+        default: "2"
 
 # Least privilege for the GITHUB_TOKEN (docs/seguridad.md): these jobs only read the repository.
 permissions:
@@ -75,11 +94,49 @@ jobs:
         if: steps.clave.outputs.hay == 'true'
         run: |
           uv run python -m asistente.plataforma.cli.evaluacion run --yes --sin-corpus --exigir-criticas \
-            --presupuesto-usd "${{ vars.EVALUACION_PRESUPUESTO_USD || '5' }}" \
+            --sin-casos-reales --presupuesto-usd "${{ vars.EVALUACION_PRESUPUESTO_USD || '5' }}" \
             --out reports/evaluacion/modelo.json
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         if: always() && steps.clave.outputs.hay == 'true'
         with:
           name: evaluacion-modelo
           path: reports/evaluacion/modelo.json
+          if-no-files-found: ignore
+
+  casos-reales:
+    if: github.event_name == 'workflow_dispatch' && inputs.casos_reales
+    runs-on: ubuntu-latest
+    needs: deterministico
+    env:
+      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      LLM_PROVIDER: anthropic
+      FORMAT_WATCH: "false"
+      DECISION_STATE_DB_PATH: ./data/ci_state.sqlite3
+      SINTETICOS: tests/evaluacion/datos/casos_reales_sinteticos.json
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5.4.2
+        with:
+          python-version: "3.13"
+          enable-cache: true
+      - run: uv sync
+      - name: Cada caso sigue detectando su error (sin modelo)
+        run: uv run python -m asistente.plataforma.cli.evaluacion casos-reales comprobar --desde "$SINTETICOS"
+      - name: Contra el modelo, con tope de gasto (opcional)
+        if: inputs.modelo_real
+        env:
+          PRESUPUESTO_USD: ${{ inputs.presupuesto_usd }}
+        run: |
+          if [ -z "$ANTHROPIC_API_KEY" ]; then
+            echo "Sin el secreto ANTHROPIC_API_KEY: no se llama a ningún modelo." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --desde "$SINTETICOS" \
+            --modelo-real --presupuesto-usd "$PRESUPUESTO_USD" --sin-corpus --yes \
+            --out reports/evaluacion/casos-reales-sinteticos.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: always() && inputs.modelo_real
+        with:
+          name: evaluacion-casos-reales-sinteticos
+          path: reports/evaluacion/casos-reales-sinteticos.json
           if-no-files-found: ignore
