@@ -388,6 +388,17 @@ class _Turno:
     # Figures of the brain's own tools (the planner…): a report of the brain itself for the figures gate.
     cifras_propias: list[Cifra] = field(default_factory=list)
 
+    def textos_usuario(self) -> list[str]:
+        """The user's own words for the figures gate: this conversation's messages and, from the conversation memory,
+        the literal quote each remembered item rests on (and the user's own correction of it). A figure the user gave
+        in an earlier conversation is theirs, not an invention."""
+        textos = list(self.contexto.mensajes_usuario)
+        for recuerdo in self.contexto.memoria.recuerdos:
+            textos.append(recuerdo.origen.cita)
+            if recuerdo.corregido:
+                textos.append(recuerdo.texto)
+        return textos
+
     def para_puerta(self) -> list[InformeEspecialista]:
         """The reports whose figures the answer may use: the specialists' and, if any, the brain's own tools'."""
         if not self.cifras_propias:
@@ -699,7 +710,7 @@ class Cerebro:
             resultado.answer,
             turno.informes,
             ledger=turno.contexto.ledger,
-            textos_usuario=turno.contexto.mensajes_usuario,
+            textos_usuario=turno.textos_usuario(),
         )
         resultado.cerebro = self._informe_cerebro(
             turno, "paso_directo", puerta=puerta, recuerdos=self._recuerdos_usados(turno, resultado.answer)
@@ -888,7 +899,7 @@ class Cerebro:
             # Gate 1: figures (deterministic, free): checked first, so a draft with an invented figure is rewritten
             # before a verifier call is spent on it.
             puerta = puerta_de_cifras(
-                respuesta, turno.para_puerta(), ledger=contexto.ledger, textos_usuario=contexto.mensajes_usuario
+                respuesta, turno.para_puerta(), ledger=contexto.ledger, textos_usuario=turno.textos_usuario()
             )
             violaciones = list(puerta.violaciones) if puerta is not None else []
             emit(EVENTO_PUERTA, violaciones=len(violaciones))

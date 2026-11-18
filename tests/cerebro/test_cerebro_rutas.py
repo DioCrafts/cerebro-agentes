@@ -530,3 +530,14 @@ def test_without_the_collaboration_runtime_the_plan_still_runs(monkeypatch: pyte
     )
     assert resultado.mode is AgentMode.VERIFIED and resultado.cerebro is not None
     assert resultado.cerebro.puerta is None  # no gate to run: said in the log, the verifier still ran
+
+
+def test_a_figure_the_user_gave_in_an_earlier_conversation_is_theirs() -> None:
+    memoria = MemoriaFalsa(["Tengo 20.000 € ahorrados para la entrada"])
+    sintesis = Grabador([text_turn("Me dijiste que tienes 20.000 € ahorrados para la entrada (el 01/10/2026).")])
+    resultado = cerebro(sintesis=sintesis, memoria=memoria).run(
+        "¿Qué te dije de mis ahorros?", case=caso(), modulos=modulos(HIPOTECA)
+    )
+    informe = resultado.cerebro
+    assert informe is not None and informe.puerta is not None and informe.puerta.ok and resultado.revisions == 0
+    assert [(a.literal, a.del_usuario) for a in informe.puerta.atribuciones] == [("20.000 €", True)]

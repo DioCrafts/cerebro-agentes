@@ -130,7 +130,7 @@ its own calculations (read with `colaboracion.cifras.extraer_cifras`).
 
 | Gate | Checks | Why |
 |---|---|---|
-| Figures (`colaboracion.revisar_cifras`, deterministic, free) | every number of the draft is a specialist's or a brain tool's figure, the user's own words or the literal of a source cited in the same sentence; no figure is a sum/difference (or ×12, ÷12) of different specialists' figures no tool combined; whose figure the answer says it is, is right; every `[F#]` exists | The synthesis is the one place where a model holds figures from several calculators at once: an «obvious» total («entre las dos cosas ahorras 2.350 €») or a mis-attributed figure would appear there. Code checks it, not the prompt. |
+| Figures (`colaboracion.revisar_cifras`, deterministic, free) | every number of the draft is a specialist's or a brain tool's figure, the user's own words (this conversation's messages and the literal quotes the remembered items rest on) or the literal of a source cited in the same sentence; no figure is a sum/difference (or ×12, ÷12) of different specialists' figures no tool combined; whose figure the answer says it is, is right; every `[F#]` exists | The synthesis is the one place where a model holds figures from several calculators at once: an «obvious» total («entre las dos cosas ahorras 2.350 €») or a mis-attributed figure would appear there. Code checks it, not the prompt. |
 | Verifier (the advisor's `Verifier`, one call) | every claim citing a fragment says what the fragment says | A restated legal rule must still say what its source says; a calculation's figure must match its line. |
 
 The figures gate runs first: a draft with an invented figure is rewritten before a verifier call is spent on it.
