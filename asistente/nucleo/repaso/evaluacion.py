@@ -127,7 +127,9 @@ def _salida(prio: Priorizacion, titular: str, items: Sequence[Any], texto: str) 
             {"texto": f"{punto.titulo}: {item.texto} {item.por_que}", "senales": [s.id for s in punto.senales]}
         )
         for propuesta in punto.propuestas:
-            portadora = next((s.id for s in punto.senales if s.propuesta is not None and s.propuesta.id == propuesta.id), None)
+            portadora = next(
+                (s.id for s in punto.senales if s.propuesta is not None and s.propuesta.id == propuesta.id), None
+            )
             propuestas.append({"texto": propuesta.resumen, "senal": portadora})
     return {"texto": texto, "afirmaciones": afirmaciones, "propuestas": propuestas}
 

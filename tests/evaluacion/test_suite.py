@@ -64,9 +64,12 @@ def test_the_whole_suite_replays_without_a_model(casos: list[CasoEvaluacion], tm
     fallidos = {r.id: r.fallos for r in informe.casos if not r.aprobado and not r.omitido}
     assert not fallidos
     assert informe.resumen.tasa == 1.0 and informe.modo == "reproduccion"
-    # Exactly the cases that need the brain's code (or a model) are left out, each with its reason.
+    # Exactly the cases that need the brain's code (or a model) are left out, each with its reason. The proactive
+    # pass needs no script: it runs model-free (its deterministic rendering behind the same gate) and passes.
     omitidos = {r.id for r in informe.casos if r.omitido}
-    assert omitidos == {c.id for c in casos if c.requiere}
+    repaso = {c.id for c in casos if "repaso" in c.requiere}
+    assert omitidos == {c.id for c in casos if c.requiere} - repaso
+    assert repaso and all(r.aprobado for r in informe.casos if r.id in repaso)
     assert all(r.motivo_omision for r in informe.casos if r.omitido)
     actua = next(r for r in informe.casos if r.id == "actua-baja-queda-pendiente")
     assert actua.ejecucion.acciones_pendientes == ["prueba_actua_dar_de_baja"]

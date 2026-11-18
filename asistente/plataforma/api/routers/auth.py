@@ -32,6 +32,7 @@ from asistente.nucleo.memoria.almacen import exportar_decisiones
 from asistente.nucleo.modulos.acciones import AccionStore
 from asistente.nucleo.proactive.store import NotificationStore
 from asistente.nucleo.recuerdos import servicio as recuerdos_servicio
+from asistente.nucleo.repaso.almacen import exportar_repaso
 from asistente.nucleo.tareas.almacen import exportar_tareas
 from asistente.plataforma import settings
 from asistente.plataforma.api.security import require_api_key
@@ -345,6 +346,9 @@ def build_router(
                     # Conversation memory (asistente/nucleo/recuerdos): conversations, summaries, retained messages
                     # and «lo que sé de ti» with the origin of each item.
                     "recuerdos": recuerdos_servicio.exportar_recuerdos(cases.db_path, case_id=case_id, user_id=user.id),
+                    # The brain's proactive passes (asistente/nucleo/repaso): the ranked points and the text of each
+                    # digest, and the batch in flight (the digest notifications themselves are in «notifications»).
+                    "repaso": exportar_repaso(cases.db_path, case_id),
                 }
             )
         return {
