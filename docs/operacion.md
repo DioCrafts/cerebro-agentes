@@ -1175,7 +1175,8 @@ uv run python -m asistente.plataforma.cli.eventos reconciliar         # recalcul
 ## Evaluación continua
 
 Código en `asistente/nucleo/evaluacion/`, órdenes en `python -m asistente.plataforma.cli.evaluacion` (resumen en el README,
-«Evaluación continua»).
+«Evaluación continua»). El diseño completo —candidatos, revisión, base privada, estadística de la puerta— está en
+[`docs/cerebro/aprendizaje.md`](cerebro/aprendizaje.md).
 
 ### Sin modelo (cada PR)
 
@@ -1188,70 +1189,137 @@ uv run python -m asistente.plataforma.cli.evaluacion run --reproduccion   # guio
 escribirse el caso («Deriva»), no es un fallo: la expectativa siempre es la cifra de hoy de la calculadora (puede
 haber cambiado un parámetro leído del BOE), pero conviene mirar por qué (`--estricto` la convierte en error).
 
+Los casos del cerebro del hogar declaran `requiere` (`cerebro`, `recuerdos`, `repaso`): no tienen guion, así que
+`run --reproduccion` los **omite** con el motivo (no cuentan ni como aprobados ni como fallos) y se evalúan con
+modelo. Un caso cuyo código no está instalado también se omite con el motivo. `validar` dice cuántos hay de cada uno.
+
 ### Con modelo
 
 ```bash
 uv run python -m asistente.plataforma.cli.evaluacion run --out reports/evaluacion/base.json            # variante activa
 uv run python -m asistente.plataforma.cli.evaluacion run --config candidata.json --baseline reports/evaluacion/base.json
+uv run python -m asistente.plataforma.cli.evaluacion run --motor cerebro --presupuesto-usd 10   # todo por el cerebro
 uv run python -m asistente.plataforma.cli.evaluacion promote --config candidata.json --presupuesto-usd 10
 ```
 
 - Una **variante** es un JSON: `{"id": "breve", "prompts": {"agente": "agente@breve"}, "modelo": "…"}`; el texto
-  de `agente@breve` va en `prompts/agente@breve.txt` junto al fichero o en `textos`. Los *prompts* `modulos` y
-  `especialista` son plantillas y deben conservar sus campos (`{especialistas}`, `{nombre}`, `{instrucciones}`).
+  de `agente@breve` va en `prompts/agente@breve.txt` junto al fichero o en `textos`. Puede cambiar cualquier *prompt*
+  registrado: `agente`, `modulos`, `especialista`, `cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso` y
+  `memoria_resumen` (los que son plantillas deben conservar sus campos, como `{especialistas}`).
 - El agente evaluado se mide con los MISMOS propósitos que en producción (`agente`, `verificador`,
-  `especialista:<clave>`), así que la tabla de enrutado elige el mismo modelo que el asistente desplegado; el juez
-  usa el propósito `evaluacion-juez` y el modelo configurado (el mismo para base y candidata). El gasto queda en
-  `/usage` con el caso `eval:<ejecución>:<caso>:<repetición>`; rigen los límites diarios y `--presupuesto-usd`.
-  Un informe que se quedó sin presupuesto está marcado como incompleto y no sirve para promover.
+  `especialista:<clave>`, `cerebro`, `cerebro:intencion`…), así que la tabla de enrutado elige el mismo modelo que el
+  asistente desplegado; el juez usa el propósito `evaluacion-juez` y el modelo configurado (el mismo para base y
+  candidata). El gasto queda en `/usage` con el caso `eval:<ejecución>:<caso>:<repetición>`; rigen los límites
+  diarios y `--presupuesto-usd`. Un informe que se quedó sin presupuesto está marcado como incompleto y no sirve
+  para promover.
+- `run` y `promote` incluyen los **casos reales aceptados** de la base privada si existe (`--sin-casos-reales` para
+  no hacerlo; `--casos-reales-db` para otra ruta). Un informe que los incluye lo dice: guárdalo fuera del
+  repositorio (`reports/` ya está ignorado).
 - Sin índice FAISS (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
   pueden aprobar; los de calculadoras y módulos sí.
-- `promote` escribe `asistente/nucleo/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si
-  la candidata no empeora ninguna categoría crítica (`critica` en `casos/suite.json`) y mejora en conjunto. La
-  variante activa guarda la huella de cada texto evaluado: si `prompts.py` cambia después, `variante` y `validar`
-  avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese fichero.
 
-### Cambiar un prompt de `asistente/nucleo/agent/prompts.py`
+### La puerta de `promote`: solo si no empeora
 
-El registro `asistente/nucleo/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado; la
-prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el código no coinciden. Al cambiar un
-*prompt*:
+`promote` ejecuta la variante activa y la candidata sobre los mismos casos (suite + casos reales; la huella cubre
+ambos) y escribe `asistente/nucleo/evaluacion/variante_activa.json` (o `EVALUACION_VARIANTE_ACTIVA_PATH`) solo si se
+cumplen TODAS estas reglas:
+
+1. **Comparables**: las dos ejecuciones completas, sobre los mismos casos, contra un modelo.
+2. **Muestra mínima**: al menos `EVALUACION_GATE_MIN_CASOS` (30) casos emparejados; con menos, la decisión es
+   «evidencia insuficiente» y **nunca** se promueve (`--min-casos` la cambia para una ejecución).
+3. **Ningún caso crítico empeora**: ni un solo caso de una categoría `critica` en `casos/suite.json` (cálculo fiscal,
+   enrutado, no sumar, confirmación de lo que actúa, regresiones reales, intención del cerebro, procedencia de las
+   cifras, memoria, paso directo fiscal) puede puntuar menos que con la variante activa, mejore lo que mejore la media.
+4. **No empeora en conjunto**: el intervalo del 95 % (*bootstrap* pareado, 10 000 remuestras, semilla derivada de los
+   informes: reproducible) de la diferencia media por caso no baja de 0, y la prueba exacta de McNemar sobre
+   aprobado/suspenso no muestra que rompa más de lo que arregla (p < 0,05). Una sola regresión sin compensar en 40
+   casos ya baja el intervalo de 0; un comportamiento idéntico da [0, 0] y pasa.
+5. **Presupuesto**: coste ≤ `EVALUACION_GATE_COSTE_MAX_RELATIVO` (1,10) y latencia p95 ≤
+   `EVALUACION_GATE_LATENCIA_MAX_RELATIVA` (1,25) veces los de la variante activa en los mismos casos (diferencias de
+   menos de 0,5 s no cuentan).
+
+La regla es «no empeorar», no «ser estrictamente mejor»: una variante igual de buena y más barata puede ganar. La
+decisión y su evidencia (estadísticos, regresiones, mejoras, coste, latencia, motivos) quedan en
+`reports/evaluacion/promote-<marca>-decision.json` y su resumen en castellano en `…-decision.txt`, se promueva o no.
+La variante activa guarda la huella de cada texto evaluado: si un *prompt* cambia después, `variante` y `validar`
+avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese fichero.
+
+### Cambiar un *prompt*
+
+El registro `asistente/nucleo/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado —
+los de `asistente/nucleo/agent/prompts.py` y los del cerebro (`cerebro/prompts.py`), el repaso (`repaso/prompts.py`) y
+la memoria (`recuerdos/prompts.py`)—; la prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el
+código no coinciden, también con un *prompt* nuevo sin registrar. Al cambiar un *prompt*:
 
 1. Evalúa el texto nuevo como candidata (`promote` con una variante que lo lleve en un fichero de *prompts*).
-2. Copia el texto a `prompts.py` y regístralo con el informe de la candidata:
-   `prompts registrar --rol agente --informe reports/evaluacion/promote-…-candidata-….json` (comprueba que el
-   informe evaluó exactamente ese texto, que mejora y que no empeora lo crítico). Borra después la variante activa
-   si ya no hace falta.
+2. Copia el texto al código y regístralo con la decisión de `promote`:
+   `prompts registrar --rol <rol> --informe reports/evaluacion/promote-…-decision.json` (comprueba que la candidata
+   se promovió y que su informe evaluó exactamente ese texto). Borra después la variante activa si ya no hace falta.
 3. Si no se puede evaluar (sin clave de modelo), `prompts sincronizar --motivo "…"` registra todos los que han
-   cambiado y deja el motivo escrito en el registro, a la vista en la revisión del PR.
+   cambiado o son nuevos y deja el motivo escrito en el registro, a la vista en la revisión del PR.
 
-### Valoraciones de los usuarios
+### Aprender de los errores reales
+
+Cada «esto está mal» se convierte en un **caso candidato enmascarado** (nombre, correos, DNI/NIE, IBAN, tarjetas,
+teléfonos, direcciones y códigos ocultos; las cifras se conservan) en una cola de revisión. Vienen de:
+
+- un 👎 / «corregir» con la casilla de consentimiento de ESA respuesta marcada (como siempre);
+- un 👎 sin la casilla, o las **señales débiles** de la auditoría (la puerta de cifras aún descontenta con la respuesta
+  final, afirmaciones que el verificador rechazó, que el usuario vuelva a preguntar lo mismo, una abstención), solo si
+  el dueño activó «aprender de los fallos» para ese expediente (`PUT /evaluacion/aprendizaje`; desactivado por
+  defecto, revocable, y solo cuenta lo posterior).
+
+La cola agrupa los duplicados (misma pregunta enmascarada y mismo tipo de fallo) y los ordena por una prioridad
+explicada (categoría crítica, lo que dijo el usuario frente a lo inferido, frecuencia y dinero en juego). La revisa el
+dueño del expediente en la web («Revisión de casos») o quien opera, desde la línea de órdenes o con `X-Operator-Key`
+(`HACIENDA_OPERATOR_KEY`) en la API; el candidato de otra persona responde 404.
 
 ```bash
 uv run python -m asistente.plataforma.cli.evaluacion senales                  # recuentos, sin contenido
-uv run python -m asistente.plataforma.cli.evaluacion casos estadisticas
-uv run python -m asistente.plataforma.cli.evaluacion casos pendientes
-uv run python -m asistente.plataforma.cli.evaluacion casos ver fb_…
-uv run python -m asistente.plataforma.cli.evaluacion casos borrador fb_… --out /tmp/borrador.json
-# Edita el borrador: sustituye los datos sensibles por valores ficticios que reproduzcan el caso, ajusta
-# categoría y expectativas (una cifra esperada SIEMPRE es una receta de calculadora), añade un guion si quieres
-# que se reproduzca en CI.
-uv run python -m asistente.plataforma.cli.evaluacion casos promover fb_… --desde /tmp/borrador.json \
-    --confirmo-anonimizado --revisor "Nombre"
-uv run python -m asistente.plataforma.cli.evaluacion casos descartar fb_…
+uv run python -m asistente.plataforma.cli.evaluacion casos detectar           # señales débiles de quien consintió
+uv run python -m asistente.plataforma.cli.evaluacion casos cola               # grupos, prioridad y motivos
+uv run python -m asistente.plataforma.cli.evaluacion casos candidato cand_…   # conversación enmascarada, plan, fallo
+uv run python -m asistente.plataforma.cli.evaluacion casos aceptar cand_… --desde edicion.json
+uv run python -m asistente.plataforma.cli.evaluacion casos rechazar cand_… --motivo "…"
+uv run python -m asistente.plataforma.cli.evaluacion casos-reales listar
+uv run python -m asistente.plataforma.cli.evaluacion casos-reales comprobar   # cada caso sigue detectando su error
+uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --config candidata.json \
+    --modelo-real --presupuesto-usd 2                                         # contra el modelo: explícito y con tope
 ```
 
-- El contenido de un caso guardado está en la auditoría del expediente del usuario (evento
-  `evaluacion_valoracion`): quien opera la revisión lee datos personales que el usuario aceptó compartir para
-  esto; hazlo solo con ese fin. Las filas de revisión (`evaluacion_feedback`, sin texto de la conversación) están
-  en la misma base que los expedientes y se borran con el expediente por un *trigger* de SQLite.
-- `promover` rechaza el caso si encuentra algo con forma de correo, DNI/NIE, IBAN, CUPS, tarjeta o teléfono, pero
-  no detecta nombres ni direcciones: esa revisión es tuya. El usuario ve en su exportación que su caso se
-  promovió o descartó (evento `evaluacion_revision`).
+- **Aceptar** es describir el comportamiento esperado (`edicion.json`: categoría y `esperado`: especialistas que debe
+  o no consultar, citas mínimas, cifras que no debe dar, una cifra esperada que SIEMPRE es una receta de calculadora,
+  abstenerse, preguntar antes, puerta de cifras limpia, textos que debe o no decir). Se rechaza si algo aún parece
+  personal (identificadores o nombres del perfil: edita la pregunta y los datos con valores ficticios que reproduzcan
+  el caso), si una cifra esperada no se puede calcular o si **la respuesta que se dio pasaría** esas comprobaciones
+  (control negativo; se puede forzar con `--aunque-no-reproduzca` y el aviso queda con el caso). **Rechazar** exige
+  un motivo. El usuario ve ambas decisiones en su auditoría (evento `evaluacion_revision`).
+- Los casos aceptados van a una **base privada** (`EVALUACION_CASOS_REALES_DB_PATH`; por defecto
+  `evaluacion_casos_reales.sqlite3` junto a la de expedientes, dentro de `data/`), **nunca al repositorio**: la suite
+  versionada rechaza casos de origen `feedback` o `senal`. Se ejecutan en cada `run` y `promote`, salen en
+  `/me/export` y se borran con el expediente o la cuenta; borrar un dato del expediente los retira (y redacta ese dato
+  en los candidatos). Inclúyela en las copias de seguridad.
+- El flujo anterior sigue disponible para una valoración guardada (`casos pendientes`, `casos ver fb_…`,
+  `casos borrador fb_… --out /tmp/borrador.json`, `casos descartar fb_…`), pero `casos promover fb_… --desde … \
+  --confirmo-anonimizado --revisor "Nombre"` ya **no escribe en la suite**: guarda el caso en la base privada, como
+  aceptar un candidato.
+- El contenido de una valoración guardada sigue en la auditoría del expediente del usuario (evento
+  `evaluacion_valoracion`), ahora con el informe del cerebro (plan, especialistas y su modo, cifras, puerta; de la
+  memoria, solo los identificadores), la variante y el modelo de cada propósito: quien opera la revisión lee datos que
+  el usuario aceptó compartir para esto; hazlo solo con ese fin. Las filas de revisión y los candidatos están en la
+  misma base que los expedientes y se borran con el expediente.
+- En CI no hay datos de usuarios: el trabajo opcional `casos-reales` de `.github/workflows/evaluacion.yml`
+  (*workflow_dispatch*) ejecuta `casos-reales comprobar` (y, si se pide y hay clave, `reproducir` con tope) sobre casos
+  sintéticos (`tests/evaluacion/datos/casos_reales_sinteticos.json`). Los reales se reproducen aquí, en el servidor,
+  con las mismas órdenes.
 
 ### Variables de entorno
 
 | Variable | Por defecto | Qué hace |
 |---|---|---|
 | `EVALUACION_VARIANTE_ACTIVA_PATH` | `asistente/nucleo/evaluacion/variante_activa.json` | Variante que ejecuta el agente; sin fichero, la de siempre. |
+| `EVALUACION_CASOS_REALES_DB_PATH` | vacío (= `evaluacion_casos_reales.sqlite3` junto a `DECISION_STATE_DB_PATH`) | Base privada de los casos reales aceptados. |
+| `EVALUACION_GATE_MIN_CASOS` | `30` | Casos emparejados mínimos para que `promote` decida; con menos, «evidencia insuficiente». |
+| `EVALUACION_GATE_COSTE_MAX_RELATIVO` | `1.10` | Coste máximo de la candidata respecto a la variante activa. |
+| `EVALUACION_GATE_LATENCIA_MAX_RELATIVA` | `1.25` | Latencia p95 máxima de la candidata respecto a la variante activa. |
 | `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

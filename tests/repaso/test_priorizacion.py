@@ -116,7 +116,7 @@ def test_a_rejection_in_force_holds_the_signal_back() -> None:
     rechazada = senal(
         "aviso:modulo:luz:ahorro:x", ambito_decision="luz:cambio_tarifa:x", hechos={"importe": Decimal("100")}
     )
-    otra = senal("aviso:modulo:luz:factura", ambito_decision="luz:factura")
+    otra = senal("aviso:modulo:luz:factura", ambito_decision="luz:factura", gravedad="aviso")
     prio = priorizar([rechazada, otra], hoy=HOY, decisiones=[_decision("luz:cambio_tarifa")])
     assert [p.clave for p in prio.puntos] == ["aviso:modulo:luz:factura"]
     (omitido,) = prio.omitidos
@@ -132,6 +132,7 @@ def test_a_rejection_of_the_proposal_only_drops_the_proposal() -> None:
         "aviso:modulo:luz:ahorro:x",
         ambito_decision="luz:ahorro:x",
         propuesta=propuesta("plantilla:cambiar_tarifa_luz", "luz:cambio_tarifa"),
+        hechos={"importe": Decimal("90")},
     )
     prio = priorizar([con], hoy=HOY, decisiones=[_decision("luz:cambio_tarifa")])
     (punto,) = prio.puntos
@@ -186,7 +187,7 @@ def test_the_notice_the_inbox_let_come_back_once_stays() -> None:
 
 
 def test_superseded_or_non_blocking_decisions_do_not_hold_anything_back() -> None:
-    s = senal("aviso:modulo:luz:ahorro:x", ambito_decision="luz:cambio_tarifa:x")
+    s = senal("aviso:modulo:luz:ahorro:x", ambito_decision="luz:cambio_tarifa:x", gravedad="aviso")
     decisiones = [
         _decision("luz:cambio_tarifa", sustituida_por="dec_" + "0" * 32),
         _decision("luz", tipo="preferencia"),
@@ -241,7 +242,13 @@ def test_the_cap_and_context_only() -> None:
     assert [p.clave for p in prio.puntos] == ["aviso:00", "aviso:01", "aviso:02"] and prio.restantes == 7
     assert prio.hay_algo
     contexto = priorizar([senal("novedad:x", tipo="novedad"), senal("decision:y", tipo="decision")], hoy=HOY)
-    assert len(contexto.puntos) == 2 and not contexto.hay_algo
+    assert contexto.puntos == [] and not contexto.hay_algo and contexto.restantes == 0
+    # Context with something due is still listed, but alone it writes no digest.
+    caduca = priorizar([senal("decision:z:caduca", tipo="decision", hechos={"vence": EN(days=10)})], hoy=HOY)
+    assert len(caduca.puntos) == 1 and not caduca.hay_algo
+    # A stale notice with nothing due is not listed: it stays in the inbox and is counted.
+    viejo = priorizar([senal("aviso:consejo"), senal("aviso:nuevo", nueva=True)], hoy=HOY)
+    assert [p.clave for p in viejo.puntos] == ["aviso:nuevo"] and viejo.restantes == 1
     # The cap is bounded whatever the setting says.
     assert len(priorizar(muchas, hoy=HOY, max_puntos=0).puntos) == 1
     quince = [senal(f"aviso:{i:02d}", hechos={"vence": EN(days=i)}) for i in range(15)]

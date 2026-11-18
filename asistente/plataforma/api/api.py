@@ -633,6 +633,57 @@ def _registrar_en_memoria(
         _logger.exception("conversation memory: the turn could not be registered")
 
 
+# The audit event of a turn stays bounded: the answer's text and the brain's report are capped.
+_MAX_RESPUESTA_AUDITADA = 20_000
+_MAX_EN_INFORME: dict[str, int] = {"informes": 12, "cifras": 30, "fragment_ids": 30, "peticiones": 8}
+_MAX_EN_PUERTA: dict[str, int] = {"violaciones": 20, "atribuciones": 40, "ignorados": 20}
+
+
+def _informe_cerebro_acotado(result: AgentResult) -> dict[str, Any] | None:
+    """The brain's full report for the audit trail (the evaluation reads it), with its lists capped: still a valid
+    ``InformeCerebro``, never an unbounded event."""
+    if result.cerebro is None:
+        return None
+    datos = result.cerebro.model_dump(mode="json")
+    datos["informes"] = datos["informes"][: _MAX_EN_INFORME["informes"]]
+    for informe in datos["informes"]:
+        informe["cifras"] = informe["cifras"][: _MAX_EN_INFORME["cifras"]]
+        informe["fragment_ids"] = informe["fragment_ids"][: _MAX_EN_INFORME["fragment_ids"]]
+    datos["peticiones"] = datos["peticiones"][: _MAX_EN_INFORME["peticiones"]]
+    if isinstance(datos.get("puerta"), dict):
+        for clave, tope in _MAX_EN_PUERTA.items():
+            datos["puerta"][clave] = datos["puerta"][clave][:tope]
+    return datos
+
+
+def _modelos_del_turno(agent: Any, result: AgentResult) -> dict[str, str]:
+    """``{purpose: model}`` for the purposes the turn used: the brain says it; for the plain advisor, its own
+    provider and verifier. Empty when it cannot be read (never fails the turn)."""
+    try:
+        modelos_de = getattr(agent, "modelos_del_turno", None)
+        if callable(modelos_de):
+            return dict(modelos_de(result))
+        modelos = {"agente": result.model}
+        verificador = getattr(getattr(getattr(agent, "_verifier", None), "_provider", None), "model", None)
+        if isinstance(verificador, str) and verificador:
+            modelos["verificador"] = verificador
+        return modelos
+    except Exception:
+        _logger.exception("could not read the turn's models for the audit trail")
+        return {}
+
+
+def _variante_en_uso() -> str | None:
+    """The prompt/model variant that answered (``evaluacion.variantes``), or None if it cannot be read."""
+    try:
+        from asistente.nucleo.evaluacion.variantes import variante_en_uso
+
+        return str(variante_en_uso().id)
+    except Exception:
+        _logger.exception("could not read the prompt variant in use for the audit trail")
+        return None
+
+
 def _guardar_acciones(result: AgentResult, acciones: AccionStore) -> list[AccionPendiente]:
     """Store the actions the specialists proposed (once each: a repeated identical call is one action)."""
     vistas: set[str] = set()
@@ -652,8 +703,14 @@ def _finish_agent_turn(
     result: AgentResult,
     store: SQLiteCaseStateStore,
     acciones: AccionStore | None = None,
+    agent: Any = None,
 ) -> AgentResponse:
-    """Persist what the agent changed on the case, audit the turn, build the response."""
+    """Persist what the agent changed on the case, audit the turn, build the response.
+
+    The audit event holds the conversation's record for this case (the question, the answer, the tool trace, the
+    verified claims), under the case's rules: exported with the account, erased with the case or the account. With
+    the brain it also carries its full report (capped), the prompt variant in use and the model of each purpose,
+    which the evaluation reads when the user says an answer was wrong."""
     case_updated = False
     pendientes: list[AccionPendiente] = []
     if payload.case_id is not None:
@@ -683,6 +740,17 @@ def _finish_agent_turn(
             event["pending_actions"] = [
                 {"id": a.id, "modulo": a.modulo, "herramienta": a.herramienta} for a in pendientes
             ]
+        # The answer's text, next to the question (``input``) it answers: the record of the conversation.
+        event["answer"] = result.answer[:_MAX_RESPUESTA_AUDITADA]
+        variante = _variante_en_uso()
+        if variante is not None:
+            event["variante"] = variante
+        modelos = _modelos_del_turno(agent, result)
+        if modelos:
+            event["modelos"] = modelos
+        informe_cerebro = _informe_cerebro_acotado(result)
+        if informe_cerebro is not None:
+            event["informe_cerebro"] = informe_cerebro
         if result.cerebro is not None:
             # What the household brain did: its plan, who it consulted and what its gates said.
             event["cerebro"] = {
@@ -740,7 +808,7 @@ def post_agent(
         raise HTTPException(status_code=429, detail=str(exc)) from exc
     except ProviderError as exc:
         raise _no_disponible(_PROVEEDOR_NO_RESPONDE, exc) from exc
-    response = _finish_agent_turn(payload, case, result, store, acciones)
+    response = _finish_agent_turn(payload, case, result, store, acciones, agent)
     # After the response is sent: the memory may summarise, the user does not wait for it.
     tareas_de_fondo.add_task(_registrar_en_memoria, agent, payload, case, result, access)
     return response
@@ -789,7 +857,7 @@ def post_agent_stream(
                     **modulos,
                     **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
                 )
-            response = _finish_agent_turn(payload, case, result, store, acciones)
+            response = _finish_agent_turn(payload, case, result, store, acciones, agent)
             events.put({"event": "result", "data": response.model_dump(mode="json")})
             # The user already has the answer: the memory may take its time.
             _registrar_en_memoria(agent, payload, case, result, access)

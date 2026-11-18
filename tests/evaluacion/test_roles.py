@@ -77,8 +77,12 @@ def test_a_missing_package_makes_the_role_unavailable_with_a_clear_error(monkeyp
     with pytest.raises(v.RolNoDisponibleError, match="no está disponible") as error:
         v.prompt_activo("cerebro")
     assert isinstance(error.value, LookupError) and error.value.rol == "cerebro"
-    # A role that is unavailable and not registered is not a registry problem (nothing to register here).
-    assert not [p for p in v.comprobar_integrados() if "«cerebro»" in p]
+    # Unavailable and not registered: nothing to register here. Registered: its text vanished, which is reported.
+    problemas = [p for p in v.comprobar_integrados() if "«cerebro»" in p]
+    if v.INTEGRADOS.get("cerebro") is None:
+        assert problemas == []
+    else:
+        assert len(problemas) == 1 and "ya no se lee" in problemas[0]
     # The base variant and its fingerprints simply leave it out; the local roles are untouched.
     assert "cerebro" not in v.huellas_de(v.VARIANTE_BASE) and "agente" in v.huellas_de(v.VARIANTE_BASE)
     assert v.prompt_activo("agente") == AGENT_SYSTEM_PROMPT

@@ -485,6 +485,43 @@ class Cerebro:
         """The conversation memory service (the API hands it each finished turn: ``registrar_turno``)."""
         return self._memoria
 
+    def modelos_del_turno(self, resultado: AgentResult) -> dict[str, str]:
+        """The model serving each purpose this turn used (for the audit trail and the evaluation), read from the
+        brain's own providers (the same routing the turn just ran on; an escalation retry is not reflected).
+
+        Purposes: ``cerebro:intencion`` when the small model wrote the plan, ``cerebro`` when the brain wrote with a
+        model, ``agente`` + ``verificador`` when the tax specialist ran, ``especialista:<clave>`` per household
+        report, and ``verificador`` when the final answer was verified.
+        """
+        informe = resultado.cerebro
+        if informe is None:
+            return {}
+        propositos: list[str] = []
+        if informe.intencion.origen in ("modelo", "mixto"):
+            propositos.append("cerebro:intencion")
+        if informe.ruta != "paso_directo" and resultado.steps > 0:
+            propositos.append("cerebro")
+        claves = list(dict.fromkeys(i.especialista for i in informe.informes))
+        if CLAVE_FISCAL in claves:
+            propositos.append(PROPOSITO_FISCAL)
+        propositos += [f"especialista:{c}" for c in claves if c not in (CLAVE_FISCAL, CLAVE_CEREBRO)]
+        modelos: dict[str, str] = {}
+        for proposito in propositos:
+            try:
+                modelo = getattr(self._para(proposito), "model", None)
+            except Exception:  # a broken routing setting: the audit simply lacks this line
+                continue
+            if isinstance(modelo, str) and modelo:
+                modelos[proposito] = modelo
+        verificadores = [self._asesor._verifier] if CLAVE_FISCAL in claves else []
+        if informe.ruta != "paso_directo" and resultado.claims:
+            verificadores.append(self._verificador)
+        for verificador in verificadores:
+            modelo = getattr(getattr(verificador, "_provider", None), "model", None)
+            if isinstance(modelo, str) and modelo:
+                modelos.setdefault("verificador", modelo)
+        return modelos
+
     # -- providers -------------------------------------------------------------------------------------------
 
     def _para(self, proposito: str) -> LLMProvider:

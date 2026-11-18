@@ -104,3 +104,60 @@ def test_the_legacy_advisor_is_served_as_before_even_with_a_conversation_id() ->
     app.dependency_overrides[get_agent] = lambda: TaxAgent(provider=provider, searcher=FakeSearcher(corpus()))
     cuerpo = client.post("/agent", json={"query": "¿Plazo?", "conversacion_id": CONVERSACION}).json()
     assert cuerpo["cerebro"] is None and cuerpo["answer"] == "El plazo es de dos años."
+
+
+def test_a_thumbs_down_after_a_brain_turn_carries_its_plan() -> None:
+    from asistente.nucleo.evaluacion.captura import CONSENTIMIENTO_VERSION
+
+    fiscal = Grabador(
+        [tool_turn(("buscar_fuentes", {"consulta": "plazo reinversión"})), text_turn("El plazo es de dos años [F2].")],
+        [verdict("respuesta", ("Plazo dos años", ["F2"], "respaldada"))],
+    )
+    app.dependency_overrides[get_agent] = lambda: cerebro(fiscal=fiscal)
+    case_id = _caso()
+    pregunta = "¿Qué plazo tengo para reinvertir en vivienda habitual a efectos del IRPF?"
+    assert client.post("/agent", json={"query": pregunta, "case_id": case_id}).status_code == 200
+
+    # The turn's audit event: the answer, the variant, the models of each purpose and the full report.
+    (turno,) = [e for e in client.get(f"/cases/{case_id}/audit").json()["events"] if e["event_type"] == "agent_answer"]
+    assert turno["input"] == pregunta and turno["answer"] == "El plazo es de dos años [F2]."
+    assert turno["variante"] == "base" and turno["modelos"] == {"agente": "scripted-1", "verificador": "scripted-1"}
+    assert turno["informe_cerebro"]["ruta"] == "paso_directo"
+    assert turno["informe_cerebro"]["intencion"]["encargos"][0]["especialista"] == "fiscal"
+
+    voto = {
+        "case_id": case_id,
+        "pregunta": pregunta,
+        "respuesta": "El plazo es de dos años [F2].",
+        "valoracion": "negativa",
+        "tipo": "afirmacion_inventada",
+        "guardar_para_evaluacion": True,
+        "version_consentimiento": CONSENTIMIENTO_VERSION,
+    }
+    respuesta = client.post("/evaluacion/feedback", json=voto)
+    assert respuesta.status_code == 201, respuesta.text
+    (detalle,) = client.get(f"/evaluacion/feedback?case_id={case_id}").json()["feedback"]
+    contenido = detalle["contenido"]
+    assert contenido["cerebro"]["intencion"]["tipo"] == "ambito" and contenido["cerebro"]["ruta"] == "paso_directo"
+    assert contenido["modos_especialistas"] == {"fiscal": "verified"}
+    assert contenido["modelos"] == {"agente": "scripted-1", "verificador": "scripted-1"}
+
+
+def test_the_audit_event_keeps_the_brains_report_bounded() -> None:
+    from asistente.nucleo.agent.agent import AgentMode, AgentResult
+    from asistente.nucleo.cerebro.contrato import Cifra, InformeCerebro, Intencion, ResumenInforme
+    from asistente.plataforma.api.api import _informe_cerebro_acotado
+
+    cifras = [Cifra(id=f"C{i}", especialista="luz", concepto="x", valor=i) for i in range(1, 61)]
+    informe = InformeCerebro(
+        intencion=Intencion(tipo="charla", confianza=1.0, origen="reglas"),
+        ruta="sintesis",
+        informes=[
+            ResumenInforme(encargo_id=f"e{i}", especialista="luz", nombre="Luz", estado="ok", cifras=cifras)
+            for i in range(1, 21)
+        ],
+    )
+    resultado = AgentResult(answer="x", mode=AgentMode.UNVERIFIED, provider="p", model="m", cerebro=informe)
+    acotado = _informe_cerebro_acotado(resultado)
+    assert acotado is not None and len(acotado["informes"]) == 12 and len(acotado["informes"][0]["cifras"]) == 30
+    InformeCerebro.model_validate(acotado)  # still a valid report for the evaluation

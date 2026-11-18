@@ -14,6 +14,9 @@ digest can always say why something is first and the evaluation can check it:
 * **novedad** — new since the last pass;
 * context signals (decisions noted, events) start low: they fill the digest only when there is room.
 
+A point that scores below :data:`PUNTUACION_MINIMA` (nothing due, no money, nothing to decide, not new) is not
+listed: a notice stays in the inbox and is counted («y N avisos más»); context is simply left out.
+
 Then the user's decisions (:func:`aplicar_decisiones`, the decision memory's own rules, ``memoria.modelo.evaluar``):
 a decision in force holds the signal back (or only its proposal, when the decision is about the proposal); one
 that expired or whose reopening condition holds lets it through, saying why. Signals about the same matter are
@@ -62,6 +65,8 @@ PUNTOS_POR_AMBITO_EXTRA = 3
 DIAS_URGENTE = 2
 MAX_PUNTOS_POR_DEFECTO = 7
 MAX_PUNTOS_TOPE = 12
+# A point needs at least this score to be listed (a stale «info» notice with nothing due scores 0).
+PUNTUACION_MINIMA = 1
 
 
 class _Modelo(BaseModel):
@@ -429,14 +434,19 @@ def priorizar(
         grupos.append(_Grupo(senales=ordenadas, puntuacion=lider_puntos + extra, rasgos=list(mejores.values())))
     puntos = [_punto(g, nombres=nombres or {}, reaperturas=reaperturas) for g in grupos]
     puntos.sort(key=lambda p: (-p.puntuacion, p.vence or date.max, p.clave))
-    elegidos = puntos[:max_puntos]
+    # Nothing due, no money, nothing to decide, not new: not worth the user's attention this period. It stays in
+    # the inbox (counted below when it is a notice); context (events, decisions noted) is simply left out.
+    dignos = [p for p in puntos if p.puntuacion >= PUNTUACION_MINIMA]
+    fuera = sum(1 for p in puntos if p.puntuacion < PUNTUACION_MINIMA and not p.contexto)
+    elegidos = dignos[:max_puntos]
     numerados = [p.model_copy(update={"id": f"p{i}", "rango": i}) for i, p in enumerate(elegidos, start=1)]
-    return Priorizacion(puntos=numerados, restantes=len(puntos) - len(elegidos), omitidos=omitidos)
+    return Priorizacion(puntos=numerados, restantes=len(dignos) - len(elegidos) + fuera, omitidos=omitidos)
 
 
 __all__ = [
     "DIAS_URGENTE",
     "PUNTOS_CONTEXTO",
+    "PUNTUACION_MINIMA",
     "RASGOS",
     "TRAMOS_IMPORTE",
     "TRAMOS_PLAZO",
