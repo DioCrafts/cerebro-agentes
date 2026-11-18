@@ -1,0 +1,121 @@
+{
+  "id": "decision-herencia-aceptar-o-beneficio-inventario",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Aceptar una herencia con posibles deudas desconocidas: beneficio de inventario.",
+  "pregunta": "Mi padre ha fallecido. Tenía un piso pero creo que avaló el negocio de un amigo. ¿Acepto la herencia?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "herencia",
+    "expediente": {
+      "pregunta": "¿Cómo conviene aceptar la herencia del padre, dado que pudo dejar deudas por un aval?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Aceptar la herencia pura y simplemente"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Aceptar a beneficio de inventario"
+        },
+        {
+          "id": "o3",
+          "descripcion": "Renunciar a la herencia"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "aval",
+          "texto": "El fallecido pudo avalar el préstamo de un negocio ajeno; no se sabe si hay deuda pendiente.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "bienes",
+          "texto": "La herencia incluye un piso y una cuenta corriente.",
+          "origen": "especialista",
+          "referencia": "herencia"
+        },
+        {
+          "clave": "efectos",
+          "texto": "Aceptar pura y simplemente hace responder de las deudas también con los bienes propios [F1]; el beneficio de inventario limita esa responsabilidad a los bienes de la herencia [F2].",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "herencia",
+          "concepto": "valor estimado del piso",
+          "valor": "160000",
+          "literal": "160.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "herencia",
+          "concepto": "saldo de la cuenta corriente",
+          "valor": "12400",
+          "literal": "12.400 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "fiscal",
+          "concepto": "Impuesto sobre Sucesiones estimado",
+          "valor": "1850",
+          "literal": "1.850 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_isd"
+        }
+      ],
+      "fragmentos": [
+        {
+          "id": "F1",
+          "titulo": "Código Civil, artículo 1003",
+          "texto": "Por la aceptación pura y simple, o sin beneficio de inventario, quedará el heredero responsable de todas las cargas de la herencia, no sólo con los bienes de ésta, sino también con los suyos propios.",
+          "autoridad": "BOE"
+        },
+        {
+          "id": "F2",
+          "titulo": "Código Civil, artículo 1023",
+          "texto": "La aceptación a beneficio de inventario producirá en favor del heredero los efectos siguientes: 1.º El heredero no queda obligado a pagar las deudas y demás cargas de la herencia sino hasta donde alcancen los bienes de la misma.",
+          "autoridad": "BOE"
+        }
+      ],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [
+        "Si existe deuda pendiente del aval y su importe."
+      ]
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "deudas_propias",
+          "frase": "Aceptar pura y simplemente puede obligar a pagar deudas con el patrimonio propio",
+          "patron": "(bienes|patrimonio) propios|con los suyos|responder.{0,40}deudas|deudas.{0,60}(propio|personal)"
+        },
+        {
+          "id": "aval_desconocido",
+          "frase": "No se sabe si el aval dejó una deuda pendiente",
+          "patron": "aval|deuda (pendiente|desconocida)|no se sabe"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ]
+    }
+  ],
+  "critico": true,
+  "rubrica": {
+    "criterios": [
+      "Explica la diferencia entre aceptar pura y simplemente y a beneficio de inventario citando las fuentes del expediente."
+    ]
+  }
+}

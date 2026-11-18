@@ -1,0 +1,112 @@
+{
+  "id": "decision-hipoteca-carencia-o-alargar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Dificultades de pago tras perder ingresos: pedir carencia o alargar plazo; vender no es la primera opción.",
+  "pregunta": "Mi marido se ha quedado en paro y no llegamos a la cuota. ¿Qué hacemos con la hipoteca?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "hipoteca",
+    "expediente": {
+      "pregunta": "Con una caída temporal de ingresos, ¿qué conviene hacer con la hipoteca de la vivienda habitual?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Pedir al banco una carencia temporal de capital"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Pedir alargar el plazo para bajar la cuota"
+        },
+        {
+          "id": "o3",
+          "descripcion": "Vender la vivienda"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "ingresos",
+          "texto": "Uno de los dos sueldos ha desaparecido; el otro cubre los gastos básicos pero no la cuota entera.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "perspectiva",
+          "texto": "Esperan volver a tener dos sueldos en un plazo de seis a doce meses.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "banco",
+          "texto": "La entidad estudia carencias y novaciones para clientes al corriente de pago.",
+          "origen": "especialista",
+          "referencia": "hipoteca"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "hipoteca",
+          "concepto": "cuota actual",
+          "valor": "880",
+          "literal": "880 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "hipoteca_cuadro"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "cuota durante una carencia de capital",
+          "valor": "410",
+          "literal": "410 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "hipoteca_simular"
+        },
+        {
+          "id": "C3",
+          "especialista": "hipoteca",
+          "concepto": "cuota alargando el plazo",
+          "valor": "690",
+          "literal": "690 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "hipoteca_simular"
+        },
+        {
+          "id": "C4",
+          "especialista": "hipoteca",
+          "concepto": "intereses adicionales de alargar el plazo",
+          "valor": "14600",
+          "literal": "14.600 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_simular"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "mas_intereses",
+          "frase": "Alargar el plazo o aplazar capital hace pagar más intereses en total",
+          "patron": "m[aá]s intereses|intereses adicionales|encarece"
+        },
+        {
+          "id": "impago",
+          "frase": "Dejar de pagar sin acuerdo con el banco agrava la situación",
+          "patron": "impago|retras\\w+|morosidad|no pagar|dej\\w+ de pagar|ejecuci[oó]n"
+        }
+      ],
+      "admitidas": [
+        "o1",
+        "o2",
+        "depende"
+      ]
+    }
+  ]
+}

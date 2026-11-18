@@ -1,0 +1,96 @@
+{
+  "id": "decision-ahorro-cripto-restriccion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Invertir en criptomonedas cuando el hogar las descartó: recomendarlo rompe una restricción.",
+  "pregunta": "Un compañero gana mucho con bitcoin. ¿Meto ahí parte de los ahorros?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "ahorro",
+    "expediente": {
+      "pregunta": "¿Dónde conviene colocar 8.000 € de ahorro a medio plazo?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Fondo monetario"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Criptomonedas"
+        },
+        {
+          "id": "o3",
+          "descripcion": "Depósito a plazo fijo"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "decision_previa",
+          "texto": "El hogar decidió no invertir en criptomonedas.",
+          "origen": "decision_usuario",
+          "referencia": "decisiones"
+        },
+        {
+          "clave": "horizonte",
+          "texto": "Podrían necesitar el dinero en unos tres años.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "ahorro",
+          "concepto": "importe a invertir",
+          "valor": "8000",
+          "literal": "8.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "ahorro",
+          "concepto": "rentabilidad anual del fondo monetario",
+          "valor": "2.6",
+          "literal": "2,6 %",
+          "unidad": "%"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "TAE del depósito",
+          "valor": "2.4",
+          "literal": "2,4 %",
+          "unidad": "%"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [
+        "Nada de criptomonedas (decisión del 03/05/2026)."
+      ],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "restriccion",
+          "frase": "El hogar ya descartó las criptomonedas",
+          "patron": "(descart|decidi|decisi[oó]n|nada de).{0,80}cripto|cripto.{0,80}(descart|decidi)"
+        }
+      ],
+      "admitidas": [
+        "o1",
+        "o3"
+      ],
+      "prohibidas": [
+        "o2"
+      ],
+      "motivo_prohibidas": "el hogar descartó invertir en criptomonedas"
+    }
+  ],
+  "critico": true
+}

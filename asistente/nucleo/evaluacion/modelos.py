@@ -29,6 +29,7 @@ from asistente.nucleo.cerebro.contrato import (
     TipoIntencion,
     TipoViolacion,
 )
+from asistente.nucleo.evaluacion.modelos_consejo import ExpDictamen, ExpInvarianza, FixtureConsejo, SalidaConsejo
 
 
 class _Modelo(BaseModel):
@@ -286,7 +287,9 @@ Expectativa = Annotated[
     | ExpPuerta
     | ExpCifraAtribuida
     | ExpRecuerdos
-    | ExpRepaso,
+    | ExpRepaso
+    | ExpDictamen
+    | ExpInvarianza,
     Field(discriminator="tipo"),
 ]
 # Expectation types that read the brain's report: a case that has one must ``requiere`` "cerebro".
@@ -299,6 +302,8 @@ EXPECTATIVAS_DEL_CEREBRO = (
     ExpCifraAtribuida,
     ExpRecuerdos,
 )
+# Expectation types that read a council ruling (``Ejecucion.consejo``): the case must ``requiere`` "consejo".
+EXPECTATIVAS_DEL_CONSEJO = (ExpDictamen, ExpInvarianza)
 
 
 # --------------------------------------------------------------------------- #
@@ -376,7 +381,7 @@ class EntradaRepaso(_Modelo):
     senales: list[SenalRepaso] = Field(min_length=1)
 
 
-Requisito = Literal["cerebro", "repaso", "recuerdos"]
+Requisito = Literal["cerebro", "repaso", "recuerdos", "consejo"]
 CATEGORIA_RE = r"^[a-z0-9_]+$"
 
 
@@ -407,6 +412,11 @@ class CasoEvaluacion(_Modelo):
     memoria: list[RecuerdoCaso] = Field(default_factory=list)
     # The input of the proactive pass (``requiere`` "repaso").
     entrada_repaso: EntradaRepaso | None = None
+    # The household council's dossier fixture (``requiere`` "consejo"; see modelos_consejo.py).
+    consejo: FixtureConsejo | None = None
+    # A critical CASE in a non-critical category (e.g. a ruling that must respect a hard constraint): the promotion
+    # gate treats its regression like one of a critical category.
+    critico: bool = False
 
     @model_validator(mode="after")
     def _coherente(self) -> CasoEvaluacion:
@@ -418,6 +428,21 @@ class CasoEvaluacion(_Modelo):
             "repaso" not in self.requiere or self.entrada_repaso is None
         ):
             raise ValueError('una expectativa «repaso» necesita «requiere»: ["repaso"] y «entrada_repaso»')
+        if any(isinstance(e, EXPECTATIVAS_DEL_CONSEJO) for e in self.expectativas) and (
+            "consejo" not in self.requiere or self.consejo is None
+        ):
+            raise ValueError('las expectativas del consejo necesitan «requiere»: ["consejo"] y el expediente «consejo»')
+        if any(isinstance(e, ExpInvarianza) for e in self.expectativas) and (
+            self.consejo is None or not self.consejo.contrafactuales
+        ):
+            raise ValueError("una expectativa «invarianza» necesita variantes contrafactuales en «consejo»")
+        if self.consejo is not None:
+            opciones = {o.id for o in self.consejo.expediente.opciones}
+            for e in self.expectativas:
+                if isinstance(e, ExpDictamen):
+                    desconocidas = sorted((set(e.admitidas) | set(e.prohibidas)) - opciones - {"depende"})
+                    if desconocidas:
+                        raise ValueError(f"«dictamen» nombra opciones que no existen: {', '.join(desconocidas)}")
         cifras = {e.nombre for e in self.expectativas if isinstance(e, ExpCifra)}
         for e in self.expectativas:
             if isinstance(e, ExpCifraAtribuida) and e.nombre not in cifras:
@@ -490,6 +515,8 @@ class Ejecucion(_Modelo):
     cerebro: InformeCerebro | None = None
     # The proactive pass's output as the evaluation reads it (``SalidaRepaso``), for «repaso» cases.
     repaso: dict[str, Any] | None = None
+    # The ruling of a «consejo» case (the council's or the single-pass brain's), normalised for the same rubric.
+    consejo: SalidaConsejo | None = None
 
 
 class VeredictoJuez(_Modelo):
@@ -576,6 +603,7 @@ class InformeEvaluacion(_Modelo):
 
 __all__ = [
     "EXPECTATIVAS_DEL_CEREBRO",
+    "EXPECTATIVAS_DEL_CONSEJO",
     "CalculoEsperado",
     "CasoEvaluacion",
     "CategoriaSuite",

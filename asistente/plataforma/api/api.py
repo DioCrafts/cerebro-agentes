@@ -111,6 +111,7 @@ from asistente.plataforma.api.observability import ApiMetrics, observability_mid
 from asistente.plataforma.api.routers import auth as auth_router
 from asistente.plataforma.api.routers import autonomos as autonomos_router
 from asistente.plataforma.api.routers import capacidades as capacidades_router
+from asistente.plataforma.api.routers import consejo as consejo_router
 from asistente.plataforma.api.routers import consumo as consumo_router
 from asistente.plataforma.api.routers import correo as correo_router
 from asistente.plataforma.api.routers import evaluacion as evaluacion_router
@@ -1414,6 +1415,7 @@ app.include_router(plataforma_router.build_router(get_case_store=get_case_store)
 app.include_router(tareas_router.build_router(get_case_store=get_case_store))
 app.include_router(recuerdos_router.build_router(get_case_store=get_case_store))
 app.include_router(repaso_router.build_router(get_case_store=get_case_store))
+app.include_router(consejo_router.build_router(get_case_store=get_case_store))
 app.include_router(capacidades_router.build_router())
 app.include_router(investigacion_router.router)
 # --- /routers ---

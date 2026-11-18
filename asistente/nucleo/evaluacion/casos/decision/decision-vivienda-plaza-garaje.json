@@ -1,0 +1,88 @@
+{
+  "id": "decision-vivienda-plaza-garaje",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Comprar una plaza de garaje o seguir alquilándola: depende de los años que la necesiten.",
+  "pregunta": "La plaza que alquilo por 70 € al mes está en venta por 18.000 €. ¿La compro?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "¿Conviene comprar la plaza de garaje que hoy se alquila?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Comprar la plaza de garaje"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Seguir alquilándola"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "coche",
+          "texto": "Piensan prescindir del coche cuando los hijos sean mayores, sin fecha clara.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "alquiler de la plaza",
+          "valor": "70",
+          "literal": "70 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "precio de venta de la plaza",
+          "valor": "18000",
+          "literal": "18.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vivienda",
+          "concepto": "años de alquiler que equivalen al precio, sin contar gastos",
+          "valor": "21",
+          "literal": "21 años",
+          "unidad": "años",
+          "herramienta": "vivienda_comparar"
+        },
+        {
+          "id": "C4",
+          "especialista": "vivienda",
+          "concepto": "gastos anuales de comunidad e IBI de la plaza",
+          "valor": "240",
+          "literal": "240 €/año",
+          "unidad": "EUR/año"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "liquidez_inmovilizada",
+          "frase": "Comprar inmoviliza ahorro en un bien poco líquido",
+          "patron": "inmoviliz|poco l[ií]quid|liquidez|vender (la plaza|despu)"
+        }
+      ],
+      "admitidas": [
+        "o2",
+        "depende"
+      ]
+    }
+  ]
+}

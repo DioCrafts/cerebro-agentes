@@ -1,0 +1,92 @@
+{
+  "id": "decision-vivienda-comprar-sobre-plano",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Comprar sobre plano con pago a cuenta: riesgo de retraso y de quiebra de la promotora.",
+  "pregunta": "Una promotora vende pisos sobre plano con 15 % a cuenta. ¿Compramos así o esperamos a uno terminado?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "¿Conviene comprar la vivienda sobre plano o buscar una ya terminada?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Comprar sobre plano"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Comprar una vivienda terminada"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "plazo",
+          "texto": "La entrega está prevista en dos años.",
+          "origen": "especialista",
+          "referencia": "vivienda"
+        },
+        {
+          "clave": "garantia",
+          "texto": "El especialista indica que las cantidades entregadas a cuenta deben estar garantizadas con un aval o seguro; conviene comprobarlo.",
+          "origen": "especialista",
+          "referencia": "vivienda"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "precio sobre plano",
+          "valor": "230000",
+          "literal": "230.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "precio de una vivienda terminada similar",
+          "valor": "255000",
+          "literal": "255.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vivienda",
+          "concepto": "pago a cuenta durante la obra",
+          "valor": "34500",
+          "literal": "34.500 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "retraso",
+          "frase": "La obra puede retrasarse respecto a la fecha prevista",
+          "patron": "retras|plazo de entrega|demora"
+        },
+        {
+          "id": "garantia",
+          "frase": "Hay que comprobar que lo pagado a cuenta esté avalado",
+          "patron": "aval|garant|seguro de (las )?cantidades"
+        }
+      ],
+      "admitidas": [
+        "o1",
+        "o2",
+        "depende"
+      ]
+    }
+  ]
+}

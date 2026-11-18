@@ -1,0 +1,85 @@
+{
+  "id": "decision-trabajo-excedencia-o-reduccion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Excedencia o reducción de jornada para cuidar a un hijo: equilibrado con preferencia sellada.",
+  "pregunta": "Acabo la baja. ¿Pido excedencia de un año o reducción de jornada?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "empleo",
+    "expediente": {
+      "pregunta": "Para cuidar del hijo pequeño, ¿conviene una excedencia de un año o una reducción de jornada?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Excedencia de un año"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Reducción de jornada a media jornada"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "ingresos",
+          "texto": "El otro progenitor tiene ingresos estables que cubren los gastos fijos con poco margen.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "empresa",
+          "texto": "En la empresa, la excedencia reserva el puesto el primer año.",
+          "origen": "especialista",
+          "referencia": "empleo"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "empleo",
+          "concepto": "sueldo neto actual",
+          "valor": "1850",
+          "literal": "1.850 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "empleo",
+          "concepto": "sueldo neto con reducción a media jornada",
+          "valor": "990",
+          "literal": "990 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "nomina_simular"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Quiero estar con mi hijo este primer año."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "ingresos",
+          "frase": "La excedencia supone dejar de cobrar el sueldo durante un año",
+          "patron": "(sin|dejar de cobrar|p[eé]rdida de|perder|menos) (el )?(sueldo|ingresos)|ingresos.{0,40}(caen|bajan|desaparec)"
+        },
+        {
+          "id": "carrera",
+          "frase": "Alejarse del trabajo puede afectar a la carrera profesional",
+          "patron": "carrera|promoci|desconexi|vuelta al trabajo"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

@@ -1,0 +1,103 @@
+{
+  "id": "decision-vehiculo-electrico-o-gasolina",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Coche eléctrico o de gasolina sin plaza de garaje: depende de poder cargar en casa o cerca.",
+  "pregunta": "Tengo que cambiar de coche. ¿Eléctrico o gasolina?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vehiculo",
+    "expediente": {
+      "pregunta": "¿Conviene que el próximo coche del hogar sea eléctrico o de gasolina?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Coche eléctrico"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Coche de gasolina"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "garaje",
+          "texto": "No tienen plaza de garaje; aparcan en la calle.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "uso",
+          "texto": "Unos 9.000 kilómetros al año, sobre todo en ciudad.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vehiculo",
+          "concepto": "precio del eléctrico tras descuentos",
+          "valor": "32000",
+          "literal": "32.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vehiculo",
+          "concepto": "precio del gasolina",
+          "valor": "24000",
+          "literal": "24.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vehiculo",
+          "concepto": "ahorro anual de energía del eléctrico cargando en casa",
+          "valor": "720",
+          "literal": "720 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "vehiculo_comparar"
+        },
+        {
+          "id": "C4",
+          "especialista": "vehiculo",
+          "concepto": "ahorro anual de energía del eléctrico cargando en la calle",
+          "valor": "210",
+          "literal": "210 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "vehiculo_comparar"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "carga",
+          "frase": "Sin garaje, cargar en la calle es más caro e incómodo",
+          "patron": "carg\\w+.{0,60}(calle|caro|inc[oó]modo|p[uú]blic)|sin garaje"
+        },
+        {
+          "id": "precio_inicial",
+          "frase": "El eléctrico cuesta más al comprarlo",
+          "patron": "(m[aá]s caro|precio (inicial|de compra|mayor)|cuesta m[aá]s)"
+        }
+      ],
+      "admitidas": [
+        "depende",
+        "o2"
+      ],
+      "depende": {
+        "frase": "Depende de si pueden cargar el coche en casa o en un punto cercano de forma habitual",
+        "patron": "carg\\w+|enchufe|punto de recarga|garaje|recarga"
+      }
+    }
+  ]
+}

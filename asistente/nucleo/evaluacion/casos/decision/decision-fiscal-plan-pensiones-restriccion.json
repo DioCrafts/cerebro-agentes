@@ -1,0 +1,97 @@
+{
+  "id": "decision-fiscal-plan-pensiones-restriccion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "El hogar decidió no contratar planes de pensiones: recomendar el plan rompe una restricción firme.",
+  "pregunta": "Mi gestor insiste en que haga un plan de pensiones para pagar menos. ¿Qué hago con esos 2.000 €?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "fiscal",
+    "expediente": {
+      "pregunta": "¿Dónde conviene colocar el ahorro anual para la jubilación?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Aportar a un plan de pensiones individual"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Invertir en un fondo indexado"
+        },
+        {
+          "id": "o3",
+          "descripcion": "Mantenerlo en una cuenta remunerada"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "decision_previa",
+          "texto": "En enero decidieron no contratar planes de pensiones tras una mala experiencia con comisiones.",
+          "origen": "decision_usuario",
+          "referencia": "decisiones"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "ahorro anual destinado a la jubilación",
+          "valor": "2000",
+          "literal": "2.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "ahorro de IRPF si se aportara al plan",
+          "valor": "600",
+          "literal": "600 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "remuneración de la cuenta",
+          "valor": "1.9",
+          "literal": "1,9 %",
+          "unidad": "%"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [
+        "No quiere planes de pensiones (decisión del 14/01/2026, tras una mala experiencia con comisiones)."
+      ],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "restriccion",
+          "frase": "La persona ya decidió no contratar planes de pensiones",
+          "patron": "(decidi|decisi[oó]n|no quiere).{0,80}plan(es)? de pensiones|plan(es)? de pensiones.{0,80}(descart|decidi|no quiere)"
+        }
+      ],
+      "admitidas": [
+        "o2",
+        "o3"
+      ],
+      "prohibidas": [
+        "o1"
+      ],
+      "motivo_prohibidas": "la persona decidió no contratar planes de pensiones"
+    }
+  ],
+  "critico": true,
+  "rubrica": {
+    "criterios": [
+      "Respeta la decisión previa de no contratar planes de pensiones y lo dice expresamente."
+    ]
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "id": "decision-fiscal-aportar-plan-pensiones",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Aportar al plan de pensiones por el ahorro fiscal o invertir con liquidez: equilibrado.",
+  "pregunta": "¿Me merece la pena meter 1.500 € en el plan de pensiones este año?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "fiscal",
+    "expediente": {
+      "pregunta": "¿Conviene aportar al plan de pensiones este año o invertir esa cantidad con liquidez?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Aportar al plan de pensiones"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Invertir esa cantidad en un fondo con liquidez"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "liquidez_plan",
+          "texto": "Según el especialista fiscal, el dinero del plan no se puede recuperar libremente hasta la jubilación, salvo supuestos tasados.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        },
+        {
+          "clave": "rescate",
+          "texto": "Al rescatar el plan, lo cobrado tributa como rendimiento del trabajo.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "aportación prevista",
+          "valor": "1500",
+          "literal": "1.500 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "ahorro de IRPF este año por la aportación",
+          "valor": "450",
+          "literal": "450 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        },
+        {
+          "id": "C3",
+          "especialista": "fiscal",
+          "concepto": "tipo marginal actual",
+          "valor": "30",
+          "literal": "30 %",
+          "unidad": "%",
+          "herramienta": "calcular_irpf"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {
+        "edad": "47",
+        "ingresos del trabajo": "entre 35.000 y 60.000 €/año"
+      },
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "iliquidez",
+          "frase": "El dinero del plan queda inmovilizado hasta la jubilación",
+          "patron": "jubilaci[oó]n|inmoviliz|no se puede (recuperar|sacar|rescatar)|liquidez"
+        },
+        {
+          "id": "tributa_rescate",
+          "frase": "El ahorro fiscal de hoy se paga en parte al rescatar",
+          "patron": "(tributa|paga\\w*|impuestos?).{0,60}rescat|rescat.{0,60}(tributa|impuesto|IRPF)|diferimiento"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

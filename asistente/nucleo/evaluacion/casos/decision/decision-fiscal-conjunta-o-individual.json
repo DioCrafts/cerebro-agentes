@@ -1,0 +1,73 @@
+{
+  "id": "decision-fiscal-conjunta-o-individual",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Declaración conjunta o individual con cifras de la calculadora: un caso claro (no debe dudar sin motivo).",
+  "pregunta": "¿Hacemos la renta conjunta o por separado este año?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "fiscal",
+    "expediente": {
+      "pregunta": "¿Conviene presentar la declaración de la renta conjunta o dos individuales?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Declaración conjunta"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Dos declaraciones individuales"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "ingresos",
+          "texto": "Los dos cónyuges tienen ingresos del trabajo parecidos.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "resultado de la declaración conjunta, a pagar",
+          "valor": "1050",
+          "literal": "1.050 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "resultado conjunto de las dos individuales, a devolver",
+          "valor": "380",
+          "literal": "380 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "comparacion",
+          "frase": "Con ingresos parecidos, la conjunta suele salir peor que las individuales",
+          "patron": "individual\\w*.{0,80}(mejor|m[aá]s favorable|conviene|sale (mejor|a cuenta))|conjunta.{0,80}(peor|menos favorable)"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ]
+    }
+  ]
+}

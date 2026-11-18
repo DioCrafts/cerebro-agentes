@@ -1,0 +1,93 @@
+{
+  "id": "decision-vehiculo-reparar-o-cambiar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Reparar un coche viejo o cambiarlo por uno usado: equilibrado.",
+  "pregunta": "El taller me pide 2.300 € para arreglar el coche, que tiene 14 años. ¿Lo arreglo?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vehiculo",
+    "expediente": {
+      "pregunta": "¿Conviene reparar el coche actual o cambiarlo por uno de segunda mano?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Reparar el coche actual"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Comprar un coche de segunda mano"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "antiguedad",
+          "texto": "El coche tiene 14 años.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "estado",
+          "texto": "Aparte de esta avería, el coche no ha dado problemas graves.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "zona",
+          "texto": "En su ciudad hay una zona de bajas emisiones que el coche actual no podrá usar en el futuro.",
+          "origen": "especialista",
+          "referencia": "vehiculo"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vehiculo",
+          "concepto": "presupuesto de la reparación",
+          "valor": "2300",
+          "literal": "2.300 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vehiculo",
+          "concepto": "precio del coche de segunda mano",
+          "valor": "11000",
+          "literal": "11.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vehiculo",
+          "concepto": "valor de mercado del coche actual reparado",
+          "valor": "1800",
+          "literal": "1.800 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "nuevas_averias",
+          "frase": "Un coche de 14 años puede tener más averías pronto",
+          "patron": "(nuevas|m[aá]s|otras) aver[ií]as|siguiente aver|fiabilidad"
+        },
+        {
+          "id": "bajas_emisiones",
+          "frase": "La zona de bajas emisiones limitará el uso del coche actual",
+          "patron": "bajas emisiones|ZBE|restricci"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

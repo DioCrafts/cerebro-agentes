@@ -1,0 +1,81 @@
+{
+  "id": "decision-familia-donar-o-prestar-a-hijo",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Ayudar a un hijo con la entrada: donación o préstamo documentado; equilibrado.",
+  "pregunta": "Mi hijo necesita 30.000 € para la entrada del piso. ¿Se los doy o se los presto?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "familia",
+    "expediente": {
+      "pregunta": "Para ayudar al hijo con la entrada de su vivienda, ¿conviene una donación o un préstamo familiar documentado?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Donación"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Préstamo familiar documentado"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "hermanos",
+          "texto": "Tienen otra hija y quieren tratar a los dos por igual.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "documento",
+          "texto": "Según el especialista fiscal, un préstamo entre familiares debe documentarse para que Hacienda no lo trate como donación.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "familia",
+          "concepto": "importe de la ayuda",
+          "valor": "30000",
+          "literal": "30.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "impuesto estimado de la donación",
+          "valor": "420",
+          "literal": "420 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_isd"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "documentar",
+          "frase": "Un préstamo sin documentar puede tratarse como donación",
+          "patron": "document|contrato|por escrito"
+        },
+        {
+          "id": "igualdad",
+          "frase": "Ayudar a un hijo puede requerir compensar al otro",
+          "patron": "igual|herman|compens|equidad"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

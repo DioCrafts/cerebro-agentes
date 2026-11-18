@@ -1,0 +1,76 @@
+{
+  "id": "decision-fiscal-propuesta-alegar-o-aceptar",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Propuesta de liquidación con documentación a favor: alegar.",
+  "pregunta": "Me ha llegado una propuesta de Hacienda por la deducción de maternidad, pero tengo los papeles. ¿Alego o pago?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "fiscal",
+    "expediente": {
+      "pregunta": "Ante una propuesta de liquidación que puede rebatirse con documentación, ¿conviene presentar alegaciones o aceptarla?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Aceptar la propuesta y pagar"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Presentar alegaciones con la documentación"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "documentacion",
+          "texto": "La persona conserva el certificado de la guardería y los recibos que Hacienda echa en falta.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "plazo",
+          "texto": "La notificación concede diez días hábiles para alegar [F1].",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "importe de la propuesta",
+          "valor": "1000",
+          "literal": "1.000 €",
+          "unidad": "EUR",
+          "herramienta": "leer_liquidacion"
+        }
+      ],
+      "fragmentos": [
+        {
+          "id": "F1",
+          "titulo": "Notificación de la propuesta de liquidación (extracto)",
+          "texto": "Se le concede un plazo de diez días hábiles, contados a partir del día siguiente al de la notificación, para formular las alegaciones y presentar los documentos que estime pertinentes.",
+          "autoridad": "AEAT"
+        }
+      ],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "plazo",
+          "frase": "Hay un plazo corto para presentar las alegaciones",
+          "patron": "plazo (corto|de (diez|alegaciones)|para alegar)|diez d[ií]as|d[ií]as h[aá]biles"
+        }
+      ],
+      "admitidas": [
+        "o2"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,89 @@
+{
+  "id": "decision-energia-bajar-potencia",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Bajar la potencia contratada: depende de cuántos aparatos usen a la vez.",
+  "pregunta": "¿Bajo la potencia de 5,75 a 4,6 kW para pagar menos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "energia",
+    "expediente": {
+      "pregunta": "¿Conviene reducir la potencia contratada de la vivienda?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Reducir la potencia contratada"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Mantener la potencia actual"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "aparatos",
+          "texto": "En casa usan horno, vitrocerámica y lavadora, a veces a la vez.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "luz",
+          "concepto": "potencia contratada actual",
+          "valor": "5.75",
+          "literal": "5,75 kW",
+          "unidad": "kW"
+        },
+        {
+          "id": "C2",
+          "especialista": "luz",
+          "concepto": "potencia propuesta",
+          "valor": "4.6",
+          "literal": "4,6 kW",
+          "unidad": "kW"
+        },
+        {
+          "id": "C3",
+          "especialista": "luz",
+          "concepto": "ahorro anual estimado en el término de potencia",
+          "valor": "48",
+          "literal": "48 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "luz_calcular_factura"
+        },
+        {
+          "id": "C4",
+          "especialista": "luz",
+          "concepto": "potencia máxima registrada el último año",
+          "valor": "5.1",
+          "literal": "5,1 kW",
+          "unidad": "kW",
+          "herramienta": "luz_maximetro"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "cortes",
+          "frase": "Con menos potencia puede saltar el limitador si coinciden varios aparatos",
+          "patron": "salt\\w+|cortes? de (luz|suministro)|limitador|ICP|a la vez|simult"
+        }
+      ],
+      "admitidas": [
+        "o2",
+        "depende"
+      ]
+    }
+  ]
+}

@@ -25,6 +25,7 @@ import {
   ListChecks,
   PiggyBank,
   Scale,
+  UsersRound,
 } from "lucide-react";
 
 import type { DefinicionPanel, Visibilidad } from "./tipos";
@@ -99,6 +100,14 @@ export const REGISTRO: DefinicionPanel[] = [
     icono: ListChecks,
     orden: 65,
     cargar: () => import("./tareas"),
+  },
+  {
+    id: "consejo",
+    etiqueta: "Consejo",
+    titulo: "Consejo del hogar: decisiones difíciles estudiadas por varias IA, por separado y de forma anónima",
+    icono: UsersRound,
+    orden: 66,
+    cargar: () => import("./consejo"),
   },
   {
     id: "investigar",

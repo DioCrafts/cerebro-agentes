@@ -116,6 +116,13 @@ TRABAJOS: tuple[Trabajo, ...] = (
         Programacion(cada_minutos=30),
         orden=("asistente.plataforma.cli.repaso", "trabajo"),
     ),
+    Trabajo(
+        "consejo",
+        "Consejo del hogar: ejecuta las sesiones confirmadas (una por caso), recupera las interrumpidas y aplica la "
+        "retención (sin CONSEJO_ACTIVO no hace nada).",
+        Programacion(cada_minutos=5),
+        orden=("asistente.plataforma.cli.consejo", "ejecutar"),
+    ),
 )
 
 # Finished deliveries and consumed events are kept this long (the same as ``cli.eventos``).

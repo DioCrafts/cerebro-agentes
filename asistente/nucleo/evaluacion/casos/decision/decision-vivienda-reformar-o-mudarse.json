@@ -1,0 +1,88 @@
+{
+  "id": "decision-vivienda-reformar-o-mudarse",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Reformar la vivienda actual o venderla y mudarse: equilibrado.",
+  "pregunta": "La casa se nos ha quedado vieja. ¿Reformamos o nos mudamos?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vivienda",
+    "expediente": {
+      "pregunta": "¿Conviene reformar la vivienda actual o venderla y comprar otra ya reformada?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Reformar la vivienda actual"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Vender y comprar otra vivienda reformada"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "barrio",
+          "texto": "Les gusta el barrio y los hijos van al colegio cercano.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "obra",
+          "texto": "La reforma de cocina y baño llevaría unos tres meses de obras viviendo en casa.",
+          "origen": "especialista",
+          "referencia": "vivienda"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vivienda",
+          "concepto": "presupuesto de la reforma",
+          "valor": "28000",
+          "literal": "28.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "vivienda",
+          "concepto": "gastos de vender y comprar otra vivienda",
+          "valor": "31500",
+          "literal": "31.500 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vivienda",
+          "concepto": "revalorización estimada de la vivienda tras la reforma",
+          "valor": "20000",
+          "literal": "20.000 €",
+          "unidad": "EUR"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "sobrecoste",
+          "frase": "Las reformas suelen tener sobrecostes y retrasos",
+          "patron": "sobrecoste|desv[ií]o|retras|imprevistos de obra|presupuesto se (dispara|desv)"
+        },
+        {
+          "id": "gastos_transaccion",
+          "frase": "Mudarse implica gastos de compraventa que no se recuperan",
+          "patron": "gastos (de )?(compraventa|vender|venta|compra)|impuestos|notar"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

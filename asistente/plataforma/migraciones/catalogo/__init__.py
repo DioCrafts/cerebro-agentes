@@ -10,6 +10,7 @@ from __future__ import annotations
 from asistente.plataforma.migraciones.catalogo import (
     acciones,
     auth,
+    consejo,
     consumo,
     correo,
     decision,
@@ -45,6 +46,7 @@ PROPIETARIOS: tuple[Propietario, ...] = (
     push.PROPIETARIO,
     recuerdos.PROPIETARIO,
     repaso.PROPIETARIO,
+    consejo.PROPIETARIO,
 )
 
 __all__ = ["PROPIETARIOS"]

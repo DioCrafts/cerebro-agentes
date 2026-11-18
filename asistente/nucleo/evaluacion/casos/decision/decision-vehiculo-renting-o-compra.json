@@ -1,0 +1,93 @@
+{
+  "id": "decision-vehiculo-renting-o-compra",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Renting o compra de coche: equilibrado.",
+  "pregunta": "¿Me hago un renting de 390 € al mes o me compro el coche?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "vehiculo",
+    "expediente": {
+      "pregunta": "¿Conviene contratar un renting o comprar el coche?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Contratar el renting"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Comprar el coche al contado"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "km",
+          "texto": "Recorren unos 18.000 km al año; el renting incluye 15.000.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "renting",
+          "texto": "El renting incluye seguro, mantenimiento e impuestos; al final se devuelve el coche.",
+          "origen": "especialista",
+          "referencia": "vehiculo"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "vehiculo",
+          "concepto": "cuota del renting",
+          "valor": "390",
+          "literal": "390 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "vehiculo",
+          "concepto": "precio de compra al contado",
+          "valor": "21000",
+          "literal": "21.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C3",
+          "especialista": "vehiculo",
+          "concepto": "coste anual estimado de seguro y mantenimiento si se compra",
+          "valor": "1300",
+          "literal": "1.300 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "vehiculo_comparar"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": [],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "No quiero preocuparme de nada del coche."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "exceso_km",
+          "frase": "Superar los kilómetros pactados en el renting se paga aparte",
+          "patron": "kil[oó]metros|km|exceso|penaliz"
+        },
+        {
+          "id": "propiedad",
+          "frase": "Con el renting no se es propietario del coche al final",
+          "patron": "propietari|devolver el coche|no es tuyo|no te quedas"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ]
+}

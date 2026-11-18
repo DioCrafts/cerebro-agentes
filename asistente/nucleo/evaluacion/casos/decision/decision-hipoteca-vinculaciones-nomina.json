@@ -1,0 +1,72 @@
+{
+  "id": "decision-hipoteca-vinculaciones-nomina",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Mantener vinculaciones (nómina, seguros) por la bonificación o quitarlas: la calculadora dice que compensan.",
+  "pregunta": "Para bajar el tipo me obligan a domiciliar la nómina y contratar un seguro de hogar. ¿Me compensa?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "hipoteca",
+    "expediente": {
+      "pregunta": "¿Conviene mantener las vinculaciones que exige el banco a cambio de la bonificación del tipo?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Mantener las vinculaciones"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Quitarlas y perder la bonificación"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "hogar",
+          "texto": "El seguro de hogar del banco es algo más caro que otros del mercado.",
+          "origen": "especialista",
+          "referencia": "seguros"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "hipoteca",
+          "concepto": "ahorro anual en intereses por la bonificación",
+          "valor": "540",
+          "literal": "540 €/año",
+          "unidad": "EUR/año",
+          "herramienta": "hipoteca_bonificaciones"
+        },
+        {
+          "id": "C2",
+          "especialista": "seguros",
+          "concepto": "sobrecoste anual del seguro de hogar del banco",
+          "valor": "95",
+          "literal": "95 €/año",
+          "unidad": "EUR/año"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "cambio_condiciones",
+          "frase": "El banco puede cambiar las condiciones de los productos vinculados",
+          "patron": "cambi\\w+ (las )?condiciones|revis|permanencia"
+        }
+      ],
+      "admitidas": [
+        "o1"
+      ]
+    }
+  ]
+}

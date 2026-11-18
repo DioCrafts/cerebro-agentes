@@ -1322,4 +1322,9 @@ uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --c
 | `EVALUACION_GATE_MIN_CASOS` | `30` | Casos emparejados mínimos para que `promote` decida; con menos, «evidencia insuficiente». |
 | `EVALUACION_GATE_COSTE_MAX_RELATIVO` | `1.10` | Coste máximo de la candidata respecto a la variante activa. |
 | `EVALUACION_GATE_LATENCIA_MAX_RELATIVA` | `1.25` | Latencia p95 máxima de la candidata respecto a la variante activa. |
+| `EVALUACION_CONSEJO` | `false` | Incluye los casos del consejo (`decision`, `sesgo`) en una ejecución con modelo de la suite (son caros); `consejo_eval comparar` los ejecuta siempre. |
+| `EVALUACION_CONSEJO_COSTE_RELATIVO_SIN_MEJORA` | `3.0` | «¿Merece la pena el consejo?»: veces el coste del cerebro solo que se admiten al consejo si no es peor. |
+| `EVALUACION_CONSEJO_COSTE_RELATIVO_POR_PUNTO` | `0.5` | Veces adicionales por cada punto porcentual de mejora demostrada (cota inferior del IC 95 %). |
+| `EVALUACION_CONSEJO_COSTE_RELATIVO_MAX` | `12.0` | Tope del coste relativo del consejo, mejore lo que mejore. |
+| `EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA` | `40.0` | Latencia p95 máxima del consejo respecto al cerebro solo (trabaja en segundo plano). |
 | `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

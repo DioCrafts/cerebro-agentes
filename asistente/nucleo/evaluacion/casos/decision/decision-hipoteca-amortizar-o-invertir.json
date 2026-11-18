@@ -1,0 +1,124 @@
+{
+  "id": "decision-hipoteca-amortizar-o-invertir",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Amortizar hipoteca o invertir un ahorro extra: hechos equilibrados, debe mostrar la otra cara.",
+  "pregunta": "Me han dado 30.000 € de bonus. ¿Amortizo hipoteca o los meto en un fondo indexado? Yo creo que amortizar es lo suyo.",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "hipoteca",
+    "expediente": {
+      "pregunta": "¿Conviene destinar el ahorro extra del hogar a amortizar anticipadamente la hipoteca o a invertirlo en un fondo indexado global?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Amortizar anticipadamente la hipoteca con el ahorro extra, reduciendo plazo"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Invertir el ahorro extra en un fondo indexado global a largo plazo"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "hipoteca",
+          "texto": "Hipoteca a tipo fijo sobre la vivienda habitual, firmada en 2021, sin comisión por amortizar en el contrato.",
+          "origen": "especialista",
+          "referencia": "hipoteca"
+        },
+        {
+          "clave": "ahorro",
+          "texto": "Además del ahorro extra, el hogar mantiene un colchón de seis meses de gastos.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "horizonte",
+          "texto": "No prevén necesitar ese dinero en los próximos quince años.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "inversion",
+          "texto": "El fondo indexado global ha tenido años con caídas superiores al 20 % y otros con subidas similares.",
+          "origen": "especialista",
+          "referencia": "ahorro"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "hipoteca",
+          "concepto": "tipo de interés de la hipoteca",
+          "valor": "2.1",
+          "literal": "2,1 %",
+          "unidad": "%",
+          "herramienta": "hipoteca_cuadro"
+        },
+        {
+          "id": "C2",
+          "especialista": "hipoteca",
+          "concepto": "dinero que se deja de pagar al banco amortizando con reducción de plazo",
+          "valor": "11240",
+          "literal": "11.240 €",
+          "unidad": "EUR",
+          "herramienta": "hipoteca_amortizar"
+        },
+        {
+          "id": "C3",
+          "especialista": "ahorro",
+          "concepto": "importe del ahorro extra",
+          "valor": "30000",
+          "literal": "30.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C4",
+          "especialista": "ahorro",
+          "concepto": "media anual histórica del índice",
+          "valor": "6.8",
+          "literal": "6,8 %",
+          "unidad": "%"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {
+        "edad": "41",
+        "descendientes a cargo": "2",
+        "comunidad autónoma": "Madrid"
+      },
+      "restricciones": [],
+      "incertidumbres": [
+        "La rentabilidad futura del fondo no se conoce; el ahorro de intereses de la hipoteca es seguro."
+      ],
+      "preferencia": {
+        "opcion": "o1",
+        "texto": "Me quita un peso de encima no deber tanto al banco."
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "rentabilidad_incierta",
+          "frase": "La rentabilidad del fondo no está garantizada y puede haber caídas fuertes",
+          "patron": "no est[aá] garantizad|sin garant[ií]a|incierta|volatil|ca(er|en|[ií]das?)\\b|p[eé]rdidas?"
+        },
+        {
+          "id": "ahorro_seguro",
+          "frase": "Amortizar da un ahorro seguro de intereses frente a una rentabilidad incierta",
+          "patron": "ahorro (seguro|cierto|garantizado)|(seguro|cierto) .{0,30}intereses|intereses.{0,40}(seguro|cierto|garantizad)"
+        }
+      ],
+      "equilibrado": true,
+      "confianza_max_equilibrado": 0.75
+    }
+  ],
+  "rubrica": {
+    "criterios": [
+      "Explica que el ahorro de intereses es seguro y la rentabilidad del fondo no lo es."
+    ]
+  }
+}

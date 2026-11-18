@@ -3,7 +3,8 @@
 The checks of the household brain (``especialistas``, ``intencion``, ``ruta``, ``flujo_dato``, ``puerta``,
 ``cifra_atribuida``, ``recuerdos``) read the turn's :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro`
 (``Ejecucion.cerebro``), never the answer's prose: what the brain planned, who it asked, what the figures gate
-said. ``repaso`` reads the proactive pass's structured output. All of them are deterministic.
+said. ``repaso`` reads the proactive pass's structured output. ``dictamen`` and ``invarianza`` read the household
+council's normalised ruling (``Ejecucion.consejo``, :mod:`.consejo_eval`). All of them are deterministic.
 """
 
 from __future__ import annotations
@@ -46,6 +47,7 @@ from asistente.nucleo.evaluacion.modelos import (
     ExpTextoAusente,
     ExpTextoPresente,
 )
+from asistente.nucleo.evaluacion.modelos_consejo import ExpDictamen, ExpInvarianza
 from asistente.nucleo.evaluacion.modulo_prueba import MODULOS_SINTETICOS
 from asistente.nucleo.modulos.contrato import Modulo
 
@@ -284,6 +286,10 @@ def comprobar(caso: CasoEvaluacion, ejecucion: Ejecucion, esperadas: CifrasEsper
                 fallos.append(f"«{exp.tipo}»: la ejecución no trae el informe del cerebro (¿se ejecutó sin él?)")
                 continue
             fallos.extend(comprobar_cerebro(exp, cerebro))
+        elif isinstance(exp, ExpDictamen | ExpInvarianza):
+            from asistente.nucleo.evaluacion.consejo_eval import comprobar_consejo
+
+            fallos.extend(comprobar_consejo(exp, caso, ejecucion))
     return fallos
 
 
@@ -497,6 +503,10 @@ def validar(directorio: Path = CASOS_DIR, *, casos: Sequence[CasoEvaluacion] | N
         esperadas = cifras_esperadas(caso)
         informe.errores.extend(f"{caso.id}: {e}" for e in esperadas.errores)
         informe.errores.extend(f"{caso.id}: {e}" for e in problemas_de_guion(caso))
+        if caso.consejo is not None or "consejo" in caso.requiere:
+            from asistente.nucleo.evaluacion.consejo_eval import problemas_consejo
+
+            informe.errores.extend(f"{caso.id}: {e}" for e in problemas_consejo(caso))
         informe.derivas.extend(f"{caso.id}: {d}" for d in esperadas.derivas)
     return informe
 

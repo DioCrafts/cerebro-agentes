@@ -13,6 +13,7 @@ import pytest
 
 from asistente.capacidades.correo import almacen as correo
 from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.nucleo.consejo.almacen import AlmacenConsejo
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.evaluacion.captura import FeedbackStore
 from asistente.nucleo.eventos.bus import Bus
@@ -70,6 +71,7 @@ def _con_todos_los_stores(path: str) -> None:
     TareaStore(path)._get().close()
     RepasoStore(path).get("", "")  # the brain's passes (asistente/nucleo/repaso): a connection per call
     AlmacenRecuerdos(path)._get().close()  # the conversation memory (asistente/nucleo/recuerdos)
+    AlmacenConsejo(path).listar("")  # the household council (asistente/nucleo/consejo): a connection per call
 
 
 @pytest.fixture

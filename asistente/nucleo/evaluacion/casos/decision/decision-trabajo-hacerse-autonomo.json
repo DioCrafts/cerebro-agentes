@@ -1,0 +1,100 @@
+{
+  "id": "decision-trabajo-hacerse-autonomo",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Dejar el empleo para hacerse autónomo con un solo cliente asegurado: depende de un segundo cliente o colchón.",
+  "pregunta": "Un cliente me ofrece trabajo como freelance seis meses. ¿Dejo la empresa y me hago autónomo?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "empleo",
+    "expediente": {
+      "pregunta": "¿Conviene dejar el empleo por cuenta ajena para trabajar como autónomo?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Dejar el empleo y darse de alta como autónomo"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Seguir por cuenta ajena"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "cliente",
+          "texto": "Solo hay un cliente asegurado durante seis meses.",
+          "origen": "usuario"
+        },
+        {
+          "clave": "paro",
+          "texto": "Al dejar el empleo voluntariamente no tendría prestación por desempleo.",
+          "origen": "especialista",
+          "referencia": "empleo"
+        },
+        {
+          "clave": "ahorro",
+          "texto": "Tiene ahorros para unos ocho meses de gastos.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "empleo",
+          "concepto": "facturación mensual prevista con el cliente",
+          "valor": "4200",
+          "literal": "4.200 €/mes",
+          "unidad": "EUR/mes"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "cuota de autónomos estimada",
+          "valor": "310",
+          "literal": "310 €/mes",
+          "unidad": "EUR/mes",
+          "herramienta": "cuota_autonomos"
+        },
+        {
+          "id": "C3",
+          "especialista": "empleo",
+          "concepto": "sueldo neto actual",
+          "valor": "2350",
+          "literal": "2.350 €/mes",
+          "unidad": "EUR/mes"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "un_cliente",
+          "frase": "Depender de un solo cliente es arriesgado",
+          "patron": "(un|solo|[uú]nico) cliente|dependencia"
+        },
+        {
+          "id": "sin_paro",
+          "frase": "Al irse voluntariamente pierde el derecho a paro",
+          "patron": "paro|desempleo|prestaci"
+        }
+      ],
+      "admitidas": [
+        "depende",
+        "o2"
+      ],
+      "depende": {
+        "frase": "Depende de conseguir más clientes antes de que acabe el contrato del primero",
+        "patron": "(m[aá]s|otros|segundo|nuevos) clientes?|cartera|diversific"
+      }
+    }
+  ]
+}

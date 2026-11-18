@@ -1,0 +1,110 @@
+{
+  "id": "decision-fiscal-recurrir-liquidacion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Recurrir una liquidación de Hacienda: depende de tener justificantes; plazo de un mes.",
+  "pregunta": "Hacienda me reclama 1.240 € por una deducción por alquiler que se aplicó. ¿Recurro?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "fiscal",
+    "expediente": {
+      "pregunta": "Ante una liquidación provisional que niega una deducción aplicada, ¿conviene recurrir?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Pagar y presentar recurso de reposición"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Pagar y no recurrir"
+        },
+        {
+          "id": "o3",
+          "descripcion": "No pagar y recurrir pidiendo la suspensión"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "motivo",
+          "texto": "Hacienda considera que no se ha acreditado el pago del alquiler de la vivienda habitual.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        },
+        {
+          "clave": "plazo",
+          "texto": "El recurso de reposición tiene un plazo de un mes desde la notificación [F1].",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        },
+        {
+          "clave": "documentos",
+          "texto": "La persona no sabe si conserva las transferencias del alquiler de ese año.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "importe de la liquidación",
+          "valor": "1240",
+          "literal": "1.240 €",
+          "unidad": "EUR",
+          "herramienta": "leer_liquidacion"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "intereses de demora incluidos",
+          "valor": "86.5",
+          "literal": "86,50 €",
+          "unidad": "EUR",
+          "herramienta": "leer_liquidacion"
+        }
+      ],
+      "fragmentos": [
+        {
+          "id": "F1",
+          "titulo": "Ley 58/2003, General Tributaria, artículo 223.1",
+          "texto": "El plazo para la interposición de este recurso será de un mes contado a partir del día siguiente al de la notificación del acto recurrible o del siguiente a aquel en que se produzcan los efectos del silencio administrativo.",
+          "autoridad": "BOE"
+        }
+      ],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "plazo",
+          "frase": "El plazo para recurrir es de un mes desde la notificación",
+          "patron": "un mes|plazo (de|para) (recurrir|un mes)|mes desde"
+        },
+        {
+          "id": "intereses",
+          "frase": "Si no se paga y se pierde, se acumulan intereses de demora",
+          "patron": "acumul\\w* (m[aá]s )?intereses|m[aá]s intereses|intereses.{0,30}(acumul|crec|corr)|recargo"
+        }
+      ],
+      "admitidas": [
+        "depende",
+        "o1"
+      ],
+      "depende": {
+        "frase": "Depende de si conserva justificantes del pago del alquiler (transferencias o recibos)",
+        "patron": "justificante|transferencias?|recibos?|document|acreditar|prueba"
+      }
+    }
+  ],
+  "rubrica": {
+    "criterios": [
+      "Menciona el plazo de un mes para recurrir y lo apoya en la fuente del expediente."
+    ]
+  }
+}

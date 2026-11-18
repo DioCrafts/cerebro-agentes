@@ -10,6 +10,7 @@ import type { ChatTurn, Conversation } from "../lib/storage";
 import { verificationSummary } from "../lib/presentation";
 import { ActivitySummary, LiveActivity } from "./ActivityPanel";
 import { AssistantBubble, UserBubble } from "./ChatBubbles";
+import { ConsejoEnHilo } from "./ConvocarConsejo";
 import { DoctrineNotice } from "./DoctrineNotice";
 import { EmptyState } from "./EmptyState";
 import { EvaluacionFeedback } from "./EvaluacionFeedback";
@@ -128,6 +129,14 @@ export function Hilo({ active, pending, busy, highlightedId, onSubmit, onCite, l
           </section>
         );
       })}
+
+      {/* The household council: convocations waiting for the user, sessions running, and the offer on a hard decision. */}
+      <ConsejoEnHilo
+        caseId={active.caseId}
+        turnos={active.turns.length}
+        ultimaPregunta={active.turns.length > 0 && !active.turns[active.turns.length - 1].errored ? active.turns[active.turns.length - 1].userText : undefined}
+        ocupado={busy}
+      />
 
       {pending && (
         <section className="flex flex-col gap-4">

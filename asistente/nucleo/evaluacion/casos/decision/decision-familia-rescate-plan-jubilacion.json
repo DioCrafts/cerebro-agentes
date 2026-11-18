@@ -1,0 +1,91 @@
+{
+  "id": "decision-familia-rescate-plan-jubilacion",
+  "version": 1,
+  "categoria": "decision",
+  "descripcion": "Rescatar el plan de pensiones en la jubilación: no todo de golpe (salto de tipo).",
+  "pregunta": "Me jubilo. ¿Saco los 60.000 € del plan de pensiones de una vez?",
+  "requiere": [
+    "consejo"
+  ],
+  "consejo": {
+    "dominio": "familia",
+    "expediente": {
+      "pregunta": "Al jubilarse, ¿cómo conviene rescatar el plan de pensiones?",
+      "opciones": [
+        {
+          "id": "o1",
+          "descripcion": "Rescatar todo en forma de capital en un solo año"
+        },
+        {
+          "id": "o2",
+          "descripcion": "Rescatar en forma de renta durante varios años"
+        },
+        {
+          "id": "o3",
+          "descripcion": "Rescate mixto"
+        }
+      ],
+      "hechos": [
+        {
+          "clave": "tributacion",
+          "texto": "Lo rescatado tributa como rendimiento del trabajo en el año en que se cobra.",
+          "origen": "especialista",
+          "referencia": "fiscal"
+        },
+        {
+          "clave": "necesidad",
+          "texto": "No necesitan el dinero de golpe.",
+          "origen": "usuario"
+        }
+      ],
+      "cifras": [
+        {
+          "id": "C1",
+          "especialista": "fiscal",
+          "concepto": "saldo del plan",
+          "valor": "60000",
+          "literal": "60.000 €",
+          "unidad": "EUR"
+        },
+        {
+          "id": "C2",
+          "especialista": "fiscal",
+          "concepto": "IRPF estimado rescatando todo en un año",
+          "valor": "21300",
+          "literal": "21.300 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        },
+        {
+          "id": "C3",
+          "especialista": "fiscal",
+          "concepto": "IRPF estimado rescatando en renta durante cinco años",
+          "valor": "14800",
+          "literal": "14.800 €",
+          "unidad": "EUR",
+          "herramienta": "calcular_irpf"
+        }
+      ],
+      "fragmentos": [],
+      "perfil_minimo": {},
+      "restricciones": [],
+      "incertidumbres": []
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "dictamen",
+      "riesgos": [
+        {
+          "id": "salto_tipo",
+          "frase": "Cobrarlo todo en un año eleva el tipo del IRPF",
+          "patron": "(tipo|tramo|marginal).{0,60}(sube|eleva|m[aá]s alto|salta|mayor)|(sube|eleva)\\w* el (tipo|tramo)|de golpe|salto de (tipo|tramo)|progresiv"
+        }
+      ],
+      "admitidas": [
+        "o2",
+        "o3"
+      ]
+    }
+  ]
+}
