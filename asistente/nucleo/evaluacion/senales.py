@@ -121,7 +121,9 @@ def senales_de_turno(evento: dict[str, Any], turno: int) -> list[Senal]:
         if not isinstance(cerebro, dict):
             continue
         puerta = cerebro.get("puerta")
-        violaciones = [v for v in puerta.get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+        violaciones = (
+            [v for v in puerta.get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+        )
         if violaciones:
             por_tipo = Counter(str(v.get("tipo")) for v in violaciones)
             detalle = ", ".join(f"{n} {t}" for t, n in sorted(por_tipo.items()))

@@ -220,7 +220,9 @@ def _ruta_de(conn: sqlite3.Connection) -> str:
 def al_borrar_caso(conn: sqlite3.Connection, case_id: str) -> None:
     """``delete_case`` hook: the accepted cases of that case go with it. An error aborts the erasure (retry)."""
     ruta_casos = _ruta_de(conn)
-    destino = ruta_por_defecto(ruta_casos or None)
+    if not ruta_casos:  # an in-memory cases' database has no private file next to it
+        return
+    destino = ruta_por_defecto(ruta_casos)
     if not destino.exists():
         return
     borrados = store_para(destino).borrar_de(case_ids=[case_id])

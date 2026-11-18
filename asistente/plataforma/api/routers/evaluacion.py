@@ -495,9 +495,9 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
 
     @router.get("/evaluacion/revision/aceptados", response_model=ListaAceptados, dependencies=guarded)
     def get_aceptados(quien: quien_dep, cases: case_store_dep) -> ListaAceptados:
+        if not privado.ruta_por_defecto(cases.db_path).exists():
+            return ListaAceptados(casos=[])  # nothing accepted yet: the private file is not even created
         store = privado.store_de(cases.db_path)
-        if not store.db_path or not privado.ruta_por_defecto(cases.db_path).exists():
-            return ListaAceptados(casos=[])
         reales = store.todos() if quien.case_ids is None else store.de_casos(sorted(quien.case_ids))
         return ListaAceptados(
             casos=[
@@ -526,10 +526,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         if real is None or not (quien.case_ids is None or real.case_id in quien.case_ids):
             raise HTTPException(status_code=404, detail="Caso no encontrado.")
         store.borrar(caso_id)
-        with candidatos._lock:
-            conn = candidatos._get()
-            with conn:
-                revision.reabrir_candidatos_de(conn, [caso_id])
+        candidatos.reabrir_aceptados([caso_id])
         return Response(status_code=204)
 
     @router.get("/evaluacion/revision/{candidato_id}", response_model=DetalleCandidato, dependencies=guarded)

@@ -591,3 +591,33 @@ def test_the_versioned_suite_refuses_real_cases(tmp_path: Path, monkeypatch: pyt
     monkeypatch.setattr(s, "CASOS_DIR", copia)  # as if it were the repository's suite
     with pytest.raises(s.SuiteInvalidaError, match="no puede estar en el repositorio"):
         s.cargar_casos(copia)
+
+
+def test_the_brains_summary_in_the_audit_event_is_understood_too(env: Entornito) -> None:
+    """``api.py`` may store only a summary of the brain's report in the audit event: still a brain turn."""
+    resumen = {
+        "ruta": "sintesis",
+        "tipo": "cruzada",
+        "origen": "reglas",
+        "especialistas": ["hipoteca", "luz"],
+        "revisiones_sintesis": 2,
+        "violaciones_cifras": 1,
+    }
+    env.candidatos.dar_consentimiento("case_1")
+    _turno(env.cases, cerebro=resumen)
+    (senal,) = revision.detectar_en_caso(env.candidatos, env.cases, env.cases.get_case("case_1"))
+    assert senal.tipo_fallo == "puerta_cifras" and senal.categoria_sugerida == "procedencia" and senal.critica
+    assert senal.contenido.cerebro is None and senal.contenido.cerebro_resumen == resumen
+    assert senal.contenido.modos_especialistas == {"hipoteca": None, "luz": None}
+    # Accepted as a brain case; its brain checks cannot be contrasted with a summary, and the reviewer is told.
+    real = revision.aceptar(
+        env.candidatos,
+        senal,
+        EdicionCaso(
+            categoria="procedencia",
+            esperado=ComportamientoEsperado(especialistas_obligatorios=["hipoteca"], puerta_sin_violaciones=True),
+            aunque_no_reproduzca=True,
+        ),
+        revisor="propietario",
+    )
+    assert real.caso.requiere == ["cerebro"] and any("solo guardó un resumen" in a for a in real.avisos)

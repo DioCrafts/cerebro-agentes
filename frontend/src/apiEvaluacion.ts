@@ -198,6 +198,8 @@ export interface ContenidoCandidato {
   correccion: Record<string, string | null>;
   modo: string | null;
   cerebro: CerebroCandidato | null;
+  // Only the summary the audit trail kept, when there is no full report.
+  cerebro_resumen?: { ruta?: string; tipo?: string; especialistas?: string[]; violaciones_cifras?: number } | null;
   modos_especialistas: Record<string, string | null>;
   variante: string | null;
   modelos: Record<string, string>;

@@ -232,6 +232,14 @@ function Formulario({
         </section>
       )}
 
+      {!contenido.cerebro && contenido.cerebro_resumen && (
+        <p className="text-[12.5px] text-ink-soft">
+          Cómo lo preparó: {contenido.cerebro_resumen.tipo ?? "—"} · ruta {contenido.cerebro_resumen.ruta ?? "—"} · consultó a{" "}
+          {(contenido.cerebro_resumen.especialistas ?? []).join(", ") || "nadie"}
+          {contenido.cerebro_resumen.violaciones_cifras ? ` · ${contenido.cerebro_resumen.violaciones_cifras} problemas en la puerta de cifras` : ""}
+        </p>
+      )}
+
       {contenido.enmascarado.length > 0 && (
         <details className="text-[12.5px] text-ink-soft">
           <summary className="cursor-pointer font-semibold text-ink">Qué se ha ocultado ({contenido.enmascarado.length})</summary>

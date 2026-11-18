@@ -11,7 +11,7 @@ What each requirement needs (the only coupling, in one table, :data:`REQUISITOS`
 * ``cerebro`` — ``asistente.nucleo.cerebro.cerebro.Cerebro`` (built with the evaluation's provider, searcher and
   verifier: ``asesor``, ``proveedor``, ``verificador``, ``memoria``, ``fabrica``) and
   ``asistente.nucleo.cerebro.construir.especialistas_del_hogar`` (the household specialists of the case's
-  modules). Its ``run(query, chat_history=…, case=…, modulos=…, conversacion_id=…)`` returns an ``AgentResult``
+  modules). Its ``run(query, chat_history=…, case=…, modulos=…, conversacion_id=…, user_id=…)`` returns an ``AgentResult``
   whose ``cerebro`` is the turn's :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro`. The case's memory
   is :class:`MemoriaDeCaso` (the case's ``memoria`` items, each answered only to its own user).
 * ``recuerdos`` — the real conversation memory (``asistente.nucleo.recuerdos.servicio.ServicioMemoria`` over a
@@ -196,13 +196,15 @@ def ejecutar_cerebro(
 ) -> Any:
     """One turn of the brain on the case: the ``AgentResult`` (with ``cerebro``)."""
     cerebro = construir_cerebro(asesor=asesor, proveedor=proveedor, verificador=verificador, memoria=memoria)
-    return cerebro.run(
-        caso.pregunta,
-        chat_history=list(caso.historial),
-        case=case,
-        modulos=list(modulos),
-        conversacion_id=conversacion_de(caso),
-    )
+    argumentos: dict[str, Any] = {
+        "chat_history": list(caso.historial),
+        "case": case,
+        "modulos": list(modulos),
+        "conversacion_id": conversacion_de(caso),
+    }
+    if "user_id" in inspect.signature(cerebro.run).parameters:
+        argumentos["user_id"] = caso.usuario  # whose memory the turn reads
+    return cerebro.run(caso.pregunta, **argumentos)
 
 
 # --------------------------------------------------------------------------- #

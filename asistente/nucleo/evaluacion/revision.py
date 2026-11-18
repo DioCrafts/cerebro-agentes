@@ -130,6 +130,7 @@ _SENAL_A_FALLO: dict[str, TipoFallo] = {
 PESO_ORIGEN: dict[str, float] = {"valoracion": 40.0, "voto": 30.0}
 PESO_SENAL: dict[str, float] = {"puerta_cifras": 25.0, "verificador": 20.0, "repregunta": 10.0, "abstencion": 5.0}
 PESO_CRITICA = 100.0
+_SIN_INFORME = "no trae el informe del cerebro"
 _SENALES_ESPECIFICAS = frozenset({"puerta_cifras", "verificador"})
 
 CONSENTIMIENTO_APRENDIZAJE_VERSION = "2026-11-18"
@@ -159,6 +160,8 @@ class ContenidoCandidato(_Modelo):
     correccion: dict[str, str | None] = Field(default_factory=dict)
     modo: str | None = None
     cerebro: dict[str, Any] | None = None
+    # Only the summary the audit event carried (ruta, tipo, especialistas, violaciones_cifras), when no full report.
+    cerebro_resumen: dict[str, Any] | None = None
     modos_especialistas: dict[str, str | None] = Field(default_factory=dict)
     variante: str | None = None
     modelos: dict[str, str] = Field(default_factory=dict)
@@ -333,6 +336,13 @@ class CandidatoStore:
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return cursor.rowcount
 
+    def reabrir_aceptados(self, casos_reales: Sequence[str]) -> int:
+        """Candidates accepted into these (now erased) real cases go back to the queue."""
+        with self._lock:
+            conn = self._get()
+            with conn:
+                return reabrir_candidatos_de(conn, casos_reales)
+
     # --- standing consent per case ---------------------------------------------------------------------------
 
     def consentimiento(self, case_id: str) -> ConsentimientoAprendizaje | None:
@@ -488,11 +498,18 @@ def importe_en_juego(contenido: ContenidoCandidato) -> Decimal | None:
     return max(importes) if importes else None
 
 
+def con_cerebro(contenido: ContenidoCandidato) -> bool:
+    """The turn went through the household brain (full report or its summary)."""
+    return contenido.cerebro is not None or contenido.cerebro_resumen is not None
+
+
+def _ruta(contenido: ContenidoCandidato) -> str | None:
+    ruta = (contenido.cerebro or contenido.cerebro_resumen or {}).get("ruta")
+    return str(ruta) if ruta else None
+
+
 def _con_fiscal(contenido: ContenidoCandidato) -> bool:
-    cerebro = contenido.cerebro or {}
-    if cerebro.get("ruta") == "paso_directo":
-        return True
-    if any((i or {}).get("especialista") == "fiscal" for i in cerebro.get("informes") or []):
+    if _ruta(contenido) == "paso_directo" or "fiscal" in contenido.modos_especialistas:
         return True
     from asistente.nucleo.evaluacion.cifras import herramientas_fiscales
 
@@ -504,22 +521,20 @@ def _con_fiscal(contenido: ContenidoCandidato) -> bool:
 
 def categoria_sugerida(tipo: TipoFallo, contenido: ContenidoCandidato) -> str:
     """The suite category a reviewer would most likely pick (they can change it)."""
-    con_cerebro = contenido.cerebro is not None
+    cerebro = con_cerebro(contenido)
     fiscal = _con_fiscal(contenido)
     if tipo == "cifra_erronea":
         if fiscal:
-            return (
-                "paso_directo_fiscal" if (contenido.cerebro or {}).get("ruta") == "paso_directo" else "calculo_fiscal"
-            )
+            return "paso_directo_fiscal" if _ruta(contenido) == "paso_directo" else "calculo_fiscal"
         return "modulo"
     if tipo in ("modulo_erroneo", "repregunta"):
-        return "intencion" if con_cerebro else ("enrutado" if tipo == "modulo_erroneo" else "regresion")
+        return "intencion" if cerebro else ("enrutado" if tipo == "modulo_erroneo" else "regresion")
     if tipo in ("afirmacion_inventada", "verificador"):
-        return "paso_directo_fiscal" if fiscal and con_cerebro else "regresion"
+        return "paso_directo_fiscal" if fiscal and cerebro else "regresion"
     if tipo in ("suma_indebida", "puerta_cifras"):
-        return "procedencia" if con_cerebro else "no_sumar"
+        return "procedencia" if cerebro else "no_sumar"
     if tipo == "memoria_erronea":
-        return "memoria" if con_cerebro else "regresion"
+        return "memoria" if cerebro else "regresion"
     return "regresion"
 
 
@@ -592,8 +607,16 @@ def construir_contenido(
     if respuesta is None and claims:
         respuesta = " ".join(str(c.get("text") or "") for c in claims).strip() or None
         parcial = respuesta is not None
-    cerebro = _cerebro_valido(turno.get("cerebro"))
-    modos = {i["especialista"]: i.get("modo") for i in (cerebro or {}).get("informes") or [] if isinstance(i, dict)}
+    from asistente.nucleo.evaluacion.captura import informe_del_turno, resumen_del_turno
+
+    informe = informe_del_turno(turno)
+    cerebro = informe.model_dump(mode="json") if informe is not None else None
+    resumen = resumen_del_turno(turno) if informe is None else None
+    modos: dict[str, str | None] = (
+        {i.especialista: i.modo for i in informe.informes}
+        if informe is not None
+        else {str(e): None for e in (resumen or {}).get("especialistas") or []}
+    )
     modelos = turno.get("modelos") if isinstance(turno.get("modelos"), dict) else None
     contenido = ContenidoCandidato(
         pregunta=m.texto(pregunta, "pregunta"),
@@ -606,6 +629,7 @@ def construir_contenido(
         },
         modo=turno.get("mode") if isinstance(turno.get("mode"), str) else None,
         cerebro=_enmascarar_json(cerebro, m, "cerebro", _CONSERVAR_CEREBRO) if cerebro is not None else None,
+        cerebro_resumen=resumen,
         modos_especialistas=modos,
         variante=str(turno.get("variante") or variante or "") or None,
         modelos={str(k): str(v) for k, v in modelos.items()} if modelos else modelos_por_proposito(turno, list(modos)),
@@ -636,17 +660,6 @@ def construir_contenido(
     )
     contenido.enmascarado = list(m.cambios)
     return contenido
-
-
-def _cerebro_valido(valor: Any) -> dict[str, Any] | None:
-    """The turn's InformeCerebro as JSON, only if it validates against the contract (else None, logged)."""
-    if not isinstance(valor, dict):
-        return None
-    try:
-        return InformeCerebro.model_validate(valor).model_dump(mode="json")
-    except Exception:  # noqa: BLE001 - an old or broken report is left out, the rest of the case still counts
-        logger.warning("The turn's brain report does not validate against the contract: left out of the candidate")
-        return None
 
 
 def nuevo_candidato(
@@ -881,8 +894,7 @@ def _modulos_de_contenido(contenido: ContenidoCandidato) -> list[str]:
         for t in contenido.tool_trace
         if str(t.get("tool") or "").startswith("consultar_") and (t.get("agent") or "asesor") == "asesor"
     }
-    for informe in (contenido.cerebro or {}).get("informes") or []:
-        claves.add(str((informe or {}).get("especialista") or ""))
+    claves |= set(contenido.modos_especialistas)
     conocidos = registro().modulos
     return sorted(c for c in claves if c and c != "fiscal" and c in conocidos)
 
@@ -921,7 +933,7 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
     from asistente.nucleo.evaluacion.captura import referencia_anonima
 
     contenido = candidato.contenido
-    con_cerebro = contenido.cerebro is not None
+    cerebro = con_cerebro(contenido)
     e = edicion.esperado
     instantanea = contenido.instantanea or {}
     expediente = Expediente(
@@ -931,7 +943,7 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
     )
     expectativas: list[Any] = []
     if e.especialistas_obligatorios or e.especialistas_prohibidos:
-        if con_cerebro:
+        if cerebro:
             expectativas.append(
                 ExpEspecialistas(
                     tipo="especialistas",
@@ -957,7 +969,7 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
         referencia = e.cifra_esperada.referencia or contenido.correccion.get("cifra_correcta")
         calculo = _calculo(e.cifra_esperada, expediente, referencia)
         expectativas.append(ExpCifra(tipo="cifra", nombre="cifra_esperada", calculo=calculo))
-        if e.cifra_esperada.especialista and con_cerebro:
+        if e.cifra_esperada.especialista and cerebro:
             expectativas.append(
                 ExpCifraAtribuida(
                     tipo="cifra_atribuida", nombre="cifra_esperada", especialista=e.cifra_esperada.especialista
@@ -966,13 +978,13 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
     if e.debe_abstenerse:
         expectativas.append(ExpModo(tipo="modo", permitidos=["abstained"]))
     if e.debe_aclarar:
-        if con_cerebro:
+        if cerebro:
             expectativas.append(ExpIntencion(tipo="intencion", aclaracion=True))
         else:
             expectativas.append(ExpModo(tipo="modo", permitidos=["clarification"]))
     if e.modos_permitidos:
         expectativas.append(ExpModo(tipo="modo", permitidos=list(e.modos_permitidos)))
-    if e.puerta_sin_violaciones and con_cerebro:
+    if e.puerta_sin_violaciones and cerebro:
         expectativas.append(ExpPuerta(tipo="puerta", sin_violaciones=True))
     try:
         expectativas += [ExpTextoPresente(tipo="texto_presente", patron=t) for t in e.textos_obligatorios]
@@ -996,7 +1008,7 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
             expediente=expediente,
             expectativas=expectativas,
             rubrica=rubrica,
-            requiere=["cerebro"] if con_cerebro else [],
+            requiere=["cerebro"] if cerebro else [],
             origen=Origen(
                 tipo="senal" if candidato.origen == "senal" else "feedback",
                 referencia=referencia_anonima(candidato.id),
@@ -1084,6 +1096,14 @@ def aceptar(
         raise AceptacionRechazadaError(validacion.errores)
     avisos: list[str] = []
     fallos = comprobar(caso, ejecucion_capturada(candidato.contenido), cifras_esperadas(caso))
+    # A brain expectation «fails» on a capture that only kept the brain's summary because the report is missing,
+    # not because the mistake is caught: that does not count as reproducing it.
+    fallos = [f for f in fallos if _SIN_INFORME not in f]
+    if candidato.contenido.cerebro is None and candidato.contenido.cerebro_resumen is not None:
+        avisos.append(
+            "La auditoría solo guardó un resumen del cerebro: sus comprobaciones no se han podido contrastar con lo "
+            "que pasó."
+        )
     if not fallos:
         aviso = (
             "Con estas expectativas, la respuesta que se dio aprobaría: no capturan el error. Concreta el "
@@ -1248,7 +1268,9 @@ def al_guardar_caso(conn: sqlite3.Connection, case: Any) -> None:
                 )
         from asistente.nucleo.evaluacion.privado import redactar_hechos_borrados
 
-        redactar_hechos_borrados(_ruta_de(conn) or None, case.case_id, actuales)
+        ruta = _ruta_de(conn)
+        if ruta:  # an in-memory cases' database has no private file next to it
+            redactar_hechos_borrados(ruta, case.case_id, actuales)
     except Exception:
         logger.exception("Could not redact a deleted fact from the evaluation candidates")
 
@@ -1295,10 +1317,7 @@ def borrar_de_usuario(db_path: str, *, user_id: str | None, case_ids: Sequence[s
     store = candidatos_para(db_path)
     aceptados = privado.borrar_de_usuario(db_path, user_id=user_id, case_ids=list(case_ids))
     candidatos = store.borrar_de_casos(list(case_ids))
-    with store._lock:
-        conn = store._get()
-        with conn:
-            reabiertos = reabrir_candidatos_de(conn, aceptados)
+    reabiertos = store.reabrir_aceptados(aceptados)
     return {"candidatos": candidatos, "casos_aceptados": len(aceptados), "reabiertos": reabiertos}
 
 
