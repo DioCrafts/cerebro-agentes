@@ -81,12 +81,14 @@ def test_end_to_end_with_the_real_engine(db: str) -> None:
     assert all("no soporto deber dinero" in r["user"] for r in revision)
 
 
-def test_a_chair_stopped_by_the_budget_gives_a_partial_ruling(db: str) -> None:
+def test_a_budget_stop_during_the_critiques_gives_a_partial_ruling(db: str) -> None:
     from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
     servicio, consejo, _expediente = _montaje(db)
-    presidente = next(p for proposito, p in consejo.items() if proposito == "consejo:presidente")
-    presidente.json_responses = [PresupuestoAgotadoError("Tope de la sesión.", limite="llamadas_por_pregunta")]
+    # The budget runs out during the anonymous critiques: the engine stops there and rules with round 1.
+    for proposito, proveedor in consejo.items():
+        if proposito.startswith("consejo:miembro:"):
+            proveedor.json_responses[1] = PresupuestoAgotadoError("Tope de la sesión.", limite="llamadas_por_pregunta")
     case = SQLiteCaseStateStore(db).get_case("c1")
     assert case is not None
     sesion = servicio.convocar(case=case, pregunta=PREGUNTA)
