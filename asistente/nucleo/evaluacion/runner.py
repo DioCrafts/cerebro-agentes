@@ -34,15 +34,21 @@ from asistente.nucleo.agent.search import CorpusSearcher
 from asistente.nucleo.agent.verifier import Verifier
 from asistente.nucleo.evals.agent_eval import ExcludingSearcher
 from asistente.nucleo.evaluacion.cifras import SinCorpus, caso_desde_expediente
-from asistente.nucleo.evaluacion.ejecutores import ejecutar_cerebro, ejecutar_repaso, memoria_para, pendiente, pendientes
+from asistente.nucleo.evaluacion.ejecutores import (
+    ejecutar_cerebro,
+    ejecutar_repaso,
+    memoria_para,
+    pendiente,
+    pendientes,
+)
 from asistente.nucleo.evaluacion.juez import juzgar
 from asistente.nucleo.evaluacion.modelos import (
     CasoEvaluacion,
-    Expediente,
     CitaRegistrada,
     Comparacion,
     ConfigSuite,
     Ejecucion,
+    Expediente,
     InformeEvaluacion,
     LlamadaRegistrada,
     ResultadoCaso,
@@ -421,7 +427,7 @@ def evaluar(
         proveedor=nombre_proveedor,
         modelo=modelo,
         prompts={rol: variante.prompts[rol] for rol in ROLES},
-        huellas_prompts=dict(huellas_de(variante)),
+        huellas_prompts={str(rol): h for rol, h in huellas_de(variante).items()},
         modo=entorno.modo,
         suite_version=config.version,
         suite_huella=suite_huella,

@@ -65,8 +65,8 @@ from asistente.nucleo.evaluacion.modelos import (
     ExpCifraAtribuida,
     ExpCifraAusente,
     ExpCitas,
-    ExpEspecialistas,
     Expediente,
+    ExpEspecialistas,
     ExpIntencion,
     ExpModo,
     ExpModuloConsultado,
@@ -78,10 +78,16 @@ from asistente.nucleo.evaluacion.modelos import (
     Origen,
     Rubrica,
 )
-from asistente.nucleo.evaluacion.redaccion import CambioRedaccion, Enmascarador, identificadores_en, nombres_de_perfil, nombres_en
-from asistente.nucleo.evaluacion.senales import SENALES_DEBILES, Senal, es_repregunta, respuestas, senales_de_turno
 from asistente.nucleo.evaluacion.privado import CasoReal, store_de
+from asistente.nucleo.evaluacion.redaccion import (
+    CambioRedaccion,
+    Enmascarador,
+    identificadores_en,
+    nombres_de_perfil,
+    nombres_en,
+)
 from asistente.nucleo.evaluacion.reproduccion import guion_de_captura
+from asistente.nucleo.evaluacion.senales import SENALES_DEBILES, Senal, es_repregunta, respuestas, senales_de_turno
 
 logger = logging.getLogger(__name__)
 
@@ -321,7 +327,9 @@ class CandidatoStore:
                 cursor = conn.execute(
                     f"DELETE FROM evaluacion_candidatos WHERE case_id IN ({marcas})", tuple(case_ids)  # noqa: S608
                 )
-                conn.execute(f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids))  # noqa: S608
+                conn.execute(
+                    f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids)
+                )  # noqa: S608
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return cursor.rowcount
 
@@ -331,7 +339,9 @@ class CandidatoStore:
         with self._lock:
             fila = (
                 self._get()
-                .execute("SELECT case_id, version, otorgado_el FROM evaluacion_aprendizaje WHERE case_id = ?", (case_id,))
+                .execute(
+                    "SELECT case_id, version, otorgado_el FROM evaluacion_aprendizaje WHERE case_id = ?", (case_id,)
+                )
                 .fetchone()
             )
         if fila is None:
@@ -470,7 +480,7 @@ def importe_en_juego(contenido: ContenidoCandidato) -> Decimal | None:
                     importes.append(abs(Decimal(str(cifra.get("valor")))))
                 except Exception:  # noqa: BLE001 - a malformed figure only loses its weight in the triage
                     continue
-    for violacion in ((cerebro.get("puerta") or {}).get("violaciones") or []):
+    for violacion in (cerebro.get("puerta") or {}).get("violaciones") or []:
         for m in _IMPORTE_RE.finditer(str(violacion.get("literal") or "")):
             valor = numero(m.group(1).strip(".,"))
             if valor is not None:
@@ -487,7 +497,9 @@ def _con_fiscal(contenido: ContenidoCandidato) -> bool:
     from asistente.nucleo.evaluacion.cifras import herramientas_fiscales
 
     fiscales = herramientas_fiscales()
-    return any(str(t.get("tool") or "") in fiscales and str(t.get("tool")) != "buscar_fuentes" for t in contenido.tool_trace)
+    return any(
+        str(t.get("tool") or "") in fiscales and str(t.get("tool")) != "buscar_fuentes" for t in contenido.tool_trace
+    )
 
 
 def categoria_sugerida(tipo: TipoFallo, contenido: ContenidoCandidato) -> str:
@@ -496,7 +508,9 @@ def categoria_sugerida(tipo: TipoFallo, contenido: ContenidoCandidato) -> str:
     fiscal = _con_fiscal(contenido)
     if tipo == "cifra_erronea":
         if fiscal:
-            return "paso_directo_fiscal" if (contenido.cerebro or {}).get("ruta") == "paso_directo" else "calculo_fiscal"
+            return (
+                "paso_directo_fiscal" if (contenido.cerebro or {}).get("ruta") == "paso_directo" else "calculo_fiscal"
+            )
         return "modulo"
     if tipo in ("modulo_erroneo", "repregunta"):
         return "intencion" if con_cerebro else ("enrutado" if tipo == "modulo_erroneo" else "regresion")
@@ -610,7 +624,9 @@ def construir_contenido(
             for i, c in enumerate(claims)
         ],
         citas=[
-            {"fragment_id": str(c.get("fragment_id") or "")} for c in turno.get("citations") or [] if isinstance(c, dict)
+            {"fragment_id": str(c.get("fragment_id") or "")}
+            for c in turno.get("citations") or []
+            if isinstance(c, dict)
         ],
         acciones_pendientes=[
             str(a.get("herramienta")) for a in turno.get("pending_actions") or [] if isinstance(a, dict)
@@ -648,9 +664,7 @@ def nuevo_candidato(
     # A vague signal (a repeat, an abstention) never claims a critical category by itself: only what the user
     # said, or a specific signal (the figures gate, the verifier), does.
     critica = _critica(categoria, config) and (origen != "senal" or tipo in _SENALES_ESPECIFICAS)
-    clave = hashlib.sha256(
-        f"{case_id}|{referencia_turno}|{tipo}|{origen}|{feedback_id or ''}".encode()
-    ).hexdigest()
+    clave = hashlib.sha256(f"{case_id}|{referencia_turno}|{tipo}|{origen}|{feedback_id or ''}".encode()).hexdigest()
     candidato = Candidato(
         id=f"cand_{uuid4().hex}",
         grupo=huella_grupo(contenido.pregunta, tipo),
@@ -825,8 +839,8 @@ class ComportamientoEsperado(_Modelo):
     cifra_esperada: CifraEsperadaEdicion | None = None
     debe_abstenerse: bool = False
     debe_aclarar: bool = False
-    modos_permitidos: list[Literal["verified", "partially_verified", "unverified", "clarification", "abstained"]] = Field(
-        default_factory=list
+    modos_permitidos: list[Literal["verified", "partially_verified", "unverified", "clarification", "abstained"]] = (
+        Field(default_factory=list)
     )
     puerta_sin_violaciones: bool = False
     textos_obligatorios: list[str] = Field(default_factory=list, max_length=20)
@@ -885,7 +899,9 @@ def _calculo(edicion: CifraEsperadaEdicion, expediente: Expediente, referencia: 
         try:
             salida = salida_de_herramienta(edicion.herramienta, dict(edicion.argumentos), expediente)
         except Exception as exc:  # noqa: BLE001 - reported to the reviewer
-            raise AceptacionRechazadaError([f"La calculadora {edicion.herramienta} no se puede ejecutar: {exc}"]) from exc
+            raise AceptacionRechazadaError(
+                [f"La calculadora {edicion.herramienta} no se puede ejecutar: {exc}"]
+            ) from exc
         patron = _linea_de_cifra(salida, referencia)
         if patron is None:
             raise AceptacionRechazadaError(
@@ -925,7 +941,9 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
                 )
             )
         else:
-            expectativas += [ExpModuloConsultado(tipo="modulo_consultado", modulo=x) for x in e.especialistas_obligatorios]
+            expectativas += [
+                ExpModuloConsultado(tipo="modulo_consultado", modulo=x) for x in e.especialistas_obligatorios
+            ]
             expectativas += [
                 ExpModuloNoConsultado(tipo="modulo_no_consultado", modulo=x) for x in e.especialistas_prohibidos
             ]
@@ -941,7 +959,9 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
         expectativas.append(ExpCifra(tipo="cifra", nombre="cifra_esperada", calculo=calculo))
         if e.cifra_esperada.especialista and con_cerebro:
             expectativas.append(
-                ExpCifraAtribuida(tipo="cifra_atribuida", nombre="cifra_esperada", especialista=e.cifra_esperada.especialista)
+                ExpCifraAtribuida(
+                    tipo="cifra_atribuida", nombre="cifra_esperada", especialista=e.cifra_esperada.especialista
+                )
             )
     if e.debe_abstenerse:
         expectativas.append(ExpModo(tipo="modo", permitidos=["abstained"]))
@@ -960,7 +980,9 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
     except ValueError as exc:
         raise AceptacionRechazadaError([str(exc)]) from exc
     referencia_juez = str(contenido.correccion.get("respuesta_correcta") or "").strip() or None
-    rubrica = Rubrica(criterios=list(edicion.criterios_juez), referencia=referencia_juez) if edicion.criterios_juez else None
+    rubrica = (
+        Rubrica(criterios=list(edicion.criterios_juez), referencia=referencia_juez) if edicion.criterios_juez else None
+    )
     if not expectativas and rubrica is None:
         raise AceptacionRechazadaError(["Indica al menos un comportamiento esperado (o un criterio para el juez)."])
     hoy = date.today()
@@ -987,6 +1009,11 @@ def caso_desde_candidato(candidato: Candidato, edicion: EdicionCaso, *, revisor:
         raise AceptacionRechazadaError([str(exc)]) from exc
 
 
+def _argumentos(entrada: Mapping[str, Any]) -> dict[str, Any]:
+    bruto = entrada.get("arguments")
+    return dict(bruto) if isinstance(bruto, dict) else {}
+
+
 def ejecucion_capturada(contenido: ContenidoCandidato) -> Ejecucion:
     """The run that actually happened, rebuilt from the candidate (for the negative control)."""
     cerebro = None
@@ -1002,7 +1029,7 @@ def ejecucion_capturada(contenido: ContenidoCandidato) -> Ejecucion:
             LlamadaRegistrada(
                 herramienta=str(t.get("tool") or ""),
                 agente=str(t.get("agent") or "asesor"),
-                argumentos=t.get("arguments") if isinstance(t.get("arguments"), dict) else {},
+                argumentos=_argumentos(t),
                 resumen=str(t.get("summary") or ""),
                 es_error=bool(t.get("is_error")),
             )
@@ -1159,7 +1186,9 @@ def _marcar_feedback(db_path: str, candidato: Candidato, estado: str, caso: str 
 
 
 def _tabla(conn: sqlite3.Connection, nombre: str) -> bool:
-    return conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (nombre,)).fetchone() is not None
+    return (
+        conn.execute("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = ?", (nombre,)).fetchone() is not None
+    )
 
 
 def reabrir_candidatos_de(conn: sqlite3.Connection, casos_reales: Sequence[str]) -> int:

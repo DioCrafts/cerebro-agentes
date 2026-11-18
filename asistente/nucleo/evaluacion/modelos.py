@@ -22,7 +22,13 @@ from typing import Annotated, Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from asistente.nucleo.cerebro.contrato import InformeCerebro, RecuerdoMemoria, RutaRespuesta, TipoIntencion, TipoViolacion
+from asistente.nucleo.cerebro.contrato import (
+    InformeCerebro,
+    RecuerdoMemoria,
+    RutaRespuesta,
+    TipoIntencion,
+    TipoViolacion,
+)
 
 
 class _Modelo(BaseModel):
@@ -407,11 +413,11 @@ class CasoEvaluacion(_Modelo):
         if not self.expectativas and self.rubrica is None:
             raise ValueError("un caso necesita al menos una expectativa o una rúbrica")
         if any(isinstance(e, EXPECTATIVAS_DEL_CEREBRO) for e in self.expectativas) and "cerebro" not in self.requiere:
-            raise ValueError("las expectativas del cerebro necesitan «requiere»: [\"cerebro\"]")
+            raise ValueError('las expectativas del cerebro necesitan «requiere»: ["cerebro"]')
         if any(isinstance(e, ExpRepaso) for e in self.expectativas) and (
             "repaso" not in self.requiere or self.entrada_repaso is None
         ):
-            raise ValueError("una expectativa «repaso» necesita «requiere»: [\"repaso\"] y «entrada_repaso»")
+            raise ValueError('una expectativa «repaso» necesita «requiere»: ["repaso"] y «entrada_repaso»')
         cifras = {e.nombre for e in self.expectativas if isinstance(e, ExpCifra)}
         for e in self.expectativas:
             if isinstance(e, ExpCifraAtribuida) and e.nombre not in cifras:

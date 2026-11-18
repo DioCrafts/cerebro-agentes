@@ -26,8 +26,8 @@ from __future__ import annotations
 from collections.abc import Iterable, Mapping
 import json
 import re
-import unicodedata
 from typing import Any
+import unicodedata
 
 from pydantic import BaseModel, ConfigDict
 
@@ -86,7 +86,9 @@ _DIRECCION_RE = re.compile(
     r"(?:[,\s]+(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b)?",
     re.IGNORECASE,
 )
-_CODIGO_POSTAL_RE = re.compile(r"\b(?:c\.?\s?p\.?|c[oó]digo postal)\s*:?\s*(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b", re.IGNORECASE)
+_CODIGO_POSTAL_RE = re.compile(
+    r"\b(?:c\.?\s?p\.?|c[oó]digo postal)\s*:?\s*(?:0[1-9]|[1-4]\d|5[0-2])\d{3}\b", re.IGNORECASE
+)
 
 # Amounts, percentages, quantities with a unit, dates and short numbers: kept as they are.
 _NB = r"(?<![A-Za-z0-9])"
@@ -160,7 +162,9 @@ def nombres_de_valor(valor: Any, *, clave: str = "") -> list[str]:
         if clave and ("nombre" in clave or "apellido" in clave) and _NOMBRE_RE.match(valor.strip()):
             completo = " ".join(valor.split())
             encontrados.append(completo)
-            encontrados.extend(p for p in re.split(r"[ .-]+", completo) if len(p) >= 3 and p.casefold() not in _PARTICULAS)
+            encontrados.extend(
+                p for p in re.split(r"[ .-]+", completo) if len(p) >= 3 and p.casefold() not in _PARTICULAS
+            )
     elif isinstance(valor, Mapping):
         for k, v in valor.items():
             encontrados.extend(nombres_de_valor(v, clave=str(k).casefold()))
@@ -218,14 +222,19 @@ class Enmascarador:
     def __init__(self, nombres: Iterable[str] = ()) -> None:
         unicos = sorted({n.strip() for n in nombres if n and len(n.strip()) >= 2}, key=lambda n: (-len(n), n))
         self._nombres = (
-            re.compile(r"(?<![\wÁÉÍÓÚÑáéíóúñ])(?:" + "|".join(_patron_nombre(n) for n in unicos) + r")(?![\wÁÉÍÓÚÑáéíóúñ])", re.IGNORECASE)
+            re.compile(
+                r"(?<![\wÁÉÍÓÚÑáéíóúñ])(?:" + "|".join(_patron_nombre(n) for n in unicos) + r")(?![\wÁÉÍÓÚÑáéíóúñ])",
+                re.IGNORECASE,
+            )
             if unicos
             else None
         )
         self.cambios: list[CambioRedaccion] = []
 
     def _anotar(self, campo: str, tipo: str, sustituto: str, original: str) -> None:
-        self.cambios.append(CambioRedaccion(campo=campo, tipo=tipo, sustituto=sustituto, vista=vista_abreviada(original)))
+        self.cambios.append(
+            CambioRedaccion(campo=campo, tipo=tipo, sustituto=sustituto, vista=vista_abreviada(original))
+        )
 
     def texto(self, texto: str, campo: str) -> str:
         if not texto:
@@ -295,7 +304,9 @@ class Enmascarador:
         return valor
 
 
-def enmascarar_texto(texto: str, *, nombres: Iterable[str] = (), campo: str = "texto") -> tuple[str, list[CambioRedaccion]]:
+def enmascarar_texto(
+    texto: str, *, nombres: Iterable[str] = (), campo: str = "texto"
+) -> tuple[str, list[CambioRedaccion]]:
     """One text masked, with its diff."""
     enmascarador = Enmascarador(nombres)
     return enmascarador.texto(texto, campo), enmascarador.cambios

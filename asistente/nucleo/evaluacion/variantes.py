@@ -216,7 +216,9 @@ def comprobar_integrados() -> list[str]:
             actual = huella(texto_integrado(rol))
         except RolNoDisponibleError as exc:
             if integrado is not None:
-                problemas.append(f"«{rol}» está registrado como «{integrado.version}» pero su texto ya no se lee: {exc}")
+                problemas.append(
+                    f"«{rol}» está registrado como «{integrado.version}» pero su texto ya no se lee: {exc}"
+                )
             continue
         if integrado is None:
             problemas.append(

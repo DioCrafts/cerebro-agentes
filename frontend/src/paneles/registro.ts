@@ -18,6 +18,7 @@ import {
   Brain,
   BriefcaseBusiness,
   Calculator,
+  ClipboardCheck,
   ClipboardList,
   Globe,
   House,
@@ -123,6 +124,14 @@ export const REGISTRO: DefinicionPanel[] = [
     icono: BookUser,
     orden: 80,
     cargar: () => import("./preferencias"),
+  },
+  {
+    id: "revision",
+    etiqueta: "Revisión",
+    titulo: "Revisión de casos: lo que el asistente hizo mal, para que no vuelva a pasar",
+    icono: ClipboardCheck,
+    orden: 85,
+    cargar: () => import("./revision"),
   },
   {
     id: "recuerdos",

@@ -36,7 +36,13 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
-from asistente.nucleo.cerebro.contrato import BloqueMemoria, MemoriaNula, ProveedorMemoria, RecuerdoMemoria, TurnoConversacion
+from asistente.nucleo.cerebro.contrato import (
+    BloqueMemoria,
+    MemoriaNula,
+    ProveedorMemoria,
+    RecuerdoMemoria,
+    TurnoConversacion,
+)
 from asistente.nucleo.evaluacion.modelos import CasoEvaluacion
 
 REQUISITOS: dict[str, tuple[tuple[str, str], ...]] = {
@@ -121,7 +127,11 @@ def memoria_real(caso: CasoEvaluacion, directorio: Path) -> ProveedorMemoria:
     titular_cls = _resolver("asistente.nucleo.recuerdos.almacen", "Titular")
     db = str(directorio / "recuerdos.sqlite3")
     parametros = inspect.signature(servicio_cls).parameters
-    servicio = servicio_cls(db, usar_incrustador_configurado=False) if "usar_incrustador_configurado" in parametros else servicio_cls(db)
+    servicio = (
+        servicio_cls(db, usar_incrustador_configurado=False)
+        if "usar_incrustador_configurado" in parametros
+        else servicio_cls(db)
+    )
     ahora = datetime.now(UTC)
     for r in caso.memoria:
         usuario = r.usuario or caso.usuario
@@ -136,7 +146,9 @@ def memoria_real(caso: CasoEvaluacion, directorio: Path) -> ProveedorMemoria:
             "actualizado": ahora,
             "corregido": r.corregido,
         }
-        servicio.store.guardar(titular, recuerdo_cls(**{k: v for k, v in datos.items() if k in recuerdo_cls.model_fields}))
+        servicio.store.guardar(
+            titular, recuerdo_cls(**{k: v for k, v in datos.items() if k in recuerdo_cls.model_fields})
+        )
     return servicio  # type: ignore[no-any-return]
 
 
@@ -161,7 +173,13 @@ def construir_cerebro(*, asesor: Any, proveedor: Any, verificador: Any, memoria:
     """The brain with the evaluation's pieces (only the keyword arguments its constructor takes)."""
     cerebro_cls = _resolver("asistente.nucleo.cerebro.cerebro", "Cerebro")
     fabrica = _resolver("asistente.nucleo.cerebro.construir", "especialistas_del_hogar")
-    disponibles = {"asesor": asesor, "proveedor": proveedor, "verificador": verificador, "memoria": memoria, "fabrica": fabrica}
+    disponibles = {
+        "asesor": asesor,
+        "proveedor": proveedor,
+        "verificador": verificador,
+        "memoria": memoria,
+        "fabrica": fabrica,
+    }
     parametros = inspect.signature(cerebro_cls).parameters
     return cerebro_cls(**{k: v for k, v in disponibles.items() if k in parametros})
 

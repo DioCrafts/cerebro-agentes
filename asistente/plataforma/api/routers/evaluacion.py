@@ -464,9 +464,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
             case = cases.get_case(consentimiento.case_id)
             if case is not None:
                 detectados += len(revision.detectar_en_caso(candidatos, cases, case, user_id=case.user_id))
-        visibles = (
-            candidatos.todos() if quien.case_ids is None else candidatos.de_casos(sorted(quien.case_ids))
-        )
+        visibles = candidatos.todos() if quien.case_ids is None else candidatos.de_casos(sorted(quien.case_ids))
         grupos = revision.agrupar(visibles, estado=estado)  # type: ignore[arg-type]
         return ColaRevision(
             grupos=[
@@ -482,9 +480,9 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
                     frecuencia=g.frecuencia,
                     prioridad=g.prioridad,
                     motivos_prioridad=g.motivos_prioridad,
-                    importe_en_juego=str(g.representante.importe_en_juego)
-                    if g.representante.importe_en_juego is not None
-                    else None,
+                    importe_en_juego=(
+                        str(g.representante.importe_en_juego) if g.representante.importe_en_juego is not None else None
+                    ),
                     creado_el=g.representante.creado_el.isoformat(),
                     estado=g.estado,
                 )
@@ -518,7 +516,9 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         )
 
     @router.delete("/evaluacion/revision/aceptados/{caso_id}", status_code=204, dependencies=guarded)
-    def delete_aceptado(caso_id: str, quien: quien_dep, cases: case_store_dep, candidatos: candidato_store_dep) -> Response:
+    def delete_aceptado(
+        caso_id: str, quien: quien_dep, cases: case_store_dep, candidatos: candidato_store_dep
+    ) -> Response:
         if not privado.ruta_por_defecto(cases.db_path).exists():
             raise HTTPException(status_code=404, detail="Caso no encontrado.")
         store = privado.store_de(cases.db_path)

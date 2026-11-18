@@ -58,7 +58,9 @@ class Env:
             "event_type": "agent_answer",
             "input": pregunta,
             "mode": "partially_verified",
-            "tool_trace": [{"tool": "hipoteca_cuadro", "agent": "especialista_hipoteca", "arguments": {"fecha": "2026-03-20"}}],
+            "tool_trace": [
+                {"tool": "hipoteca_cuadro", "agent": "especialista_hipoteca", "arguments": {"fecha": "2026-03-20"}}
+            ],
             "claims": [],
             "cerebro": informe_cerebro(),
             **extra,
@@ -111,7 +113,11 @@ EDICION = {
     "esperado": {
         "especialistas_obligatorios": ["hipoteca", "luz"],
         "cifras_prohibidas": ["532,00 €"],
-        "cifra_esperada": {"herramienta": "hipoteca_cuadro", "argumentos": {"fecha": "2026-03-20"}, "especialista": "hipoteca"},
+        "cifra_esperada": {
+            "herramienta": "hipoteca_cuadro",
+            "argumentos": {"fecha": "2026-03-20"},
+            "especialista": "hipoteca",
+        },
         "puerta_sin_violaciones": True,
     },
 }
@@ -133,9 +139,13 @@ def test_the_owner_reviews_their_own_candidates_and_nobody_else_sees_them(env: E
     # Somebody else: an empty queue, and 404 on the candidate, its acceptance and its rejection.
     assert env.client.get("/evaluacion/revision", headers=luis).json()["grupos"] == []
     assert env.client.get(f"/evaluacion/revision/{candidato_id}", headers=luis).status_code == 404
-    assert env.client.post(f"/evaluacion/revision/{candidato_id}/aceptar", json=EDICION, headers=luis).status_code == 404
     assert (
-        env.client.post(f"/evaluacion/revision/{candidato_id}/rechazar", json={"motivo": "no vale"}, headers=luis).status_code
+        env.client.post(f"/evaluacion/revision/{candidato_id}/aceptar", json=EDICION, headers=luis).status_code == 404
+    )
+    assert (
+        env.client.post(
+            f"/evaluacion/revision/{candidato_id}/rechazar", json={"motivo": "no vale"}, headers=luis
+        ).status_code
         == 404
     )
     assert env.client.get("/evaluacion/revision").status_code == 401
@@ -205,14 +215,21 @@ def test_the_standing_consent_turns_votes_and_weak_signals_into_candidates(env: 
     assert r.json()["activo"] is True
     assert (
         env.client.put(
-            "/evaluacion/aprendizaje", json={"case_id": case_id, "activo": True, "version": estado["version"]}, headers=luis
+            "/evaluacion/aprendizaje",
+            json={"case_id": case_id, "activo": True, "version": estado["version"]},
+            headers=luis,
         ).status_code
         == 404
     )
     # A turn after the consent with the figures gate unhappy, and a plain 👎 on it.
     env.cases.append_audit_event(
         case_id,
-        {"event_type": "agent_answer", "input": "¿Y en total este mes?", "mode": "partially_verified", "cerebro": informe_cerebro()},
+        {
+            "event_type": "agent_answer",
+            "input": "¿Y en total este mes?",
+            "mode": "partially_verified",
+            "cerebro": informe_cerebro(),
+        },
     )
     voto = env.negativa(ana, case_id, guardar=False)
     assert voto["candidato"] is True and voto["guardado_para_evaluacion"] is False

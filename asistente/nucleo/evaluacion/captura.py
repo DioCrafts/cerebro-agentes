@@ -588,9 +588,11 @@ def capturar(
             "senales": [s.model_dump(mode="json") for s in senales],
             "instantanea": instantanea_de(case, traza, list(del_cerebro.get("modos_especialistas") or {})),
             **del_cerebro,
-            "modelos": turno.get("modelos")
-            if isinstance(turno.get("modelos"), dict)
-            else modelos_por_proposito(turno, list(del_cerebro.get("modos_especialistas") or {})),
+            "modelos": (
+                turno.get("modelos")
+                if isinstance(turno.get("modelos"), dict)
+                else modelos_por_proposito(turno, list(del_cerebro.get("modos_especialistas") or {}))
+            ),
         }
     store.add(registro)
     cases.append_audit_event(case.case_id, evento)

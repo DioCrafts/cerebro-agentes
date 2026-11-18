@@ -118,7 +118,9 @@ def senales_de_turno(evento: dict[str, Any], turno: int) -> list[Senal]:
         senales.append(Senal(tipo="abstencion", turno=turno, detalle="el asistente se abstuvo"))
     cerebro = evento.get("cerebro")
     puerta = cerebro.get("puerta") if isinstance(cerebro, dict) else None
-    violaciones = [v for v in (puerta or {}).get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+    violaciones = (
+        [v for v in (puerta or {}).get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+    )
     if violaciones:
         por_tipo = Counter(str(v.get("tipo")) for v in violaciones)
         senales.append(

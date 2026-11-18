@@ -340,7 +340,9 @@ def run(
 @click.option("--out-dir", type=click.Path(file_okay=False, path_type=Path), default=Path("reports/evaluacion"))
 @click.option("--sin-corpus", is_flag=True)
 @click.option("--yes", is_flag=True)
-@click.option("--min-casos", type=click.IntRange(1, 10_000), help="Casos comparables mínimos (EVALUACION_GATE_MIN_CASOS).")
+@click.option(
+    "--min-casos", type=click.IntRange(1, 10_000), help="Casos comparables mínimos (EVALUACION_GATE_MIN_CASOS)."
+)
 @_CASOS_REALES
 def promote(
     casos_dir: Path,
@@ -854,7 +856,9 @@ def candidato(db_path: str, candidato_id: str) -> None:
     type=click.Path(exists=True, dir_okay=False, path_type=Path),
     help="Edición (JSON): categoria, esperado (especialistas, citas, cifras prohibidas, cifra esperada…), hechos…",
 )
-@click.option("--aunque-no-reproduzca", is_flag=True, help="Aceptar aunque la respuesta original pase las expectativas.")
+@click.option(
+    "--aunque-no-reproduzca", is_flag=True, help="Aceptar aunque la respuesta original pase las expectativas."
+)
 def aceptar(db_path: str, candidato_id: str, desde: Path, aunque_no_reproduzca: bool) -> None:
     """Acepta un candidato como caso real (base privada) con el comportamiento esperado del fichero."""
     from asistente.nucleo.evaluacion.redaccion import nombres_de_perfil
@@ -962,9 +966,7 @@ def reales_comprobar(reales_db: str | None, desde: Path | None, casos_dir: Path)
     for caso_id in sin_captura:
         click.echo(f"Aviso: {caso_id} no guarda la respuesta original: no se puede reproducir.")
     if siguen:
-        click.echo(
-            "Ya no detectan el error que se dio (aprueban lo capturado): " + ", ".join(siguen), err=True
-        )
+        click.echo("Ya no detectan el error que se dio (aprueban lo capturado): " + ", ".join(siguen), err=True)
         sys.exit(1)
     click.echo(f"{len(reales) - len(sin_captura)} casos reales siguen detectando su error.")
 

@@ -112,7 +112,12 @@ def test_consent_text_is_public_to_the_ui(env: Env) -> None:
     body = env.client.get("/evaluacion/consentimiento").json()
     assert body["version"] == CONSENTIMIENTO_VERSION and "ENMASCARADA" in body["texto"]
     assert "nunca en el código" in body["texto"] and "se borra con tu cuenta" in body["texto"]
-    assert {t["clave"] for t in body["tipos"]} >= {"cifra_erronea", "modulo_erroneo", "afirmacion_inventada", "suma_indebida"}
+    assert {t["clave"] for t in body["tipos"]} >= {
+        "cifra_erronea",
+        "modulo_erroneo",
+        "afirmacion_inventada",
+        "suma_indebida",
+    }
     assert body["aprendizaje_version"] and "Aprender de los fallos" in body["aprendizaje_texto"]
 
 

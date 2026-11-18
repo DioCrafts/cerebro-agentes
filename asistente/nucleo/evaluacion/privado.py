@@ -175,7 +175,9 @@ class CasosRealesStore:
             conn = self._get()
             with conn:
                 marcas = ",".join("?" * len(borrados))
-                conn.execute(f"DELETE FROM evaluacion_casos_reales WHERE id IN ({marcas})", tuple(borrados))  # noqa: S608
+                conn.execute(
+                    f"DELETE FROM evaluacion_casos_reales WHERE id IN ({marcas})", tuple(borrados)
+                )  # noqa: S608
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return borrados
 

@@ -18,8 +18,8 @@ import re
 
 from pydantic import ValidationError
 
-from asistente.nucleo.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numeros_en, valor_de_cifra
 from asistente.nucleo.cerebro.contrato import InformeCerebro
+from asistente.nucleo.evaluacion.cifras import CalculoError, aparece, calcular_cifra, numeros_en, valor_de_cifra
 from asistente.nucleo.evaluacion.modelos import (
     CasoEvaluacion,
     ConfigSuite,
@@ -330,7 +330,9 @@ def comprobar_cerebro(
         if exp.exactamente and set(quienes) != set(exp.incluye):
             extra = sorted(set(quienes) - set(exp.incluye))
             if extra:
-                fallos.append(f"solo debía contar con {', '.join(exp.incluye) or 'nadie'} {donde} (también: {', '.join(extra)})")
+                fallos.append(
+                    f"solo debía contar con {', '.join(exp.incluye) or 'nadie'} {donde} (también: {', '.join(extra)})"
+                )
     elif isinstance(exp, ExpIntencion):
         intencion = cerebro.intencion
         if exp.tipos and intencion.tipo not in exp.tipos:
@@ -352,14 +354,15 @@ def comprobar_cerebro(
         if cerebro.ruta not in exp.permitidas:
             fallos.append(f"respondió por la ruta «{cerebro.ruta}» (se esperaba {' o '.join(exp.permitidas)})")
     elif isinstance(exp, ExpFlujoDato):
-        por_peticion = any(
-            p.solicitante == exp.a and p.destinatario == exp.de
-            for p in [*cerebro.peticiones]
-        )
+        por_peticion = any(p.solicitante == exp.a and p.destinatario == exp.de for p in [*cerebro.peticiones])
         por_dependencia = (exp.a, exp.de) in _dependencias(cerebro)
-        valido = {"peticion": por_peticion, "dependencia": por_dependencia}.get(exp.via, por_peticion or por_dependencia)
+        valido = {"peticion": por_peticion, "dependencia": por_dependencia}.get(
+            exp.via, por_peticion or por_dependencia
+        )
         if not valido:
-            como = {"peticion": "con una petición", "dependencia": "esperando a su encargo"}.get(exp.via, "a través del cerebro")
+            como = {"peticion": "con una petición", "dependencia": "esperando a su encargo"}.get(
+                exp.via, "a través del cerebro"
+            )
             fallos.append(f"el dato de {exp.de} debía llegar a {exp.a} {como}")
     elif isinstance(exp, ExpPuerta):
         puerta = cerebro.puerta
@@ -406,7 +409,11 @@ def _comprobar_atribuida(
         if valor is not None and abs(atribucion.valor) == valor and atribucion.especialista == exp.especialista:
             return []
     quien = next(
-        (a.especialista or "el usuario" for a in cerebro.puerta.atribuciones if valor is not None and abs(a.valor) == valor),
+        (
+            a.especialista or "el usuario"
+            for a in cerebro.puerta.atribuciones
+            if valor is not None and abs(a.valor) == valor
+        ),
         None,
     )
     if quien is None:
@@ -433,7 +440,9 @@ def comprobar_repaso(exp: ExpRepaso, salida: dict | None, caso: CasoEvaluacion) 
         for propuesta in propuestas:
             senal = propuesta.get("senal")
             if senal is None or str(senal) not in conocidas:
-                fallos.append(f"propuesta inventada (no sale de ninguna señal): «{str(propuesta.get('texto') or '')[:80]}»")
+                fallos.append(
+                    f"propuesta inventada (no sale de ninguna señal): «{str(propuesta.get('texto') or '')[:80]}»"
+                )
     if exp.propuestas_solo_de is not None:
         for propuesta in propuestas:
             if str(propuesta.get("senal")) not in exp.propuestas_solo_de:

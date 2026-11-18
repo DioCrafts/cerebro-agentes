@@ -1,0 +1,284 @@
+[
+  {
+    "id": "real-20261118-045b0000",
+    "case_id": null,
+    "user_id": null,
+    "candidato_id": "cand_d34f11e2c5e348ce9c17726480b824fe",
+    "grupo": "f825e84c96f0abdc1446",
+    "feedback_id": "fb_a4ac97f219994da880389409525da040",
+    "caso": {
+      "id": "real-20261118-045b0000",
+      "version": 1,
+      "categoria": "regresion",
+      "descripcion": "Cifra equivocada (caso real revisado).",
+      "pregunta": "¿Cuál es la cuota de mi hipoteca?",
+      "historial": [],
+      "modulos": [
+        "hipoteca"
+      ],
+      "expediente": {
+        "tax_period": "2026",
+        "jurisdiction": "ES",
+        "hechos": {
+          "hipoteca_prestamo": {
+            "capital_inicial": "100000",
+            "fecha_firma": "2020-01-15",
+            "plazo_meses": 300,
+            "tipo": "fijo",
+            "tipo_inicial": "3"
+          },
+          "comunidad_autonoma": "Madrid",
+          "rendimiento_trabajo_bruto": 30000.0
+        }
+      },
+      "expectativas": [
+        {
+          "tipo": "modulo_consultado",
+          "modulo": "hipoteca"
+        },
+        {
+          "tipo": "cifra_ausente",
+          "valor": "500,00 €",
+          "motivo": "cifra equivocada que dio el asistente"
+        },
+        {
+          "tipo": "cifra",
+          "nombre": "cifra_esperada",
+          "calculo": {
+            "herramienta": "hipoteca_cuadro",
+            "argumentos": {
+              "fecha": "2026-03-20"
+            },
+            "patron": "^\\s*\\-\\ Próxima\\ cuota:[^\\n]*?(?P<cifra>-?\\d{1,3}(?:\\.\\d{3})*,\\d{2} €)",
+            "con_expediente": true,
+            "registrada": null
+          }
+        }
+      ],
+      "rubrica": null,
+      "guion": null,
+      "ocultar_fuente": null,
+      "origen": {
+        "tipo": "feedback",
+        "referencia": "fb-045b0000e08f",
+        "etiquetas": [
+          "cifra_erronea"
+        ],
+        "revisado_por": "operador",
+        "revisado_el": "2026-11-18"
+      },
+      "requiere": [],
+      "usuario": "evaluacion",
+      "memoria": [],
+      "entrada_repaso": null
+    },
+    "aceptado_el": "2026-11-18T10:15:28.922488Z",
+    "aceptado_por": "operador",
+    "vigente": true,
+    "motivo_baja": null,
+    "avisos": [],
+    "guion_capturado": {
+      "asesor": [
+        {
+          "herramientas": [
+            {
+              "nombre": "consultar_hipoteca",
+              "argumentos": {
+                "pregunta": "cuota"
+              }
+            }
+          ],
+          "texto": null
+        },
+        {
+          "herramientas": [],
+          "texto": "Tu cuota es de 500,00 €."
+        }
+      ],
+      "especialista:hipoteca": [
+        {
+          "herramientas": [
+            {
+              "nombre": "hipoteca_cuadro",
+              "argumentos": {
+                "fecha": "2026-03-20"
+              }
+            }
+          ],
+          "texto": null
+        },
+        {
+          "herramientas": [],
+          "texto": "Informe del especialista (reproducción de lo capturado)."
+        }
+      ]
+    }
+  },
+  {
+    "id": "real-20261118-b70d67e6",
+    "case_id": null,
+    "user_id": null,
+    "candidato_id": "cand_dc5047a80bff449e9fa16e4195b81212",
+    "grupo": "708d6f0167848eef311c",
+    "feedback_id": "fb_fffa613552b848b5bf2489d001f61fce",
+    "caso": {
+      "id": "real-20261118-b70d67e6",
+      "version": 1,
+      "categoria": "regresion",
+      "descripcion": "Cifra equivocada (caso real revisado).",
+      "pregunta": "¿Cuánto me sale la renta de 2025?",
+      "historial": [],
+      "modulos": [],
+      "expediente": {
+        "tax_period": "2026",
+        "jurisdiction": "ES",
+        "hechos": {
+          "comunidad_autonoma": "Madrid",
+          "rendimiento_trabajo_bruto": 30000.0
+        }
+      },
+      "expectativas": [
+        {
+          "tipo": "citas",
+          "minimo": 1,
+          "autoridad": null
+        },
+        {
+          "tipo": "cifra_ausente",
+          "valor": "9.999,00 €",
+          "motivo": "cifra equivocada que dio el asistente"
+        },
+        {
+          "tipo": "cifra",
+          "nombre": "cifra_esperada",
+          "calculo": {
+            "herramienta": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            },
+            "patron": "^\\s*\\-\\ Cuota\\ líquida:[^\\n]*?(?P<cifra>-?\\d{1,3}(?:\\.\\d{3})*,\\d{2} €)",
+            "con_expediente": true,
+            "registrada": null
+          }
+        }
+      ],
+      "rubrica": null,
+      "guion": null,
+      "ocultar_fuente": null,
+      "origen": {
+        "tipo": "feedback",
+        "referencia": "fb-b70d67e65cbb",
+        "etiquetas": [
+          "cifra_erronea"
+        ],
+        "revisado_por": "operador",
+        "revisado_el": "2026-11-18"
+      },
+      "requiere": [],
+      "usuario": "evaluacion",
+      "memoria": [],
+      "entrada_repaso": null
+    },
+    "aceptado_el": "2026-11-18T10:15:28.934353Z",
+    "aceptado_por": "operador",
+    "vigente": true,
+    "motivo_baja": null,
+    "avisos": [],
+    "guion_capturado": {
+      "asesor": [
+        {
+          "herramientas": [
+            {
+              "nombre": "calcular_irpf",
+              "argumentos": {
+                "ejercicio": 2025
+              }
+            }
+          ],
+          "texto": null
+        },
+        {
+          "herramientas": [],
+          "texto": "Te sale a ingresar 9.999,00 € [F1]."
+        }
+      ]
+    }
+  },
+  {
+    "id": "real-20261118-8a5028cd",
+    "case_id": null,
+    "user_id": null,
+    "candidato_id": "cand_bd599aeb1b8b444b9c99ba40ef06b2b5",
+    "grupo": "bb749a822a5d1fe041e9",
+    "feedback_id": "fb_eb6faa2e1b8d45ec9d7fe4f8c3bce945",
+    "caso": {
+      "id": "real-20261118-8a5028cd",
+      "version": 1,
+      "categoria": "regresion",
+      "descripcion": "Ámbito equivocado (caso real revisado).",
+      "pregunta": "¿Cuánto capital me queda de hipoteca el 20 de marzo de 2026?",
+      "historial": [],
+      "modulos": [
+        "luz"
+      ],
+      "expediente": {
+        "tax_period": "2026",
+        "jurisdiction": "ES",
+        "hechos": {
+          "comunidad_autonoma": "Madrid",
+          "rendimiento_trabajo_bruto": 30000.0
+        }
+      },
+      "expectativas": [
+        {
+          "tipo": "modulo_consultado",
+          "modulo": "hipoteca"
+        },
+        {
+          "tipo": "modulo_no_consultado",
+          "modulo": "luz"
+        }
+      ],
+      "rubrica": null,
+      "guion": null,
+      "ocultar_fuente": null,
+      "origen": {
+        "tipo": "feedback",
+        "referencia": "fb-8a5028cdb2da",
+        "etiquetas": [
+          "modulo_erroneo"
+        ],
+        "revisado_por": "operador",
+        "revisado_el": "2026-11-18"
+      },
+      "requiere": [],
+      "usuario": "evaluacion",
+      "memoria": [],
+      "entrada_repaso": null
+    },
+    "aceptado_el": "2026-11-18T10:15:28.937745Z",
+    "aceptado_por": "operador",
+    "vigente": true,
+    "motivo_baja": null,
+    "avisos": [],
+    "guion_capturado": {
+      "asesor": [
+        {
+          "herramientas": [
+            {
+              "nombre": "consultar_luz",
+              "argumentos": {
+                "pregunta": "capital"
+              }
+            }
+          ],
+          "texto": null
+        },
+        {
+          "herramientas": [],
+          "texto": "No tengo datos de tu préstamo."
+        }
+      ]
+    }
+  }
+]

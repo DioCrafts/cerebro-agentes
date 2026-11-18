@@ -152,8 +152,9 @@ def guion_de_captura(contenido: Any) -> dict[str, list[PasoGuion]] | None:
     por_agente: dict[str, list[LlamadaGuion]] = {}
     for entrada in traza:
         agente = str(entrada.get("agent") or "asesor")
-        argumentos = entrada.get("arguments") if isinstance(entrada.get("arguments"), dict) else {}
-        por_agente.setdefault(agente, []).append(LlamadaGuion(nombre=str(entrada.get("tool")), argumentos=dict(argumentos)))
+        bruto = entrada.get("arguments")
+        argumentos: dict[str, Any] = dict(bruto) if isinstance(bruto, dict) else {}
+        por_agente.setdefault(agente, []).append(LlamadaGuion(nombre=str(entrada.get("tool")), argumentos=argumentos))
     pasos: list[PasoGuion] = []
     if por_agente.get("asesor"):
         pasos.append(PasoGuion(herramientas=por_agente["asesor"]))
@@ -168,14 +169,16 @@ def guion_de_captura(contenido: Any) -> dict[str, list[PasoGuion]] | None:
     return guion
 
 
-def reproducir_capturas(casos: Sequence[tuple[CasoEvaluacion, dict[str, list[PasoGuion]] | None]], **kwargs: Any) -> tuple[Any, list[str]]:
+def reproducir_capturas(
+    casos: Sequence[tuple[CasoEvaluacion, dict[str, list[PasoGuion]] | None]], **kwargs: Any
+) -> tuple[Any, list[str]]:
     """Replay each accepted case's captured run (no model). Returns (report, ids of the cases that PASS on it).
 
     A real case that passes on its own captured mistake catches nothing any more: those ids need a review.
     ``kwargs`` go to ``runner.evaluar`` (``config``, ``suite_huella``); the environment is a replay one.
     """
-    import tempfile
     from pathlib import Path
+    import tempfile
 
     from asistente.nucleo.evaluacion.runner import Entorno, evaluar, proveedor_reproduccion
     from asistente.nucleo.evaluacion.variantes import VARIANTE_BASE

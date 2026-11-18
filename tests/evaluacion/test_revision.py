@@ -39,7 +39,13 @@ from asistente.nucleo.evaluacion.runner import Entorno, evaluar
 from asistente.nucleo.evaluacion.variantes import VARIANTE_BASE
 from asistente.plataforma.ops.consumo import ConsumoStore
 
-PRESTAMO = {"capital_inicial": "100000", "fecha_firma": "2020-01-15", "plazo_meses": 300, "tipo": "fijo", "tipo_inicial": "3"}
+PRESTAMO = {
+    "capital_inicial": "100000",
+    "fecha_firma": "2020-01-15",
+    "plazo_meses": 300,
+    "tipo": "fijo",
+    "tipo_inicial": "3",
+}
 PREGUNTA = "Soy Ana Pérez: ¿cuánto pago entre la hipoteca y la luz este mes?"
 RESPUESTA = "Entre la cuota (474,21 €) y la luz (57,79 €) pagas 532,00 € [F1]. Escríbeme a ana@example.com."
 
@@ -59,20 +65,41 @@ def informe_cerebro(*, violaciones: bool = True) -> dict:  # type: ignore[type-a
         origen="reglas",
         resumen="Consulto a Hipoteca y a Luz en paralelo",
     )
-    cuota = Cifra(id="C1", especialista="hipoteca", concepto="cuota mensual", valor=Decimal("474.21"), unidad="EUR",
-                  literal="474,21 €", herramienta="hipoteca_cuadro", fragment_id="F1")
-    luz = Cifra(id="C2", especialista="luz", concepto="factura", valor=Decimal("57.79"), unidad="EUR", literal="57,79 €")
+    cuota = Cifra(
+        id="C1",
+        especialista="hipoteca",
+        concepto="cuota mensual",
+        valor=Decimal("474.21"),
+        unidad="EUR",
+        literal="474,21 €",
+        herramienta="hipoteca_cuadro",
+        fragment_id="F1",
+    )
+    luz = Cifra(
+        id="C2", especialista="luz", concepto="factura", valor=Decimal("57.79"), unidad="EUR", literal="57,79 €"
+    )
     puerta = ResultadoPuerta(
-        violaciones=[Violacion(tipo="suma_no_combinada", literal="532,00 €", detalle="suma de C1 y C2", cifras=["C1", "C2"])]
-        if violaciones
-        else [],
-        atribuciones=[AtribucionCifra(literal="474,21 €", valor=Decimal("474.21"), cifra_id="C1", especialista="hipoteca")],
+        violaciones=(
+            [Violacion(tipo="suma_no_combinada", literal="532,00 €", detalle="suma de C1 y C2", cifras=["C1", "C2"])]
+            if violaciones
+            else []
+        ),
+        atribuciones=[
+            AtribucionCifra(literal="474,21 €", valor=Decimal("474.21"), cifra_id="C1", especialista="hipoteca")
+        ],
     )
     return InformeCerebro(
         intencion=intencion,
         ruta="sintesis",
         informes=[
-            ResumenInforme(encargo_id="e1", especialista="hipoteca", nombre="Hipoteca", estado="ok", modo="verified", cifras=[cuota]),
+            ResumenInforme(
+                encargo_id="e1",
+                especialista="hipoteca",
+                nombre="Hipoteca",
+                estado="ok",
+                modo="verified",
+                cifras=[cuota],
+            ),
             ResumenInforme(encargo_id="e2", especialista="luz", nombre="Luz", estado="ok", cifras=[luz]),
         ],
         puerta=puerta,
@@ -116,7 +143,12 @@ def _turno(cases: SQLiteCaseStateStore, case_id: str = "case_1", *, pregunta: st
         "provider": "anthropic",
         "model": "claude-opus-5-5",
         "tool_trace": [
-            {"tool": "hipoteca_cuadro", "agent": "especialista_hipoteca", "arguments": {"fecha": "2026-03-20"}, "summary": "cuadro"},
+            {
+                "tool": "hipoteca_cuadro",
+                "agent": "especialista_hipoteca",
+                "arguments": {"fecha": "2026-03-20"},
+                "summary": "cuadro",
+            },
         ],
         "citations": [{"fragment_id": "F1", "locator": "x"}],
         "claims": [],
@@ -162,14 +194,21 @@ def test_feedback_stores_the_brain_report_and_becomes_a_masked_candidate(env: En
     # What the brain did: plan, specialists and their modes, figures, the gate, the ids (not the text) of memories.
     assert guardado["cerebro"]["intencion"]["tipo"] == "cruzada" and guardado["cerebro"]["recuerdos_usados"] == ["r1"]
     assert guardado["modos_especialistas"] == {"hipoteca": "verified", "luz": None}
-    assert {"agente", "verificador", "cerebro", "cerebro:intencion", "especialista:hipoteca", "especialista:luz"} <= set(
-        guardado["modelos"]
-    )
+    assert {
+        "agente",
+        "verificador",
+        "cerebro",
+        "cerebro:intencion",
+        "especialista:hipoteca",
+        "especialista:luz",
+    } <= set(guardado["modelos"])
     assert guardado["variante"] == "base"
 
     (candidato,) = env.candidatos.todos()
     assert candidato.origen == "valoracion" and candidato.feedback_id == feedback_id and candidato.user_id == "u1"
-    assert candidato.tipo_fallo == "suma_indebida" and candidato.categoria_sugerida == "procedencia" and candidato.critica
+    assert (
+        candidato.tipo_fallo == "suma_indebida" and candidato.categoria_sugerida == "procedencia" and candidato.critica
+    )
     c = candidato.contenido
     # Masked: the user's and the partner's names, the e-mail; the amounts are kept (they are the point).
     assert "Ana" not in c.pregunta and "[nombre]" in c.pregunta
@@ -247,7 +286,9 @@ def test_duplicates_are_grouped_and_the_queue_is_ordered_by_priority() -> None:
     a = _candidato("¿Cuánto me sale la renta?", "repregunta", case_id="c1")
     b = _candidato("¿cuánto me sale  la RENTA", "repregunta", case_id="c2")  # same question, normalised
     distinto = _candidato("¿Cuánto me sale la renta?", "abstencion", case_id="c3")  # same question, another failure
-    corregida = _candidato("¿Cuánto pago de hipoteca?", "cifra_erronea", origen="valoracion", respuesta="Pagas 1.250,00 €.")
+    corregida = _candidato(
+        "¿Cuánto pago de hipoteca?", "cifra_erronea", origen="valoracion", respuesta="Pagas 1.250,00 €."
+    )
     grupos = revision.agrupar([a, b, distinto, corregida])
     assert [g.frecuencia for g in grupos if g.representante.tipo_fallo == "repregunta"] == [2]
     assert len(grupos) == 3
@@ -277,7 +318,12 @@ def _aceptable(env: Entornito) -> revision.Candidato:
 def test_accepting_stores_a_private_case_whose_expectations_catch_the_mistake(env: Entornito) -> None:
     candidato = _aceptable(env)
     duplicado = revision.nuevo_candidato(
-        candidato.contenido, tipo=candidato.tipo_fallo, origen="senal", case_id="case_1", user_id="u1", referencia_turno="otro"
+        candidato.contenido,
+        tipo=candidato.tipo_fallo,
+        origen="senal",
+        case_id="case_1",
+        user_id="u1",
+        referencia_turno="otro",
     )
     env.candidatos.anadir(duplicado)
     edicion = EdicionCaso(
@@ -291,7 +337,9 @@ def test_accepting_stores_a_private_case_whose_expectations_catch_the_mistake(en
             puerta_sin_violaciones=True,
         ),
     )
-    real = revision.aceptar(env.candidatos, candidato, edicion, revisor="propietario", cases=env.cases, nombres=["Ana", "Marta"])
+    real = revision.aceptar(
+        env.candidatos, candidato, edicion, revisor="propietario", cases=env.cases, nombres=["Ana", "Marta"]
+    )
     caso = real.caso
     assert caso.requiere == ["cerebro"] and caso.origen.tipo == "feedback" and caso.origen.revisado_por == "propietario"
     assert caso.modulos == ["hipoteca", "luz"]
@@ -332,7 +380,15 @@ def test_expectations_the_wrong_answer_passes_are_refused_unless_the_reviewer_in
         ({"categoria": "inventada"}, "Categoría desconocida"),
         ({"esperado": {}}, "al menos un comportamiento"),
         (
-            {"esperado": {"cifra_esperada": {"herramienta": "hipoteca_cuadro", "argumentos": {"fecha": "2026-03-20"}, "referencia": "999,99 €"}}},
+            {
+                "esperado": {
+                    "cifra_esperada": {
+                        "herramienta": "hipoteca_cuadro",
+                        "argumentos": {"fecha": "2026-03-20"},
+                        "referencia": "999,99 €",
+                    }
+                }
+            },
             "solo puede salir de una calculadora",
         ),
     ],
@@ -341,7 +397,9 @@ def test_what_cannot_be_accepted(env: Entornito, cambio: dict, mensaje: str) -> 
     candidato = _aceptable(env)
     datos = {"categoria": "regresion", "esperado": {"cifras_prohibidas": ["532,00 €"]}, **cambio}
     with pytest.raises(AceptacionRechazadaError, match=mensaje):
-        revision.aceptar(env.candidatos, candidato, EdicionCaso.model_validate(datos), revisor="operador", nombres=["Marta"])
+        revision.aceptar(
+            env.candidatos, candidato, EdicionCaso.model_validate(datos), revisor="operador", nombres=["Marta"]
+        )
     assert privado.casos_vigentes(privado.ruta_por_defecto(env.db)) == []
 
 
@@ -349,7 +407,9 @@ def test_rejecting_needs_a_reason(env: Entornito) -> None:
     candidato = _aceptable(env)
     with pytest.raises(AceptacionRechazadaError, match="por qué"):
         revision.rechazar(env.candidatos, candidato, "   ", revisor="propietario")
-    (rechazado,) = revision.rechazar(env.candidatos, candidato, "La cifra era correcta", revisor="propietario", cases=env.cases)
+    (rechazado,) = revision.rechazar(
+        env.candidatos, candidato, "La cifra era correcta", revisor="propietario", cases=env.cases
+    )
     assert rechazado.estado == "rechazado" and rechazado.motivo_rechazo == "La cifra era correcta"
     assert env.feedback.get(candidato.feedback_id).estado == "descartado"  # type: ignore[arg-type, union-attr]
     with pytest.raises(AceptacionRechazadaError, match="rechazado"):
@@ -420,16 +480,31 @@ def test_an_accepted_case_runs_with_the_suite_and_keeps_catching_its_mistake(env
 
     def fabrica(variante, caso, cifras):  # type: ignore[no-untyped-def]
         guion = correcto if variante.id == "arreglada" else real.model_dump(mode="json")["guion_capturado"]
-        return ProveedorReproduccion(CasoEvaluacion.model_validate(caso.model_dump(mode="json") | {"guion": guion}), cifras)
+        return ProveedorReproduccion(
+            CasoEvaluacion.model_validate(caso.model_dump(mode="json") | {"guion": guion}), cifras
+        )
 
     entorno = Entorno(proveedor=fabrica, consumo=ConsumoStore(str(tmp_path / "c.sqlite3")), modo="modelo")
-    arreglada = evaluar(reales, VARIANTE_BASE.model_copy(update={"id": "arreglada"}), entorno, config=s.cargar_config(), suite_huella="h", casos_reales=1)
-    assert arreglada.casos[0].aprobado and arreglada.con_casos_reales == 1 and any("privados" in a for a in arreglada.avisos)
+    arreglada = evaluar(
+        reales,
+        VARIANTE_BASE.model_copy(update={"id": "arreglada"}),
+        entorno,
+        config=s.cargar_config(),
+        suite_huella="h",
+        casos_reales=1,
+    )
+    assert (
+        arreglada.casos[0].aprobado
+        and arreglada.con_casos_reales == 1
+        and any("privados" in a for a in arreglada.avisos)
+    )
     igual = evaluar(reales, VARIANTE_BASE, entorno, config=s.cargar_config(), suite_huella="h")
     assert not igual.casos[0].aprobado and any("500,00 €" in f for f in igual.casos[0].fallos)
 
     # The standing negative control: replaying the captured run still fails (the case still bites).
-    _informe, siguen_aprobando = reproducir_capturas([(real.caso, real.guion_capturado)], config=s.cargar_config(), suite_huella="h")
+    _informe, siguen_aprobando = reproducir_capturas(
+        [(real.caso, real.guion_capturado)], config=s.cargar_config(), suite_huella="h"
+    )
     assert siguen_aprobando == []
 
 
@@ -468,8 +543,14 @@ def test_deleting_the_case_erases_candidates_consent_and_accepted_cases(env: Ent
         revisor="operador",
     )
     # Another user's duplicate accepted into the same real case: it goes back to the queue, not away.
-    otro = revision.nuevo_candidato(candidato.contenido, tipo=candidato.tipo_fallo, origen="senal", case_id="case_2",
-                                    user_id="u2", referencia_turno="x")
+    otro = revision.nuevo_candidato(
+        candidato.contenido,
+        tipo=candidato.tipo_fallo,
+        origen="senal",
+        case_id="case_2",
+        user_id="u2",
+        referencia_turno="x",
+    )
     otro.estado, otro.caso_aceptado = "aceptado", real.id
     env.candidatos.anadir(otro)
     assert env.cases.delete_case("case_1")

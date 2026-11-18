@@ -192,3 +192,58 @@ def test_registering_a_prompt_version(tmp_path: Path, monkeypatch: pytest.Monkey
     assert nueva.version == "modulos@2" and v.cargar_registro(registro)["modulos"][-1].nota == "Probado sin modelo"
     # The repository's registry was not touched.
     assert v.cargar_registro()["modulos"][-1].version == "modulos@1"
+
+
+SINTETICOS = Path(__file__).parent / "datos" / "casos_reales_sinteticos.json"
+
+
+def test_the_review_queue_from_the_command_line(tmp_path: Path) -> None:
+    db, _feedback_id = _db_con_feedback(tmp_path, cifra_correcta="474,21 €")
+    runner = CliRunner()
+    cola = runner.invoke(cli, ["casos", "cola", "--db", db])
+    assert cola.exit_code == 0 and "Cifra equivocada" in cola.output and "[correo]" in cola.output
+    candidato_id = cola.output.split()[0]
+    detalle = runner.invoke(cli, ["casos", "candidato", candidato_id, "--db", db])
+    assert "example.com" not in detalle.output and "enmascarado" in detalle.output
+
+    edicion = tmp_path / "edicion.json"
+    edicion.write_text(
+        json.dumps(
+            {
+                "categoria": "regresion",
+                "esperado": {
+                    "especialistas_obligatorios": ["hipoteca"],
+                    "cifras_prohibidas": ["500,00 €"],
+                    "cifra_esperada": {"herramienta": "hipoteca_cuadro", "argumentos": {"fecha": "2026-03-20"}},
+                },
+            }
+        ),
+        encoding="utf-8",
+    )
+    ok = runner.invoke(cli, ["casos", "aceptar", candidato_id, "--db", db, "--desde", str(edicion)])
+    assert ok.exit_code == 0, ok.output
+    assert "base privada" in ok.output
+    otra = runner.invoke(cli, ["casos", "rechazar", candidato_id, "--db", db, "--motivo", "ya está"])
+    assert otra.exit_code != 0 and "aceptado" in otra.output
+    assert "No hay casos candidatos" in runner.invoke(cli, ["casos", "cola", "--db", db]).output
+    assert runner.invoke(cli, ["casos", "detectar", "--db", db]).exit_code == 0
+
+
+def test_real_cases_replay_without_a_model_and_only_opt_in_with_a_model() -> None:
+    runner = CliRunner()
+    comprobar = runner.invoke(cli, ["casos-reales", "comprobar", "--desde", str(SINTETICOS)])
+    assert comprobar.exit_code == 0, comprobar.output
+    assert "3 casos reales siguen detectando su error" in comprobar.output
+    sin_opt_in = runner.invoke(cli, ["casos-reales", "reproducir", "--desde", str(SINTETICOS)])
+    assert sin_opt_in.exit_code != 0 and "--modelo-real" in sin_opt_in.output
+    sin_tope = runner.invoke(cli, ["casos-reales", "reproducir", "--desde", str(SINTETICOS), "--modelo-real"])
+    assert sin_tope.exit_code != 0 and "--presupuesto-usd" in sin_tope.output
+
+
+def test_the_synthetic_real_cases_are_not_real_data() -> None:
+    datos = json.loads(SINTETICOS.read_text(encoding="utf-8"))
+    assert all(d["case_id"] is None and d["user_id"] is None for d in datos)
+    from asistente.nucleo.evaluacion.captura import comprobar_anonimizado
+    from asistente.nucleo.evaluacion.privado import CasoReal
+
+    assert all(comprobar_anonimizado(CasoReal.model_validate(d).caso) == [] for d in datos)
