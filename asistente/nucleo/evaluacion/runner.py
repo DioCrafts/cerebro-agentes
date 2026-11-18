@@ -130,6 +130,12 @@ def motor_de(caso: CasoEvaluacion, entorno: Entorno) -> str:
     return "agente"
 
 
+def _sin_guion(caso: CasoEvaluacion, entorno: Entorno) -> bool:
+    """A case that runs model-free without a script: the proactive pass (``repaso``) answers with its deterministic
+    rendering when the provider cannot (the replay provider answers no ``repaso`` call), behind the same gate."""
+    return motor_de(caso, entorno) == "repaso"
+
+
 def motivo_de_omision(caso: CasoEvaluacion, entorno: Entorno) -> str | None:
     """Why ``caso`` is not run in this environment (Spanish), or None."""
     motivos = pendientes(caso)
@@ -137,7 +143,12 @@ def motivo_de_omision(caso: CasoEvaluacion, entorno: Entorno) -> str | None:
         motivos += [m for m in [pendiente("cerebro")] if m is not None]
     if motivos:
         return "; ".join(motivos)
-    if entorno.modo == "reproduccion" and caso.guion is None and (caso.requiere or caso.origen.tipo != "sintetico"):
+    if (
+        entorno.modo == "reproduccion"
+        and caso.guion is None
+        and not _sin_guion(caso, entorno)
+        and (caso.requiere or caso.origen.tipo != "sintetico")
+    ):
         return "sin guion de referencia: solo se evalúa con un modelo"
     return None
 
@@ -380,7 +391,7 @@ def evaluar(
         aprobadas = 0
         ejecucion = Ejecucion()
         for repeticion in range(1, repeticiones + 1):
-            if entorno.modo == "reproduccion" and caso.guion is None:
+            if entorno.modo == "reproduccion" and caso.guion is None and not _sin_guion(caso, entorno):
                 ejecucion = Ejecucion(error="el caso no tiene guion de referencia")
                 fallos_rep = ["sin guion de referencia: no se puede reproducir sin modelo"]
                 juez_rep: list[VeredictoJuez] = []
