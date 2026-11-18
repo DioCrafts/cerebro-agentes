@@ -79,3 +79,22 @@ def test_end_to_end_with_the_real_engine(db: str) -> None:
     assert primera and revision
     assert all("no soporto deber dinero" not in r["user"] for r in primera)
     assert all("no soporto deber dinero" in r["user"] for r in revision)
+
+
+def test_a_chair_stopped_by_the_budget_gives_a_partial_ruling(db: str) -> None:
+    from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
+
+    servicio, consejo, _expediente = _montaje(db)
+    presidente = next(p for proposito, p in consejo.items() if proposito == "consejo:presidente")
+    presidente.json_responses = [PresupuestoAgotadoError("Tope de la sesión.", limite="llamadas_por_pregunta")]
+    case = SQLiteCaseStateStore(db).get_case("c1")
+    assert case is not None
+    sesion = servicio.convocar(case=case, pregunta=PREGUNTA)
+    servicio.confirmar(sesion.id, case_id="c1")
+    servicio.ejecutar_pendientes()
+    registro = servicio.obtener(sesion.id, case_id="c1")
+    final = registro.sesion
+    assert final.estado == "terminada" and final.dictamen is not None
+    assert any(a.startswith("Dictamen parcial:") for a in final.dictamen.avisos)
+    assert vista(registro).parcial
+    assert NotificationStore(db).list("c1")[0].title == "Dictamen parcial del consejo"

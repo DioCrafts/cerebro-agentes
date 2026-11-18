@@ -33,6 +33,7 @@ import {
   CONSENSO_LABEL,
   ESTADO_LABEL,
   EN_MARCHA,
+  PREFIJO_PARCIAL,
   confianzaEnPalabras,
   listarSesiones,
   usd,
@@ -412,10 +413,22 @@ export function DictamenConsejo({ sesion }: { sesion: SesionConsejo }) {
     );
   }
   const usadas = new Set((dictamen.puerta?.atribuciones ?? []).map((a) => a.literal));
+  const avisoParcial = dictamen.avisos.find((a) => a.startsWith(PREFIJO_PARCIAL));
+  const avisos = dictamen.avisos.filter((a) => a !== avisoParcial);
   const acuerdo = acuerdoEnPalabras(dictamen.acuerdo);
   const porcentaje = Math.round(dictamen.confianza * 100);
   return (
     <div>
+      {avisoParcial && (
+        <div role="note" className="mb-3 flex gap-2 rounded-xl border border-grounding-abstain-bd bg-grounding-abstain-bg px-4 py-3 text-grounding-abstain-fg">
+          <TriangleAlert size={16} aria-hidden className="mt-0.5 flex-shrink-0" />
+          <p className="text-[13px] leading-snug">
+            <span className="block font-bold">Dictamen parcial</span>
+            {avisoParcial.slice(PREFIJO_PARCIAL.length).trim() || "La sesión se detuvo antes de terminar."} Lo que sigue lo ha resumido
+            el código con lo que el consejo llegó a hacer; tómalo con más cautela.
+          </p>
+        </div>
+      )}
       <section aria-label="Recomendación del consejo" className="rounded-xl border border-primary/40 bg-primary-soft/40 px-4 py-3">
         <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary-dark">Recomendación</p>
         <p className="mt-1 text-[16px] font-bold leading-snug text-ink">{opcionTexto(dictamen.recomendacion, sesion, dictamen.condicion)}</p>
@@ -484,9 +497,9 @@ export function DictamenConsejo({ sesion }: { sesion: SesionConsejo }) {
       <Lista titulo="Supuestos de los que depende" items={dictamen.supuestos_decisivos} />
       <Lista titulo="Qué la haría cambiar" items={dictamen.sensibilidad} />
       <Lista titulo="Qué dato lo aclararía" items={dictamen.datos_que_resolverian} icono={<ScrollText size={14} aria-hidden className="text-primary-dark" />} />
-      {dictamen.avisos.length > 0 && (
+      {avisos.length > 0 && (
         <ul className="mt-4 space-y-1 rounded-lg border border-grounding-abstain-bd bg-grounding-abstain-bg px-3 py-2 text-[12.5px] text-grounding-abstain-fg">
-          {dictamen.avisos.map((a, i) => (
+          {avisos.map((a, i) => (
             <li key={i} className="flex gap-1.5">
               <TriangleAlert size={13} aria-hidden className="mt-0.5 flex-shrink-0" />
               {a}

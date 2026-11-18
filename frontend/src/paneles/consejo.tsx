@@ -232,6 +232,7 @@ export default function PanelConsejo({ ctx, open, onClose }: PropsPanel) {
                         {relativeTime(Date.parse(s.creada))}
                       </span>
                       <span className="mt-1 block text-[14px] font-semibold leading-snug text-ink">{s.pregunta_usuario}</span>
+                      {s.parcial && <span className="mt-1 block text-[12px] text-grounding-abstain-fg">Dictamen parcial: {s.parcial}</span>}
                       {s.recomendacion && (
                         <span className="mt-1 block text-[13px] text-ink-soft">
                           Recomendación: {s.recomendacion}

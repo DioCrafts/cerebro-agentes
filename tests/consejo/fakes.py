@@ -189,7 +189,11 @@ class MotorFalso:
         estado: str = "terminada",
         error: Exception | None = None,
         antes: Callable[[], None] | None = None,
+        avisos: Sequence[str] = (),
+        miembros_ronda1: int | None = None,
     ) -> None:
+        self.avisos = list(avisos)
+        self.miembros_ronda1 = miembros_ronda1
         self.recomienda = recomienda
         self.literal = literal
         self.estado = estado
@@ -229,6 +233,8 @@ class MotorFalso:
             for ronda in (1, 2)
             for rol in ROLES
         ]
+        if self.miembros_ronda1 is not None:
+            propuestas = [p for p in propuestas if p.ronda == 1][: self.miembros_ronda1]
         criticas = [
             Critica(
                 evaluador_id=rol.id,
@@ -253,6 +259,7 @@ class MotorFalso:
             datos_que_resolverian=["La rentabilidad esperada del fondo"],
             miembros=[Miembro(rol=rol, proveedor="scripted", modelo="scripted-1") for rol in ROLES],
             autoria={"A": "prudente", "B": "fiscal", "C": "abogado"},
+            avisos=list(self.avisos),
         )
         ahora = datetime.now(UTC)
         return SesionConsejo(

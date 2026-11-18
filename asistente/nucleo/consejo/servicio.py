@@ -23,8 +23,12 @@
 
   Every call of the run is metered by a per-session store (:class:`_ConsumoDeSesion`) and checked BEFORE it starts
   by a per-session budget (:class:`_PresupuestoDeSesion`): the daily limits of the app, the session's own call cap
-  (``CONSEJO_MAX_LLAMADAS``) and the hard cap the user accepted (``tope_usd``) — past it the session stops and says
-  so; nothing is invented to fill the gap. A cancellation stops the next call the same way.
+  (``CONSEJO_MAX_LLAMADAS``) and the hard cap the user accepted (``tope_usd``). Past it no further call is made:
+  the engine (which absorbs the stop) rules with what it has — a partial ruling written by code, its first warning
+  «Dictamen parcial: …», shown as such and notified as «Dictamen parcial del consejo» — unless the stop came before
+  round 1 gave the council its minimum of proposals, then the session is ``fallida``; a stop during the dossier fails
+  it too. Nothing is invented to fill the gap. A cancellation stops the next call the same way, and whatever the
+  engine returns after it is discarded (the row says «cancelada»).
 
 The job never raises: a failing session is marked ``fallida`` (with a notification), a crash mid-session leaves an
 expired lease that the next run takes over (``CONSEJO_MAX_INTENTOS``), and housekeeping (expired convocations,
@@ -65,6 +69,7 @@ from asistente.nucleo.consejo.almacen import (
 from asistente.nucleo.consejo.contrato import (
     EVENTO_FASE,
     EVENTO_MIEMBRO,
+    MIN_MIEMBROS,
     CosteSesion,
     Dictamen,
     MotorDeliberacion,
@@ -91,6 +96,10 @@ logger = logging.getLogger(__name__)
 
 KIND_CONSEJO = "modulo:consejo"
 TITULO_LISTO = "Dictamen del consejo listo"
+TITULO_PARCIAL = "Dictamen parcial del consejo"
+# The engine's partial ruling (written by code when a stop — the cap, the budget — ended the session early) says so in
+# its first warning, with this prefix.
+PREFIJO_PARCIAL = "Dictamen parcial:"
 TITULO_FALLIDO = "El consejo no ha podido terminar"
 MAX_PREGUNTA = 4000
 MIN_PREGUNTA = 10
@@ -724,6 +733,7 @@ class ServicioConsejo:
                 logger.exception("council progress not recorded")
                 return
             if not vivo:
+                control.motivo = "cancelada"
                 control.cancelada.set()
 
         return emit
@@ -783,6 +793,10 @@ class ServicioConsejo:
                 resultado = entorno.motor.deliberar(
                     instruccion.expediente, sesion_id=sesion.id, emit=emit, tope_usd=restante, **extra_motor
                 )
+                if control.cancelada.is_set() or control.motivo == "cancelada":
+                    # The engine absorbs the stop (it never re-raises): the user cancelled, or another run took the
+                    # session over. The row already says so; this run's result is discarded.
+                    return "perdida"
                 final = self._final(registro, resultado, instruccion, control, entorno)
         except PresupuestoAgotadoError as exc:
             if control.motivo == "cancelada":
@@ -838,6 +852,16 @@ class ServicioConsejo:
         error = resultado.error
         if estado == "terminada" and dictamen is None:
             estado, error = "fallida", "El consejo terminó sin dictamen."
+        parcial = motivo_parcial(dictamen)
+        primera_ronda = [p for p in resultado.propuestas if p.ronda == 1]
+        if estado == "terminada" and parcial is not None and len(primera_ronda) < MIN_MIEMBROS:
+            # A stop before round 1 gave the council its minimum of independent proposals: there is nothing a
+            # council could rule on, partial or not.
+            estado, error, dictamen = (
+                "fallida",
+                f"{parcial} No hay dictamen: no llegó a haber propuestas suficientes.",
+                None,
+            )
         if dictamen is not None:
             dictamen = dictamen.model_copy(update={"sesion_id": sesion.id})
             dictamen = self._puertas(dictamen, sesion, instruccion, entorno)
@@ -958,7 +982,8 @@ class ServicioConsejo:
             pregunta = _recorte(sesion.pregunta_usuario, 160)
             if sesion.estado == "terminada" and sesion.dictamen is not None:
                 dictamen = sesion.dictamen
-                titulo = TITULO_LISTO
+                parcial = motivo_parcial(dictamen)
+                titulo = TITULO_PARCIAL if parcial is not None else TITULO_LISTO
                 cuerpo = (
                     f"El consejo ha estudiado tu decisión: «{pregunta}».\n\n"
                     f"**Recomendación:** {recomendacion_en_palabras(dictamen, sesion)} "
@@ -966,6 +991,8 @@ class ServicioConsejo:
                     "En «Consejo» tienes en qué coinciden y en qué discrepan, el argumento de la minoría, los "
                     "supuestos de los que depende y qué dato lo aclararía."
                 )
+                if parcial is not None:
+                    cuerpo += f"\n\n**Es un dictamen parcial:** {parcial}"
                 acciones = ["Abre «Consejo» para leer el dictamen completo."]
             else:
                 titulo = TITULO_FALLIDO
@@ -1009,6 +1036,16 @@ class ServicioConsejo:
         except Exception:
             logger.exception("active modules unavailable for the council")
             return []
+
+
+def motivo_parcial(dictamen: Dictamen | None) -> str | None:
+    """Why the ruling is partial (the engine's «Dictamen parcial: …» warning), or None for a complete one."""
+    if dictamen is None:
+        return None
+    for aviso in dictamen.avisos:
+        if aviso.startswith(PREFIJO_PARCIAL):
+            return aviso[len(PREFIJO_PARCIAL) :].strip() or "la sesión se detuvo antes de terminar."
+    return None
 
 
 def _texto_del_dictamen(dictamen: Dictamen) -> str:
@@ -1231,6 +1268,7 @@ __all__ = [
     "confianza_en_palabras",
     "convocar_desde_cerebro",
     "especialistas_previstos",
+    "motivo_parcial",
     "motor_por_defecto",
     "nombres_de_miembros",
     "nota_convocatoria",

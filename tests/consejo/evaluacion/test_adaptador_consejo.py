@@ -135,3 +135,28 @@ def test_the_spending_cap_stops_new_sessions_honestly(casos: list[CasoEvaluacion
     abierto = ce.MotorConTope(ce.MotorOraculo(caso), ConsumoStore(str(tmp_path / "d.sqlite3")), tope_usd=Decimal("1"))
     assert abierto.deliberar(ce.expediente_de(caso), sesion_id="cons_" + "c" * 32).estado == "terminada"
     assert abierto.llamadas == 1  # attributes of the wrapped engine are reachable
+
+
+class _MotorParcial:
+    """The oracle, but its ruling says it was written by code after a stop (as F's engine marks it)."""
+
+    def __init__(self, caso: CasoEvaluacion) -> None:
+        self.oraculo = ce.MotorOraculo(caso)
+
+    def deliberar(self, expediente, *, sesion_id, emit=None, tope_usd=None):  # type: ignore[no-untyped-def]
+        sesion = self.oraculo.deliberar(expediente, sesion_id=sesion_id, emit=emit, tope_usd=tope_usd)
+        assert sesion.dictamen is not None
+        avisos = ["Dictamen parcial: se alcanzó el tope de coste antes de las críticas.", *sesion.dictamen.avisos]
+        return sesion.model_copy(update={"dictamen": sesion.dictamen.model_copy(update={"avisos": avisos})})
+
+
+def test_a_partial_ruling_never_passes_a_case(casos: list[CasoEvaluacion], tmp_path: Path) -> None:
+    seleccion = [_uno(casos, "decision"), _uno(casos, "sesgo")]
+    entorno = _entorno(tmp_path, modo="modelo", motor="consejo", fabrica_consejo=lambda c, _p: _MotorParcial(c))
+    informe = evaluar(seleccion, VARIANTE_BASE, entorno, config=suite.cargar_config(), suite_huella="h")
+    for resultado in informe.casos:
+        assert not resultado.aprobado
+        assert resultado.ejecucion.consejo is not None and resultado.ejecucion.consejo.respuesta.parcial
+    decision, sesgo = informe.casos
+    assert any("dictamen parcial" in f for f in decision.fallos)
+    assert any("no se puede certificar la invarianza" in f for f in sesgo.fallos)

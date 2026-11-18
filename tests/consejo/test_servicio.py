@@ -317,3 +317,31 @@ def test_a_deleted_case_fails_the_session(db: str) -> None:
     assert SQLiteCaseStateStore(db).delete_case("c1")
     assert servicio.almacen.listar("c1") == []
     assert servicio.ejecutar_pendientes()["ejecutadas"] == 0
+
+
+def test_a_partial_ruling_is_kept_said_and_notified_as_partial(db: str) -> None:
+    motivo = "Dictamen parcial: se alcanzó el tope de coste antes de la revisión."
+    servicio = _servicio(db, FabricaFalsa(motor=MotorFalso(avisos=[motivo])))
+    sesion = servicio.convocar(case=_caso(db), pregunta=PREGUNTA)
+    servicio.confirmar(sesion.id, case_id="c1")
+    servicio.ejecutar_pendientes()
+    final = servicio.obtener(sesion.id, case_id="c1").sesion
+    assert final.estado == "terminada" and final.dictamen is not None and final.dictamen.avisos[0] == motivo
+    aviso = NotificationStore(db).list("c1")[0]
+    assert aviso.title == "Dictamen parcial del consejo" and "se alcanzó el tope de coste" in aviso.body
+    from asistente.plataforma.api.routers.consejo import resumen
+
+    assert resumen(servicio.obtener(sesion.id, case_id="c1")).parcial == (
+        "se alcanzó el tope de coste antes de la revisión."
+    )
+
+
+def test_a_stop_before_round_one_had_three_proposals_is_a_failure(db: str) -> None:
+    motor = MotorFalso(avisos=["Dictamen parcial: límite diario de uso."], miembros_ronda1=2)
+    servicio = _servicio(db, FabricaFalsa(motor=motor))
+    sesion = servicio.convocar(case=_caso(db), pregunta=PREGUNTA)
+    servicio.confirmar(sesion.id, case_id="c1")
+    assert servicio.ejecutar_pendientes()["fallidas"] == 1
+    final = servicio.obtener(sesion.id, case_id="c1").sesion
+    assert final.estado == "fallida" and final.dictamen is None
+    assert "límite diario de uso." in (final.error or "") and "propuestas suficientes" in (final.error or "")

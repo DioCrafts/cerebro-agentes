@@ -544,7 +544,8 @@ CONSEJO_FAMILIAS = os.environ.get("CONSEJO_FAMILIAS", "")
 # Members working at the same time in one phase (1 = one after another).
 CONSEJO_MAX_PARALELO = int(os.environ.get("CONSEJO_MAX_PARALELO", "3"))
 # Hard cap of a session = the estimate shown to the user × this factor, never above CONSEJO_TOPE_MAX_USD (an estimate
-# above that maximum cannot be convened). Past the cap the session stops honestly («fallida», nothing invented).
+# above that maximum cannot be convened). Past the cap no further model call is made: the engine rules with what it has
+# (a partial ruling written by code, labelled «Dictamen parcial») or the session ends «fallida»; nothing is invented.
 CONSEJO_FACTOR_TOPE = os.environ.get("CONSEJO_FACTOR_TOPE", "2.0")
 CONSEJO_TOPE_MAX_USD = os.environ.get("CONSEJO_TOPE_MAX_USD", "3.00")
 # Model calls one session may make in all (the dossier's specialists included): the session's own «per question» cap.

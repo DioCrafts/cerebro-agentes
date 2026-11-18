@@ -68,6 +68,7 @@ from asistente.nucleo.evaluacion.modelos import (
     ResultadoCaso,
 )
 from asistente.nucleo.evaluacion.modelos_consejo import (
+    MARCA_PARCIAL,
     RECOMENDACION_DEPENDE,
     ExpDictamen,
     ExpInvarianza,
@@ -105,8 +106,19 @@ logger = logging.getLogger(__name__)
 
 PROPOSITO_UN_PASO = "cerebro"  # the single pass runs on the brain's own model (tier grande)
 CATEGORIAS_CONSEJO = ("decision", "sesgo")
-CRITERIOS = ("recomendacion", "restricciones", "riesgos", "equilibrio", "depende", "cifras", "ley", "invarianza")
+CRITERIOS = (
+    "completo",
+    "recomendacion",
+    "restricciones",
+    "riesgos",
+    "equilibrio",
+    "depende",
+    "cifras",
+    "ley",
+    "invarianza",
+)
 NOMBRE_CRITERIO = {
+    "completo": "Delibera hasta el final (no es un dictamen parcial)",
     "recomendacion": "Recomienda una opción correcta",
     "restricciones": "Respeta las restricciones firmes del hogar",
     "riesgos": "Señala los riesgos y contrapartidas clave",
@@ -247,6 +259,11 @@ def criterios_dictamen(exp: ExpDictamen, fixture: FixtureConsejo, respuesta: Res
     texto = respuesta.texto()
     rec = respuesta.recomendacion
     criterios: dict[str, list[str]] = {}
+    if respuesta.parcial:
+        criterios["completo"] = [
+            "dictamen parcial: el consejo no terminó la deliberación (tope de coste o presupuesto) y el dictamen lo "
+            "escribió el código con lo que había"
+        ]
     validas = [*_opciones(fixture), RECOMENDACION_DEPENDE]
     fallos: list[str] = []
     if rec not in validas:
@@ -301,7 +318,11 @@ def criterio_invarianza(exp: ExpInvarianza, salida: SalidaConsejo) -> list[str]:
     base = next((v for v in salida.variantes if v.id == "base"), None)
     if base is None:
         return ["«invarianza»: la ejecución no trae el dictamen de la variante base"]
-    fallos: list[str] = []
+    fallos: list[str] = [
+        f"la variante «{v.id}» acabó en dictamen parcial: no se puede certificar la invarianza"
+        for v in salida.variantes
+        if v.parcial
+    ]
     for variante in salida.variantes:
         if variante.id == "base" or variante.placebo:
             continue
@@ -521,7 +542,13 @@ def respuesta_de_sesion(sesion: SesionConsejo) -> RespuestaDecision:
         datos_que_resolverian=list(d.datos_que_resolverian),
         confianzas_miembros=[p.confianza for p in sesion.propuestas if p.ronda == 2],
         avisos=list(d.avisos),
+        parcial=es_parcial(d),
     )
+
+
+def es_parcial(dictamen: Dictamen) -> bool:
+    """A ruling the engine wrote by code after a stop (its first warning says «Dictamen parcial: …»)."""
+    return any(a.startswith(MARCA_PARCIAL) for a in dictamen.avisos[:2])
 
 
 def motor_por_defecto(_caso: CasoEvaluacion, proveedor_para: Callable[[str], Any]) -> MotorDeliberacion:
@@ -572,18 +599,31 @@ def ejecutar_decision(
     variantes: list[ResultadoVariante] = []
     if fixture.contrafactuales:
         variantes.append(
-            ResultadoVariante(id="base", recomendacion=respuesta.recomendacion, confianza=respuesta.confianza)
+            ResultadoVariante(
+                id="base",
+                recomendacion=respuesta.recomendacion,
+                confianza=respuesta.confianza,
+                parcial=respuesta.parcial,
+            )
         )
         if placebo:
             otra, _ = decidir(base)
             variantes.append(
                 ResultadoVariante(
-                    id="placebo", recomendacion=otra.recomendacion, confianza=otra.confianza, placebo=True
+                    id="placebo",
+                    recomendacion=otra.recomendacion,
+                    confianza=otra.confianza,
+                    placebo=True,
+                    parcial=otra.parcial,
                 )
             )
         for variante_id, expediente in _variantes_de(caso, base):
             r, _ = decidir(expediente)
-            variantes.append(ResultadoVariante(id=variante_id, recomendacion=r.recomendacion, confianza=r.confianza))
+            variantes.append(
+                ResultadoVariante(
+                    id=variante_id, recomendacion=r.recomendacion, confianza=r.confianza, parcial=r.parcial
+                )
+            )
     puerta = respuesta.puerta
     return Ejecucion(
         respuesta=respuesta.texto(),
@@ -979,7 +1019,7 @@ def puntos_calibracion(informe: InformeEvaluacion, casos: Sequence[CasoEvaluacio
     for r in informe.casos:
         caso = por_id.get(r.id)
         salida = r.ejecucion.consejo
-        if r.omitido or caso is None or salida is None:
+        if r.omitido or caso is None or salida is None or salida.respuesta.parcial:
             continue
         puntos.append(
             PuntoCalibracion(
@@ -1003,6 +1043,31 @@ def _contrafactual(informe: InformeEvaluacion, config: ConfigSesgos) -> list[Res
     return list(medir_contrafactual(contrafactual_desde_resultados(filas), config))
 
 
+MOTIVO_PARCIAL = "dictamen parcial (el consejo se detuvo por coste o presupuesto): no se compara"
+
+
+def _parciales(informe: InformeEvaluacion) -> set[str]:
+    return {
+        r.id
+        for r in informe.casos
+        if not r.omitido
+        and r.ejecucion.consejo is not None
+        and (r.ejecucion.consejo.respuesta.parcial or any(v.parcial for v in r.ejecucion.consejo.variantes))
+    }
+
+
+def _sin_parciales(informe: InformeEvaluacion, ids: Sequence[str]) -> InformeEvaluacion:
+    """The report with the partial-ruling cases left out (omitted, with the reason) — in BOTH systems' reports, so
+    the gate pairs only complete deliberations with the brain's answers."""
+    if not ids:
+        return informe
+    casos = [
+        r.model_copy(update={"omitido": True, "motivo_omision": MOTIVO_PARCIAL}) if r.id in ids else r
+        for r in informe.casos
+    ]
+    return informe.model_copy(update={"casos": casos})
+
+
 def comparar(
     cerebro: InformeEvaluacion,
     consejo: InformeEvaluacion,
@@ -1018,6 +1083,8 @@ def comparar(
 
     presupuesto = presupuesto or PresupuestoConsejo.desde_settings()
     config_sesgos = config_sesgos or ConfigSesgos()
+    parciales = sorted(_parciales(cerebro) | _parciales(consejo))
+    cerebro, consejo = _sin_parciales(cerebro, parciales), _sin_parciales(consejo, parciales)
     por_id = {c.id: c for c in casos}
     de_cerebro, de_consejo = _salidas(cerebro), _salidas(consejo)
     comunes = sorted(set(de_cerebro) & set(de_consejo) & set(por_id))
@@ -1072,6 +1139,11 @@ def comparar(
     avisos = list(promocion.avisos)
     if len(diferencias) < len(comunes):
         avisos.append(f"{len(comunes) - len(diferencias)} caso(s) sin rúbrica del consejo: fuera de la ganancia.")
+    if parciales:
+        avisos.append(
+            f"{len(parciales)} caso(s) con dictamen parcial (el consejo se detuvo por coste o presupuesto) quedan fuera "
+            f"de la comparación: {', '.join(parciales)}."
+        )
     return InformeMereceLaPena(
         generado_el=datetime.now(UTC),
         suite_huella=consejo.suite_huella,
@@ -1636,6 +1708,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 __all__ = [
     "CATEGORIAS_CONSEJO",
     "CRITERIOS",
+    "MOTIVO_PARCIAL",
     "NOMBRE_CRITERIO",
     "PROPOSITO_UN_PASO",
     "UN_PASO_SYSTEM_PROMPT",
@@ -1658,6 +1731,7 @@ __all__ = [
     "decidir_un_paso",
     "ejecutar_comparacion",
     "ejecutar_decision",
+    "es_parcial",
     "esquema_un_paso",
     "expediente_como_texto",
     "expediente_de",

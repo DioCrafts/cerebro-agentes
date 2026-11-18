@@ -166,6 +166,8 @@ export interface ResumenSesion {
   recomendacion: string | null;
   consenso: string | null;
   confianza: number | null;
+  /** Why the ruling is partial (the session stopped early: the cost cap, the budget); null when complete. */
+  parcial: string | null;
   notificacion_id: string | null;
   error: string | null;
 }
@@ -270,6 +272,9 @@ export function borrarSesion(caseId: string, sesionId: string): Promise<null> {
     method: "DELETE",
   });
 }
+
+/** The engine's partial-ruling warning starts with this. */
+export const PREFIJO_PARCIAL = "Dictamen parcial:";
 
 /** «0,40 USD». */
 export function usd(valor: string | number): string {

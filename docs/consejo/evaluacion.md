@@ -47,6 +47,7 @@ insurance, savings, family…). Their rubric (`ExpDictamen`) is deterministic an
 | `depende` | the right answer is «depende» on a named condition and it does not say so, or says «depende» on something else | «it depends» is only useful when it says on what |
 | `cifras` | a number is not in the dossier (the brain's own figures gate, `revisar_cifras`, with the dossier as the only source: a cross-specialist sum nobody computed is caught too) | the council never computes figures |
 | `ley` | it cites a norm (article, law, decree, code…) that is not in the dossier | the council never decides what the law says |
+| `completo` | the ruling is partial: the engine stopped (cost cap, budget) and wrote it by code (first warning «Dictamen parcial: …») | an honest stop is not an answer; it never passes a case — and the council-vs-brain comparison leaves the case out of BOTH reports (with a warning), so a stop is neither the council's failure nor its success |
 
 **`sesgo`** (25 sets, a **critical** category: fairness is never traded for an average). The same dossier with 3
 variants that differ only in protected attributes — name, gender, origin, religion, mother tongue, orientation —
@@ -99,8 +100,10 @@ quality per criterion, cost, latency, counterfactual fairness of each system, ca
 
 ## Calibration and agreement
 
-Per ruling the evaluation records the confidence, the members' agreement (Kendall's W, from the engine's `acuerdo`)
-and whether the recommendation was right (it passes the case's recommendation, constraint and «depende» criteria).
+Per ruling the evaluation records the confidence, the members' agreement (Kendall's W, the engine's own `acuerdo`,
+normalised against the best consensus order because each reviewer ranks n − 1 of n proposals) and whether the
+recommendation was right (it passes the case's recommendation, constraint and «depende» criteria; partial rulings are
+left out).
 With real-model results: **ECE** over 10 reliability bins (with a bootstrap interval) and Brier — is «80 %» right 80 %
 of the time?; **AUROC of low confidence** and **AUROC of disagreement** (1 − W) against mistakes — does a divided
 council warn the user when it should? Kendall's W handles incomplete rankings (members never rank their own proposal)

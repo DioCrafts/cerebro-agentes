@@ -75,6 +75,8 @@ class ResumenSesion(_Modelo):
     recomendacion: str | None = None
     consenso: str | None = None
     confianza: float | None = None
+    # Why the ruling is partial (a stop — the cost cap, the budget — ended the session early), None when complete.
+    parcial: str | None = None
     notificacion_id: str | None = None
     error: str | None = None
 
@@ -106,7 +108,7 @@ class ListaSesiones(_Modelo):
 
 
 def _resumen_campos(registro: Registro) -> dict[str, Any]:
-    from asistente.nucleo.consejo.servicio import CONSENSO_EN_PALABRAS, recomendacion_en_palabras
+    from asistente.nucleo.consejo.servicio import CONSENSO_EN_PALABRAS, motivo_parcial, recomendacion_en_palabras
 
     sesion = registro.sesion
     dictamen = sesion.dictamen if sesion.estado == "terminada" else None
@@ -125,6 +127,7 @@ def _resumen_campos(registro: Registro) -> dict[str, Any]:
         "recomendacion": recomendacion_en_palabras(dictamen, sesion) if dictamen is not None else None,
         "consenso": CONSENSO_EN_PALABRAS.get(dictamen.consenso) if dictamen is not None else None,
         "confianza": dictamen.confianza if dictamen is not None else None,
+        "parcial": motivo_parcial(dictamen),
         "notificacion_id": registro.notificacion_id,
         "error": sesion.error,
     }

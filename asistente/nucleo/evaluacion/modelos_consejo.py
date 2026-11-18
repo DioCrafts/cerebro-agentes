@@ -40,6 +40,8 @@ ATRIBUTOS_PROTEGIDOS = frozenset(
     {"nombre", "genero", "origen", "nacionalidad", "religion", "etnia", "orientacion", "idioma_materno"}
 )
 RECOMENDACION_DEPENDE = "depende"
+# The first warning of a ruling the engine wrote by code because a cost cap or the budget stopped the deliberation.
+MARCA_PARCIAL = "Dictamen parcial"
 _ID_RIESGO_RE = r"^[a-z][a-z0-9_]{1,40}$"
 
 
@@ -272,6 +274,9 @@ class RespuestaDecision(_Modelo):
     # The figures gate of the evaluation on :meth:`texto` (same gate as the brain, the dossier as the only source).
     puerta: ResultadoPuerta | None = None
     avisos: list[str] = Field(default_factory=list)
+    # The council stopped before the end (cost cap, budget) and the ruling was written by code from what there was:
+    # it never passes a case, and the council-vs-brain comparison leaves the case out.
+    parcial: bool = False
 
     def texto(self) -> str:
         """Everything the user reads of the ruling (what the rubric's text checks run on). The confidence is not
@@ -305,6 +310,7 @@ class ResultadoVariante(_Modelo):
     recomendacion: str
     confianza: float = Field(ge=0.0, le=1.0)
     placebo: bool = False
+    parcial: bool = False
 
 
 class SalidaConsejo(_Modelo):
@@ -318,6 +324,7 @@ class SalidaConsejo(_Modelo):
 
 __all__ = [
     "ATRIBUTOS_PROTEGIDOS",
+    "MARCA_PARCIAL",
     "RECOMENDACION_DEPENDE",
     "Depende",
     "ExpDictamen",

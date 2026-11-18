@@ -218,3 +218,32 @@ def test_the_command_line_calibration_and_bias_report(tmp_path: Path, capsys: py
     assert ce.main(["calibrar", str(next(salida.glob("consejo-*-consejo.json")))]) == 0
     texto = capsys.readouterr().out
     assert texto.startswith("Calibración de «consejo» (70 dictámenes)") and "dictámenes, confianza media" in texto
+
+
+def test_partial_rulings_are_left_out_of_the_comparison(
+    casos: list[CasoEvaluacion], corridas: tuple[InformeEvaluacion, InformeEvaluacion]
+) -> None:
+    base, consejo = corridas
+    caso = next(c for c in casos if c.categoria == "decision")
+    resultado = next(r for r in consejo.casos if r.id == caso.id)
+    salida = resultado.ejecucion.consejo
+    assert salida is not None
+    parcial = resultado.model_copy(
+        update={
+            "aprobado": False,
+            "ejecucion": resultado.ejecucion.model_copy(
+                update={
+                    "consejo": salida.model_copy(
+                        update={"respuesta": salida.respuesta.model_copy(update={"parcial": True})}
+                    )
+                }
+            ),
+        }
+    )
+    informe = ce.comparar(
+        base, _con(consejo, {caso.id: parcial}), casos, suite.cargar_config(), presupuesto=PRESUPUESTO
+    )
+    assert informe.n_casos == len(casos) - 1
+    assert informe.veredicto == "mantener"  # not counted as the council's failure, not as a pass either
+    assert any("dictamen parcial" in a and caso.id in a for a in informe.avisos)
+    assert informe.calibracion_consejo.n == len(casos) - 1

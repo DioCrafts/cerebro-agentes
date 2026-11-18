@@ -80,7 +80,13 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
         <span className="rounded-pill bg-line/70 px-2 py-px normal-case tracking-normal text-ink-soft">{ESTADO_LABEL[sesion.estado]}</span>
       </p>
       <h4 className="mt-1.5 text-[15px] font-bold leading-snug text-ink">
-        {pendiente ? "¿Lo consultamos con el consejo?" : sesion.estado === "terminada" ? "Dictamen del consejo listo" : "Tu decisión, en el consejo"}
+        {pendiente
+          ? "¿Lo consultamos con el consejo?"
+          : sesion.estado === "terminada"
+            ? sesion.parcial
+              ? "Dictamen parcial del consejo"
+              : "Dictamen del consejo listo"
+            : "Tu decisión, en el consejo"}
       </h4>
       <p className="mt-1 text-[13.5px] leading-snug text-ink-soft">«{sesion.pregunta_usuario}»</p>
 
@@ -143,6 +149,7 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
 
       {sesion.estado === "terminada" && (
         <>
+          {sesion.parcial && <p className="mt-2 text-[12.5px] text-grounding-abstain-fg">Parcial: {sesion.parcial}</p>}
           {sesion.recomendacion && (
             <p className="mt-2 text-[13.5px] text-ink">
               <span className="font-semibold">Recomendación:</span> {sesion.recomendacion}
