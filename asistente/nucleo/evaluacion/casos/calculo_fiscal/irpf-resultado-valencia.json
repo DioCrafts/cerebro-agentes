@@ -1,0 +1,53 @@
+{
+  "id": "irpf-resultado-valencia",
+  "categoria": "calculo_fiscal",
+  "descripcion": "Resultado de la renta en Comunitat Valenciana: la cifra sale de calcular_irpf y se cita.",
+  "pregunta": "Con 55.000 € de sueldo bruto en Valencia, ¿qué resultado tendría mi renta 2025?",
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Comunitat Valenciana",
+      "rendimiento_trabajo_bruto": 55000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf",
+      "agente": "asesor"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "14.334,05 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Con tus datos, la declaración de 2025 saldría {cifra:resultado} (positivo: a ingresar) {fragmento:calcular_irpf}. Es una simulación."
+      }
+    ]
+  },
+  "version": 1
+}

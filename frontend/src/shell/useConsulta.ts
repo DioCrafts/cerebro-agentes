@@ -5,11 +5,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CaseState, ProgressEvent } from "../api";
 import { createCase, deleteCaseFact, streamAgent, updateCaseFact } from "../api";
+import type { TurnoConCerebro } from "../components/ProcedenciaRespuesta";
 import { conversacionDeVuelta } from "../lib/correo";
 import { newId } from "../lib/id";
 import { activityRows, sourceAnchorId } from "../lib/presentation";
 import { type ChatTurn, type Conversation, emptyConversation, loadConversations, saveConversations } from "../lib/storage";
 import { errorMessage } from "./errores";
+
+// The household brain's own events: shown as its live plan, kept apart from the advisor's activity timeline.
+const EVENTOS_CEREBRO: ReadonlySet<string> = new Set(["plan", "especialista", "peticion", "sintesis", "puerta"]);
+
+function esEventoCerebro(event: ProgressEvent): boolean {
+  return EVENTOS_CEREBRO.has(event.type);
+}
 
 // A turn that is still running: the question plus the agent's live progress.
 export interface PendingTurn {
@@ -18,6 +26,8 @@ export interface PendingTurn {
   startedAt: number;
   // The answer text streamed so far for the current model step (unverified).
   draft: string;
+  // The household brain's events (plan, specialists, synthesis, figures gate), kept apart from the activity rows.
+  cerebro?: ProgressEvent[];
 }
 
 export function useConsulta({
@@ -116,7 +126,8 @@ export function useConsulta({
     abortRef.current = controller;
     const startedAt = Date.now();
     const events: ProgressEvent[] = [];
-    setPending({ text, events: [], startedAt, draft: "" });
+    const eventosCerebro: ProgressEvent[] = [];
+    setPending({ text, events: [], startedAt, draft: "", cerebro: [] });
     if (replaceTurnId) {
       upsert(conversation.id, (c) => ({ ...c, turns: c.turns.filter((t) => t.id !== replaceTurnId) }));
     }
@@ -149,7 +160,14 @@ export function useConsulta({
 
       let turn: ChatTurn;
       try {
-        const resp = await streamAgent({ query: text, chatHistory, caseId, signal: controller.signal }, (event) => {
+        // The chat's id is the conversation's own (a new chat, a new id): the brain's conversation memory.
+        const peticion = { query: text, chatHistory, caseId, conversacionId: conversation.id, signal: controller.signal };
+        const resp = await streamAgent(peticion, (event) => {
+          if (esEventoCerebro(event)) {
+            eventosCerebro.push(event);
+            setPending((p) => (p ? { ...p, cerebro: [...eventosCerebro] } : p));
+            return;
+          }
           if (event.type === "text_delta") {
             // Tokens only grow the draft; they are not timeline entries.
             setPending((p) => (p ? { ...p, draft: p.draft + event.text } : p));
@@ -176,7 +194,9 @@ export function useConsulta({
           obligations: resp.obligations,
           activity: activityRows(events),
           elapsedMs: Date.now() - startedAt,
-        };
+          // What the brain did (who it consulted, where each figure comes from); kept with the turn.
+          cerebro: resp.cerebro ?? null,
+        } as TurnoConCerebro;
         upsert(conversation.id, (c) => ({
           ...c,
           facts: resp.facts,

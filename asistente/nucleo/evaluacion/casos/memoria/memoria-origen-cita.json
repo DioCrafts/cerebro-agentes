@@ -1,0 +1,53 @@
+{
+  "id": "memoria-origen-cita",
+  "categoria": "memoria",
+  "pregunta": "¿Qué te dije sobre mi seguro de hogar?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "febrero",
+      "motivo": "recuerda el dato"
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "10/01/2026|10 de enero|me (lo )?dijiste",
+      "motivo": "con su origen"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "El seguro de hogar vence el 1 de febrero",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-01-10",
+        "cita": "el seguro de casa me vence el 1 de febrero"
+      }
+    }
+  ],
+  "version": 1
+}

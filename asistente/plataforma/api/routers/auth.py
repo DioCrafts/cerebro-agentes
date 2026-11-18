@@ -27,9 +27,11 @@ from asistente.capacidades.navegador import tareas as tareas_navegador
 from asistente.capacidades.navegador import vigilancia
 from asistente.capacidades.navegador.persistencia import exportar as exportar_navegador
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.nucleo.evaluacion import revision as evaluacion_revision
 from asistente.nucleo.memoria.almacen import exportar_decisiones
 from asistente.nucleo.modulos.acciones import AccionStore
 from asistente.nucleo.proactive.store import NotificationStore
+from asistente.nucleo.recuerdos import servicio as recuerdos_servicio
 from asistente.nucleo.tareas.almacen import exportar_tareas
 from asistente.plataforma import settings
 from asistente.plataforma.api.security import require_api_key
@@ -340,6 +342,9 @@ def build_router(
                     "tareas": exportar_tareas(cases.db_path, case_id),
                     # Browser tasks (capacidades/navegador): state, steps and the parameters of a prepared one.
                     "navegador": exportar_navegador(cases.db_path, case_id),
+                    # Conversation memory (asistente/nucleo/recuerdos): conversations, summaries, retained messages
+                    # and «lo que sé de ti» with the origin of each item.
+                    "recuerdos": recuerdos_servicio.exportar_recuerdos(cases.db_path, case_id=case_id, user_id=user.id),
                 }
             )
         return {
@@ -350,14 +355,21 @@ def build_router(
             "sessions": [s.model_dump(mode="json", exclude={"user_id"}) for s in store.list_sessions(user.id)],
             "consents": [c.model_dump(mode="json") for c in store.consent_history(user.id)],
             "module_choices": [c.model_dump(mode="json") for c in store.module_choice_history(user.id)],
+            # Learning from mistakes (asistente/nucleo/evaluacion): the per-case consent, the masked candidate cases
+            # and the accepted ones kept in the private evaluation database.
+            "evaluacion": evaluacion_revision.exportar_usuario(
+                cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id)
+            ),
             "cases": exported_cases,
             # Devices registered for push notices and the consent history (asistente/plataforma/push).
             "push": PushStore(cases.db_path).exportar(user.id),
             # Research with sources (capacidades/investigacion): web consent history and cached reports.
             "investigacion": investigacion_capacidad.exportar_usuario(user.id),
+            # Conversation memory outside any case (each case's is in its own entry above).
+            "recuerdos": recuerdos_servicio.exportar_recuerdos(cases.db_path, case_id=None, user_id=user.id),
             "not_included": (
-                "El historial de conversaciones se guarda solo en tu navegador, no en el servidor. "
-                "Los documentos que subes no se almacenan."
+                "Las conversaciones que el servidor guarda (memoria de conversaciones) están en «recuerdos»; el "
+                "resto del historial vive solo en tu navegador. Los documentos que subes no se almacenan."
             ),
         }
 
@@ -381,10 +393,15 @@ def build_router(
             raise HTTPException(status_code=403, detail="La contraseña no es correcta. No se ha borrado nada.")
         # Data first, account last: if anything fails half-way the account still
         # exists and the user can simply ask again.
+        # Learning from mistakes: candidate cases, the per-case consent and the accepted cases of the private
+        # evaluation database (a separate file: the cases' triggers cannot reach it).
+        evaluacion_revision.borrar_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         # The usage log keeps the operator's totals but no longer says whose they were.
         anonimizar_consumo(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         # Revoke the Gmail grants at Google now (the rows go with each case through the store's erasure hook).
         correo_oauth.revocar_de_usuario(store.case_ids_of(user.id), db_path=cases.db_path)
+        # Conversation memory: the user's and their cases' (the triggers erase it too; this also checkpoints the WAL).
+        recuerdos_servicio.borrar_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         for case_id in store.case_ids_of(user.id):
             notifications.delete_for_case(case_id)
             if acciones is not None:

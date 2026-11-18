@@ -1,0 +1,52 @@
+{
+  "id": "enrutado-horas-luz-con-suscripciones",
+  "categoria": "enrutado",
+  "pregunta": "¿Qué horas son las más baratas para la luz el jueves 19 de noviembre de 2026?",
+  "modulos": [
+    "luz",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "suscripciones"
+    }
+  ],
+  "guion": {
+    "especialista:luz": [
+      {
+        "herramientas": [
+          {
+            "nombre": "luz_horas_baratas",
+            "argumentos": {
+              "fecha": "2026-11-19"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Hecho {fragmento:luz_horas_baratas}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_luz",
+            "argumentos": {
+              "pregunta": "¿Qué horas son las más baratas para la luz el jueves 19 de noviembre de 2026?"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te lo explico según tu especialista {fragmento:luz_horas_baratas}."
+      }
+    ]
+  },
+  "version": 1
+}

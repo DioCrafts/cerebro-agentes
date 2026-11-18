@@ -1,0 +1,130 @@
+{
+  "id": "procedencia-hipoteca-y-luz-base",
+  "categoria": "procedencia",
+  "descripcion": "Dos cifras de dos especialistas: cada una con su origen y nunca sumadas por el cerebro.",
+  "pregunta": "¿Cuánto pagaré en total este mes entre la cuota de la hipoteca y la luz del 15/09 al 14/10/2026 con 0,15 / 0,12 / 0,08 €/kWh, 4,6 kW, 80, 70 y 120 kWh?",
+  "modulos": [
+    "hipoteca",
+    "luz"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Próxima cuota: n\\.º \\d+, [\\d/]+: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "474,21 €"
+      }
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "luz",
+      "calculo": {
+        "herramienta": "luz_calcular_factura",
+        "argumentos": {
+          "fecha_inicio": "2026-09-15",
+          "fecha_fin": "2026-10-14",
+          "consumo_kwh": {
+            "p1": 80,
+            "p2": 70,
+            "p3": 120
+          },
+          "oferta": {
+            "nombre": "Fija 3 periodos",
+            "energia_eur_kwh": {
+              "p1": "0.15",
+              "p2": "0.12",
+              "p3": "0.08"
+            },
+            "potencia_eur_kw_dia": {
+              "p1": "0.089",
+              "p2": "0.012"
+            }
+          },
+          "potencia_p1_kw": 4.6,
+          "potencia_p2_kw": 4.6
+        },
+        "patron": "^TOTAL: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "57,79 €"
+      }
+    },
+    {
+      "tipo": "cifra_atribuida",
+      "nombre": "cuota",
+      "especialista": "hipoteca"
+    },
+    {
+      "tipo": "cifra_atribuida",
+      "nombre": "luz",
+      "especialista": "luz"
+    },
+    {
+      "tipo": "suma_ausente",
+      "calculos": [
+        {
+          "herramienta": "hipoteca_cuadro",
+          "argumentos": {
+            "fecha": "2026-03-20"
+          },
+          "patron": "Próxima cuota: n\\.º \\d+, [\\d/]+: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+          "registrada": "474,21 €"
+        },
+        {
+          "herramienta": "luz_calcular_factura",
+          "argumentos": {
+            "fecha_inicio": "2026-09-15",
+            "fecha_fin": "2026-10-14",
+            "consumo_kwh": {
+              "p1": 80,
+              "p2": 70,
+              "p3": 120
+            },
+            "oferta": {
+              "nombre": "Fija 3 periodos",
+              "energia_eur_kwh": {
+                "p1": "0.15",
+                "p2": "0.12",
+                "p3": "0.08"
+              },
+              "potencia_eur_kw_dia": {
+                "p1": "0.089",
+                "p2": "0.012"
+              }
+            },
+            "potencia_p1_kw": 4.6,
+            "potencia_p2_kw": 4.6
+          },
+          "patron": "^TOTAL: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+          "registrada": "57,79 €"
+        }
+      ],
+      "motivo": "hipoteca y luz son de especialistas distintos"
+    },
+    {
+      "tipo": "puerta",
+      "min_atribuciones": 2
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

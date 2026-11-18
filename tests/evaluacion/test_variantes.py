@@ -36,10 +36,13 @@ def test_the_prompt_registry_and_the_code_agree() -> None:
     evaluating it, or `prompts sincronizar --motivo "<por qué no se evaluó>"`. This test only fails while the
     registry and the code disagree.
     """
+    # Fails (on purpose) while a prompt of the brain, the weekly pass or the memory is new or edited and not yet
+    # registered: `prompts sincronizar --motivo "…"` (or `prompts registrar` with its evaluation) fixes it.
     assert v.comprobar_integrados() == []
     registro = v.cargar_registro()
     for rol in v.ROLES:
-        assert registro[rol][-1].huella == v.huella(v.texto_integrado(rol))
+        if registro[rol]:
+            assert registro[rol][-1].huella == v.huella(v.texto_integrado(rol))
     assert v.texto_integrado("agente") == AGENT_SYSTEM_PROMPT
     assert v.texto_integrado("modulos") == MODULES_ADDENDUM
     assert v.texto_integrado("especialista") == SPECIALIST_SYSTEM_PROMPT
@@ -47,7 +50,7 @@ def test_the_prompt_registry_and_the_code_agree() -> None:
 
 def test_a_changed_prompt_is_reported(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(v._prompts, "AGENT_SYSTEM_PROMPT", AGENT_SYSTEM_PROMPT + " ")
-    (problema,) = v.comprobar_integrados()
+    (problema,) = [p for p in v.comprobar_integrados() if "AGENT_SYSTEM_PROMPT" in p]
     assert v.INTEGRADOS["agente"].version in problema and "promote" in problema and "sincronizar" in problema
 
 

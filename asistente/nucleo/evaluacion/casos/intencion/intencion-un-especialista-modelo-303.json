@@ -1,0 +1,41 @@
+{
+  "id": "intencion-un-especialista-modelo-303",
+  "categoria": "intencion",
+  "descripcion": "Una sola pregunta de «fiscal» con todos los ámbitos activos: solo ese especialista.",
+  "pregunta": "Este trimestre he facturado 9.000 € más IVA: ¿cuánto pago en el 303?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "ambito",
+        "accion"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "fiscal"
+      ],
+      "excluye": [
+        "hipoteca",
+        "luz",
+        "caducidades",
+        "ayudas",
+        "suscripciones"
+      ],
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

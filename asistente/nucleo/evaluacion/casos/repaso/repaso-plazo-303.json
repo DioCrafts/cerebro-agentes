@@ -1,0 +1,39 @@
+{
+  "id": "repaso-plazo-303",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s1"
+      ],
+      "no_menciona": [
+        "s2"
+      ]
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "plazo",
+        "titulo": "Vence el modelo 303 del 3T",
+        "detalle": "Plazo hasta el 20/10/2026",
+        "fecha": "2026-10-20"
+      },
+      {
+        "id": "s2",
+        "tipo": "correo",
+        "titulo": "Boletín de ofertas de un supermercado",
+        "detalle": "Publicidad"
+      }
+    ]
+  },
+  "version": 1
+}

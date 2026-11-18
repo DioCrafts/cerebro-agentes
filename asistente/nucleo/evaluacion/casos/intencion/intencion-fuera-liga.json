@@ -1,0 +1,29 @@
+{
+  "id": "intencion-fuera-liga",
+  "categoria": "intencion",
+  "descripcion": "Fuera de lo que cubre el asistente del hogar: nadie es consultado.",
+  "pregunta": "¿Quién va a ganar la Liga este año?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "fuera_de_ambito"
+      ]
+    },
+    {
+      "tipo": "especialistas",
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

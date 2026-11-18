@@ -21,6 +21,8 @@ from asistente.plataforma.migraciones.catalogo import (
     plataforma,
     proactive,
     push,
+    recuerdos,
+    repaso,
     tareas,
 )
 from asistente.plataforma.migraciones.motor import Propietario
@@ -41,6 +43,8 @@ PROPIETARIOS: tuple[Propietario, ...] = (
     doctrina.PROPIETARIO,
     tareas.PROPIETARIO,
     push.PROPIETARIO,
+    recuerdos.PROPIETARIO,
+    repaso.PROPIETARIO,
 )
 
 __all__ = ["PROPIETARIOS"]

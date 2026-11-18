@@ -1,0 +1,48 @@
+{
+  "id": "colaboracion-amortizar-con-devolucion-2",
+  "categoria": "colaboracion",
+  "descripcion": "«hipoteca» necesita un dato de «fiscal»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "Con la devolución de la renta quiero adelantar hipoteca reduciendo plazo: ¿qué me ahorro?",
+  "modulos": [
+    "hipoteca",
+    "caducidades"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 31000,
+      "retenciones_trabajo": 6100,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "fiscal",
+      "a": "hipoteca"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "fiscal",
+        "hipoteca"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

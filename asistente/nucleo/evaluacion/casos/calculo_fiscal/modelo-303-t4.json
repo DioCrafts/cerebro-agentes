@@ -1,0 +1,52 @@
+{
+  "id": "modelo-303-t4",
+  "categoria": "calculo_fiscal",
+  "pregunta": "En el 4.º trimestre de 2026 facturé 22.000 € de base al 21 % y tengo 2.500 € de IVA soportado deducible. ¿Qué sale en el 303?",
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_303"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_303",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 4,
+          "base_tipo_general": 22000,
+          "cuotas_soportadas_deducibles": 2500
+        },
+        "patron": "Resultado \\(positivo: a ingresar; negativo: a compensar\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "2.120,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_modelo_303",
+            "argumentos": {
+              "ejercicio": 2026,
+              "trimestre": 4,
+              "base_tipo_general": 22000,
+              "cuotas_soportadas_deducibles": 2500
+            }
+          }
+        ]
+      },
+      {
+        "texto": "El 303 sale {cifra:resultado} {fragmento:calcular_modelo_303}."
+      }
+    ]
+  },
+  "version": 1
+}

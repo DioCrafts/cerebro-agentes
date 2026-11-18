@@ -1,0 +1,41 @@
+{
+  "id": "intencion-un-especialista-lavadora",
+  "categoria": "intencion",
+  "descripcion": "Una sola pregunta de «luz» con todos los ámbitos activos: solo ese especialista.",
+  "pregunta": "¿A qué hora me conviene poner la lavadora mañana para pagar menos luz?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "ambito",
+        "accion"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "luz"
+      ],
+      "excluye": [
+        "hipoteca",
+        "caducidades",
+        "ayudas",
+        "suscripciones",
+        "fiscal"
+      ],
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

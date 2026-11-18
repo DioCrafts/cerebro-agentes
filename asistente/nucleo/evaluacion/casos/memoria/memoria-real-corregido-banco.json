@@ -1,0 +1,56 @@
+{
+  "id": "memoria-real-corregido-banco",
+  "categoria": "memoria",
+  "descripcion": "Con el almacén de memoria real: la memoria de otra persona está guardada bajo SU usuario y caso.",
+  "pregunta": "¿Con qué banco tengo la hipoteca?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "Openbank",
+      "motivo": "manda lo que el usuario corrigió"
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "\\bING\\b",
+      "motivo": "no lo que dijo antes de corregirlo"
+    }
+  ],
+  "requiere": [
+    "cerebro",
+    "recuerdos"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "Tiene la hipoteca con Openbank",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-05-20",
+        "cita": "tengo la hipoteca en ING"
+      },
+      "corregido": true
+    }
+  ],
+  "version": 1
+}

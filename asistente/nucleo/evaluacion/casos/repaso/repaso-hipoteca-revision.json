@@ -1,0 +1,30 @@
+{
+  "id": "repaso-hipoteca-revision",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s1"
+      ],
+      "max_propuestas": 1
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "hipoteca",
+        "titulo": "Revisión anual de la hipoteca variable en marzo",
+        "detalle": "Euríbor publicado: 2,41 %"
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,53 @@
+{
+  "id": "irpf-resultado-galicia",
+  "categoria": "calculo_fiscal",
+  "descripcion": "Resultado de la renta en Galicia: la cifra sale de calcular_irpf y se cita.",
+  "pregunta": "¿Cuánto me tocará pagar en la declaración de 2025? Trabajo en A Coruña y gano 38.000 €.",
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Galicia",
+      "rendimiento_trabajo_bruto": 38000
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_irpf",
+      "agente": "asesor"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_irpf",
+        "argumentos": {
+          "ejercicio": 2025
+        },
+        "patron": "^- Resultado de la declaración \\(positivo: a ingresar; negativo: a devolver\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "7.825,65 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_irpf",
+            "argumentos": {
+              "ejercicio": 2025
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Con tus datos, la declaración de 2025 saldría {cifra:resultado} (positivo: a ingresar) {fragmento:calcular_irpf}. Es una simulación."
+      }
+    ]
+  },
+  "version": 1
+}

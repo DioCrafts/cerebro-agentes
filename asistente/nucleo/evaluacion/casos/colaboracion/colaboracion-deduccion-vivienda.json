@@ -1,0 +1,47 @@
+{
+  "id": "colaboracion-deduccion-vivienda",
+  "categoria": "colaboracion",
+  "descripcion": "«fiscal» necesita un dato de «hipoteca»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "Compré mi casa en 2011 con hipoteca. ¿Cuánto me puedo deducir en la renta de 2025 por lo que pagué de hipoteca?",
+  "modulos": [
+    "hipoteca",
+    "caducidades"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Madrid",
+      "rendimiento_trabajo_bruto": 36000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "180000",
+        "fecha_firma": "2011-05-10",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": true
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "hipoteca",
+      "a": "fiscal"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "fiscal",
+        "hipoteca"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

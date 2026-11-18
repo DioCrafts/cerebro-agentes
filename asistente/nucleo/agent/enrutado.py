@@ -68,6 +68,9 @@ class Proposito:
 # "grande" (an unknown purpose gets the strongest model, never a weaker one).
 TABLA: tuple[Proposito, ...] = (
     Proposito("agente", "grande", "Asesor central: razona sobre varias fuentes y redacta la respuesta."),
+    # The household brain (asistente/nucleo/cerebro). Exact names: "cerebro" must not swallow "cerebro:*".
+    Proposito("cerebro", "grande", "Cerebro del hogar: une los informes de los especialistas en una respuesta."),
+    Proposito("cerebro:intencion", "pequeno", "Entiende la petición y reparte encargos cuando las reglas dudan."),
     Proposito("verificador", "grande", "Revisa cada afirmación de la respuesta contra sus fuentes."),
     Proposito("equipo:planificador", "pequeno", "Clasifica la consulta (¿compleja?) y reparte encargos."),
     Proposito("equipo:investigador*", "mediano", "Busca normativa o doctrina con herramientas y resume."),
@@ -83,7 +86,10 @@ TABLA: tuple[Proposito, ...] = (
     Proposito("formatos-revisor", "grande", "Reflexión independiente sobre el diagnóstico."),
     Proposito("ayudas*", "pequeno", "Clasificador de convocatorias de ayudas."),
     Proposito("correo:*", "pequeno", "Clasificador del correo: categoría de un correo ya reducido a datos."),
+    Proposito("memoria:resumen", "pequeno", "Resume una conversación y propone recuerdos con cita literal (puerta)."),
     Proposito("evaluacion-juez", "grande", "Juez de las evaluaciones del agente."),
+    # The brain's proactive pass (asistente/nucleo/repaso): it only writes points code ranked, behind a gate.
+    Proposito("cerebro:repaso", "pequeno", "Redacta el repaso semanal o diario a partir de puntos ya priorizados."),
     # The research capability (capacidades/investigacion): what it writes passes a literal-quote gate.
     Proposito("investigacion:planificar", "pequeno", "Divide una pregunta de investigación en subpreguntas."),
     Proposito("investigacion:web", "mediano", "Busca y lee páginas web con la herramienta del proveedor."),

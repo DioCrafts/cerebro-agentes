@@ -6,6 +6,14 @@ case is satisfiable (its expected figures can appear with a citation), that the 
 correctly, and that routing to a specialist, the calculators and the ``actua`` guarantee still work.
 It says nothing about how a real model behaves: that is what ``run`` with a provider measures.
 
+Captured real cases have no reference script, but they have the run that actually happened (masked):
+:func:`guion_de_captura` turns it into a script that replays THAT run. Replaying it is the accepted case's
+standing negative control (:func:`reproducir_capturas`): the case must still FAIL on the answer that was given —
+if it passes, the case no longer detects the mistake it was accepted for (a calculator or the expectations
+changed) and the report says so. Re-running real cases against a candidate VARIANT is a normal run of the suite
+(``runner.evaluar``) with these cases: scripted providers in tests, a real model only on explicit opt-in with a
+USD cap (``casos-reales reproducir``).
+
 The script has one list of turns per conversation: ``asesor`` (the central agent) and
 ``especialista:<clave>`` (each module specialist, consumed in order if it is consulted more than once).
 Final texts may use ``{cifra:<nombre>}`` (the calculator's figure for that expectation) and
@@ -20,7 +28,7 @@ import re
 from typing import Any
 
 from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, TextCallback, ToolCall, ToolResult, ToolSpec
-from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, PasoGuion
+from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, LlamadaGuion, PasoGuion
 
 _FRAGMENTO_RE = re.compile(r"\[(F\d+)\]")
 _MARCADOR_RE = re.compile(r"\{(cifra|fragmento):([A-Za-z0-9_]+)\}")
@@ -134,4 +142,51 @@ class ProveedorReproduccion:
         return {"tipo_respuesta": "respuesta", "declara_falta_de_criterio": False, "afirmaciones": afirmaciones}
 
 
-__all__ = ["ProveedorReproduccion"]
+def guion_de_captura(contenido: Any) -> dict[str, list[PasoGuion]] | None:
+    """A script replaying a captured run (``revision.ContenidoCandidato``): the central agent's tool calls, then the
+    answer that was given; each specialist's calls, then a short report. None without the answer."""
+    respuesta = getattr(contenido, "respuesta", None)
+    if not respuesta:
+        return None
+    traza = [t for t in getattr(contenido, "tool_trace", []) or [] if isinstance(t, dict) and not t.get("is_error")]
+    por_agente: dict[str, list[LlamadaGuion]] = {}
+    for entrada in traza:
+        agente = str(entrada.get("agent") or "asesor")
+        argumentos = entrada.get("arguments") if isinstance(entrada.get("arguments"), dict) else {}
+        por_agente.setdefault(agente, []).append(LlamadaGuion(nombre=str(entrada.get("tool")), argumentos=dict(argumentos)))
+    pasos: list[PasoGuion] = []
+    if por_agente.get("asesor"):
+        pasos.append(PasoGuion(herramientas=por_agente["asesor"]))
+    pasos.append(PasoGuion(texto=str(respuesta)))
+    guion: dict[str, list[PasoGuion]] = {"asesor": pasos}
+    for agente, llamadas in por_agente.items():
+        if agente.startswith("especialista_"):
+            guion[f"especialista:{agente.removeprefix('especialista_')}"] = [
+                PasoGuion(herramientas=llamadas),
+                PasoGuion(texto="Informe del especialista (reproducción de lo capturado)."),
+            ]
+    return guion
+
+
+def reproducir_capturas(casos: Sequence[tuple[CasoEvaluacion, dict[str, list[PasoGuion]] | None]], **kwargs: Any) -> tuple[Any, list[str]]:
+    """Replay each accepted case's captured run (no model). Returns (report, ids of the cases that PASS on it).
+
+    A real case that passes on its own captured mistake catches nothing any more: those ids need a review.
+    ``kwargs`` go to ``runner.evaluar`` (``config``, ``suite_huella``); the environment is a replay one.
+    """
+    import tempfile
+    from pathlib import Path
+
+    from asistente.nucleo.evaluacion.runner import Entorno, evaluar, proveedor_reproduccion
+    from asistente.nucleo.evaluacion.variantes import VARIANTE_BASE
+    from asistente.plataforma.ops.consumo import ConsumoStore
+
+    con_guion = [c.model_copy(update={"guion": g, "requiere": []}) for c, g in casos if g is not None]
+    consumo = ConsumoStore(str(Path(tempfile.mkdtemp(prefix="evaluacion-capturas-")) / "consumo.sqlite3"))
+    entorno = Entorno(proveedor=proveedor_reproduccion, consumo=consumo, modo="reproduccion", motor="agente")
+    informe = evaluar(con_guion, VARIANTE_BASE, entorno, casos_reales=len(con_guion), **kwargs)
+    siguen_aprobando = [r.id for r in informe.casos if r.aprobado and not r.omitido]
+    return informe, siguen_aprobando
+
+
+__all__ = ["ProveedorReproduccion", "guion_de_captura", "reproducir_capturas"]

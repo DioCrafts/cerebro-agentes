@@ -1,0 +1,52 @@
+{
+  "id": "modelo-130-t3",
+  "categoria": "calculo_fiscal",
+  "pregunta": "Hasta el 3.º trimestre de 2026 llevo 31.000 € de ingresos y 9.000 € de gastos como autónomo. ¿Cuánto pago en el 130?",
+  "expectativas": [
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_130"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_130",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 3,
+          "ingresos_acumulados": 31000,
+          "gastos_acumulados": 9000
+        },
+        "patron": "Resultado del pago fraccionado: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "4.180,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "calcular_modelo_130",
+            "argumentos": {
+              "ejercicio": 2026,
+              "trimestre": 3,
+              "ingresos_acumulados": 31000,
+              "gastos_acumulados": 9000
+            }
+          }
+        ]
+      },
+      {
+        "texto": "El 130 te sale {cifra:resultado} {fragmento:calcular_modelo_130}."
+      }
+    ]
+  },
+  "version": 1
+}

@@ -1,0 +1,50 @@
+{
+  "id": "procedencia-cuota-atribuida-150k-30a",
+  "categoria": "procedencia",
+  "pregunta": "¿De cuánto es mi cuota de hipoteca y de dónde sale esa cifra?",
+  "modulos": [
+    "hipoteca",
+    "luz"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "150000",
+        "fecha_firma": "2021-06-10",
+        "plazo_meses": 360,
+        "tipo": "fijo",
+        "tipo_inicial": "2.5",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Próxima cuota: n\\.º \\d+, [\\d/]+: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "592,68 €"
+      }
+    },
+    {
+      "tipo": "cifra_atribuida",
+      "nombre": "cuota",
+      "especialista": "hipoteca"
+    },
+    {
+      "tipo": "puerta",
+      "min_atribuciones": 1
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

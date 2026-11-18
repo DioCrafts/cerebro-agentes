@@ -1,0 +1,41 @@
+{
+  "id": "colaboracion-bono-con-renta",
+  "categoria": "colaboracion",
+  "descripcion": "«ayudas» necesita un dato de «fiscal»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "¿Cumplo el límite de ingresos del bono social con lo que declaré en la renta de 2025?",
+  "modulos": [
+    "ayudas",
+    "caducidades"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Murcia",
+      "rendimiento_trabajo_bruto": 14000,
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "fiscal",
+      "a": "ayudas"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "ayudas",
+        "fiscal"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

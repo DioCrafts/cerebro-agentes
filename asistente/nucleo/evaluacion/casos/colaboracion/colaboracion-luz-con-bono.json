@@ -1,0 +1,42 @@
+{
+  "id": "colaboracion-luz-con-bono",
+  "categoria": "colaboracion",
+  "descripcion": "«luz» necesita un dato de «ayudas»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "¿Cuánto pagaría de luz este mes si me aplicaran el bono social?",
+  "modulos": [
+    "luz",
+    "ayudas",
+    "caducidades"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "ayudas",
+      "a": "luz"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "ayudas",
+        "luz"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

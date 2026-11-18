@@ -1,0 +1,45 @@
+{
+  "id": "paso-directo-130-t2",
+  "categoria": "paso_directo_fiscal",
+  "pregunta": "Llevo 20.000 € de ingresos y 6.000 € de gastos de mi actividad hasta el 2.º trimestre de 2026. ¿Qué pago fraccionado hago en el 130?",
+  "modulos": [
+    "hipoteca",
+    "caducidades"
+  ],
+  "expectativas": [
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "paso_directo"
+      ]
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_130"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_130",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 2,
+          "ingresos_acumulados": 20000,
+          "gastos_acumulados": 6000
+        },
+        "patron": "Resultado del pago fraccionado: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "2.660,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

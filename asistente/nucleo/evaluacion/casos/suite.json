@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-16",
+  "version": "2026-11-18",
   "categorias": {
     "calculo_fiscal": {
       "descripcion": "Cifras fiscales de las calculadoras, citadas.",
@@ -39,6 +39,30 @@
     },
     "regresion": {
       "descripcion": "Errores reales corregidos por usuarios y revisados por un operador.",
+      "critica": true
+    },
+    "intencion": {
+      "descripcion": "El cerebro entiende la consulta: a qué especialistas consulta, en paralelo o esperando, y cuándo pregunta en vez de suponer.",
+      "critica": true
+    },
+    "colaboracion": {
+      "descripcion": "Un especialista pide un dato a otro a través del cerebro (petición o dependencia del plan).",
+      "critica": false
+    },
+    "procedencia": {
+      "descripcion": "Cada cifra dice de qué especialista sale; el cerebro nunca suma cifras de especialistas distintos que ninguna herramienta combinó.",
+      "critica": true
+    },
+    "memoria": {
+      "descripcion": "Recuerda con su origen, nunca usa la memoria de otra persona y manda lo que el usuario corrigió.",
+      "critica": true
+    },
+    "repaso": {
+      "descripcion": "El repaso proactivo: cada afirmación sale de una señal y ninguna propuesta es inventada.",
+      "critica": false
+    },
+    "paso_directo_fiscal": {
+      "descripcion": "Una pregunta solo fiscal pasa por el asesor fiscal tal cual: cifras de la calculadora, citas y verificador intactos.",
       "critica": true
     }
   }

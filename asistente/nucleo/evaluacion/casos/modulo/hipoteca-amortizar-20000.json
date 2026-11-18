@@ -1,0 +1,88 @@
+{
+  "id": "hipoteca-amortizar-20000",
+  "categoria": "modulo",
+  "pregunta": "¿Cuántos intereses me ahorro si adelanto 20.000 € de hipoteca el 20 de marzo de 2026 y reduzco plazo?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "hipoteca_amortizar",
+      "agente": "especialista_hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "ahorro",
+      "calculo": {
+        "herramienta": "hipoteca_amortizar",
+        "argumentos": {
+          "importe": 20000,
+          "fecha": "2026-03-20"
+        },
+        "patron": "A\\) Reducir plazo[\\s\\S]*?Intereses que te ahorras: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "12.289,49 €"
+      }
+    },
+    {
+      "tipo": "texto_presente",
+      "patron": "comisi[oó]n",
+      "motivo": "menciona la comisión"
+    },
+    {
+      "tipo": "citas"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_amortizar",
+            "argumentos": {
+              "importe": 20000,
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Ahorro {cifra:ahorro} {fragmento:hipoteca_amortizar}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Amortizar 20000 € reduciendo plazo"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Te ahorrarías {cifra:ahorro} de intereses {fragmento:hipoteca_amortizar}, antes de la comisión por amortización anticipada."
+      }
+    ]
+  },
+  "version": 1
+}

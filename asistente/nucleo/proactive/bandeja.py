@@ -331,6 +331,21 @@ def agrupar(notificaciones: Sequence[Notification]) -> list[list[Notification]]:
     return grupos
 
 
+def _repaso_del_cerebro(
+    case: CaseState, *, hoy: date, store: NotificationStore, acciones: Any | None, nombres: Mapping[str, str] | None
+) -> int | None:
+    """The household brain's pass (``asistente.nucleo.repaso``), when ``REPASO_ACTIVO`` and a model is configured:
+    it writes this period's digest itself (prioritised, explained, behind its gate). None — off, no model, or any
+    error — and the deterministic digest below is written exactly as before."""
+    try:
+        from asistente.nucleo.repaso.servicio import desde_bandeja
+
+        return desde_bandeja(case, hoy=hoy, store=store, acciones=acciones, nombres=nombres)
+    except Exception:  # the brain never takes the digest down with it
+        logger.exception("The brain pass failed for case %s; deterministic digest", case.case_id)
+        return None
+
+
 def resumen_semanal(
     case: CaseState,
     *,
@@ -340,6 +355,9 @@ def resumen_semanal(
     nombres: Mapping[str, str] | None = None,
 ) -> int:
     """Write this week's digest for one case (0 or 1). Nothing is written when nothing is open."""
+    cerebro = _repaso_del_cerebro(case, hoy=hoy, store=store, acciones=acciones, nombres=nombres)
+    if cerebro is not None:
+        return cerebro
     key = clave_semana(hoy)
     actuales = store.list(case.case_id)
     if any(n.key == key for n in actuales):

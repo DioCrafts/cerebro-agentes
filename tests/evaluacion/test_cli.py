@@ -148,17 +148,20 @@ def test_the_operator_reviews_and_promotes_a_case(tmp_path: Path, suite_copia: P
 
     ok = runner.invoke(cli, [*base, "--revisor", "Operadora", "--confirmo-anonimizado"])
     assert ok.exit_code == 0, ok.output
-    (fichero,) = (suite_copia / "regresion").glob("*.json")
-    promovido = json.loads(fichero.read_text(encoding="utf-8"))
-    assert promovido["origen"]["revisado_por"] == "Operadora" and promovido["origen"]["referencia"].startswith("fb-")
-    assert "case_1" not in fichero.read_text(encoding="utf-8") and feedback_id not in fichero.read_text(
-        encoding="utf-8"
-    )
+    # A real case never enters the repository: it is in the PRIVATE database, linked to its case for erasure.
+    assert not (suite_copia / "regresion").exists()
+    from asistente.nucleo.evaluacion.privado import store_de
+
+    (real,) = store_de(db).todos()
+    assert real.case_id == "case_1" and real.feedback_id == feedback_id
+    assert real.caso.origen.revisado_por == "Operadora" and real.caso.origen.referencia.startswith("fb-")
     assert FeedbackStore(db).get(feedback_id).estado == "promovido"  # type: ignore[union-attr]
     revision = SQLiteCaseStateStore(db).list_audit_events("case_1")[-1]
     assert revision["event_type"] == "evaluacion_revision" and revision["estado"] == "promovido"
-    # The promoted case is part of the suite now and replays its expectations from the calculator.
-    assert s.validar(suite_copia).ok
+    # It runs with the suite and its expected figure still comes from the calculator.
+    assert s.validar(suite_copia, casos=[real.caso]).ok
+    listado = runner.invoke(cli, ["casos-reales", "listar", "--casos-reales-db", store_de(db).db_path])
+    assert real.id in listado.output and "vigente" in listado.output
     otra_vez = runner.invoke(cli, [*base, "--revisor", "Operadora", "--confirmo-anonimizado"])
     assert otra_vez.exit_code != 0 and "no pendiente" in otra_vez.output
 

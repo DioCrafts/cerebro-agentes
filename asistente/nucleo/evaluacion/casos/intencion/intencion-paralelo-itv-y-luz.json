@@ -1,0 +1,39 @@
+{
+  "id": "intencion-paralelo-itv-y-luz",
+  "categoria": "intencion",
+  "descripcion": "Dos preguntas independientes: dos especialistas, en paralelo, sin que uno espere al otro.",
+  "pregunta": "¿Cuándo me toca la ITV (coche de 2017) y cuáles son las horas baratas de la luz mañana?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "cruzada"
+      ],
+      "aclaracion": false,
+      "paralelo": true
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "caducidades",
+        "luz"
+      ],
+      "excluye": [
+        "hipoteca",
+        "ayudas",
+        "suscripciones"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

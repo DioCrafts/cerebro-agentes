@@ -1,0 +1,54 @@
+{
+  "id": "repaso-varias",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s1"
+      ],
+      "max_propuestas": 5
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "plazo",
+        "titulo": "Plazo 1",
+        "fecha": "2026-12-11"
+      },
+      {
+        "id": "s2",
+        "tipo": "plazo",
+        "titulo": "Plazo 2",
+        "fecha": "2026-12-12"
+      },
+      {
+        "id": "s3",
+        "tipo": "plazo",
+        "titulo": "Plazo 3",
+        "fecha": "2026-12-13"
+      },
+      {
+        "id": "s4",
+        "tipo": "plazo",
+        "titulo": "Plazo 4",
+        "fecha": "2026-12-14"
+      },
+      {
+        "id": "s5",
+        "tipo": "plazo",
+        "titulo": "Plazo 5",
+        "fecha": "2026-12-15"
+      }
+    ]
+  },
+  "version": 1
+}

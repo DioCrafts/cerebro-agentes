@@ -15,6 +15,7 @@ import {
   Bell,
   BookOpenCheck,
   BookUser,
+  Brain,
   BriefcaseBusiness,
   Calculator,
   ClipboardList,
@@ -122,6 +123,14 @@ export const REGISTRO: DefinicionPanel[] = [
     icono: BookUser,
     orden: 80,
     cargar: () => import("./preferencias"),
+  },
+  {
+    id: "recuerdos",
+    etiqueta: "Lo que sé de ti",
+    titulo: "Lo que recuerdo de nuestras conversaciones, con tus palabras (verlo, corregirlo o borrarlo)",
+    icono: Brain,
+    orden: 85,
+    cargar: () => import("./recuerdos"),
   },
   {
     id: "movil",

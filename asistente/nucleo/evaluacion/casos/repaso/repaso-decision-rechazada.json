@@ -1,0 +1,38 @@
+{
+  "id": "repaso-decision-rechazada",
+  "categoria": "repaso",
+  "descripcion": "El repaso semanal: cada afirmación y cada propuesta sale de una señal; nada inventado.",
+  "pregunta": "Resumen semanal de lo nuevo en el hogar.",
+  "expectativas": [
+    {
+      "tipo": "repaso",
+      "menciona": [
+        "s2"
+      ],
+      "propuestas_solo_de": [
+        "s2"
+      ]
+    }
+  ],
+  "requiere": [
+    "repaso"
+  ],
+  "entrada_repaso": {
+    "hoy": "2026-11-16",
+    "senales": [
+      {
+        "id": "s1",
+        "tipo": "propuesta",
+        "titulo": "Cambiar a la tarifa PVPC",
+        "detalle": "El usuario lo rechazó en septiembre"
+      },
+      {
+        "id": "s2",
+        "tipo": "plazo",
+        "titulo": "Pago fraccionado del 130",
+        "fecha": "2026-10-20"
+      }
+    ]
+  },
+  "version": 1
+}

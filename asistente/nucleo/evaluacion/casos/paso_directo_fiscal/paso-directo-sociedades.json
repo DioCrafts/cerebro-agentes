@@ -1,0 +1,42 @@
+{
+  "id": "paso-directo-sociedades",
+  "categoria": "paso_directo_fiscal",
+  "pregunta": "Mi SL ganó 100.000 € en 2025 sin ajustes. ¿Qué cuota del Impuesto sobre Sociedades le sale?",
+  "modulos": [
+    "luz"
+  ],
+  "expectativas": [
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "paso_directo"
+      ]
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_impuesto_sociedades"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "calcular_impuesto_sociedades",
+        "argumentos": {
+          "ejercicio": 2025,
+          "resultado_contable": 100000
+        },
+        "patron": "Cuota diferencial[^:]*: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "25.000,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

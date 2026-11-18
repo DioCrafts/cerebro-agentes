@@ -1,0 +1,47 @@
+{
+  "id": "colaboracion-deduccion-vivienda-2",
+  "categoria": "colaboracion",
+  "descripcion": "«fiscal» necesita un dato de «hipoteca»: se lo pide a través del cerebro (petición o dependencia del plan).",
+  "pregunta": "Tengo la hipoteca de antes de 2013: ¿qué deducción por vivienda habitual me sale con las cuotas de 2025?",
+  "modulos": [
+    "hipoteca",
+    "caducidades"
+  ],
+  "expediente": {
+    "hechos": {
+      "comunidad_autonoma": "Andalucía",
+      "rendimiento_trabajo_bruto": 29000,
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2012-02-01",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": true
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "flujo_dato",
+      "de": "hipoteca",
+      "a": "fiscal"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "fiscal",
+        "hipoteca"
+      ],
+      "fuente": "informes"
+    },
+    {
+      "tipo": "puerta"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

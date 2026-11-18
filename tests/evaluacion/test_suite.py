@@ -38,8 +38,9 @@ def _entorno(tmp_path: Path) -> Entorno:
 def test_the_seed_suite_is_valid_and_covers_every_critical_category(casos: list[CasoEvaluacion]) -> None:
     informe = s.validar()
     assert informe.ok, informe.errores
-    assert informe.casos == len(casos) >= 30
-    assert informe.con_guion == len(casos)
+    assert informe.casos == len(casos) >= 140
+    # Every case CI can replay has its script; the household brain's cases run with a model (``requiere``).
+    assert informe.con_guion == sum(1 for c in casos if not c.requiere) >= 75
     config = s.cargar_config()
     por_categoria = Counter(c.categoria for c in casos)
     for nombre, categoria in config.categorias.items():
@@ -60,9 +61,13 @@ def test_no_expected_figure_is_written_by_hand(casos: list[CasoEvaluacion]) -> N
 
 def test_the_whole_suite_replays_without_a_model(casos: list[CasoEvaluacion], tmp_path: Path) -> None:
     informe = evaluar(casos, _variante(), _entorno(tmp_path), config=s.cargar_config(), suite_huella=s.huella_suite())
-    fallidos = {r.id: r.fallos for r in informe.casos if not r.aprobado}
+    fallidos = {r.id: r.fallos for r in informe.casos if not r.aprobado and not r.omitido}
     assert not fallidos
     assert informe.resumen.tasa == 1.0 and informe.modo == "reproduccion"
+    # Exactly the cases that need the brain's code (or a model) are left out, each with its reason.
+    omitidos = {r.id for r in informe.casos if r.omitido}
+    assert omitidos == {c.id for c in casos if c.requiere}
+    assert all(r.motivo_omision for r in informe.casos if r.omitido)
     actua = next(r for r in informe.casos if r.id == "actua-baja-queda-pendiente")
     assert actua.ejecucion.acciones_pendientes == ["prueba_actua_dar_de_baja"]
     luz = next(r for r in informe.casos if r.id == "luz-factura-oferta")

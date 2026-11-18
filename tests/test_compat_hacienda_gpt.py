@@ -128,6 +128,9 @@ def test_stored_identifiers_keep_their_old_spelling() -> None:
         "tareas 1": "da842990bd5c9477",
         "tareas 2": "3acb9fe0ce3e77a4",
         "push 1": "8b5ebcf6c7f52b68",
+        "recuerdos 1": "181703d8a4ab901b",
+        "repaso 1": "27d453200f190642",
+        "repaso 2": "f9add8ad0766157a",
     }
     # Bus consumers and migration owners are identifiers, not paths.
     from asistente.nucleo.eventos.bus import consumidores_del_trabajador

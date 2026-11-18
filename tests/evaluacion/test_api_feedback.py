@@ -110,8 +110,10 @@ def _negativa(case_id: str, **extra) -> dict:  # type: ignore[no-untyped-def]
 
 def test_consent_text_is_public_to_the_ui(env: Env) -> None:
     body = env.client.get("/evaluacion/consentimiento").json()
-    assert body["version"] == CONSENTIMIENTO_VERSION and "ANÓNIMA" in body["texto"]
-    assert {t["clave"] for t in body["tipos"]} >= {"cifra_erronea", "modulo_erroneo", "afirmacion_inventada"}
+    assert body["version"] == CONSENTIMIENTO_VERSION and "ENMASCARADA" in body["texto"]
+    assert "nunca en el código" in body["texto"] and "se borra con tu cuenta" in body["texto"]
+    assert {t["clave"] for t in body["tipos"]} >= {"cifra_erronea", "modulo_erroneo", "afirmacion_inventada", "suma_indebida"}
+    assert body["aprendizaje_version"] and "Aprender de los fallos" in body["aprendizaje_texto"]
 
 
 def test_a_vote_alone_stores_no_conversation(env: Env) -> None:
@@ -119,8 +121,9 @@ def test_a_vote_alone_stores_no_conversation(env: Env) -> None:
     case_id = env.case_with_answer(ana)
     r = env.client.post("/evaluacion/feedback", json={**_negativa(case_id)}, headers=ana)
     assert r.status_code == 201, r.text
-    assert r.json()["guardado_para_evaluacion"] is False
-    assert set(r.json()["etiquetas"]) == {"afirmacion_rechazada", "cifra_erronea"}
+    assert r.json()["guardado_para_evaluacion"] is False and r.json()["candidato"] is False
+    # The verifier rejected the claim and the agent abstained: both are signals of the turn.
+    assert set(r.json()["etiquetas"]) == {"abstencion", "afirmacion_rechazada", "cifra_erronea"}
     (detalle,) = env.client.get(f"/evaluacion/feedback?case_id={case_id}", headers=ana).json()["feedback"]
     assert detalle["contenido"] is None and detalle["registro"]["estado"] == "solo_valoracion"
     eventos = [e for e in env.cases.list_audit_events(case_id) if e["event_type"] == "evaluacion_valoracion"]

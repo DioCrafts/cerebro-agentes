@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 from enum import Enum
 import logging
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,6 +46,7 @@ from asistente.nucleo.agent.team import (
 )
 from asistente.nucleo.agent.tools import Toolbox
 from asistente.nucleo.agent.verifier import ClaimCheck, ResponseType, Verdict, VerificationReport, Verifier
+from asistente.nucleo.cerebro.contrato import InformeCerebro
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.evaluacion.variantes import argumentos_proveedor, prompt_activo
 from asistente.nucleo.memoria.agente import MemoriaAgente
@@ -55,6 +56,9 @@ from asistente.nucleo.modulos.propuestas_chat import PropuestasChat
 from asistente.nucleo.planificador.agente import PLANIFICAR_TOOL
 from asistente.nucleo.tareas.herramientas import TareasAgente
 from asistente.plataforma import settings
+
+if TYPE_CHECKING:  # pragma: no cover - typing only (the brain imports this module)
+    from asistente.nucleo.cerebro.cerebro import Cerebro
 
 logger = logging.getLogger(__name__)
 
@@ -131,6 +135,8 @@ class AgentResult(BaseModel):
     updated_case: CaseState | None = Field(default=None, exclude=True)
     # Calls to module tools that act outside the app: never executed, the caller stores them as pending.
     acciones_propuestas: list[AccionPendiente] = Field(default_factory=list, exclude=True)
+    # What the household brain did on this turn (plan, specialists, figures gate); None from the plain advisor.
+    cerebro: InformeCerebro | None = None
 
 
 def _context_block(case: CaseState | None) -> str:
@@ -195,6 +201,19 @@ def _revision_message(problems: list[ClaimCheck], invalid_ids: list[str], doctri
 
 
 class TaxAgent:
+    # Hooks for the household brain's tax specialist (asistente/nucleo/cerebro/fiscal.py); these defaults keep the
+    # advisor exactly as it always was. ``herramientas_del_hogar`` False: no ``consultar_<x>`` specialists, tasks,
+    # research or planner (the brain coordinates those now).
+    herramientas_del_hogar: bool = True
+
+    def _nuevo_ledger(self) -> EvidenceLedger:
+        """The evidence ledger of one run (the brain's tax specialist writes into the turn's shared ledger)."""
+        return EvidenceLedger()
+
+    def _aportes_del_turno(self) -> tuple[str, list[Any]]:
+        """(context block, extra tools) the caller adds to one run: nothing for the plain advisor."""
+        return "", []
+
     def __init__(
         self,
         *,
@@ -253,18 +272,24 @@ class TaxAgent:
             except Exception:
                 logger.exception("agent progress callback failed")
 
-        ledger = ledger if ledger is not None else EvidenceLedger()
-        especialistas = Coordinador.para(self._provider, ledger, modulos, emit)
+        ledger = ledger if ledger is not None else self._nuevo_ledger()
+        hogar = self.herramientas_del_hogar
+        bloque_turno, extras_turno = self._aportes_del_turno()
+        especialistas = Coordinador.para(self._provider, ledger, modulos, emit) if hogar else None
         # The user's remembered decisions (asistente/nucleo/memoria): two tools and a context block, only with a case.
         memoria = MemoriaAgente.para(case, query=query, chat_history=chat_history)
         # Tax facts the household modules propose (modulos/puentes.py): a context block and `aceptar_propuesta`.
         propuestas = PropuestasChat.para(case, modulos, query=query, chat_history=chat_history)
         # Long-running tasks (asistente/nucleo/tareas): tools and a paragraph, with a case and household modules or tasks.
-        tareas = TareasAgente.para(case, query=query, chat_history=chat_history, modulos=modulos or ())
+        tareas = (
+            TareasAgente.para(case, query=query, chat_history=chat_history, modulos=modulos or ()) if hogar else None
+        )
         # Research with sources (capacidades/investigacion): the `investigar` tool, only with INVESTIGACION_AGENTE.
         from asistente.capacidades.investigacion.herramienta import InvestigacionAgente
 
-        investigacion = InvestigacionAgente.para(self._provider, case, query=query, chat_history=chat_history)
+        investigacion = (
+            InvestigacionAgente.para(self._provider, case, query=query, chat_history=chat_history) if hogar else None
+        )
         toolbox = Toolbox(
             searcher=self._searcher,
             ledger=ledger,
@@ -279,6 +304,7 @@ class TaxAgent:
                 *(propuestas.herramientas() if propuestas is not None else ()),
                 *(tareas.herramientas() if tareas is not None else ()),
                 *(investigacion.herramientas() if investigacion is not None else ()),
+                *extras_turno,
             ],
         )
         if memoria is not None:
@@ -311,6 +337,7 @@ class TaxAgent:
                     memoria.contexto() if memoria is not None else "",
                     bloque_propuestas,
                     briefing,
+                    bloque_turno,
                     query,
                 )
                 if part
@@ -629,7 +656,7 @@ class TeamAgent(TaxAgent):
         emit: Callable[..., None],
         modulos: Sequence[Modulo] | None = None,
     ) -> AgentResult:
-        ledger = EvidenceLedger()
+        ledger = self._nuevo_ledger()
         make_toolbox = new_toolbox_factory(
             searcher=LockedSearcher(self._searcher),
             ledger=ledger,
@@ -691,8 +718,24 @@ class TeamAgent(TaxAgent):
         return result
 
 
-def build_agent() -> TaxAgent:
-    """Wire the production agent from settings (provider, FAISS searcher, verifier)."""
+def build_agent() -> TaxAgent | Cerebro:
+    """The production agent: the household brain (``CEREBRO_MODO=hogar``, the default), whose tax specialist is the
+    advisor below, or the single tax advisor exactly as it was (``CEREBRO_MODO=fiscal``, the legacy mode)."""
+    if modo_cerebro() == "hogar":
+        from asistente.nucleo.cerebro.construir import construir_cerebro
+
+        return construir_cerebro()
+    return construir_asesor_fiscal()
+
+
+def modo_cerebro() -> str:
+    """``hogar`` (the household brain) or ``fiscal`` (the single tax advisor); anything else reads as ``hogar``."""
+    modo = str(getattr(settings, "CEREBRO_MODO", "hogar") or "hogar").strip().lower()
+    return "fiscal" if modo == "fiscal" else "hogar"
+
+
+def construir_asesor_fiscal() -> TeamAgent:
+    """Wire the tax advisor from settings (provider, FAISS searcher, verifier)."""
     from asistente.nucleo.agent.providers import create_provider
     from asistente.nucleo.agent.search import FaissCorpusSearcher
     from asistente.plataforma.ops.consumo import medir
@@ -719,4 +762,13 @@ def build_agent() -> TaxAgent:
     )
 
 
-__all__ = ["AgentMode", "AgentResult", "ProviderError", "TaxAgent", "TeamAgent", "build_agent"]
+__all__ = [
+    "AgentMode",
+    "AgentResult",
+    "ProviderError",
+    "TaxAgent",
+    "TeamAgent",
+    "build_agent",
+    "construir_asesor_fiscal",
+    "modo_cerebro",
+]

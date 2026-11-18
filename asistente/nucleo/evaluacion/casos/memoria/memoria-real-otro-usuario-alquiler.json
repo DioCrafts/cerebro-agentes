@@ -1,0 +1,64 @@
+{
+  "id": "memoria-real-otro-usuario-alquiler",
+  "categoria": "memoria",
+  "descripcion": "Con el almacén de memoria real: la memoria de otra persona está guardada bajo SU usuario y caso.",
+  "pregunta": "¿Qué te conté sobre mis alquileres?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ],
+      "usados_excluye": [
+        "r2"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "Valencia",
+      "motivo": "nunca usa la memoria de otra persona"
+    }
+  ],
+  "requiere": [
+    "cerebro",
+    "recuerdos"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "dato",
+      "texto": "Vive de alquiler en Zaragoza",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-08-01",
+        "cita": "vivo de alquiler en Zaragoza"
+      }
+    },
+    {
+      "id": "r2",
+      "tipo": "dato",
+      "texto": "Tiene un piso alquilado a terceros en Valencia",
+      "origen": {
+        "conversacion_id": "conv_r2_0001",
+        "fecha": "2026-07-11",
+        "cita": "tengo un piso alquilado en Valencia"
+      },
+      "usuario": "otra_persona"
+    }
+  ],
+  "version": 1
+}

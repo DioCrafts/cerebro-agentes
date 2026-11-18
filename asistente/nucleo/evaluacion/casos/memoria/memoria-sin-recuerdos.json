@@ -1,0 +1,34 @@
+{
+  "id": "memoria-sin-recuerdos",
+  "categoria": "memoria",
+  "pregunta": "¿Qué te dije de mi coche?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "ninguno": true
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria"
+      ]
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "\\b(diésel|gasolina|eléctrico|híbrido)\\b",
+      "motivo": "no inventa lo que no recuerda"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "usuario": "titular_eval",
+  "version": 1
+}

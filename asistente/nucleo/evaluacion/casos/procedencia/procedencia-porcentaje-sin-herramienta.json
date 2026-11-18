@@ -1,0 +1,39 @@
+{
+  "id": "procedencia-porcentaje-sin-herramienta",
+  "categoria": "procedencia",
+  "descripcion": "Ninguna herramienta calcula el porcentaje: el cerebro no se lo inventa (ni opera con cifras ajenas).",
+  "pregunta": "Si cobro 2.400 € netos al mes, ¿qué porcentaje se me va en la cuota de la hipoteca?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "puerta"
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "hipoteca"
+      ],
+      "fuente": "informes"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

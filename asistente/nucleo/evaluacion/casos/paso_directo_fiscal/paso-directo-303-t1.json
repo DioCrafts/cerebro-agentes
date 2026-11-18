@@ -1,0 +1,46 @@
+{
+  "id": "paso-directo-303-t1",
+  "categoria": "paso_directo_fiscal",
+  "pregunta": "En el 1.º trimestre de 2026 facturé 10.000 € de base al 21 % y soporté 500 € de IVA deducible. ¿Cuánto sale el 303?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "ruta",
+      "permitidas": [
+        "paso_directo"
+      ]
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "calcular_modelo_303"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "resultado",
+      "calculo": {
+        "herramienta": "calcular_modelo_303",
+        "argumentos": {
+          "ejercicio": 2026,
+          "trimestre": 1,
+          "base_tipo_general": 10000,
+          "cuotas_soportadas_deducibles": 500
+        },
+        "patron": "Resultado \\(positivo: a ingresar; negativo: a compensar\\): (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "con_expediente": false,
+        "registrada": "1.600,00 €"
+      }
+    },
+    {
+      "tipo": "citas",
+      "autoridad": "CALCULADORA"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

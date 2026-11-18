@@ -1,0 +1,54 @@
+{
+  "id": "intencion-paralelo-hipoteca-y-303",
+  "categoria": "intencion",
+  "descripcion": "Dos preguntas independientes: dos especialistas, en paralelo, sin que uno espere al otro.",
+  "pregunta": "¿Cuánto pago de hipoteca al mes y cuánto me sale el 303 con 8.000 € de base al 21 % este trimestre?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "fijo",
+        "tipo_inicial": "3",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "cruzada"
+      ],
+      "aclaracion": false,
+      "paralelo": true
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "hipoteca",
+        "fiscal"
+      ],
+      "excluye": [
+        "luz",
+        "caducidades",
+        "ayudas",
+        "suscripciones"
+      ]
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

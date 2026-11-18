@@ -1,0 +1,59 @@
+{
+  "id": "intencion-un-especialista-revision-euribor",
+  "categoria": "intencion",
+  "descripcion": "Una sola pregunta de «hipoteca» con todos los ámbitos activos: solo ese especialista.",
+  "pregunta": "¿Cuánto me subirá la cuota cuando revisen mi hipoteca variable con el euríbor?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "100000",
+        "fecha_firma": "2020-01-15",
+        "plazo_meses": 300,
+        "tipo": "variable",
+        "tipo_inicial": "1.5",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false,
+        "meses_tipo_inicial": 12,
+        "indice": "euribor_12m",
+        "diferencial": "0.99",
+        "revision_meses": 12
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "ambito",
+        "accion"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "hipoteca"
+      ],
+      "excluye": [
+        "luz",
+        "caducidades",
+        "ayudas",
+        "suscripciones",
+        "fiscal"
+      ],
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}

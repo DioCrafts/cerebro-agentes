@@ -1,0 +1,81 @@
+{
+  "id": "hipoteca-cuota-80k-20a",
+  "categoria": "modulo",
+  "pregunta": "¿Cuánto pago al mes de hipoteca?",
+  "modulos": [
+    "hipoteca"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "hipoteca_prestamo": {
+        "capital_inicial": "80000",
+        "fecha_firma": "2019-03-01",
+        "plazo_meses": 240,
+        "tipo": "fijo",
+        "tipo_inicial": "3.5",
+        "vivienda_habitual": true,
+        "adquisicion_antes_2013": false
+      }
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "modulo_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_llamada",
+      "herramienta": "hipoteca_cuadro",
+      "agente": "especialista_hipoteca"
+    },
+    {
+      "tipo": "cifra",
+      "nombre": "cuota",
+      "calculo": {
+        "herramienta": "hipoteca_cuadro",
+        "argumentos": {
+          "fecha": "2026-03-20"
+        },
+        "patron": "Próxima cuota: n\\.º \\d+, [\\d/]+: (?P<cifra>-?[\\d.]+,\\d{2} €)",
+        "registrada": "463,97 €"
+      }
+    },
+    {
+      "tipo": "citas"
+    }
+  ],
+  "guion": {
+    "especialista:hipoteca": [
+      {
+        "herramientas": [
+          {
+            "nombre": "hipoteca_cuadro",
+            "argumentos": {
+              "fecha": "2026-03-20"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Cuota {cifra:cuota} {fragmento:hipoteca_cuadro}."
+      }
+    ],
+    "asesor": [
+      {
+        "herramientas": [
+          {
+            "nombre": "consultar_hipoteca",
+            "argumentos": {
+              "pregunta": "Cuota mensual"
+            }
+          }
+        ]
+      },
+      {
+        "texto": "Pagas {cifra:cuota} al mes {fragmento:hipoteca_cuadro}."
+      }
+    ]
+  },
+  "version": 1
+}

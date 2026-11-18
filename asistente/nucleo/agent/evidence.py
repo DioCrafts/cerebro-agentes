@@ -168,14 +168,20 @@ class EvidenceLedger:
         self._by_key[key] = fragment.fragment_id
         return fragment
 
+    # Reads take the same lock as ``register``: specialists of the household brain run in parallel threads and
+    # read the ledger (``all``, ``len``) while others register, and iterating a dict that another thread grows
+    # raises. The lock never changes what is read or the ids minted.
     def get(self, fragment_id: str) -> Fragment | None:
-        return self._fragments.get(fragment_id.upper())
+        with self._lock:
+            return self._fragments.get(fragment_id.upper())
 
     def all(self) -> list[Fragment]:
-        return list(self._fragments.values())
+        with self._lock:
+            return list(self._fragments.values())
 
     def __len__(self) -> int:
-        return len(self._fragments)
+        with self._lock:
+            return len(self._fragments)
 
 
 def extract_cited_ids(answer: str) -> list[str]:

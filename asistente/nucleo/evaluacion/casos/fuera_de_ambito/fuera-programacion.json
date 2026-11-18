@@ -1,0 +1,35 @@
+{
+  "id": "fuera-programacion",
+  "categoria": "fuera_de_ambito",
+  "pregunta": "¿Cómo invierto una lista en Python?",
+  "modulos": [
+    "luz",
+    "hipoteca"
+  ],
+  "expectativas": [
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "luz"
+    },
+    {
+      "tipo": "modulo_no_consultado",
+      "modulo": "hipoteca"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "buscar_fuentes"
+    },
+    {
+      "tipo": "herramienta_no_llamada",
+      "herramienta": "calcular_irpf"
+    }
+  ],
+  "guion": {
+    "asesor": [
+      {
+        "texto": "No puedo ayudarte con eso: me ocupo de tus impuestos y de la administración del hogar."
+      }
+    ]
+  },
+  "version": 1
+}

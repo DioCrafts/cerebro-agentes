@@ -1,0 +1,49 @@
+{
+  "id": "memoria-preferencia-plan",
+  "categoria": "memoria",
+  "pregunta": "¿Qué me recomiendas para pagar menos en la renta este año?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expectativas": [
+    {
+      "tipo": "recuerdos",
+      "usados_incluye": [
+        "r1"
+      ]
+    },
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "memoria",
+        "ambito"
+      ]
+    },
+    {
+      "tipo": "texto_ausente",
+      "patron": "(aporta|contrata|abre)[^.]{0,40}plan(es)? de pensiones",
+      "motivo": "respeta lo que el usuario dijo"
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "usuario": "titular_eval",
+  "memoria": [
+    {
+      "id": "r1",
+      "tipo": "preferencia",
+      "texto": "No quiere planes de pensiones porque necesita liquidez",
+      "origen": {
+        "conversacion_id": "conv_r1_0001",
+        "fecha": "2026-03-09",
+        "cita": "no quiero planes de pensiones, necesito el dinero disponible"
+      }
+    }
+  ],
+  "version": 1
+}

@@ -1,0 +1,50 @@
+{
+  "id": "intencion-un-especialista-bono-social",
+  "categoria": "intencion",
+  "descripcion": "Una sola pregunta de «ayudas» con todos los ámbitos activos: solo ese especialista.",
+  "pregunta": "¿Me corresponde el bono social de la luz con lo que ganamos en casa?",
+  "modulos": [
+    "hipoteca",
+    "luz",
+    "caducidades",
+    "ayudas",
+    "suscripciones"
+  ],
+  "expediente": {
+    "tax_period": "2026",
+    "hechos": {
+      "ayudas_adultos_hogar": 2,
+      "ayudas_menores_hogar": 1,
+      "ayudas_ingresos_hogar": 15000,
+      "ayudas_contrato_pvpc": true
+    }
+  },
+  "expectativas": [
+    {
+      "tipo": "intencion",
+      "tipos": [
+        "ambito",
+        "accion"
+      ],
+      "aclaracion": false
+    },
+    {
+      "tipo": "especialistas",
+      "incluye": [
+        "ayudas"
+      ],
+      "excluye": [
+        "hipoteca",
+        "luz",
+        "caducidades",
+        "suscripciones",
+        "fiscal"
+      ],
+      "exactamente": true
+    }
+  ],
+  "requiere": [
+    "cerebro"
+  ],
+  "version": 1
+}
