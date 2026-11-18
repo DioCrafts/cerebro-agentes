@@ -116,20 +116,21 @@ def senales_de_turno(evento: dict[str, Any], turno: int) -> list[Senal]:
             )
     if evento.get("mode") == "abstained":
         senales.append(Senal(tipo="abstencion", turno=turno, detalle="el asistente se abstuvo"))
-    cerebro = evento.get("cerebro")
-    puerta = cerebro.get("puerta") if isinstance(cerebro, dict) else None
-    violaciones = (
-        [v for v in (puerta or {}).get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
-    )
-    if violaciones:
-        por_tipo = Counter(str(v.get("tipo")) for v in violaciones)
-        senales.append(
-            Senal(
-                tipo="puerta_cifras",
-                turno=turno,
-                detalle=", ".join(f"{n} {t}" for t, n in sorted(por_tipo.items())),
-            )
-        )
+    for clave in ("informe_cerebro", "cerebro"):
+        cerebro = evento.get(clave)
+        if not isinstance(cerebro, dict):
+            continue
+        puerta = cerebro.get("puerta")
+        violaciones = [v for v in puerta.get("violaciones") or [] if isinstance(v, dict)] if isinstance(puerta, dict) else []
+        if violaciones:
+            por_tipo = Counter(str(v.get("tipo")) for v in violaciones)
+            detalle = ", ".join(f"{n} {t}" for t, n in sorted(por_tipo.items()))
+            senales.append(Senal(tipo="puerta_cifras", turno=turno, detalle=detalle))
+            break
+        contadas = cerebro.get("violaciones_cifras")  # the summary the audit event may carry instead
+        if isinstance(contadas, int) and not isinstance(contadas, bool) and contadas > 0:
+            senales.append(Senal(tipo="puerta_cifras", turno=turno, detalle=f"{contadas} violaciones"))
+            break
     return senales
 
 

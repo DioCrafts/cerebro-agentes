@@ -496,22 +496,47 @@ def modelos_por_proposito(turno: Mapping[str, Any], especialistas: Sequence[str]
     return salida
 
 
-def _del_cerebro(turno: Mapping[str, Any]) -> dict[str, Any]:
-    """What the stored case keeps of the household brain's turn (InformeCerebro): plan, specialists and their
-    modes, figures, the gate's verdict, the ids of the memories used — never their text."""
+def informe_del_turno(turno: Mapping[str, Any]) -> Any:
+    """The turn's full :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro` (under ``informe_cerebro`` or
+    ``cerebro`` in the ``agent_answer`` event), or None when the event holds none or only a summary."""
     from asistente.nucleo.cerebro.contrato import InformeCerebro
 
+    for clave in ("informe_cerebro", "cerebro"):
+        bruto = turno.get(clave)
+        if isinstance(bruto, dict) and "intencion" in bruto:
+            try:
+                return InformeCerebro.model_validate(bruto)
+            except ValueError:
+                logger.warning("The turn's brain report does not validate against the contract: left out")
+    return None
+
+
+def resumen_del_turno(turno: Mapping[str, Any]) -> dict[str, Any] | None:
+    """The brain's SUMMARY the ``agent_answer`` event may carry instead of the full report (``ruta``, ``tipo``,
+    ``especialistas``, ``violaciones_cifras``…), or None."""
     bruto = turno.get("cerebro")
-    if not isinstance(bruto, dict):
-        return {}
-    try:
-        informe = InformeCerebro.model_validate(bruto)
-    except ValueError:
-        return {"cerebro": None, "cerebro_invalido": True}
-    return {
-        "cerebro": informe.model_dump(mode="json"),
-        "modos_especialistas": {i.especialista: i.modo for i in informe.informes},
-    }
+    if isinstance(bruto, dict) and "intencion" not in bruto and "especialistas" in bruto:
+        return dict(bruto)
+    return None
+
+
+def _del_cerebro(turno: Mapping[str, Any]) -> dict[str, Any]:
+    """What the stored case keeps of the household brain's turn (InformeCerebro): plan, specialists and their
+    modes, figures, the gate's verdict, the ids of the memories used — never their text. With only the summary
+    the event carries, that summary."""
+    informe = informe_del_turno(turno)
+    if informe is not None:
+        return {
+            "cerebro": informe.model_dump(mode="json"),
+            "modos_especialistas": {i.especialista: i.modo for i in informe.informes},
+        }
+    resumen = resumen_del_turno(turno)
+    if resumen is not None:
+        return {
+            "cerebro_resumen": resumen,
+            "modos_especialistas": {str(e): None for e in resumen.get("especialistas") or []},
+        }
+    return {}
 
 
 def capturar(
@@ -806,7 +831,9 @@ __all__ = [
     "hechos_usados",
     "identificadores_en",
     "instantanea_de",
+    "informe_del_turno",
     "modelos_por_proposito",
+    "resumen_del_turno",
     "preparar",
     "preparar_disparadores",
     "referencia_anonima",

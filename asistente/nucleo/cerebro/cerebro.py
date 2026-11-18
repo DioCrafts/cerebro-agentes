@@ -511,10 +511,14 @@ class Cerebro:
         on_event: Callable[[dict[str, Any]], None] | None = None,
         modulos: Sequence[Modulo] | None = None,
         conversacion_id: str | None = None,
+        user_id: str | None = None,
         **kwargs: Any,
     ) -> AgentResult:
         """Answer ``query`` for the household. Raises ``ProviderError`` (``PresupuestoAgotadoError`` included) only
-        when nothing useful could be produced — exactly when the advisor alone would have raised."""
+        when nothing useful could be produced — exactly when the advisor alone would have raised.
+
+        ``user_id``: the signed-in account (the API passes it); the conversation memory is read for it, the same owner
+        the finished turn is stored under. Without it, the case's owner."""
         if kwargs:  # the advisor's team internals (ledger, briefing, critic): they are the advisor's business
             return self._asesor.run(
                 query, chat_history=chat_history, case=case, on_event=on_event, modulos=modulos, **kwargs
@@ -530,7 +534,7 @@ class Cerebro:
 
         inicio = time.monotonic()
         historial = [m for m in chat_history or [] if isinstance(m, dict)]
-        memoria = self._recuperar(case, query, conversacion_id)
+        memoria = self._recuperar(case, query, conversacion_id, user_id)
         contexto = ContextoTurno(
             expediente=ExpedienteCompartido(case),
             ledger=EvidenceLedger(),
@@ -578,11 +582,13 @@ class Cerebro:
 
     # -- pieces ------------------------------------------------------------------------------------------------
 
-    def _recuperar(self, case: CaseState | None, consulta: str, conversacion_id: str | None) -> BloqueMemoria:
+    def _recuperar(
+        self, case: CaseState | None, consulta: str, conversacion_id: str | None, user_id: str | None = None
+    ) -> BloqueMemoria:
         try:
             bloque = self._memoria.recuperar(
                 case_id=case.case_id if case is not None else None,
-                user_id=case.user_id if case is not None else None,
+                user_id=user_id or (case.user_id if case is not None else None),
                 consulta=consulta,
                 conversacion_id=conversacion_id,
                 limite=int(getattr(settings, "CEREBRO_MEMORIA_LIMITE", 8)),

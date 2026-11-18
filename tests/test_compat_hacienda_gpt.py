@@ -118,6 +118,8 @@ def test_stored_identifiers_keep_their_old_spelling() -> None:
         "memoria 2": "e53d5c4e77dee948",
         "evaluacion 1": "d34dbc5d87f177bc",
         "evaluacion 2": "e01ac62538f1755b",
+        "evaluacion 3": "f7f16c6fe63fb3bc",
+        "evaluacion 4": "fa7ec65f740bcc51",
         "eventos 1": "21d807f7ee398548",
         "correo 1": "8ac18767022127f3",
         "consumo 1": "55b5056650a59169",

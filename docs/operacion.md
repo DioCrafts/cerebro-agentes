@@ -924,9 +924,9 @@ en una tabla declarativa (`asistente/nucleo/agent/enrutado.py`, `TABLA`):
 
 | Nivel | Propósitos |
 |---|---|
-| `pequeno` (clasificar, enrutar, extraer) | `equipo:planificador`, `hechos`, `ayudas*` |
+| `pequeno` (clasificar, enrutar, extraer, redactar por lotes) | `equipo:planificador`, `cerebro:intencion`, `cerebro:repaso`, `memoria:resumen`, `hechos`, `ayudas*`, `correo:*`, `investigacion:planificar` |
 | `mediano` (especialistas, lectores) | `especialista:*`, `equipo:investigador`, `documentos`, `recodificacion`, `formatos` |
-| `grande` (razonar, criticar, revisar) | `agente`, `verificador`, `equipo:critico`, `recodificacion-revisor`, `formatos-revisor`, `evaluacion-juez`, y cualquier propósito que no esté en la tabla |
+| `grande` (razonar, criticar, revisar) | `cerebro`, `agente`, `verificador`, `equipo:critico`, `recodificacion-revisor`, `formatos-revisor`, `evaluacion-juez`, y cualquier propósito que no esté en la tabla |
 
 `documentos` (leer cifras de un documento subido, escaneos incluidos) está un nivel por encima de la
 extracción a propósito: nada comprueba la cifra leída contra la imagen.

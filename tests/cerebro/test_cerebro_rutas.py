@@ -184,7 +184,12 @@ def test_a_memory_question_reads_the_memory_block() -> None:
     assert "<memoria_del_usuario>" in sintesis.inicios[0]["user_message"]
     assert "Banco X" in sintesis.inicios[0]["user_message"]
     assert memoria.consultas == [
-        {"case_id": "case-cerebro", "consulta": "¿Qué te dije de mi hipoteca?", "conversacion_id": "conv-12345678"}
+        {
+            "case_id": "case-cerebro",
+            "consulta": "¿Qué te dije de mi hipoteca?",
+            "conversacion_id": "conv-12345678",
+            "user_id": "u-cerebro",  # without a signed-in account: the case's owner
+        }
     ]
     assert resultado.cerebro is not None and resultado.cerebro.recuerdos_usados == ["R1"]
     assert resultado.cerebro.conversacion_id == "conv-12345678" and resultado.cerebro.intencion.tipo == "memoria"
@@ -541,3 +546,11 @@ def test_a_figure_the_user_gave_in_an_earlier_conversation_is_theirs() -> None:
     informe = resultado.cerebro
     assert informe is not None and informe.puerta is not None and informe.puerta.ok and resultado.revisions == 0
     assert [(a.literal, a.del_usuario) for a in informe.puerta.atribuciones] == [("20.000 €", True)]
+
+
+def test_the_memory_is_read_for_the_signed_in_account_even_without_a_case() -> None:
+    memoria = MemoriaFalsa()
+    cerebro(sintesis=Grabador([text_turn("¡Hola!")]), memoria=memoria).run(
+        "Hola", modulos=modulos(), conversacion_id="conv-12345678", user_id="cuenta-1"
+    )
+    assert memoria.consultas[0]["user_id"] == "cuenta-1" and memoria.consultas[0]["case_id"] is None

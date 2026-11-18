@@ -59,8 +59,10 @@ def test_the_stream_carries_the_plan_the_answer_and_the_brains_report() -> None:
     assert resultado["cerebro"]["informes"][0]["especialista"] == "fiscal"
     # The memory was asked with the conversation and handed the finished turn.
     assert memoria.consultas[0]["conversacion_id"] == CONVERSACION and memoria.consultas[0]["case_id"] == case_id
+    # Read for the same owner the turn is stored under.
+    assert memoria.consultas[0]["user_id"] == "u-cerebro-api"
     (turno,) = memoria.turnos
-    assert turno.conversacion_id == CONVERSACION and turno.case_id == case_id
+    assert turno.conversacion_id == CONVERSACION and turno.case_id == case_id and turno.user_id == "u-cerebro-api"
     assert turno.especialistas == ["fiscal"] and turno.modo == "verified"
     assert turno.respuesta == "El plazo es de dos años [F2]."
     # The audit trail says what the brain did.

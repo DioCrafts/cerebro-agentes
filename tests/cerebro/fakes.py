@@ -173,7 +173,9 @@ class MemoriaFalsa:
         conversacion_id: str | None = None,
         limite: int = 8,
     ) -> BloqueMemoria:
-        self.consultas.append({"case_id": case_id, "consulta": consulta, "conversacion_id": conversacion_id})
+        self.consultas.append(
+            {"case_id": case_id, "consulta": consulta, "conversacion_id": conversacion_id, "user_id": user_id}
+        )
         if self._falla:
             raise RuntimeError("memoria rota")
         return BloqueMemoria(

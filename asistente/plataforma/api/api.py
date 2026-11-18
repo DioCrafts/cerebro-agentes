@@ -123,6 +123,7 @@ from asistente.plataforma.api.routers import planificador as planificador_router
 from asistente.plataforma.api.routers import plataforma as plataforma_router
 from asistente.plataforma.api.routers import push as push_router
 from asistente.plataforma.api.routers import recuerdos as recuerdos_router
+from asistente.plataforma.api.routers import repaso as repaso_router
 from asistente.plataforma.api.routers import tareas as tareas_router
 from asistente.plataforma.api.security import (
     BodySizeLimitMiddleware,
@@ -588,12 +589,23 @@ def _modulos_del_turno(case_id: str | None, access: CaseAccess) -> dict[str, Any
     return {"modulos": modulos} if any(tiene_especialista(m) for m in modulos) else {}
 
 
-def _del_cerebro(agent: Any, conversacion_id: str | None) -> dict[str, Any]:
-    """``{"conversacion_id": ...}`` for the household brain's ``run``; nothing for the plain advisor (whose ``run``
-    has no such argument), so the legacy mode is called exactly as before."""
-    if conversacion_id and getattr(agent, "ES_CEREBRO", False):
-        return {"conversacion_id": conversacion_id}
-    return {}
+def _del_cerebro(agent: Any, conversacion_id: str | None, user_id: str | None) -> dict[str, Any]:
+    """``conversacion_id`` and ``user_id`` for the household brain's ``run`` (its memory is read for the same owner
+    the turn is stored under); nothing for the plain advisor (whose ``run`` has no such arguments), so the legacy
+    mode is called exactly as before."""
+    if not getattr(agent, "ES_CEREBRO", False):
+        return {}
+    extra: dict[str, Any] = {}
+    if conversacion_id:
+        extra["conversacion_id"] = conversacion_id
+    if user_id:
+        extra["user_id"] = user_id
+    return extra
+
+
+def _usuario_del_turno(access: CaseAccess, case: CaseState | None) -> str | None:
+    """Whose turn this is: the signed-in account, else the case's owner (the memory reads and stores for them)."""
+    return access.user.id if access.user is not None else (case.user_id if case is not None else None)
 
 
 def _registrar_en_memoria(
@@ -608,7 +620,7 @@ def _registrar_en_memoria(
         turno = TurnoConversacion(
             conversacion_id=payload.conversacion_id,
             case_id=payload.case_id,
-            user_id=access.user.id if access.user is not None else (case.user_id if case is not None else None),
+            user_id=_usuario_del_turno(access, case),
             fecha=datetime.now(UTC),
             pregunta=payload.query[:40_000],
             respuesta=result.answer[:60_000],
@@ -722,7 +734,7 @@ def post_agent(
                 chat_history=recortar_historial(payload.chat_history),
                 case=case,
                 **_modulos_del_turno(payload.case_id, access),
-                **_del_cerebro(agent, payload.conversacion_id),
+                **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
             )
     except PresupuestoAgotadoError as exc:
         raise HTTPException(status_code=429, detail=str(exc)) from exc
@@ -775,7 +787,7 @@ def post_agent_stream(
                     case=case,
                     on_event=lambda event: events.put({"event": "progress", "data": event}),
                     **modulos,
-                    **_del_cerebro(agent, payload.conversacion_id),
+                    **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
                 )
             response = _finish_agent_turn(payload, case, result, store, acciones)
             events.put({"event": "result", "data": response.model_dump(mode="json")})
@@ -1333,6 +1345,7 @@ app.include_router(push_router.build_router(get_case_store=get_case_store))
 app.include_router(plataforma_router.build_router(get_case_store=get_case_store))
 app.include_router(tareas_router.build_router(get_case_store=get_case_store))
 app.include_router(recuerdos_router.build_router(get_case_store=get_case_store))
+app.include_router(repaso_router.build_router(get_case_store=get_case_store))
 app.include_router(capacidades_router.build_router())
 app.include_router(investigacion_router.router)
 # --- /routers ---
