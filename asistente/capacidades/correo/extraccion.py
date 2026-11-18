@@ -221,22 +221,52 @@ def potencia_kw(texto: str) -> Extraido | None:
 _NUMERO_LARGO = re.compile(r"\d{4,}")
 _CODIGO = re.compile(r"\b(?=[A-Za-z0-9]*\d)(?=[A-Za-z0-9]*[A-Za-z])[A-Za-z0-9]{5,}\b")
 _ANIO = re.compile(r"(19|20)\d\d")
+# An e-mail address (a person's, or a company's: either way not the user's data to keep).
+_DIRECCION = re.compile(r"[A-Za-z0-9._%+\-]+@[A-Za-z0-9\-]+(?:\.[A-Za-z0-9\-]+)+")
+TAPA_DIRECCION = "[dirección de correo]"
+# A phone number written in groups («600 123 456», «+34 912 34 56 78», «91-123-45-67»): at least 9 digits.
+# Only spaces and hyphens separate the groups, so amounts («1.234.567,89») and dates are never taken for one.
+_TELEFONO = re.compile(r"(?<![\w+])(?:\+\d{1,3}[ \-]?)?\d{2,4}(?:[ \-]\d{2,4}){2,4}(?![\w])")
 
 
 def enmascarar(fragmento: str, literal: str) -> str:
-    """The snippet with identifiers masked (card or account digits, references, booking codes), except the
-    extracted literal itself and years: what is stored is the value and its context, not third-party ids."""
+    """The snippet with identifiers masked (card or account digits, references, booking codes, e-mail
+    addresses, phone numbers), except the extracted literal itself and years: what is stored is the value and
+    its context, not third-party ids."""
     inicio = fragmento.find(literal) if literal else -1
     fin = inicio + len(literal) if inicio >= 0 else -1
 
+    def _es_el_literal(m: re.Match[str]) -> bool:
+        return inicio >= 0 and m.start() < fin and m.end() > inicio
+
     def _tapar(m: re.Match[str]) -> str:
-        if inicio >= 0 and m.start() < fin and m.end() > inicio:
-            return m.group(0)
-        if _ANIO.fullmatch(m.group(0)):
+        if _es_el_literal(m) or _ANIO.fullmatch(m.group(0)):
             return m.group(0)
         return "•" * len(m.group(0))
 
-    return _CODIGO.sub(_tapar, _NUMERO_LARGO.sub(_tapar, fragmento))
+    def _tapar_telefono(m: re.Match[str]) -> str:
+        if _es_el_literal(m) or sum(c.isdigit() for c in m.group(0)) < 9:
+            return m.group(0)
+        return "".join("•" if c.isdigit() else c for c in m.group(0))
+
+    # Addresses first (whole, so neither half survives), then phones, then the digit runs and codes. Masking
+    # keeps lengths, so the literal's position stays valid for every pass.
+    texto = _DIRECCION.sub(lambda m: m.group(0) if _es_el_literal(m) else "•" * len(m.group(0)), fragmento)
+    texto = _TELEFONO.sub(_tapar_telefono, texto)
+    texto = _CODIGO.sub(_tapar, _NUMERO_LARGO.sub(_tapar, texto))
+    return _con_tapa_de_direccion(texto, fragmento)
+
+
+def _con_tapa_de_direccion(texto: str, original: str) -> str:
+    """Each masked address replaced by a readable label (after the other passes, which rely on equal lengths)."""
+    salida, ultimo = [], 0
+    for m in _DIRECCION.finditer(original):
+        if texto[m.start() : m.end()] == "•" * len(m.group(0)):
+            salida.append(texto[ultimo : m.start()])
+            salida.append(TAPA_DIRECCION)
+            ultimo = m.end()
+    salida.append(texto[ultimo:])
+    return "".join(salida)
 
 
 def aparece(literal: str, texto: str) -> bool:
