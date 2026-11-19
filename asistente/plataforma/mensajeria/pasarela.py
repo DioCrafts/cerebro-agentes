@@ -602,18 +602,18 @@ class Pasarela:
         canal = self._canales.get(mensaje.canal)
         if canal is None or self._cerrada:
             logger.warning("messaging: message for a channel that is not running (%s)", mensaje.canal)
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
             return
         almacen_ = self.entorno.almacen
         momento = self.reloj()
         if not almacen_.marcar_procesado(
             huella("mensaje", mensaje.canal, mensaje.contacto, mensaje.mensaje_id), momento
         ):
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
             return  # a redelivery: it already ran
         vinculo = almacen_.vinculo_de(mensaje.canal, mensaje.contacto)
         if vinculo is None:
-            borrar_adjuntos(mensaje)  # a stranger's file is never read
+            self._borrar_adjuntos(mensaje)  # a stranger's file is never read
             atencion = emparejamiento.atender_desconocido(almacen_, mensaje, momento)
             if atencion.vinculo is not None:
                 self.entorno.auditar(atencion.vinculo, "emparejado")
@@ -622,7 +622,7 @@ class Pasarela:
             return
         permitido, avisar = self._memoria.a_ritmo(vinculo.id)
         if not permitido:
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
             if avisar:
                 self._enviar(canal, vinculo.contacto, TEXTO_RITMO)
             return
@@ -647,7 +647,7 @@ class Pasarela:
                         target=contexto.run, args=(self._vaciar, vinculo.id), name="mensajeria-chat", daemon=True
                     ).start()
         if aviso == TEXTO_COLA_LLENA:
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
         if aviso:
             self._enviar(canal, vinculo.contacto, aviso)
 
@@ -679,13 +679,16 @@ class Pasarela:
         canal = self._canales.get(mensaje.canal)
         vinculo = self.entorno.almacen.vinculo(vinculo_id, de_cualquiera=True)
         if vinculo is None or canal is None:  # unpaired while it waited
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
             return
         self.entorno.almacen.tocar(vinculo.id, self.reloj())
         if mensaje.es_voz:
-            borrar_adjuntos(mensaje)
+            self._borrar_adjuntos(mensaje)
             self._enviar(canal, vinculo.contacto, TEXTO_VOZ, responde_a=mensaje.mensaje_id)
             return
+        rechazados = texto_rechazados(mensaje.adjuntos_rechazados)
+        if rechazados:
+            self._enviar(canal, vinculo.contacto, rechazados, responde_a=mensaje.mensaje_id)
         if mensaje.adjuntos:
             for texto in self._adjuntos(vinculo, mensaje):
                 self._enviar(canal, vinculo.contacto, texto, responde_a=mensaje.mensaje_id)
@@ -829,13 +832,16 @@ class Pasarela:
 
     # -- attachments ---------------------------------------------------------------------------------------------
 
+    def _borrar_adjuntos(self, mensaje: MensajeEntrante) -> None:
+        borrar_adjuntos(mensaje, directorio_archivos(self._canales.get(mensaje.canal)))
+
     def _adjuntos(self, vinculo: Vinculo, mensaje: MensajeEntrante) -> list[str]:
         try:
             if not self.entorno.consiente_documentos(vinculo):
                 return [TEXTO_SIN_CONSENTIMIENTO]
             return [self._leer_documento(vinculo, a.nombre, a.ruta_local) for a in mensaje.adjuntos[:_MAX_ADJUNTOS]]
         finally:
-            borrar_adjuntos(mensaje)  # documents are never stored (as with the app's upload)
+            self._borrar_adjuntos(mensaje)  # documents are never stored (as with the app's upload)
 
     def _leer_documento(self, vinculo: Vinculo, nombre: str, ruta: str) -> str:
         from asistente.ambitos.fiscal.documentos import analizar_documento
@@ -1016,13 +1022,80 @@ class Pasarela:
 # --------------------------------------------------------------------------------------------------------------
 
 
-def borrar_adjuntos(mensaje: MensajeEntrante) -> None:
-    """Delete the files the adapter stored for a message (never kept: read or not)."""
-    for adjunto in mensaje.adjuntos:
+def borrar_adjuntos(mensaje: MensajeEntrante, directorio: str | Path | None = None) -> None:
+    """Delete the files the adapter stored for a message (never kept: read or not).
+
+    With ``directorio`` (the adapter's files folder) nothing outside it is touched: the file is deleted only when it
+    sits in that folder or in a real (not symlinked) folder directly inside it, and that per-file folder goes too
+    when it is then empty (``rmdir`` removes nothing else). No link is followed: a symlinked file is removed itself,
+    never its target. Without ``directorio`` only the file the adapter named is deleted."""
+    base: Path | None = None
+    if directorio is not None:
         try:
-            Path(adjunto.ruta_local).unlink(missing_ok=True)
+            base = Path(directorio).resolve()
+        except OSError:
+            base = None
+    for adjunto in mensaje.adjuntos:
+        ruta = Path(adjunto.ruta_local)
+        carpeta = ruta.parent
+        propia = False  # a per-file folder of the adapter: removed when empty
+        if base is not None:
+            try:
+                if carpeta.is_symlink():
+                    logger.warning("messaging: an attachment's folder is a link; left alone")
+                    continue
+                real = carpeta.resolve()
+            except OSError:
+                continue
+            if real != base and real.parent != base:
+                logger.warning("messaging: an attachment outside the adapter's folder was left alone")
+                continue
+            propia = real != base
+        try:
+            ruta.unlink(missing_ok=True)
         except OSError:
             logger.warning("messaging: an attachment could not be deleted")
+        if propia:
+            try:
+                carpeta.rmdir()
+            except OSError:  # not empty, or gone already: left alone
+                pass
+
+
+def directorio_archivos(canal: Canal | None) -> Path | None:
+    """The adapter's private files folder, when it says which (``directorio_archivos``; the SimpleX adapter's
+    configuration otherwise), so the per-file folders it creates can go with the files."""
+    if canal is None:
+        return None
+    valor = getattr(canal, "directorio_archivos", None)
+    if valor is None:  # CanalSimplex keeps it in its configuration (``ConfiguracionSimplex.archivos_dir``)
+        valor = getattr(getattr(canal, "_cfg", None), "archivos_dir", None)
+    return Path(valor) if isinstance(valor, str | Path) and str(valor) else None
+
+
+# Why an attachment did not arrive (``MensajeEntrante.adjuntos_rechazados``, reason codes set by the adapter).
+MOTIVOS_RECHAZO: dict[str, str] = {
+    "demasiado_grande": "es demasiado grande para recibirlo por el chat",
+    "tipo_no_permitido": "no es de un tipo que pueda recibir (solo documentos PDF e imágenes)",
+    "error_descarga": "no se ha podido descargar",
+    "tiempo_agotado": "la descarga ha tardado demasiado y se ha cancelado",
+}
+
+
+def texto_rechazados(motivos: Sequence[str]) -> str | None:
+    """One polite line per reason why files did not arrive (None when none was refused)."""
+    if not motivos:
+        return None
+    cuenta: dict[str, int] = {}
+    for motivo in motivos:
+        cuenta[motivo] = cuenta.get(motivo, 0) + 1
+    lineas: list[str] = []
+    for motivo, n in cuenta.items():
+        sujeto = "Un archivo que me has enviado no ha llegado" if n == 1 else f"{n} archivos que me has enviado no han llegado"
+        razon = MOTIVOS_RECHAZO.get(motivo, "no lo he podido recibir")
+        lineas.append(f"{sujeto}: {razon}.")
+    lineas.append("Prueba a enviarlo de nuevo o súbelo desde la app.")
+    return " ".join(lineas)
 
 
 def texto_analisis(analisis: Any) -> str:
@@ -1058,7 +1131,10 @@ __all__ = [
     "PuertaPalabrasPropias",
     "SinAccesoError",
     "UltimaRespuesta",
+    "MOTIVOS_RECHAZO",
     "borrar_adjuntos",
+    "directorio_archivos",
+    "texto_rechazados",
     "componer_consulta",
     "nombre_especialista",
     "separar",

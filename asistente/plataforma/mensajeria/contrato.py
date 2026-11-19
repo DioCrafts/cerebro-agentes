@@ -51,7 +51,8 @@ class MensajeEntrante(_Modelo):
     cita: str | None = Field(default=None, max_length=4000)
     adjuntos: list[AdjuntoEntrante] = Field(default_factory=list, max_length=10)
     # Attachments the adapter refused before or after downloading them, as reason codes («demasiado_grande»,
-    # «tipo_no_permitido», «error_descarga»), so the gateway can tell the user why a file did not arrive.
+    # «tipo_no_permitido», «error_descarga», «tiempo_agotado»), so the gateway can tell the user why a file did not
+    # arrive.
     adjuntos_rechazados: list[str] = Field(default_factory=list, max_length=10)
     # A voice note (future: local transcription); kept as an attachment too.
     es_voz: bool = False

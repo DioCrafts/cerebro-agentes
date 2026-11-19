@@ -15,6 +15,7 @@ from asistente.plataforma.mensajeria.simplex import protocolo as p
 from asistente.plataforma.mensajeria.simplex.archivos import (
     ArchivoRechazado,
     RecepcionArchivos,
+    codigo_rechazo,
     detectar_tipo,
     nombre_saneado,
 )
@@ -357,3 +358,19 @@ def test_canal_desde_settings(monkeypatch, tmp_path):
     monkeypatch.setattr(settings, "SIMPLEX_WS_URL", "ws://10.0.0.5:5225", raising=False)
     with pytest.raises(ConfiguracionSimplexInvalida):
         CanalSimplex.desde_settings()
+
+
+@pytest.mark.parametrize(
+    ("motivo", "codigo"),
+    [
+        ("demasiado_grande", "demasiado_grande"),
+        ("tipo_no_permitido", "tipo_no_permitido"),
+        ("enlace", "error_descarga"),
+        ("tamano_distinto", "error_descarga"),
+        ("tamano_desconocido", "error_descarga"),
+        ("recepcion_no_disponible", "error_descarga"),
+        ("error_de_disco", "error_descarga"),
+    ],
+)
+def test_codigos_de_rechazo_del_contrato(motivo, codigo):
+    assert codigo_rechazo(motivo) == codigo == ArchivoRechazado(motivo).codigo

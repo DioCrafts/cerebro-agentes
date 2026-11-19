@@ -162,8 +162,11 @@ Bloque `# --- mensajeria.simplex ---` de `asistente/plataforma/settings.py` (var
 ## Archivos
 
 Se aceptan **imágenes** (JPEG, PNG, GIF, WebP, HEIC), **PDF** y, si está activado, **notas de voz** (M4A/AAC, Ogg,
-WAV), hasta el tamaño máximo. Todo lo demás (vídeos, documentos de Office, ejecutables…) ni siquiera se descarga; el
-mensaje llega a la pasarela con su texto y sin el adjunto. Para cada archivo:
+WAV), hasta el tamaño máximo. Todo lo demás (vídeos, documentos de Office, ejecutables…) ni siquiera se descarga.
+Cuando un archivo no se acepta o se pierde por el camino, el mensaje llega igualmente a la pasarela (aunque no tenga
+texto), sin el adjunto y con el motivo en `adjuntos_rechazados`: `demasiado_grande`, `tipo_no_permitido`,
+`error_descarga` (no se pudo descargar o no pasó las comprobaciones posteriores) o `tiempo_agotado`; así la pasarela
+puede explicárselo a quien lo envió. Para cada archivo:
 
 1. Antes de descargar: tamaño declarado y tipo declarado (tipo de mensaje y extensión) dentro de lo permitido.
 2. La CLI lo escribe en un nombre aleatorio que elige el canal, nunca en el nombre que puso el remitente.
@@ -329,5 +332,3 @@ contra una CLI real:
 - Si la CLI se reinicia con eventos aún sin entregar, o el worker los descarta por sobrecarga, esos mensajes quedan en
   la base de datos de la CLI pero no llegan al asistente (no hay recuperación de mensajes atrasados).
 - El canal no envía archivos (`adjuntos_salientes=false`).
-- Un adjunto rechazado no se señala aparte: el mensaje llega con su texto y sin el adjunto (el contrato de la pasarela
-  no tiene un campo para el motivo).

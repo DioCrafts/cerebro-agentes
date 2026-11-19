@@ -25,7 +25,7 @@ def test_texto_simple(cli, arrancar):
     [m] = arnes.mensajes(1)
     assert m.canal == "simplex" and m.contacto == "7" and m.mensaje_id == str(item)
     assert m.texto == "¿Cuánto pagué de IBI?" and not m.truncado
-    assert not m.reenviado and m.cita is None and not m.es_voz and m.adjuntos == []
+    assert not m.reenviado and m.cita is None and not m.es_voz and m.adjuntos == [] and m.adjuntos_rechazados == []
     assert m.nombre_mostrado == "Lucía"
     assert m.recibido.tzinfo is not None and m.recibido.utcoffset() == UTC.utcoffset(None)
 
@@ -146,6 +146,7 @@ def test_pdf_admitido_se_guarda_en_privado(cli, arrancar, tmp_path):
     cli.mensaje(7, "mi recibo", tipo="file", archivo={"nombre": "recibo luz.pdf", "contenido": PDF})
     [m] = arnes.mensajes(1)
     [adjunto] = m.adjuntos
+    assert m.adjuntos_rechazados == []
     assert m.texto == "mi recibo"
     assert adjunto.nombre == "recibo luz.pdf" and adjunto.mime == "application/pdf" and adjunto.tamano == len(PDF)
     ruta = Path(adjunto.ruta_local)
@@ -177,7 +178,7 @@ def test_voz_desactivada_no_se_descarga_pero_se_marca(cli, arrancar):
     arnes = arrancar(cli, aceptar_voz=False)
     cli.mensaje(7, "", tipo="voice", archivo={"nombre": "voz.m4a", "contenido": M4A})
     [m] = arnes.mensajes(1)
-    assert m.es_voz and m.adjuntos == []
+    assert m.es_voz and m.adjuntos == [] and m.adjuntos_rechazados == ["tipo_no_permitido"]
     assert not cli.comandos_que_empiezan("/freceive")
 
 
@@ -185,7 +186,7 @@ def test_archivo_demasiado_grande_no_se_descarga(cli, arrancar):
     arnes = arrancar(cli, archivos_max_bytes=1000)
     cli.mensaje(7, "pie de foto", tipo="file", archivo={"nombre": "grande.pdf", "contenido": PDF})
     [m] = arnes.mensajes(1)
-    assert m.texto == "pie de foto" and m.adjuntos == []
+    assert m.texto == "pie de foto" and m.adjuntos == [] and m.adjuntos_rechazados == ["demasiado_grande"]
     assert not cli.comandos_que_empiezan("/freceive")
 
 
@@ -194,7 +195,7 @@ def test_tipo_no_permitido_no_se_descarga(cli, arrancar):
     cli.mensaje(7, "", tipo="file", archivo={"nombre": "programa.exe", "contenido": EXE})
     cli.mensaje(7, "", tipo="video", archivo={"nombre": "v.mp4", "contenido": M4A})
     arnes.mensajes(2)
-    assert all(m.adjuntos == [] for m in arnes.recibidos)
+    assert all(m.adjuntos == [] and m.adjuntos_rechazados == ["tipo_no_permitido"] for m in arnes.recibidos)
     assert not cli.comandos_que_empiezan("/freceive")
 
 
@@ -202,7 +203,7 @@ def test_contenido_que_no_coincide_con_lo_declarado_se_descarta(cli, arrancar, t
     arnes = arrancar(cli)
     cli.mensaje(7, "", tipo="file", archivo={"nombre": "factura.pdf", "contenido": EXE})
     [m] = arnes.mensajes(1)
-    assert m.adjuntos == []
+    assert m.adjuntos == [] and m.adjuntos_rechazados == ["tipo_no_permitido"]
     assert cli.comandos_que_empiezan("/freceive")
     assert _archivos(tmp_path) == []
     assert list((tmp_path / "archivos" / "recepcion").iterdir()) == []
@@ -224,7 +225,7 @@ def test_enlace_simbolico_en_la_recepcion_se_rechaza(cli, arrancar, tmp_path):
     arnes = arrancar(cli)
     cli.mensaje(7, "", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF, "modo": "enlace"})
     [m] = arnes.mensajes(1)
-    assert m.adjuntos == []
+    assert m.adjuntos == [] and m.adjuntos_rechazados == ["error_descarga"]
     assert _archivos(tmp_path) == []  # nothing accepted
     assert not any(p.is_symlink() for p in (tmp_path / "archivos" / "recepcion").iterdir())  # the link is removed
 
@@ -233,21 +234,21 @@ def test_tamano_real_distinto_del_declarado_se_rechaza(cli, arrancar):
     arnes = arrancar(cli)
     cli.mensaje(7, "", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF, "modo": "crece"})
     [m] = arnes.mensajes(1)
-    assert m.adjuntos == []
+    assert m.adjuntos == [] and m.adjuntos_rechazados == ["error_descarga"]
 
 
 def test_error_de_descarga_entrega_el_mensaje_sin_adjunto(cli, arrancar):
     arnes = arrancar(cli)
     cli.mensaje(7, "con error", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF, "modo": "error"})
     [m] = arnes.mensajes(1)
-    assert m.texto == "con error" and m.adjuntos == []
+    assert m.texto == "con error" and m.adjuntos == [] and m.adjuntos_rechazados == ["error_descarga"]
 
 
 def test_descarga_que_no_termina_se_cancela(cli, arrancar):
     arnes = arrancar(cli, timeout_archivo_s=0.3)
     cli.mensaje(7, "nunca llega", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF, "modo": "nunca"})
     [m] = arnes.mensajes(1, timeout=5)
-    assert m.adjuntos == []
+    assert m.adjuntos == [] and m.adjuntos_rechazados == ["tiempo_agotado"]
     assert esperar(lambda: bool(cli.comandos_que_empiezan("/fcancel 500")))
 
 
@@ -261,3 +262,33 @@ def test_los_mensajes_posteriores_esperan_al_archivo(cli, arrancar):
     assert recibidos[0].texto == "otro contacto no espera"
     assert [m.texto for m in recibidos[1:]] == ["el documento", "¿qué dice este documento?"]
     assert recibidos[1].adjuntos
+
+
+def test_archivo_rechazado_sin_texto_se_entrega_con_el_motivo(cli, arrancar):
+    arnes = arrancar(cli, archivos_max_bytes=1000)
+    cli.mensaje(7, "", tipo="file", archivo={"nombre": "grande.pdf", "contenido": PDF})
+    cli.mensaje(7, "", tipo="video", archivo={"nombre": "v.mp4", "contenido": M4A})
+    cli.mensaje(7, "", tipo="image", archivo={"nombre": "f.jpg", "contenido": JPEG, "modo": "error"})
+    grande, video, error = arnes.mensajes(3)
+    for m, motivo in ((grande, "demasiado_grande"), (video, "tipo_no_permitido"), (error, "error_descarga")):
+        assert m.texto == "" and m.adjuntos == [] and m.adjuntos_rechazados == [motivo]
+
+
+def test_la_cli_no_acepta_la_descarga(cli, arrancar):
+    arnes = arrancar(cli)
+    cli.fallar(
+        "/freceive", {"type": "chatCmdError", "chatError": {"type": "error", "errorType": {"type": "fileCancelled"}}}
+    )
+    cli.mensaje(7, "", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF})
+    [m] = arnes.mensajes(1)
+    assert m.adjuntos == [] and m.adjuntos_rechazados == ["error_descarga"]
+
+
+def test_recepcion_no_disponible_se_senala(cli, arrancar, tmp_path):
+    (tmp_path / "bloqueo").write_text("no es una carpeta")
+    arnes = arrancar(cli, archivos_dir=tmp_path / "bloqueo" / "archivos")
+    assert "No se puede preparar la carpeta" in arnes.canal.estado().detalle
+    cli.mensaje(7, "mira", tipo="file", archivo={"nombre": "a.pdf", "contenido": PDF})
+    [m] = arnes.mensajes(1)
+    assert m.texto == "mira" and m.adjuntos_rechazados == ["error_descarga"]
+    assert not cli.comandos_que_empiezan("/freceive")

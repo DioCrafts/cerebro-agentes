@@ -70,7 +70,9 @@ def test_the_gateway_through_the_simplex_adapter(crear_montaje: Any, cli: Servid
         assert _hasta(lambda: any(e["texto"].startswith("El plazo es de *dos años* [F2].") for e in cli.editados))
         progreso = next(e for e in cli.enviados if e["texto"].startswith("El plazo es de"))
         assert progreso["contacto"] == 7
-        assert memoria.turnos and memoria.turnos[0].user_id == "u-cerebro"
+        # The memory gets the turn once the user has the answer (after the edit): wait for the chat's queue.
+        assert pasarela.esperar(10)
+        assert _hasta(lambda: bool(memoria.turnos)) and memoria.turnos[0].user_id == "u-cerebro"
 
         # Unpairing from the chat removes the contact on SimpleX.
         assert pasarela.esperar(10)

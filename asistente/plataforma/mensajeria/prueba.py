@@ -68,6 +68,9 @@ class CanalPrueba:
             formato=formato,  # type: ignore[arg-type]
         )
         self.direccion = direccion
+        # The private folder its attachments are received into (one random folder per file, as the SimpleX adapter
+        # does); set by :meth:`adjunto`. The gateway removes a file's folder with the file, never outside this one.
+        self.directorio_archivos: Path | None = None
         self.falla_envio = False
         self.desconexion_falla = False
         self._lock = threading.Lock()
@@ -150,6 +153,7 @@ class CanalPrueba:
         reenviado: bool = False,
         cita: str | None = None,
         adjuntos: list[AdjuntoEntrante] | None = None,
+        adjuntos_rechazados: list[str] | None = None,
         es_voz: bool = False,
         nombre_mostrado: str | None = None,
         truncado: bool = False,
@@ -163,6 +167,7 @@ class CanalPrueba:
             reenviado=reenviado,
             cita=cita,
             adjuntos=list(adjuntos or []),
+            adjuntos_rechazados=list(adjuntos_rechazados or []),
             es_voz=es_voz,
             recibido=datetime.now(UTC),
             nombre_mostrado=nombre_mostrado,
@@ -180,11 +185,13 @@ class CanalPrueba:
         self.entregar(entrante)
         return entrante
 
-    @staticmethod
-    def adjunto(directorio: Path, nombre: str, contenido: bytes, mime: str | None = None) -> AdjuntoEntrante:
-        """A file as an adapter would have received it into its private directory (the sender's name is kept as
-        data only, never used as a path)."""
-        ruta = directorio / f"adjunto-{uuid4().hex}"
+    def adjunto(self, directorio: Path, nombre: str, contenido: bytes, mime: str | None = None) -> AdjuntoEntrante:
+        """A file as an adapter would have received it into its private ``directorio``: in a random folder of its
+        own (the sender's name is kept as data only, never used as a path)."""
+        self.directorio_archivos = Path(directorio)
+        carpeta = Path(directorio) / uuid4().hex
+        carpeta.mkdir(mode=0o700)
+        ruta = carpeta / "adjunto"
         ruta.write_bytes(contenido)
         return AdjuntoEntrante(nombre=nombre, mime=mime, ruta_local=str(ruta), tamano=len(contenido))
 

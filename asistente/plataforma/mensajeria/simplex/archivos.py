@@ -40,12 +40,35 @@ EXTENSIONES_IMAGEN = frozenset({".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic
 _BLOQUE = 64 * 1024
 
 
+# Reason codes the gateway receives in ``MensajeEntrante.adjuntos_rechazados`` (contract): too big, a kind of file
+# that is not accepted, a download that failed (or could not even start, or did not pass the checks after it), and a
+# download that took longer than SIMPLEX_ARCHIVOS_TIMEOUT_S.
+RECHAZO_GRANDE = "demasiado_grande"
+RECHAZO_TIPO = "tipo_no_permitido"
+RECHAZO_DESCARGA = "error_descarga"
+RECHAZO_TIEMPO = "tiempo_agotado"
+
+
+def codigo_rechazo(motivo: str) -> str:
+    """The contract's reason code for one of this module's internal ``motivo`` codes."""
+    if motivo == "demasiado_grande":
+        return RECHAZO_GRANDE
+    if motivo == "tipo_no_permitido":
+        return RECHAZO_TIPO
+    return RECHAZO_DESCARGA
+
+
 class ArchivoRechazado(Exception):  # noqa: N818 - Spanish names across the project
     """The file is not accepted. ``motivo`` is a short content-free code (for logs and tests)."""
 
     def __init__(self, motivo: str) -> None:
         super().__init__(motivo)
         self.motivo = motivo
+
+    @property
+    def codigo(self) -> str:
+        """The contract's reason code (``adjuntos_rechazados``)."""
+        return codigo_rechazo(self.motivo)
 
 
 @dataclass(frozen=True)
@@ -288,10 +311,15 @@ class RecepcionArchivos:
 
 
 __all__ = [
+    "RECHAZO_DESCARGA",
+    "RECHAZO_GRANDE",
+    "RECHAZO_TIEMPO",
+    "RECHAZO_TIPO",
     "ArchivoRechazado",
     "RecepcionArchivos",
     "TipoDetectado",
     "clase_declarada",
+    "codigo_rechazo",
     "detectar_tipo",
     "nombre_saneado",
 ]

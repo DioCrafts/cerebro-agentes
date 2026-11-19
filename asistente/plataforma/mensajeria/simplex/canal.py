@@ -14,7 +14,9 @@ connection drops → reconnect with jittered exponential backoff, forever, until
 Receiving: only direct messages from contacts of the bot profile (groups, other profiles, our own items, deleted
 items are ignored), deduplicated by chat item id. Text is truncated at the contract's maximum (flagged); forwarded and
 quoted content is flagged/passed as data. Files go through ``archivos`` (size and type gates, a path we choose,
-verification after download) and the message waits for its file; later messages from the same contact wait behind it
+verification after download) and the message waits for its file; a file refused or lost on the way is reported in
+``adjuntos_rechazados`` (``demasiado_grande``, ``tipo_no_permitido``, ``error_descarga``, ``tiempo_agotado``) and its
+message is delivered all the same, text or not; later messages from the same contact wait behind it
 so the gateway sees them in the order they were sent. The handler runs on worker threads (``ejecutor``), in order per
 contact; its exceptions never reach the event loop.
 
@@ -44,6 +46,7 @@ from pydantic import BaseModel, ValidationError
 
 from asistente.plataforma.mensajeria.contrato import (
     MAX_TEXTO_ENTRANTE,
+    AdjuntoEntrante,
     CapacidadesCanal,
     EstadoCanal,
     Manejador,
@@ -52,7 +55,12 @@ from asistente.plataforma.mensajeria.contrato import (
     NombreCanal,
 )
 from asistente.plataforma.mensajeria.simplex import protocolo as p
-from asistente.plataforma.mensajeria.simplex.archivos import ArchivoRechazado, RecepcionArchivos
+from asistente.plataforma.mensajeria.simplex.archivos import (
+    RECHAZO_DESCARGA,
+    RECHAZO_TIEMPO,
+    ArchivoRechazado,
+    RecepcionArchivos,
+)
 from asistente.plataforma.mensajeria.simplex.cliente import (
     ClienteSimplex,
     ErrorClienteSimplex,
@@ -684,34 +692,49 @@ class CanalSimplex:
             "recibido": recibido,
             "nombre_mostrado": info.contact.nombre[:200] or None,
         }
-        pendiente = self._iniciar_recepcion(base, item.file, contenido.type) if item.file is not None else None
+        recepcion = self._iniciar_recepcion(base, item.file, contenido.type) if item.file is not None else None
         logger.info(
             "simplex: mensaje recibido contacto=%s mensaje=%s tipo=%s archivo=%s",
             contacto,
             mensaje_id,
             contenido.type if contenido.type in _TIPOS_CONTENIDO else "otro",
-            "en_espera" if pendiente else ("rechazado" if item.file is not None else "no"),
+            "no" if recepcion is None else ("en_espera" if isinstance(recepcion, _ArchivoPendiente) else recepcion),
         )
-        self._encolar(contacto, pendiente if pendiente is not None else MensajeEntrante(**base))
+        if isinstance(recepcion, _ArchivoPendiente):
+            self._encolar(contacto, recepcion)
+        else:
+            # Delivered even without text: the gateway tells the user why the file did not arrive.
+            self._encolar(contacto, self._mensaje(base, rechazo=recepcion))
 
     # --- files ---
 
+    @staticmethod
+    def _mensaje(
+        base: dict[str, Any], *, adjunto: AdjuntoEntrante | None = None, rechazo: str | None = None
+    ) -> MensajeEntrante:
+        return MensajeEntrante(
+            **base,
+            adjuntos=[adjunto] if adjunto is not None else [],
+            adjuntos_rechazados=[rechazo] if rechazo else [],
+        )
+
     def _iniciar_recepcion(
         self, base: dict[str, Any], archivo: p.ArchivoCI, tipo_contenido: str
-    ) -> _ArchivoPendiente | None:
+    ) -> _ArchivoPendiente | str:
+        """Ask the CLI for the file; the pending download, or the reason code when it is refused or cannot start."""
         ids = f"contacto={base['contacto']} mensaje={base['mensaje_id']} archivo={archivo.file_id}"
         estado = archivo.file_status.type if archivo.file_status is not None else "rcvInvitation"
         if estado != "rcvInvitation":
             logger.info("simplex: archivo no recibido (%s; estado %s)", ids, estado[:40])
-            return None
+            return RECHAZO_DESCARGA
         if len(self._por_fichero) >= MAX_ARCHIVOS_PENDIENTES:
             logger.warning("simplex: archivo no recibido (%s; demasiadas descargas en curso)", ids)
-            return None
+            return RECHAZO_DESCARGA
         try:
             clase = self._recepcion.admitir(tipo_contenido, archivo.file_name, archivo.file_size)
         except ArchivoRechazado as e:
             logger.info("simplex: archivo rechazado (%s; motivo %s; %d bytes)", ids, e.motivo, archivo.file_size)
-            return None
+            return e.codigo
         cliente = self._cliente
         ruta = self._recepcion.ruta_temporal()
         try:
@@ -723,11 +746,11 @@ class CanalSimplex:
         except ErrorClienteSimplex as e:
             logger.warning("simplex: no se pudo pedir el archivo (%s; %s)", ids, self._codigo(e))
             self._recepcion.descartar(ruta)
-            return None
+            return RECHAZO_DESCARGA
         if resp.get("type") != p.R_ARCHIVO_ACEPTADO:
             logger.info("simplex: archivo no disponible (%s; %s)", ids, str(resp.get("type"))[:64])
             self._recepcion.descartar(ruta)
-            return None
+            return RECHAZO_DESCARGA
         pendiente = _ArchivoPendiente(
             file_id=archivo.file_id,
             contacto=base["contacto"],
@@ -762,11 +785,11 @@ class CanalSimplex:
         ids = f"contacto={pendiente.contacto} mensaje={pendiente.base['mensaje_id']} archivo={file_id}"
         try:
             adjunto = self._recepcion.finalizar(pendiente.ruta, pendiente.nombre, pendiente.tamano, pendiente.clase)
-            pendiente.listo = MensajeEntrante(**pendiente.base, adjuntos=[adjunto])
+            pendiente.listo = self._mensaje(pendiente.base, adjunto=adjunto)
             logger.info("simplex: archivo recibido (%s; %d bytes; %s)", ids, adjunto.tamano, adjunto.mime)
         except ArchivoRechazado as e:
             logger.warning("simplex: archivo descartado tras la descarga (%s; motivo %s)", ids, e.motivo)
-            pendiente.listo = MensajeEntrante(**pendiente.base)
+            pendiente.listo = self._mensaje(pendiente.base, rechazo=e.codigo)
         self._vaciar(pendiente.contacto)
 
     def _archivo_fallido(self, resp: dict[str, Any], tipo: str) -> None:
@@ -776,7 +799,7 @@ class CanalSimplex:
             return
         logger.warning("simplex: la descarga del archivo=%s falló (%s)", file_id, tipo)
         self._recepcion.descartar(pendiente.ruta)
-        pendiente.listo = MensajeEntrante(**pendiente.base)
+        pendiente.listo = self._mensaje(pendiente.base, rechazo=RECHAZO_DESCARGA)
         self._vaciar(pendiente.contacto)
 
     def _limpiar_archivos(self) -> None:
@@ -801,7 +824,7 @@ class CanalSimplex:
                 except ErrorClienteSimplex:
                     pass
             self._recepcion.descartar(pendiente.ruta)
-            pendiente.listo = MensajeEntrante(**pendiente.base)
+            pendiente.listo = self._mensaje(pendiente.base, rechazo=RECHAZO_TIEMPO)
             self._vaciar(pendiente.contacto)
 
     # --- ordered delivery per contact ---

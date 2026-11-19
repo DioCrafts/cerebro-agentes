@@ -137,6 +137,10 @@ def test_channels_are_built_from_the_settings(monkeypatch: pytest.MonkeyPatch, e
     assert isinstance(simplex, CanalSimplex) and simplex.nombre == "simplex"
     assert simplex.capacidades.edicion and simplex.capacidades.formato == "simplex"
     assert not simplex.estado().conectado
+    # The gateway knows the adapter's files folder (to remove each file's own folder with it, and nothing outside).
+    from asistente.plataforma.mensajeria.pasarela import directorio_archivos
+
+    assert directorio_archivos(simplex) is not None
     monkeypatch.setattr(settings, "MENSAJERIA_CANALES", "prueba")
     monkeypatch.setitem(servicio_mod.ADAPTADORES, "prueba", "asistente.plataforma.mensajeria.no_existe:Nada")
     assert servicio_mod.construir_canales() == []  # logged and skipped

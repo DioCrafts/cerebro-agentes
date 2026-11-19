@@ -157,3 +157,80 @@ def test_voice_notes_are_acknowledged_and_deleted_without_listening(montaje: Mon
     assert montaje.decir(es_voz=True, adjuntos=[nota]) == [pasarela_mod.TEXTO_VOZ]
     assert not Path(nota.ruta_local).exists()
     assert montaje.agente.construido == 0
+
+
+# --- files the adapter refused, and the per-file folders ----------------------------------------------------------------
+
+
+def test_the_user_is_told_why_a_file_did_not_arrive(montaje: Montaje) -> None:
+    from .test_conversacion import AgenteLento
+
+    agente = AgenteLento()
+    montaje.agente.agente = agente
+    montaje.emparejar()
+    assert montaje.decir(adjuntos_rechazados=["demasiado_grande"]) == [
+        "Un archivo que me has enviado no ha llegado: es demasiado grande para recibirlo por el chat. "
+        "Prueba a enviarlo de nuevo o súbelo desde la app."
+    ]
+    (texto,) = montaje.decir(adjuntos_rechazados=["tipo_no_permitido", "tipo_no_permitido", "error_descarga", "otro"])
+    assert texto.startswith("2 archivos que me has enviado no han llegado: no es de un tipo que pueda recibir")
+    assert "Un archivo que me has enviado no ha llegado: no se ha podido descargar." in texto
+    assert "Un archivo que me has enviado no ha llegado: no lo he podido recibir." in texto
+    assert montaje.decir("", adjuntos_rechazados=["tiempo_agotado"]) == [
+        "Un archivo que me has enviado no ha llegado: la descarga ha tardado demasiado y se ha cancelado. "
+        "Prueba a enviarlo de nuevo o súbelo desde la app."
+    ]
+    assert agente.consultas == []  # an empty message that only carried refusals never reaches the brain
+    # With words too, the question still goes to the brain after the notice.
+    textos = montaje.decir("¿Y esto?", adjuntos_rechazados=["error_descarga"])
+    assert textos[0].startswith("Un archivo que me has enviado no ha llegado") and textos[1] == "Respuesta a: ¿Y esto?"
+    assert [q for q, _h in agente.consultas] == ["¿Y esto?"]
+    # Strangers hear nothing about it (only the daily sentence).
+    assert montaje.decir(contacto="c9", adjuntos_rechazados=["demasiado_grande"]) == [
+        a_canal(pasarela_mod.emparejamiento.TEXTO_PRIVADO, "simplex")
+    ]
+
+
+def test_the_files_folder_goes_with_the_file_and_nothing_outside_is_touched(montaje: Montaje, tmp_path: Path) -> None:
+    montaje.emparejar()
+    montaje.lectores.append(Lector())
+    carpeta = _carpeta(montaje)
+    adjunto = montaje.canal.adjunto(carpeta, "notas.txt", b"hola")
+    assert montaje.decir(adjuntos=[adjunto]) == [pasarela_mod.TEXTO_TIPO_NO_ADMITIDO]
+    assert not Path(adjunto.ruta_local).parent.exists() and carpeta.is_dir()
+
+    from asistente.plataforma.mensajeria.pasarela import borrar_adjuntos
+
+    def mensaje_con(*rutas: Path) -> Any:
+        from asistente.plataforma.mensajeria.contrato import AdjuntoEntrante
+
+        return montaje.canal.mensaje(
+            "c1", adjuntos=[AdjuntoEntrante(nombre="x", ruta_local=str(r), tamano=1) for r in rutas]
+        )
+
+    # A folder with something else in it stays (only the file goes).
+    ocupada = carpeta / ("a" * 32)
+    ocupada.mkdir()
+    (ocupada / "f").write_bytes(b"1")
+    (ocupada / "otro").write_bytes(b"2")
+    borrar_adjuntos(mensaje_con(ocupada / "f"), carpeta)
+    assert ocupada.is_dir() and not (ocupada / "f").exists() and (ocupada / "otro").exists()
+    # A file outside the adapter's folder, or behind a symlinked folder, is never deleted.
+    fuera = tmp_path / "fuera"
+    fuera.mkdir()
+    (fuera / "f").write_bytes(b"3")
+    borrar_adjuntos(mensaje_con(fuera / "f"), carpeta)
+    enlace = carpeta / ("b" * 32)
+    enlace.symlink_to(fuera, target_is_directory=True)
+    borrar_adjuntos(mensaje_con(enlace / "f"), carpeta)
+    assert (fuera / "f").exists() and fuera.is_dir() and enlace.is_symlink()
+    # A nested folder is not a per-file folder of the adapter: left alone.
+    anidada = carpeta / "x" / "y"
+    anidada.mkdir(parents=True)
+    (anidada / "f").write_bytes(b"4")
+    borrar_adjuntos(mensaje_con(anidada / "f"), carpeta)
+    assert (anidada / "f").exists()
+    # The adapter's own folder is never removed, even when the file sat directly in it.
+    (carpeta / "suelto").write_bytes(b"5")
+    borrar_adjuntos(mensaje_con(carpeta / "suelto"), carpeta)
+    assert carpeta.is_dir() and not (carpeta / "suelto").exists()
