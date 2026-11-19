@@ -31,3 +31,12 @@ HEALTHCHECK_URL=
 MIGRACIONES_AUTOMATICAS=true
 PLATAFORMA_TRABAJOS=
 PLATAFORMA_TRABAJOS_DESACTIVADOS=
+
+# Canal SimpleX Chat de la mensajería (opcional; docs/mensajeria/simplex.md). Además: MENSAJERIA_ACTIVA=true.
+# SIMPLEX_BOT_NOMBRE=Asistente del hogar
+# SIMPLEX_AUTOACEPTAR=true
+# Con docker compose (perfil «simplex»): suma SHA-256 del binario de la versión (obligatoria para construir la imagen).
+# SIMPLEX_RELEASE=v7.1.4
+# SIMPLEX_SHA256=
+# Con systemd y la CLI con su propio usuario (docs/despliegue/systemd/simplex-chat.service): la carpeta compartida.
+# SIMPLEX_ARCHIVOS_RECEPCION_DIR=/var/lib/simplex-recepcion

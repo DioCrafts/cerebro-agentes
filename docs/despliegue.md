@@ -126,6 +126,16 @@ base de datos de casos, no solo en memoria:
 
 ---
 
+### 1.5 La mensajería con el cerebro (servicio `mensajeria`)
+
+Con `MENSAJERIA_ACTIVA=true` el worker arranca el servicio `mensajeria`
+([mensajeria/arquitectura.md](mensajeria/arquitectura.md)): los canales de `MENSAJERIA_CANALES` (SimpleX), la pasarela
+que empareja los chats y ejecuta los turnos del cerebro (los mismos que `/agent`), y cada pocos segundos publica el
+estado del canal en la base de datos (la dirección del bot que muestra la app), elimina en el canal los contactos
+desvinculados y entrega los avisos. Corre en **un solo** worker (el canal es una conexión); la API no habla con el
+canal: escribe en la base de datos y el worker lo recoge. `python -m asistente.plataforma.cli.mensajeria estado`
+resume su situación sin datos de nadie.
+
 ## 2. Migraciones del esquema
 
 Antes, cada paquete creaba o alteraba sus tablas por su cuenta al abrir la conexión («`CREATE TABLE IF NOT
@@ -189,6 +199,7 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 | `recuerdos` | `asistente.nucleo.recuerdos` | casos | `recuerdos_conversaciones`, `recuerdos_mensajes`, `recuerdos`, `recuerdos_lotes`, `recuerdos_interruptor` | `idx_recuerdos_conversaciones_titular`, `idx_recuerdos_conversaciones_estado`, `idx_recuerdos_mensajes_conversacion`, `idx_recuerdos_mensajes_fecha`, `idx_recuerdos_titular`, `idx_recuerdos_lotes_lote`, `recuerdos_borrar_con_caso`, `recuerdos_borrar_con_usuario` | 1 | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): conversaciones con su resumen, mensajes (se purgan a los `MEMORIA_RETENCION_MENSAJES_DIAS`), «lo que sé de ti» con su origen, lotes pendientes (solo identificadores) y el interruptor del usuario. Se borra con el caso y con la cuenta (disparadores). Depende de `decision` y `auth`. |
 | `repaso` | `asistente.nucleo.repaso` | casos | `repaso_pasadas` | `idx_repaso_pasadas_lote`, `repaso_borrar_con_caso` | 2 | Repaso proactivo del cerebro ([cerebro/repaso.md](cerebro/repaso.md)): una fila por caso y periodo con los puntos priorizados tal como se redactaron, el texto aceptado por la puerta, el aviso que escribió y, mientras hay un lote en curso, su identificador (los `custom_id` son *hashes*, sin datos del caso). Marca de agua de la pasada siguiente. Se borra con el caso (la v2, disparador, espera a que exista `case_states`); se purga a los 120 días salvo la última de cada caso. |
 | `consejo` | `asistente.nucleo.consejo` | casos | `consejo_sesiones` | `idx_consejo_sesiones_caso`, `idx_consejo_sesiones_estado`, `consejo_borrar_con_caso`, `consejo_borrar_con_usuario` | 1 | Consejo del hogar ([consejo/arquitectura.md](consejo/arquitectura.md)): una fila por sesión con su estado, el arriendo del trabajador, la estimación y el tope de coste que aceptó el usuario, el coste gastado y, en JSON, el expediente seudonimizado, las propuestas, las críticas anónimas, los rankings y el dictamen. Se borra con el caso y con la cuenta (disparadores); las terminadas se purgan a los `CONSEJO_RETENCION_DIAS`. Depende de `decision` y `auth`. |
+| `mensajeria` | `asistente.plataforma.mensajeria` | casos | `mensajeria_codigos`, `mensajeria_vinculos`, `mensajeria_procesados`, `mensajeria_intentos`, `mensajeria_confirmaciones`, `mensajeria_entregas`, `mensajeria_desconexiones`, `mensajeria_canales` | `idx_mensajeria_codigos_usuario`, `idx_mensajeria_vinculos_usuario`, `idx_mensajeria_vinculos_caso`, `idx_mensajeria_procesados_recibido`, `idx_mensajeria_intentos`, `idx_mensajeria_confirmaciones_vinculo`, `mensajeria_borrar_con_caso`, `mensajeria_borrar_con_usuario` | 1 | Mensajería con el cerebro ([mensajeria/arquitectura.md](mensajeria/arquitectura.md)): códigos de emparejamiento y de confirmación (solo su *hash*), chats vinculados (canal, identificador del contacto en el canal, dueño, expediente, conversación, pausa de avisos), *hashes* de los mensajes ya procesados y de los intentos (se purgan a los `MENSAJERIA_RETENCION_DIAS`), avisos entregados, contactos pendientes de eliminar en el canal y el último estado publicado de cada canal. Ningún texto de mensaje. Se borra con el caso y con la cuenta (disparadores, que además encolan la eliminación del contacto). Depende de `decision` y `auth`. |
 | `doctrina` | `asistente.conocimiento.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
 
 Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrations` (el registro).
@@ -513,6 +524,30 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `CENDOJ_DOWNLOAD_DELAY` | `2.0` | CENDOJ. |
 | `DGT_CA_BUNDLE` | vacío | Certificados para la DGT. |
 | `PLAYWRIGHT_BROWSERS_BINARY_PATH` | vacío | Navegador del *crawler*. |
+
+### 3.13 Mensajería con el cerebro (pasarela)
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `MENSAJERIA_ACTIVA` | `false` | Hablar con el cerebro del hogar desde una app de mensajería ([mensajeria/arquitectura.md](mensajeria/arquitectura.md)). Con `false` el worker no arranca la pasarela y la app no genera códigos (lo guardado se sigue viendo, exportando y borrando). |
+| `MENSAJERIA_CANALES` | `simplex` | Canales que arranca el worker, separados por comas (`prueba` es el canal en memoria de las pruebas). |
+| `MENSAJERIA_CODIGO_MINUTOS` | `10` | Vida de un código de emparejamiento (un solo uso; se guarda solo su *hash*). |
+| `MENSAJERIA_CONTACTOS_POR_USUARIO` | `1` | Chats que un usuario puede vincular en cada canal. |
+| `MENSAJERIA_INTENTOS_CONTACTO_HORA` / `MENSAJERIA_INTENTOS_GLOBAL_HORA` | `5` / `30` | Códigos fallidos por hora de un contacto y de todos juntos; pasado el límite no se comprueba ninguno. |
+| `MENSAJERIA_CODIGOS_POR_HORA` | `6` | Códigos que la app puede generar por usuario y hora. |
+| `MENSAJERIA_MENSAJES_POR_MINUTO` / `MENSAJERIA_MENSAJES_POR_HORA` | `6` / `60` | Ritmo de un chat vinculado; pasado, se le avisa una vez y no se procesa. |
+| `MENSAJERIA_MAX_TEXTO` | `4000` | Caracteres de un mensaje; uno más largo (o recortado por el canal) se rechaza con una frase. |
+| `MENSAJERIA_COLA_POR_CONTACTO` | `3` | Mensajes de un chat que esperan a que termine su turno (uno a la vez por chat). |
+| `MENSAJERIA_TURNO_TIMEOUT_S` | `300` | Segundos de un turno antes de decir en el chat que no se ha podido terminar. |
+| `MENSAJERIA_TURNOS_SIMULTANEOS` | `2` | Turnos del cerebro a la vez (entre todos los chats). |
+| `MENSAJERIA_PROGRESO_S` | `3` | Segundos sin noticias del cerebro antes de enviar «Pensando…». |
+| `MENSAJERIA_CONFIRMAR_EN_CHAT` | `consejo,actua` | Qué se puede confirmar en el chat con un código de un solo uso: convocatorias del consejo (`consejo`) y acciones que actúan fuera de la app (`actua`). Lo que no esté, solo en la app. |
+| `MENSAJERIA_CONFIRMACION_MINUTOS` | `30` | Vida de un código de confirmación. |
+| `MENSAJERIA_AVISOS_INTERVALO_S` | `60` | Cada cuánto se miran los avisos nuevos para los chats vinculados. |
+| `MENSAJERIA_HORAS_SILENCIO` | `22:00-08:00` | Horas (peninsulares) en que los avisos esperan; vacío: sin horas de silencio. |
+| `MENSAJERIA_AVISOS_MAX_HORAS` | `48` | Un aviso más antiguo ya no se envía al chat (un worker parado no inunda el chat al volver). |
+| `MENSAJERIA_RETENCION_DIAS` | `7` | Días que se guardan los *hashes* de los mensajes procesados y de los intentos. |
+| `MENSAJERIA_HISTORIAL_HORAS` | `12` | Horas que el historial reciente de un chat se conserva en memoria (nunca en disco). |
 
 ---
 

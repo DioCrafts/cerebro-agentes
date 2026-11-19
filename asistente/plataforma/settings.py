@@ -590,3 +590,83 @@ EVALUACION_CONSEJO_COSTE_RELATIVO_POR_PUNTO = float(
 )
 EVALUACION_CONSEJO_COSTE_RELATIVO_MAX = float(os.environ.get("EVALUACION_CONSEJO_COSTE_RELATIVO_MAX", "12.0"))
 EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA = float(os.environ.get("EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA", "40.0"))
+
+# --- mensajeria (gateway) ---
+# Talk to the household brain from a messaging app (asistente/plataforma/mensajeria, docs/mensajeria/arquitectura.md).
+# false: the worker does not start the gateway service and the app cannot generate pairing codes (what is stored stays
+# visible, exportable and erasable).
+MENSAJERIA_ACTIVA = _env_bool("MENSAJERIA_ACTIVA", default=False)
+# Channels the gateway starts, comma separated (``simplex``; ``prueba`` is the in-memory channel of the tests).
+MENSAJERIA_CANALES = os.environ.get("MENSAJERIA_CANALES", "simplex")
+# Pairing: minutes a one-time code lives; chats one user may pair per channel; failed code attempts allowed per hour
+# from one contact and from every contact together (past them, codes are not even checked).
+MENSAJERIA_CODIGO_MINUTOS = int(os.environ.get("MENSAJERIA_CODIGO_MINUTOS", "10"))
+MENSAJERIA_CONTACTOS_POR_USUARIO = int(os.environ.get("MENSAJERIA_CONTACTOS_POR_USUARIO", "1"))
+MENSAJERIA_INTENTOS_CONTACTO_HORA = int(os.environ.get("MENSAJERIA_INTENTOS_CONTACTO_HORA", "5"))
+MENSAJERIA_INTENTOS_GLOBAL_HORA = int(os.environ.get("MENSAJERIA_INTENTOS_GLOBAL_HORA", "30"))
+# Codes the app may generate per user per hour.
+MENSAJERIA_CODIGOS_POR_HORA = int(os.environ.get("MENSAJERIA_CODIGOS_POR_HORA", "6"))
+# Limits per paired chat: messages per minute and per hour, characters per message, messages waiting behind a turn.
+MENSAJERIA_MENSAJES_POR_MINUTO = int(os.environ.get("MENSAJERIA_MENSAJES_POR_MINUTO", "6"))
+MENSAJERIA_MENSAJES_POR_HORA = int(os.environ.get("MENSAJERIA_MENSAJES_POR_HORA", "60"))
+MENSAJERIA_MAX_TEXTO = int(os.environ.get("MENSAJERIA_MAX_TEXTO", "4000"))
+MENSAJERIA_COLA_POR_CONTACTO = int(os.environ.get("MENSAJERIA_COLA_POR_CONTACTO", "3"))
+# A turn of the brain: seconds before the chat is told it could not finish; turns running at once (every chat);
+# seconds without news from the brain before a plain «Pensando…» is sent.
+MENSAJERIA_TURNO_TIMEOUT_S = float(os.environ.get("MENSAJERIA_TURNO_TIMEOUT_S", "300"))
+MENSAJERIA_TURNOS_SIMULTANEOS = int(os.environ.get("MENSAJERIA_TURNOS_SIMULTANEOS", "2"))
+MENSAJERIA_PROGRESO_S = float(os.environ.get("MENSAJERIA_PROGRESO_S", "3"))
+# What can be confirmed from the chat with a one-time code (comma separated): ``consejo`` (council convocations) and
+# ``actua`` (module actions that act outside the app). Anything left out is confirmed in the app only.
+MENSAJERIA_CONFIRMAR_EN_CHAT = os.environ.get("MENSAJERIA_CONFIRMAR_EN_CHAT", "consejo,actua")
+MENSAJERIA_CONFIRMACION_MINUTOS = int(os.environ.get("MENSAJERIA_CONFIRMACION_MINUTOS", "30"))
+# Notices to the paired chat: seconds between polls of the inbox, quiet hours (Spanish time, «HH:MM-HH:MM»; empty: none)
+# and the age past which a notice is no longer sent (a worker that was down does not flood the chat).
+MENSAJERIA_AVISOS_INTERVALO_S = float(os.environ.get("MENSAJERIA_AVISOS_INTERVALO_S", "60"))
+MENSAJERIA_HORAS_SILENCIO = os.environ.get("MENSAJERIA_HORAS_SILENCIO", "22:00-08:00")
+MENSAJERIA_AVISOS_MAX_HORAS = int(os.environ.get("MENSAJERIA_AVISOS_MAX_HORAS", "48"))
+# Days the processed message ids (deduplication) and the pairing attempts are kept.
+MENSAJERIA_RETENCION_DIAS = int(os.environ.get("MENSAJERIA_RETENCION_DIAS", "7"))
+# Hours a chat's recent messages stay in the gateway's memory (RAM only, never stored) as the brain's history.
+MENSAJERIA_HISTORIAL_HORAS = float(os.environ.get("MENSAJERIA_HISTORIAL_HORAS", "12"))
+
+# --- mensajeria.simplex ---
+# The SimpleX Chat channel (asistente/plataforma/mensajeria/simplex, docs/mensajeria/simplex.md): the worker talks to a
+# simplex-chat CLI started with `-p 5225` on this machine. Its WebSocket API has no authentication or encryption, so a
+# host other than 127.0.0.1/localhost/::1 is refused unless SIMPLEX_PERMITIR_REMOTO is on, and then only wss://.
+SIMPLEX_WS_URL = os.environ.get("SIMPLEX_WS_URL", "ws://127.0.0.1:5225")
+SIMPLEX_PERMITIR_REMOTO = _env_bool("SIMPLEX_PERMITIR_REMOTO", default=False)
+# Display name of the bot's profile in the CLI (made active, or created if absent; other profiles are never modified)
+# and the message the CLI sends by itself to whoever connects through the bot's address (empty: none).
+SIMPLEX_BOT_NOMBRE = os.environ.get("SIMPLEX_BOT_NOMBRE", "Asistente del hogar")
+SIMPLEX_BIENVENIDA = os.environ.get(
+    "SIMPLEX_BIENVENIDA",
+    "Hola, soy el asistente del hogar. Para hablar conmigo, abre la aplicación, entra en «Mensajería», genera un "
+    "código de emparejamiento y envíamelo aquí.",
+)
+# true: whoever has the bot's address is accepted as a contact (they still need a pairing code to reach the brain);
+# false: no new contact is accepted (close the door once your chats are paired).
+SIMPLEX_AUTOACEPTAR = _env_bool("SIMPLEX_AUTOACEPTAR", default=True)
+# Received files: accepted ones are copied into SIMPLEX_ARCHIVOS_DIR (0700, one random folder per file). The CLI first
+# writes each file into SIMPLEX_ARCHIVOS_RECEPCION_DIR under a name the channel chooses; empty: <SIMPLEX_ARCHIVOS_DIR>/
+# recepcion, valid only when the CLI runs as the worker's system user (with a dedicated user: a folder both can write,
+# with the same absolute path for both).
+SIMPLEX_ARCHIVOS_DIR = os.environ.get("SIMPLEX_ARCHIVOS_DIR", "data/mensajeria/simplex/archivos")
+SIMPLEX_ARCHIVOS_RECEPCION_DIR = os.environ.get("SIMPLEX_ARCHIVOS_RECEPCION_DIR", "")
+# Largest file accepted (bytes; never above the gateway's 15 MiB), voice notes accepted, seconds a download may take.
+SIMPLEX_ARCHIVOS_MAX_BYTES = int(os.environ.get("SIMPLEX_ARCHIVOS_MAX_BYTES", str(15 * 1024 * 1024)))
+SIMPLEX_ACEPTAR_VOZ = _env_bool("SIMPLEX_ACEPTAR_VOZ", default=True)
+SIMPLEX_ARCHIVOS_TIMEOUT_S = float(os.environ.get("SIMPLEX_ARCHIVOS_TIMEOUT_S", "300"))
+# Days the CLI keeps the bot's conversations in its own database (plain text there); older messages and their files
+# are deleted by the CLI. 0: leave the CLI's setting untouched.
+SIMPLEX_HISTORIAL_DIAS = int(os.environ.get("SIMPLEX_HISTORIAL_DIAS", "7"))
+# Optional, for self-hosted relays: the SMP / XFTP servers (space separated, as given to the CLI's -s / --xftp-server).
+# When set, the channel checks at start that the CLI has no other server enabled and warns in its status otherwise.
+SIMPLEX_SERVIDORES_SMP = os.environ.get("SIMPLEX_SERVIDORES_SMP", "")
+SIMPLEX_SERVIDORES_XFTP = os.environ.get("SIMPLEX_SERVIDORES_XFTP", "")
+# Seconds: opening the WebSocket, one command (creating the address waits at least 60), between keepalive pings (0:
+# none; a CLI that stops answering them is reconnected), and the longest pause between reconnection attempts.
+SIMPLEX_TIMEOUT_CONEXION_S = float(os.environ.get("SIMPLEX_TIMEOUT_CONEXION_S", "10"))
+SIMPLEX_TIMEOUT_COMANDO_S = float(os.environ.get("SIMPLEX_TIMEOUT_COMANDO_S", "30"))
+SIMPLEX_PING_S = float(os.environ.get("SIMPLEX_PING_S", "20"))
+SIMPLEX_RECONEXION_MAX_S = float(os.environ.get("SIMPLEX_RECONEXION_MAX_S", "60"))

@@ -118,6 +118,7 @@ from asistente.plataforma.api.routers import evaluacion as evaluacion_router
 from asistente.plataforma.api.routers import eventos as eventos_router
 from asistente.plataforma.api.routers import investigacion as investigacion_router
 from asistente.plataforma.api.routers import memoria as memoria_router
+from asistente.plataforma.api.routers import mensajeria as mensajeria_router
 from asistente.plataforma.api.routers import modulos as modulos_router
 from asistente.plataforma.api.routers import navegador as navegador_router
 from asistente.plataforma.api.routers import planificador as planificador_router
@@ -894,6 +895,46 @@ def post_agent_stream(
     )
 
 
+# --- one turn of the agent for a caller that is not an HTTP request (the messaging gateway) ---
+
+
+def ejecutar_turno_agente(
+    payload: AgentRequest,
+    *,
+    agent: Any,
+    store: SQLiteCaseStateStore,
+    access: CaseAccess,
+    acciones: AccionStore | None,
+    on_event: Callable[[dict[str, Any]], None] | None = None,
+    revisar: Callable[[AgentResult, CaseState | None], AgentResult] | None = None,
+) -> tuple[AgentResponse, Callable[[], None]]:
+    """What ``/agent`` does for one turn, for a caller outside an HTTP request (``asistente.plataforma.mensajeria``).
+
+    The same steps through the same helpers: the case and its owner (``_load_agent_case``), the question's length
+    (``comprobar_pregunta``), the history cap, the usage context of the turn's owner (per-user budget), the user's
+    modules, the brain's ``conversacion_id``/``user_id``, then ``_finish_agent_turn`` (persistence, pending actions,
+    the audit event). ``revisar`` sees the result before anything is persisted (the gateway's gate on facts taken
+    from forwarded text). Returns the response and the memory hand-off (``_registrar_en_memoria``), for the caller to
+    run once the user has the answer. Raises what the endpoint maps to HTTP: ``HTTPException`` (404 case, 409
+    conflict, 422 question too long), ``PresupuestoAgotadoError`` and ``ProviderError``.
+    """
+    case = _load_agent_case(payload.case_id, store, access)
+    comprobar_pregunta(payload.query)
+    with contexto_consumo(user_id=_consumidor(access, case), case_id=payload.case_id):
+        result = agent.run(
+            payload.query,
+            chat_history=recortar_historial(payload.chat_history),
+            case=case,
+            on_event=on_event,
+            **_modulos_del_turno(payload.case_id, access),
+            **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
+        )
+    if revisar is not None:
+        result = revisar(result, case)
+    response = _finish_agent_turn(payload, case, result, store, acciones, agent)
+    return response, lambda: _registrar_en_memoria(agent, payload, case, result, access)
+
+
 def _save_case_after_user_edit(
     case: CaseState, facts: list[Fact], store: SQLiteCaseStateStore, audit_event: dict, tax_period: str | None = None
 ) -> CaseState:
@@ -1416,6 +1457,7 @@ app.include_router(tareas_router.build_router(get_case_store=get_case_store))
 app.include_router(recuerdos_router.build_router(get_case_store=get_case_store))
 app.include_router(repaso_router.build_router(get_case_store=get_case_store))
 app.include_router(consejo_router.build_router(get_case_store=get_case_store))
+app.include_router(mensajeria_router.build_router(get_case_store=get_case_store))
 app.include_router(capacidades_router.build_router())
 app.include_router(investigacion_router.router)
 # --- /routers ---

@@ -1,0 +1,36 @@
+# Imagen de la CLI de SimpleX Chat para el canal de mensajería (servicio «simplex» de docker-compose.yml, perfil
+# «simplex»; guía: docs/mensajeria/simplex.md). Descarga el binario OFICIAL de la versión indicada desde las releases de
+# github.com/simplex-chat/simplex-chat y comprueba su SHA-256: sin SIMPLEX_SHA256 la imagen no se construye (cópialo
+# de la página de esa versión o calcúlalo tras verificar la descarga; nunca lo saltes).
+#
+#   docker build -f docs/despliegue/Dockerfile.simplex --build-arg SIMPLEX_SHA256=<suma> -t haciendagpt-simplex .
+#
+# Ubuntu 22.04 porque el binario «ubuntu-22_04» está enlazado contra sus bibliotecas (gmp, zlib, openssl).
+FROM ubuntu:22.04
+
+ARG SIMPLEX_RELEASE=v7.1.4
+ARG SIMPLEX_ASSET=simplex-chat-ubuntu-22_04-x86_64
+ARG SIMPLEX_SHA256=
+
+RUN test -n "$SIMPLEX_SHA256" || { echo "Falta SIMPLEX_SHA256 (suma SHA-256 del binario de $SIMPLEX_RELEASE)" >&2; exit 1; }
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends ca-certificates curl libgmp10 zlib1g libssl3 \
+    && curl -fsSL -o /usr/local/bin/simplex-chat \
+       "https://github.com/simplex-chat/simplex-chat/releases/download/${SIMPLEX_RELEASE}/${SIMPLEX_ASSET}" \
+    && echo "${SIMPLEX_SHA256}  /usr/local/bin/simplex-chat" | sha256sum -c - \
+    && chmod 0755 /usr/local/bin/simplex-chat \
+    && apt-get purge -y curl && apt-get autoremove -y && rm -rf /var/lib/apt/lists/*
+
+# The same uid as the backend image's «hacienda» user: the worker reads the files this process writes for it.
+RUN useradd --system --uid 10001 --home-dir /var/lib/simplex-chat --shell /usr/sbin/nologin simplex \
+    && install -d -o simplex -m 0700 /var/lib/simplex-chat /var/lib/simplex-chat/archivos
+USER simplex
+WORKDIR /var/lib/simplex-chat
+VOLUME ["/var/lib/simplex-chat"]
+
+# -p 5225: WebSocket API, bound by the CLI to 127.0.0.1 only (no authentication: never publish it).
+# --create-bot-*: only on the first start (creates the bot profile); the name must match SIMPLEX_BOT_NOMBRE.
+ENTRYPOINT ["/usr/local/bin/simplex-chat"]
+CMD ["-p", "5225", "-d", "/var/lib/simplex-chat/bot", "-y", \
+     "--create-bot-display-name", "Asistente del hogar", "--create-bot-allow-files", \
+     "--files-folder", "/var/lib/simplex-chat/archivos"]

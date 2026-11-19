@@ -1,0 +1,70 @@
+# CLI de SimpleX Chat en modo bot para el canal de mensajería del asistente (docs/mensajeria/simplex.md).
+# /etc/systemd/system/simplex-chat.service   ·   systemctl enable --now simplex-chat
+#
+# - Usuario propio y sin privilegios («simplex», sin shell). Sus datos (base de datos de la CLI con las claves del
+#   bot) en /var/lib/simplex-chat, 0700. Haz copia de esa carpeta (docs/mensajeria/simplex.md, «Copias»).
+# - La API WebSocket (-p 5225) NO tiene autenticación ni cifrado: la CLI solo escucha en 127.0.0.1. No abras ese
+#   puerto en el cortafuegos ni lo publiques en un proxy; el worker se conecta en local.
+# - La salida estándar se descarta A PROPÓSITO: en modo -p la CLI escribe en ella cada orden que recibe, con el texto
+#   de cada mensaje que envía el asistente. Para diagnosticar, mira «Problemas frecuentes» en la guía.
+# - Los archivos que llegan se escriben en /var/lib/simplex-recepcion (simplex:hacienda, 2770), con un nombre que
+#   elige el worker; el worker (grupo hacienda) los verifica, se queda una copia privada y borra el original. El worker
+#   necesita poder escribir ahí: `systemctl edit hacienda-worker` → [Service] ReadWritePaths=-/var/lib/simplex-recepcion
+#   y en /etc/hacienda/entorno SIMPLEX_ARCHIVOS_RECEPCION_DIR=/var/lib/simplex-recepcion.
+# - El nombre del bot de --create-bot-display-name solo se usa la primera vez (crea el perfil); debe coincidir con
+#   SIMPLEX_BOT_NOMBRE. Servidores SMP/XFTP propios: ver «Servidores propios» en la guía (un override de ExecStart).
+[Unit]
+Description=SimpleX Chat CLI (bot del asistente del hogar)
+After=network-online.target
+Wants=network-online.target
+Before=hacienda-worker.service
+
+[Service]
+Type=simple
+User=simplex
+Group=simplex
+# The shared incoming-files folder belongs to the worker's group.
+SupplementaryGroups=hacienda
+StateDirectory=simplex-chat
+StateDirectoryMode=0700
+WorkingDirectory=/var/lib/simplex-chat
+ExecStartPre=+/usr/bin/install -d -o simplex -g hacienda -m 2770 /var/lib/simplex-recepcion
+ExecStartPre=/usr/bin/install -d -m 0700 /var/lib/simplex-chat/archivos
+ExecStart=/usr/local/bin/simplex-chat -p 5225 -d /var/lib/simplex-chat/bot -y \
+    --create-bot-display-name "Asistente del hogar" --create-bot-allow-files \
+    --files-folder /var/lib/simplex-chat/archivos
+StandardOutput=null
+StandardError=journal
+Restart=always
+RestartSec=10
+TimeoutStopSec=30
+# Files it writes in the shared folder must be readable (and removable) by the worker's group.
+UMask=0007
+ReadWritePaths=-/var/lib/simplex-recepcion
+NoNewPrivileges=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectProc=invisible
+ProcSubset=pid
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+# Not set on purpose (not verified against the GHC runtime of the binary): MemoryDenyWriteExecute, SystemCallFilter.
+# Add them after a test run if you wish (`systemd-analyze security simplex-chat`).
+LimitNOFILE=8192
+
+[Install]
+WantedBy=multi-user.target

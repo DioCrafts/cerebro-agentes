@@ -72,7 +72,52 @@ services:
     depends_on:
       - api
 
+  # --- Canal SimpleX Chat (opcional; docs/mensajeria/simplex.md) ----------------------------------------------------
+  # Solo con el perfil «simplex»:  docker compose --profile simplex -f ... --env-file ... up -d --build
+  # (en .env: MENSAJERIA_ACTIVA=true y SIMPLEX_SHA256=<suma del binario>; SIMPLEX_RELEASE para otra versión).
+  # La CLI comparte el espacio de red del worker (network_mode): su API WebSocket, SIN autenticación, solo existe en el
+  # 127.0.0.1 de ese espacio. No le pongas «ports» ni «expose». Si el worker se recrea, reinicia también «simplex».
+  # Su salida se descarta (escribe en ella el texto de cada mensaje que envía el bot).
+  simplex-preparar:
+    profiles: ["simplex"]
+    image: haciendagpt-backend
+    command: ["python", "-c", "import os; os.makedirs('/srv/hacienda-asesor/data/mensajeria/simplex/archivos/recepcion', 0o700, exist_ok=True)"]
+    volumes:
+      - datos:/srv/hacienda-asesor/data
+    restart: "no"
+
+  simplex:
+    profiles: ["simplex"]
+    build:
+      context: ../..
+      dockerfile: docs/despliegue/Dockerfile.simplex
+      args:
+        SIMPLEX_RELEASE: ${SIMPLEX_RELEASE:-v7.1.4}
+        SIMPLEX_ASSET: ${SIMPLEX_ASSET:-simplex-chat-ubuntu-22_04-x86_64}
+        SIMPLEX_SHA256: ${SIMPLEX_SHA256:-}
+    image: haciendagpt-simplex
+    restart: unless-stopped
+    network_mode: "service:worker"
+    depends_on:
+      worker:
+        condition: service_started
+      simplex-preparar:
+        condition: service_completed_successfully
+    volumes:
+      # The CLI's database (the bot's keys): back it up.
+      - simplex_datos:/var/lib/simplex-chat
+      # Only the incoming-files staging folder of the shared data volume, at the path the worker uses.
+      - type: volume
+        source: datos
+        target: /srv/hacienda-asesor/data/mensajeria/simplex/archivos/recepcion
+        volume:
+          subpath: mensajeria/simplex/archivos/recepcion
+    logging:
+      driver: "none"
+    stop_grace_period: 30s
+
 volumes:
   datos:
   caddy_datos:
   caddy_config:
+  simplex_datos:

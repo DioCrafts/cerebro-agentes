@@ -18,6 +18,7 @@ from asistente.plataforma.migraciones.catalogo import (
     evaluacion,
     eventos,
     memoria,
+    mensajeria,
     navegador,
     plataforma,
     proactive,
@@ -47,6 +48,7 @@ PROPIETARIOS: tuple[Propietario, ...] = (
     recuerdos.PROPIETARIO,
     repaso.PROPIETARIO,
     consejo.PROPIETARIO,
+    mensajeria.PROPIETARIO,
 )
 
 __all__ = ["PROPIETARIOS"]

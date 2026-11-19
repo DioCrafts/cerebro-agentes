@@ -23,6 +23,7 @@ import {
   Globe,
   House,
   ListChecks,
+  MessageCircle,
   PiggyBank,
   Scale,
   UsersRound,
@@ -158,6 +159,14 @@ export const REGISTRO: DefinicionPanel[] = [
     orden: 90,
     flag: "pwa",
     cargar: () => import("./movil"),
+  },
+  {
+    id: "mensajeria",
+    etiqueta: "Mensajería",
+    titulo: "Habla con tu asistente desde SimpleX Chat (cifrado de extremo a extremo, sin número de teléfono)",
+    icono: MessageCircle,
+    orden: 92,
+    cargar: () => import("./mensajeria"),
   },
   {
     id: "expediente",

@@ -50,6 +50,7 @@ from asistente.plataforma.auth.store import (
     InvalidEmailError,
     User,
 )
+from asistente.plataforma.mensajeria.almacen import borrar_mensajeria_de_usuario, exportar_mensajeria
 from asistente.plataforma.ops.consumo import anonimizar_consumo
 from asistente.plataforma.push.almacen import PushStore
 
@@ -371,6 +372,9 @@ def build_router(
             "cases": exported_cases,
             # Devices registered for push notices and the consent history (asistente/plataforma/push).
             "push": PushStore(cases.db_path).exportar(user.id),
+            # Chats paired with the brain (asistente/plataforma/mensajeria): channel, contact id, dates and the notices
+            # delivered to each. Never a pairing or confirmation code (only their hashes are stored, and not exported).
+            "mensajeria": exportar_mensajeria(cases.db_path, user_id=user.id),
             # Research with sources (capacidades/investigacion): web consent history and cached reports.
             "investigacion": investigacion_capacidad.exportar_usuario(user.id),
             # Conversation memory outside any case (each case's is in its own entry above).
@@ -412,6 +416,8 @@ def build_router(
         recuerdos_servicio.borrar_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         # The household council's sessions (the triggers erase them too; this also checkpoints the WAL).
         borrar_consejo_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
+        # Paired chats (the triggers erase them too; this also queues the contacts' removal on the channel).
+        borrar_mensajeria_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         for case_id in store.case_ids_of(user.id):
             notifications.delete_for_case(case_id)
             if acciones is not None:

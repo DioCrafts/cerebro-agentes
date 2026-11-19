@@ -57,6 +57,10 @@ dependencies = [
     # The browser agent (asistente/capacidades/navegador) drives Chromium through Playwright directly; it also comes
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.48",
+    # The SimpleX Chat channel (asistente/plataforma/mensajeria/simplex) talks to the local simplex-chat CLI over its
+    # WebSocket API (sync client). Already in the lock through streamlit/langgraph-sdk; pinned here so the channel does
+    # not depend on those staying.
+    "websockets==16.0",
 ]
 
 [dependency-groups]

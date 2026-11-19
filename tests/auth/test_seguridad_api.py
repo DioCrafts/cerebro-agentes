@@ -144,6 +144,8 @@ def test_another_users_case_is_404_on_the_query_and_body_endpoints(env: Env, no_
         ("get", f"/evaluacion/feedback?case_id={case_id}", None),
         ("post", "/planificar", {"case_id": case_id, "importe_disponible": 1000}),
         ("delete", f"/evaluacion/feedback/{feedback.json()['id']}", None),
+        # Pairing a messaging chat to a case (asistente/plataforma/api/routers/mensajeria.py; its devices: tests/mensajeria).
+        ("post", "/mensajeria/emparejar", {"case_id": case_id}),
     ]
     for method, path, body in requests:
         response = env.client.request(method, path, json=body, headers=luis)

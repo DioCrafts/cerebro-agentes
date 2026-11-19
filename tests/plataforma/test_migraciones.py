@@ -27,6 +27,7 @@ from asistente.nucleo.tareas.almacen import TareaStore
 from asistente.plataforma import settings
 from asistente.plataforma.auth.store import AuthStore
 from asistente.plataforma.cli.plataforma import cli
+from asistente.plataforma.mensajeria.almacen import AlmacenMensajeria
 from asistente.plataforma.migraciones import (
     BASE_DOCTRINA,
     TABLA_REGISTRO,
@@ -72,6 +73,9 @@ def _con_todos_los_stores(path: str) -> None:
     RepasoStore(path).get("", "")  # the brain's passes (asistente/nucleo/repaso): a connection per call
     AlmacenRecuerdos(path)._get().close()  # the conversation memory (asistente/nucleo/recuerdos)
     AlmacenConsejo(path).listar("")  # the household council (asistente/nucleo/consejo): a connection per call
+    mensajeria = AlmacenMensajeria(path)  # the messaging gateway (asistente/plataforma/mensajeria)
+    mensajeria.vinculos()
+    mensajeria.close()
 
 
 @pytest.fixture

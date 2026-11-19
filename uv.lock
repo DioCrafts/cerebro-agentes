@@ -195,6 +195,7 @@ dependencies = [
     { name = "tqdm" },
     { name = "transformers" },
     { name = "uvicorn" },
+    { name = "websockets" },
 ]
 
 [package.dev-dependencies]
@@ -239,6 +240,7 @@ requires-dist = [
     { name = "tqdm", specifier = "==4.67.3" },
     { name = "transformers", specifier = ">=4.51.0,<6.0.0" },
     { name = "uvicorn", specifier = "==0.37.0" },
+    { name = "websockets", specifier = "==16.0" },
 ]
 
 [package.metadata.requires-dev]

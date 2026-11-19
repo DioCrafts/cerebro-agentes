@@ -169,6 +169,14 @@ def servicio_eventos(contexto: ContextoServicio) -> None:
         bus.close()
 
 
+def servicio_mensajeria(contexto: ContextoServicio) -> None:
+    """The messaging gateway to the household brain (asistente/plataforma/mensajeria/servicio.py): the channels
+    (SimpleX), the pairing, the turns and the notices to the paired chats. Imported here only when it runs."""
+    from asistente.plataforma.mensajeria.servicio import ejecutar
+
+    ejecutar(contexto)
+
+
 def registrar_incorporados(registro: Registro) -> None:
     registro.registrar_servicio(
         Servicio(
@@ -177,8 +185,23 @@ def registrar_incorporados(registro: Registro) -> None:
             servicio_eventos,
         )
     )
+    registro.registrar_servicio(
+        Servicio(
+            "mensajeria",
+            "Mensajería con el cerebro del hogar (SimpleX): chats emparejados, turnos y avisos (con MENSAJERIA_ACTIVA).",
+            servicio_mensajeria,
+            por_defecto=bool(getattr(settings, "MENSAJERIA_ACTIVA", False)),
+        )
+    )
     for trabajo in TRABAJOS:
         registro.registrar_trabajo(trabajo)
 
 
-__all__ = ["DIAS_RETENCION_EVENTOS", "TRABAJOS", "pasada_de_eventos", "registrar_incorporados", "servicio_eventos"]
+__all__ = [
+    "DIAS_RETENCION_EVENTOS",
+    "TRABAJOS",
+    "pasada_de_eventos",
+    "registrar_incorporados",
+    "servicio_eventos",
+    "servicio_mensajeria",
+]
