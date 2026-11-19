@@ -135,7 +135,11 @@ An image or a PDF from a paired chat goes to the documents capability through th
 it only PROPOSES facts («no he guardado nada»: the user confirms by saying them in their own words, which the
 provenance gate accepts, or in the app). Files are always deleted afterwards (the documents are never stored); the
 sender's file name is never used as a path. Voice notes are acknowledged («aún no puedo escuchar notas de voz») and
-deleted: no transcription yet.
+deleted: no transcription yet. A file the adapter refused arrives as a reason code in
+`MensajeEntrante.adjuntos_rechazados` (`demasiado_grande`, `tipo_no_permitido`, `error_descarga`, `tiempo_agotado`):
+the paired chat is told, politely and per reason, why it did not arrive — also when that was the whole message.
+Deleting a file also removes its own per-file folder when it is empty, a real (not symlinked) folder directly inside
+the adapter's files folder; nothing outside that folder is ever touched.
 
 ## Outgoing notices
 
@@ -197,7 +201,8 @@ fixed sentences. Audit events `mensajeria` (`emparejado`, `desemparejado`, `turn
 `contrato.Canal`: `nombre`, `capacidades` (`edicion`, `max_texto`, `formato`…), `iniciar(manejador)` that runs until
 `parar()` and reconnects on its own, `enviar` / `editar` that never raise (None/False on failure), `estado()` with the
 bot's address in `direccion`, `desconectar_contacto(contacto)`. Optionally a classmethod `desde_settings()` (the
-service uses it when present, else the no-argument constructor). Attachments are received into a private directory
+service uses it when present, else the no-argument constructor) and an attribute `directorio_archivos` (its private
+files folder; for `CanalSimplex` the gateway reads its configuration's `archivos_dir` until it exposes one). Attachments are received into a private directory
 and handed as `AdjuntoEntrante.ruta_local`; the gateway deletes them after use.
 
 ## What is not verified

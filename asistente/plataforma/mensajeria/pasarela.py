@@ -1091,7 +1091,11 @@ def texto_rechazados(motivos: Sequence[str]) -> str | None:
         cuenta[motivo] = cuenta.get(motivo, 0) + 1
     lineas: list[str] = []
     for motivo, n in cuenta.items():
-        sujeto = "Un archivo que me has enviado no ha llegado" if n == 1 else f"{n} archivos que me has enviado no han llegado"
+        sujeto = (
+            "Un archivo que me has enviado no ha llegado"
+            if n == 1
+            else f"{n} archivos que me has enviado no han llegado"
+        )
         razon = MOTIVOS_RECHAZO.get(motivo, "no lo he podido recibir")
         lineas.append(f"{sujeto}: {razon}.")
     lineas.append("Prueba a enviarlo de nuevo o súbelo desde la app.")
