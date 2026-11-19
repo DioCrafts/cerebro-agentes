@@ -172,9 +172,38 @@ def test_a_figure_from_forwarded_text_never_reaches_the_case_as_the_users_words(
     mensaje = proveedor.started["user_message"]
     assert "¿Esto está bien?" in mensaje and pasarela_mod.CABECERA_DATOS in mensaje
     assert "> Rendimientos íntegros del trabajo: 38.250,40 €" in mensaje
-    # The model tried to record it, and the core's own gate let it through (the question counts as the user's) …
+    # The model tried to record it: the core's own gate refuses it (quoted «> » lines are not the user's words) …
+    assert proveedor.tool_results[0].content.startswith("Registrados: ninguno. Rechazados: rendimiento_trabajo_bruto")
+    # … so nothing reached the case, and the gateway had nothing to withdraw.
+    assert _rendimientos(montaje) == []
+    assert textos
+    (turno,) = [
+        e
+        for e in montaje.casos.list_audit_events(CASE_ID)
+        if e.get("event_type") == "mensajeria" and e["accion"] == "turno"
+    ]
+    assert turno["reenviado"] is True and turno["hechos_retirados"] == []
+
+
+def test_the_gateway_gate_still_catches_a_forwarded_figure_if_the_core_lets_it_through(
+    montaje: Montaje, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Defence in depth: with a core gate that (as before) took the whole message as the user's words, the
+    gateway's own gate re-checks every fact against the user's OWN words and withdraws the turn's case changes."""
+    from asistente.nucleo.agent import agent as agent_mod
+
+    def todo_el_texto(query: str, chat_history: object) -> list[str]:
+        return [query]
+
+    monkeypatch.setattr(agent_mod, "mensajes_del_usuario", todo_el_texto)
+    proveedor = _registra_rendimientos(38250.40)
+    montaje.agente.agente = TaxAgent(provider=proveedor, searcher=FakeSearcher(corpus()))
+    montaje.emparejar()
+    certificado = "Certificado de retenciones 2025\nRendimientos íntegros del trabajo: 38.250,40 €"
+
+    textos = montaje.decir("¿Esto está bien?", cita=certificado)
+
     assert proveedor.tool_results[0].content.startswith("Registrados: rendimiento_trabajo_bruto=38250.4")
-    # … but the gateway's gate re-checked it against the user's OWN words: nothing reached the case.
     assert _rendimientos(montaje) == []
     assert "No he guardado cambios en tu expediente" in textos[-1] and "rendimiento trabajo bruto" in textos[-1]
     (turno,) = [

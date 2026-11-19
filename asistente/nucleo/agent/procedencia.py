@@ -119,18 +119,25 @@ def numeros_del_usuario(mensajes: Iterable[str]) -> set[Decimal]:
     return numeros
 
 
+def sin_citas(texto: str) -> str:
+    """``texto`` without its quoted lines (``> …``): forwarded or quoted text is someone else's words, not the user's
+    (the messaging gateway passes a forwarded message as a ``> `` block)."""
+    return "\n".join(linea for linea in texto.splitlines() if not linea.lstrip().startswith(">"))
+
+
 def mensajes_del_usuario(query: str, chat_history: Iterable[Any] | None) -> list[str]:
     """The user's words of a conversation: the question and every ``role: user`` message of the history (a string
-    or a list of text blocks). Never the assistant's, a tool's or a document's text."""
-    mensajes = [query] if isinstance(query, str) else []
+    or a list of text blocks), without quoted ``> `` lines. Never the assistant's, a tool's, a document's or a
+    forwarded message's text."""
+    mensajes = [sin_citas(query)] if isinstance(query, str) else []
     for mensaje in chat_history or ():
         if not isinstance(mensaje, dict) or mensaje.get("role") != "user":
             continue
         contenido = mensaje.get("content")
         if isinstance(contenido, str):
-            mensajes.append(contenido)
+            mensajes.append(sin_citas(contenido))
         elif isinstance(contenido, list):
-            mensajes.append(" ".join(str(b.get("text") or "") for b in contenido if isinstance(b, dict)))
+            mensajes.append(sin_citas(" ".join(str(b.get("text") or "") for b in contenido if isinstance(b, dict))))
     return mensajes
 
 
@@ -216,6 +223,7 @@ __all__ = [
     "AVISO_SIN_RESPALDO",
     "cita_valida",
     "mensajes_del_usuario",
+    "sin_citas",
     "numero_dicho",
     "numeros_del_usuario",
     "sin_respaldo",

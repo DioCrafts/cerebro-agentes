@@ -259,8 +259,9 @@ def _citas_de_la_traza(result: AgentResult) -> dict[str, str]:
 class PuertaPalabrasPropias:
     """The gate on facts in a turn that carried forwarded or quoted text.
 
-    WHY: the core's provenance gate (``registrar_hechos`` → ``procedencia.sin_respaldo``) takes the whole question as
-    the user's words, so a figure inside a forwarded bill would pass it. After the turn, before anything is
+    WHY: defence in depth. The core's provenance gate (``registrar_hechos`` → ``procedencia.sin_respaldo``) already
+    leaves out quoted ``> `` lines (``procedencia.sin_citas``), but it reads whatever the conversation holds; this
+    gate does not depend on how the quoted block reaches the brain. After the turn, before anything is
     persisted, every fact the turn wrote or changed is checked again with the SAME function against the user's OWN
     words only (this message without the quoted block, and their earlier messages of the chat). If one is not
     backed, nothing the turn changed in the case is saved (no partial merge: obligations may have been evaluated with

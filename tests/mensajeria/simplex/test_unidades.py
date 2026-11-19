@@ -374,3 +374,15 @@ def test_canal_desde_settings(monkeypatch, tmp_path):
 )
 def test_codigos_de_rechazo_del_contrato(motivo, codigo):
     assert codigo_rechazo(motivo) == codigo == ArchivoRechazado(motivo).codigo
+
+
+def test_the_channel_exposes_its_private_files_folder(tmp_path) -> None:
+    """The gateway finds the folder to clean after each attachment through this property."""
+    from pathlib import Path
+
+    from asistente.plataforma.mensajeria.simplex import CanalSimplex
+    from asistente.plataforma.mensajeria.simplex.configuracion import ConfiguracionSimplex
+
+    carpeta = tmp_path / "archivos"
+    canal = CanalSimplex(ConfiguracionSimplex(ws_url="ws://127.0.0.1:5225", archivos_dir=carpeta))
+    assert canal.directorio_archivos == Path(carpeta)

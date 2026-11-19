@@ -157,3 +157,18 @@ def test_what_the_user_did_say_is_recorded_beside_what_is_refused() -> None:
     # visible and editable.
     assert hechos == {"num_descendientes": 2.0, "rendimiento_trabajo_bruto": 38000.0, "familia_numerosa": True}
     assert "retenciones: no se ha guardado" in provider.tool_results[0].content
+
+
+def test_quoted_lines_are_not_the_users_words() -> None:
+    """A forwarded or quoted block («> …») is someone else's text: a figure only there is not the user's."""
+    from asistente.nucleo.agent.procedencia import mensajes_del_usuario, sin_citas
+
+    assert sin_citas("Mi sueldo es 30.000\n> Te debo 1.200 €\n  > y 300 más") == "Mi sueldo es 30.000"
+    historial = [
+        {"role": "user", "content": "> Reenviado: tu cuota es 845 €"},
+        {"role": "assistant", "content": "Vale"},
+        {"role": "user", "content": [{"type": "text", "text": "Pago 650 € al mes\n> 845 €"}]},
+    ]
+    mensajes = mensajes_del_usuario("¿Cuánto pago?\n> 999", historial)
+    assert mensajes == ["¿Cuánto pago?", "", "Pago 650 € al mes"]
+    assert not any("845" in m or "999" in m for m in mensajes)

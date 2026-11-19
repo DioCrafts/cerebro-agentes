@@ -351,6 +351,11 @@ class CanalSimplex:
             logger.error("simplex: fallo inesperado al borrar un contacto: %s", describir_excepcion(e))
             return False
 
+    @property
+    def directorio_archivos(self) -> Path:
+        """The private folder where received files are staged (the gateway deletes each one after use)."""
+        return Path(self._cfg.archivos_dir)
+
     def estado(self) -> EstadoCanal:
         with self._lock:
             cliente = self._cliente
