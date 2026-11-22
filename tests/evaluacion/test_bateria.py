@@ -182,3 +182,17 @@ def test_la_linea_base_versionada_es_comparable_si_existe() -> None:
     base = b.cargar_informe(b.LINEA_BASE_PATH)
     assert base.bateria_version == b.cargar_bateria().version
     assert {r.id for r in base.casos} <= {c.id for c in b.cargar_bateria().casos}
+
+
+def test_reanudar_no_repite_casos_hechos() -> None:
+    bat = b.cargar_bateria()
+    llamadas: list[str] = []
+
+    def ejecutar(caso: b.CasoBateria, _p: float) -> b.Salida:
+        llamadas.append(caso.id)
+        return b.Salida(respuesta="No lo sé.", violaciones_puerta=[])
+
+    primera = b.ejecutar(bat, {"cerebro": ejecutar}, sistemas=["cerebro"], modo="simulado")
+    llamadas.clear()
+    segunda = b.ejecutar(bat, {"cerebro": ejecutar}, sistemas=["cerebro"], modo="simulado", previos=primera.casos[:3])
+    assert len(llamadas) == 4 and len(segunda.casos) == 7

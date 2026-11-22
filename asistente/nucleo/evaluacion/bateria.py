@@ -374,13 +374,19 @@ def ejecutar(
     modelos: dict[str, str] | None = None,
     modo: Literal["modelo", "simulado"] = "modelo",
     al_terminar_caso: Callable[[Resultado], None] | None = None,
+    previos: Sequence[Resultado] = (),
 ) -> InformeBateria:
     """Run the selected cases. A case whose system has no executor, or that would exceed the total budget, is
     recorded as omitted (it never counts as passed)."""
     resultados: list[Resultado] = []
     gastado = 0.0
+    hechos = {(r.id, r.version): r for r in previos if not r.omitido}
     for caso in bateria.casos:
         if (ids and caso.id not in ids) or (sistemas and caso.sistema not in sistemas):
+            continue
+        if (caso.id, caso.version) in hechos:  # resumed run: never pay twice for a case already run
+            resultados.append(hechos[(caso.id, caso.version)])
+            gastado += hechos[(caso.id, caso.version)].coste
             continue
         motivo = None
         if caso.sistema not in ejecutores:
@@ -415,6 +421,13 @@ def ejecutar(
         casos=resultados,
         resumen=resumir(resultados),
     )
+
+
+def cargar_parcial(ruta: Path) -> list[Resultado]:
+    """Per-case results appended (JSON lines) by an interrupted run."""
+    if not ruta.exists():
+        return []
+    return [Resultado.model_validate_json(linea) for linea in ruta.read_text(encoding="utf-8").splitlines() if linea]
 
 
 def guardar(informe: InformeBateria, ruta: Path) -> Path:
