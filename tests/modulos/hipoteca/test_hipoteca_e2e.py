@@ -45,7 +45,15 @@ def test_modulo_cumple_el_contrato():
     assert isinstance(MODULO, Modulo)
     assert MODULO.clave == "hipoteca"
     nombres = [x.spec.name for x in MODULO.herramientas]
-    assert nombres == ["hipoteca_cuadro", "hipoteca_revision", "hipoteca_amortizar", "hipoteca_cambiar_banco"]
+    assert nombres == [
+        "hipoteca_cuadro",
+        "hipoteca_revision",
+        "hipoteca_amortizar",
+        "hipoteca_cambiar_banco",
+        # With the user's own figures (nucleo/calculo): no stored loan needed.
+        "hipoteca_calculo_importes",
+        "hipoteca_calculo_prestamo",
+    ]
     assert all(x.efecto == "lectura" for x in MODULO.herramientas)
     assert all(h.nombre.startswith("hipoteca_") for h in MODULO.hechos)
     assert next(h for h in MODULO.hechos if h.nombre == "hipoteca_prestamo").sensible
@@ -65,6 +73,8 @@ def test_validar_el_hecho_desde_el_perfil():
 def test_todas_las_herramientas_con_un_perfil_real():
     contexto = ContextoModulo(perfil=PERFIL, hoy=date(2026, 2, 10), case_id="caso-1")
     for x in MODULO.herramientas:
+        if x.spec.name not in ARGS:  # the calculator tools: tests/calculo
+            continue
         r = x.ejecutar(ARGS[x.spec.name], contexto)
         assert not r.es_error, (x.spec.name, r.contenido)
         assert r.resumen and r.contenido

@@ -9,6 +9,7 @@ Moved up from the tax advisor (which now runs without them, see ``cerebro/fiscal
 * research with sources (``investigar``), when the operator enables it;
 * the household planner (``planificar_hogar``): the ONE tool that combines figures of several domains (IRPF,
   mortgage, benefits) — the brain must never do that itself;
+* exact calculations over the user's own figures (``calculo_importes``, ``calculo_prestamo``);
 * the decisions memory (``registrar_decision``, ``leer_preferencias``) and its context block, with a case.
 
 Every tool keeps its own deterministic gate (the user's literal words for a decision or a task, the planner's
@@ -277,6 +278,15 @@ def herramientas_del_cerebro(
         caja.anadir(herramienta.herramientas)
         addenda.append(herramienta.addendum)
 
+    def calculo() -> None:
+        # Exact arithmetic over the user's own figures (amounts, fixed-rate loans): its output is a CALCULADORA
+        # fragment whose figures the gate accepts as tool figures (``cerebro.cifras_de_herramienta``).
+        from asistente.nucleo.calculo.herramientas import ADENDA_CEREBRO, herramientas_para_cerebro
+
+        caja.anadir(herramientas_para_cerebro(ledger))
+        addenda.append(ADENDA_CEREBRO)
+
+    intentar("calculo", calculo)
     intentar("memoria", memoria)
     intentar("tareas", tareas)
     intentar("investigacion", investigacion)

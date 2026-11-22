@@ -36,6 +36,7 @@ from asistente.ambitos.suscripciones.modelos import (
 )
 from asistente.ambitos.suscripciones.tablas import configuracion_bancos
 from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.calculo.herramientas import herramientas_de_modulo
 from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 PRIVACIDAD = (
@@ -697,4 +698,6 @@ HERRAMIENTAS: tuple[HerramientaModulo, ...] = (
     HerramientaModulo(SPEC_BAJA, _envolver(ejecutar_preparar_baja), "prepara"),
     # What the domain asks of the mail capability («facturas de este emisor»): see ``capacidades.py``.
     HERRAMIENTA_CARGOS_DEL_CORREO,
+    # Arithmetic over amounts the user gives in the conversation (not yet in a statement).
+    *herramientas_de_modulo("suscripciones"),
 )
