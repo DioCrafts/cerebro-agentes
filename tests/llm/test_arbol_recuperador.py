@@ -1,4 +1,4 @@
-"""Recuperador en árbol estilo PageIndex (FISCAL_RECUPERADOR=pageindex|hibrido)."""
+"""Recuperador en árbol estilo PageIndex (FISCAL_RECUPERADOR=pageindex)."""
 
 from __future__ import annotations
 
@@ -11,7 +11,6 @@ from asistente.conocimiento.llm import arbol
 from asistente.conocimiento.llm.arbol import (
     Consumo,
     RecuperadorArbol,
-    RecuperadorHibrido,
     SelectorLexico,
     SelectorLLM,
     construir_arboles,
@@ -96,29 +95,33 @@ def test_selector_llm_parsea_json_ignora_ids_inventados_y_cuenta_tokens() -> Non
     assert "DATO no confiable" in llm.prompts[0]
 
 
-def test_hibrido_navega_solo_los_documentos_del_recuperador_base() -> None:
-    raices = construir_arboles(CORPUS)
-    base = _Fijo(docs=[CORPUS[1]])  # el denso trae un chunk de LIVA (el de tipos)
-    rec = RecuperadorHibrido(base=base, raices=raices, selector=SelectorLexico(), k=2)
-    docs = rec.invoke("¿Cómo se deducen las cuotas soportadas de IVA?")
-    assert docs[0] is CORPUS[0]  # el árbol encuentra el art. 99 dentro de LIVA
-    assert all(d.metadata["source_file"] == "boe/LIVA.xml" for d in docs)
-    assert rec.ultimo_consumo.llamadas >= 1
-
-
-def test_hibrido_se_abstiene_si_el_base_no_trae_nada() -> None:
-    rec = RecuperadorHibrido(base=_Fijo(docs=[]), raices=construir_arboles(CORPUS), selector=SelectorLexico())
-    assert rec.invoke("lo que sea") == []
-
-
 def test_envolver_recuperador_respeta_el_flag() -> None:
     base = _Fijo(docs=[])
     assert envolver_recuperador("faiss", base, CORPUS, SelectorLexico()) is base
     assert isinstance(envolver_recuperador("PageIndex", base, CORPUS, SelectorLexico()), RecuperadorArbol)
-    assert isinstance(envolver_recuperador("hibrido", base, CORPUS, SelectorLexico()), RecuperadorHibrido)
     with pytest.raises(ValueError, match="FISCAL_RECUPERADOR"):
         envolver_recuperador("bm42", base, CORPUS, SelectorLexico())
 
 
 def test_valores_del_flag() -> None:
-    assert arbol.RECUPERADORES == ("faiss", "pageindex", "hibrido")
+    assert arbol.RECUPERADORES == ("faiss", "pageindex")
+
+
+def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
+    from langchain_core.documents import Document
+
+    from asistente.conocimiento.llm.arbol import Consumo, construir_arboles, navegar
+
+    preambulo = [Document(page_content=f"Preámbulo {i}", metadata={"source_file": "ley", "headings": []})
+                 for i in range(5)]
+    art = Document(page_content="Exención por reinversión", metadata={
+        "source_file": "ley", "headings": ["Ganancias patrimoniales", "Artículo 38. Reinversión"]})
+    otro = Document(page_content="Rentas exentas", metadata={
+        "source_file": "ley", "headings": ["Rentas exentas", "Artículo 7. Rentas exentas"]})
+    raices = construir_arboles(preambulo + [art, otro])
+
+    def elige_ganancias(consulta, candidatos, consumo):
+        return [n.node_id for n in candidatos if "Ganancias" in n.title or "38" in n.title]
+
+    docs = navegar("reinversión vivienda", raices, elige_ganancias, Consumo(), max_docs=3)
+    assert docs[0] is art

@@ -128,3 +128,22 @@ def test_load_chunks_maps_loader_output(monkeypatch, tmp_path: Path) -> None:
 
 def test_load_chunks_empty_when_no_files(tmp_path: Path) -> None:
     assert _processor(str(tmp_path)).load_chunks() == []
+
+
+def test_sin_banner_boe_quita_la_cabecera_del_boe_de_titulos_y_texto():
+    from langchain_core.documents import Document
+
+    from asistente.conocimiento.processor.document_loader import docling_chunk_metadata, sin_banner_boe
+
+    banner = [
+        "Agencia Estatal Boletín Oficial del Estado",
+        "Legislación consolidada Este texto consolidado es de carácter informativo y no tiene valor jurídico.",
+        "Texto consolidado : «Última actualización, publicada el 18/11/2026»",
+    ]
+    titulos = banner + ["Pagos a cuenta", "Artículo 101. Importe de los pagos a cuenta."]
+    texto = "\n".join(titulos) + "\nNo obstante, en los términos que reglamentariamente se establezcan..."
+    limpio = sin_banner_boe(Document(page_content=texto, metadata={"dl_meta": {"headings": titulos}}))
+    assert limpio.page_content.startswith("Pagos a cuenta\nArtículo 101.")
+    assert docling_chunk_metadata(limpio)["section"] == "Pagos a cuenta — Artículo 101. Importe de los pagos a cuenta."
+    otro = Document(page_content="Renta 2025\nTexto", metadata={"dl_meta": {"headings": ["Renta 2025"]}})
+    assert sin_banner_boe(otro) is otro

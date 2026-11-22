@@ -48,7 +48,7 @@ def test_create_retriever_builds_compressed_retriever(monkeypatch: pytest.Monkey
     assert result.inner is fake_compressed_retriever
 
 
-@pytest.mark.parametrize("flag", ["pageindex", "hibrido"])
+@pytest.mark.parametrize("flag", ["pageindex"])
 def test_create_retriever_aplica_flag_fiscal_recuperador(monkeypatch: pytest.MonkeyPatch, flag: str) -> None:
     from langchain_core.documents import Document
 

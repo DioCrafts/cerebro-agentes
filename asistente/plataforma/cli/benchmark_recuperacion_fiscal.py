@@ -1,4 +1,4 @@
-"""Benchmark reproducible de recuperadores del módulo fiscal: faiss vs pageindex vs híbrido.
+"""Benchmark reproducible de recuperadores del módulo fiscal: faiss vs pageindex.
 
 Uso::
 
@@ -92,6 +92,36 @@ def cargar_corpus(ruta: Path) -> list[Document]:
 
 def cargar_consultas(ruta: Path) -> list[dict]:
     return [json.loads(x) for x in ruta.read_text(encoding="utf-8").splitlines() if x.strip()]
+
+
+#: BOE consolidated texts of the norms the queries cite (``eval_data/recuperacion/fiscal.jsonl``).
+NORMAS_BOE = {
+    "BOE-A-2006-20764": ("LIRPF", "Ley 35/2006, del Impuesto sobre la Renta de las Personas Físicas"),
+    "BOE-A-1992-28740": ("LIVA", "Ley 37/1992, del Impuesto sobre el Valor Añadido"),
+    "BOE-A-2003-23186": ("LGT", "Ley 58/2003, General Tributaria"),
+    "BOE-A-2014-12328": ("LIS", "Ley 27/2014, del Impuesto sobre Sociedades"),
+    "BOE-A-1987-28141": ("LISD", "Ley 29/1987, del Impuesto sobre Sucesiones y Donaciones"),
+}
+
+
+def cargar_corpus_de_indice(ruta: Path) -> list[Document]:
+    """The chunks of the cited norms as the real processor indexed them (``index.pkl`` of a FAISS index).
+
+    Their text and heading path are kept as Docling left them; ``norma`` / ``documento`` are stamped from the
+    BOE id in the file name so the citation can be scored. Vectors are recomputed by the benchmark's embedder.
+    """
+    import pickle  # noqa: S403 - a local index this project built (same trust as FAISS_TRUSTED_INDEX)
+
+    docstore, _ = pickle.loads((ruta / "index.pkl").read_bytes())  # noqa: S301
+    docs = []
+    for d in docstore._dict.values():
+        fuente = str(d.metadata.get("source_file") or d.metadata.get("source") or "")
+        boe = next((b for b in NORMAS_BOE if b in fuente), None)
+        if boe is None:
+            continue
+        norma, documento = NORMAS_BOE[boe]
+        docs.append(Document(page_content=d.page_content, metadata={**d.metadata, "norma": norma, "documento": documento}))
+    return docs
 
 
 def cita_de(doc: Document) -> tuple[str, str | None]:
@@ -262,8 +292,9 @@ def ejecutar(
     k: int = 3,
     umbral: float = 0.25,
     precios: Precios | None = None,
+    indice: Path | None = None,
 ) -> dict:
-    corpus = cargar_corpus(corpus_path)
+    corpus = cargar_corpus_de_indice(indice) if indice is not None else cargar_corpus(corpus_path)
     consultas = cargar_consultas(consultas_path)
     precios = precios or Precios(0.15, 0.60, 800.0)
     base = construir_base(corpus, embeddings or EmbeddingsHash(), k=k, umbral=umbral)
@@ -273,7 +304,10 @@ def ejecutar(
         for v in variantes
     ]
     return {
-        "corpus": str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path),
+        "corpus": str(indice) if indice is not None else (
+            str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)
+        ),
+        "chunks": len(corpus),
         "consultas": len(consultas),
         "k": k,
         "precios_por_millon_tokens": {"entrada": precios.entrada_por_millon, "salida": precios.salida_por_millon},
@@ -295,11 +329,33 @@ def tabla_markdown(resultado: dict) -> str:
     return "\n".join(out)
 
 
+class _ClaudeTexto:
+    """``.invoke(prompt) -> str`` over the Anthropic SDK (``ANTHROPIC_MODEL``), for :class:`SelectorLLM`."""
+
+    def __init__(self) -> None:
+        import anthropic
+
+        from asistente.plataforma.settings import ANTHROPIC_MODEL
+
+        self._cliente = anthropic.Anthropic()
+        self._modelo = ANTHROPIC_MODEL
+
+    def invoke(self, prompt: str) -> str:
+        r = self._cliente.messages.create(
+            model=self._modelo, max_tokens=1024, messages=[{"role": "user", "content": prompt}]
+        )
+        return "".join(getattr(b, "text", "") for b in r.content)
+
+
 @click.command()
 @click.option("--variantes", default=",".join(RECUPERADORES), help="Lista separada por comas.")
 @click.option("--corpus", "corpus_path", type=click.Path(path_type=Path), default=CORPUS_POR_DEFECTO)
 @click.option("--consultas", "consultas_path", type=click.Path(path_type=Path), default=CONSULTAS_POR_DEFECTO)
-@click.option("--real", is_flag=True, help="Embeddings del proyecto + LLM real (OPENAI_MODEL) como selector.")
+@click.option("--real", is_flag=True, help="Embeddings del proyecto + LLM real como selector.")
+@click.option("--proveedor", type=click.Choice(["openai", "anthropic"]), default="openai", show_default=True,
+              help="LLM selector con --real (anthropic: ANTHROPIC_MODEL).")
+@click.option("--indice", type=click.Path(path_type=Path, exists=True, file_okay=False), default=None,
+              help="Evalúa sobre los chunks reales de un índice FAISS del procesador (las normas citadas).")
 @click.option("--k", default=3, show_default=True)
 @click.option("--umbral", default=0.25, show_default=True, help="Umbral de similitud densa (abstención).")
 @click.option("--precio-entrada", default=0.15, show_default=True, help="Precio por 1M tokens de entrada.")
@@ -311,6 +367,8 @@ def cli(
     corpus_path: Path,
     consultas_path: Path,
     real: bool,
+    proveedor: str,
+    indice: Path | None,
     k: int,
     umbral: float,
     precio_entrada: float,
@@ -321,14 +379,18 @@ def cli(
     embeddings = None
     selector = None
     if real:
-        from langchain_openai import ChatOpenAI
-
         from asistente.conocimiento.llm.embeddings import create_embeddings
-        from asistente.plataforma.settings import OPENAI_MODEL
-        from asistente.plataforma.utils import get_openai_api_key
 
         embeddings = create_embeddings()
-        selector = SelectorLLM(ChatOpenAI(model=OPENAI_MODEL, temperature=0, api_key=get_openai_api_key()))
+        if proveedor == "anthropic":
+            selector = SelectorLLM(_ClaudeTexto())
+        else:
+            from langchain_openai import ChatOpenAI
+
+            from asistente.plataforma.settings import OPENAI_MODEL
+            from asistente.plataforma.utils import get_openai_api_key
+
+            selector = SelectorLLM(ChatOpenAI(model=OPENAI_MODEL, temperature=0, api_key=get_openai_api_key()))
         latencia_llm_ms = 0.0  # con LLM real la latencia ya va medida
     resultado = ejecutar(
         variantes=[v.strip() for v in variantes.split(",") if v.strip()],
@@ -339,6 +401,7 @@ def cli(
         k=k,
         umbral=umbral,
         precios=Precios(precio_entrada, precio_salida, latencia_llm_ms),
+        indice=indice,
     )
     resultado["modo"] = "real" if real else "simulado"
     if salida:

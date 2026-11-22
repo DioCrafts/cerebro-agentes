@@ -33,19 +33,19 @@ def test_ejecutar_es_reproducible_y_mide_todas_las_metricas() -> None:
     resumen = lambda r: {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia_medida" not in k} for v in r["variantes"]}  # noqa: E731
     sin_lat = lambda r: {n: {k: x for k, x in s.items() if "latencia" not in k} for n, s in resumen(r).items()}  # noqa: E731
     assert sin_lat(a) == sin_lat(b)
-    assert [v["variante"] for v in a["variantes"]] == ["faiss", "pageindex", "hibrido"]
-    faiss, pageindex, hibrido = (v["resumen"] for v in a["variantes"])
+    assert [v["variante"] for v in a["variantes"]] == ["faiss", "pageindex"]
+    faiss, pageindex = (v["resumen"] for v in a["variantes"])
     assert faiss["llamadas_llm_por_consulta"] == 0 and faiss["coste_por_consulta"] == 0
-    assert pageindex["llamadas_llm_por_consulta"] > hibrido["llamadas_llm_por_consulta"] > 0
-    assert hibrido["abstencion_correcta"] == faiss["abstencion_correcta"] == 1.0
-    for r in (faiss, pageindex, hibrido):
+    assert pageindex["llamadas_llm_por_consulta"] > 0
+    assert faiss["abstencion_correcta"] == 1.0
+    for r in (faiss, pageindex):
         assert 0 <= r["cita_top1"] <= r["cita_en_k"] <= 1
 
 
 def test_cli_imprime_tabla_y_guarda_json(tmp_path) -> None:
     salida = tmp_path / "r.json"
-    res = CliRunner().invoke(bench.cli, ["--variantes", "faiss,hibrido", "--salida", str(salida)])
+    res = CliRunner().invoke(bench.cli, ["--variantes", "faiss,pageindex", "--salida", str(salida)])
     assert res.exit_code == 0, res.output
-    assert "| hibrido |" in res.output
+    assert "| pageindex |" in res.output
     datos = json.loads(salida.read_text())
     assert datos["modo"] == "simulado" and len(datos["variantes"]) == 2

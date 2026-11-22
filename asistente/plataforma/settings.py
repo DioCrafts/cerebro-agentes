@@ -147,8 +147,8 @@ FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
 MEMORY_KEY = os.environ.get("MEMORY_KEY", "chat_history")
 TOP_K = int(os.environ.get("TOP_K", "3"))
 # Recuperador experimental del módulo fiscal: ``faiss`` (por defecto, el
-# pipeline denso/BM25 de siempre), ``pageindex`` (navegación en árbol sin
-# vectores) o ``hibrido`` (FAISS/BM25 elige documento, el árbol la sección).
+# pipeline denso/BM25 de siempre) o ``pageindex`` (navegación en árbol sin
+# vectores: más recall y mejor abstención, pero ~130× más lento y de pago por consulta).
 # Ver docs/cerebro/benchmark-recuperacion.md.
 FISCAL_RECUPERADOR = os.environ.get("FISCAL_RECUPERADOR", "faiss").strip().lower()
 

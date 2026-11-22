@@ -32,6 +32,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import hashlib
+import re
 import json
 import logging
 import multiprocessing as mp
@@ -298,9 +299,40 @@ def _docling_parse_paths(file_paths: list[str]) -> list[Document]:
     raw_chunks = loader.load()
     out: list[Document] = []
     for chunk in raw_chunks:
+        chunk = sin_banner_boe(chunk)
         meta = docling_chunk_metadata(chunk)
         out.append(Document(page_content=chunk.page_content, metadata=meta))
     return out
+
+
+#: Page furniture of BOE consolidated texts that Docling takes for headings: the site banner, the
+#: «no legal value» disclaimer (~500 chars) and the «last update» line. Left in, they were prefixed to every
+#: chunk of every law (~120 of its 512 tokens), diluting embeddings and hiding the article hierarchy.
+_BANNER_BOE = (
+    re.compile(r"^Agencia Estatal Bolet[íi]n Oficial del Estado$", re.IGNORECASE),
+    re.compile(r"^Legislaci[óo]n consolidada\b", re.IGNORECASE),
+    re.compile(r"^Texto consolidado\s*:", re.IGNORECASE),
+)
+
+
+def _es_banner_boe(heading: str) -> bool:
+    return any(p.search(heading.strip()) for p in _BANNER_BOE)
+
+
+def sin_banner_boe(chunk: Document) -> Document:
+    """``chunk`` without BOE banner headings, in its ``dl_meta`` and in the heading prefix of its text."""
+    metadata = dict(chunk.metadata or {})
+    dl_meta = _as_dl_meta(metadata.get("dl_meta"))
+    headings = dl_meta.get("headings")
+    if not isinstance(headings, list) or not any(isinstance(h, str) and _es_banner_boe(h) for h in headings):
+        return chunk
+    texto = chunk.page_content
+    for h in headings:
+        if isinstance(h, str) and _es_banner_boe(h) and texto.startswith(h):
+            texto = texto[len(h) :].lstrip("\n")
+    dl_meta = {**dl_meta, "headings": [h for h in headings if not (isinstance(h, str) and _es_banner_boe(h))]}
+    metadata["dl_meta"] = dl_meta
+    return Document(page_content=texto, metadata=metadata)
 
 
 def _docling_parse_default(file_path: str) -> list[Document]:

@@ -23,9 +23,9 @@ Piezas:
 * Selectores — deciden qué hijos explorar: :class:`SelectorLLM` (prompt al
   modelo, devuelve ``node_id``) y :class:`SelectorLexico` (determinista, hace
   de "LLM simulado" en tests y benchmark).
-* :class:`RecuperadorArbol` (``pageindex``) y :class:`RecuperadorHibrido`
-  (``hibrido``: el recuperador denso/BM25 elige documentos y el árbol la
-  sección), ambos ``BaseRetriever`` intercambiables con el FAISS actual.
+* :class:`RecuperadorArbol` (``pageindex``), ``BaseRetriever`` intercambiable con el FAISS actual. (Una
+  variante híbrida —FAISS elige documento, el árbol la sección— se retiró: en el benchmark real fue peor
+  que las dos puras en todas las métricas; ver docs/cerebro/benchmark-recuperacion.md.)
 """
 
 from __future__ import annotations
@@ -300,20 +300,25 @@ def navegar(
     if len(frontera) > 1:
         elegidos = set(selector(consulta, frontera, consumo))
         frontera = [n for n in frontera if n.node_id in elegidos]
-    resultado: list[Document] = []
-    while frontera and len(resultado) < max_docs:
+    # Leaves reached first; chunks hanging from inner nodes (a law's preamble and table of contents sit on its
+    # root) only fill what is left. Taking them as they were met filled the quota at the root and the descent
+    # never reached an article.
+    hojas: list[Document] = []
+    intermedios: list[Document] = []
+    while frontera:
         siguiente: list[Nodo] = []
         for nodo in frontera:
-            resultado.extend(nodo.docs)
             if not nodo.nodes:
+                hojas.extend(nodo.docs)
                 continue
+            intermedios.extend(nodo.docs)
             if len(nodo.nodes) == 1:
                 siguiente.extend(nodo.nodes)
                 continue
             elegidos = set(selector(consulta, nodo.nodes, consumo))
             siguiente.extend(h for h in nodo.nodes if h.node_id in elegidos)
         frontera = siguiente
-    return resultado[:max_docs]
+    return (hojas + intermedios)[:max_docs]
 
 
 class RecuperadorArbol(BaseRetriever):
@@ -333,48 +338,7 @@ class RecuperadorArbol(BaseRetriever):
         return docs
 
 
-class RecuperadorHibrido(BaseRetriever):
-    """``FISCAL_RECUPERADOR=hibrido``: el recuperador base (FAISS/BM25) elige los
-    documentos fuente y el árbol de cada uno localiza la sección.
-
-    La pertinencia (y por tanto la abstención) la decide el recuperador base:
-    si no devuelve nada, no hay documento que navegar. Las secciones halladas
-    por el árbol van primero y los chunks densos rellenan hasta ``k``.
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    base: BaseRetriever
-    raices: list
-    selector: object
-    k: int = 3
-    max_documentos: int = 2
-    ultimo_consumo: Consumo = Field(default_factory=Consumo)
-
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
-        candidatos = self.base.invoke(query, config={"callbacks": run_manager.get_child()})
-        claves: list[str] = []
-        for doc in candidatos:
-            clave = _clave_documento(doc)
-            if clave not in claves:
-                claves.append(clave)
-        claves = claves[: self.max_documentos]
-        por_clave = {r.fuente: r for r in self.raices}
-        raices = [por_clave[c] for c in claves if c in por_clave]
-        consumo = Consumo()
-        docs: list[Document] = []
-        for raiz in raices:
-            # Cada documento se navega por separado: el denso ya hizo la selección de documento.
-            docs.extend(navegar(query, [raiz], self.selector, consumo, max_docs=self.k))
-        self.ultimo_consumo = consumo
-        # El árbol manda en el orden (sección exacta primero); los candidatos
-        # densos rellenan hasta ``k`` por si la navegación se equivocó de rama.
-        vistos = {id(d) for d in docs}
-        docs.extend(d for d in candidatos if id(d) not in vistos)
-        return docs[: self.k]
-
-
-RECUPERADORES = ("faiss", "pageindex", "hibrido")
+RECUPERADORES = ("faiss", "pageindex")
 
 
 def envolver_recuperador(
@@ -392,6 +356,4 @@ def envolver_recuperador(
     if nombre == "faiss":
         return base
     raices = construir_arboles(corpus)
-    if nombre == "pageindex":
-        return RecuperadorArbol(raices=raices, selector=selector, k=k)
-    return RecuperadorHibrido(base=base, raices=raices, selector=selector, k=k)
+    return RecuperadorArbol(raices=raices, selector=selector, k=k)
