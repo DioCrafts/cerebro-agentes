@@ -1238,7 +1238,9 @@ def retirar_cifras(respuesta: str, violaciones: Sequence[Violacion]) -> str:
     for violacion in violaciones:
         if violacion.tipo == "cita_inexistente" or not violacion.literal.strip():
             continue
-        texto = texto.replace(violacion.literal, MARCA_RETIRADA)
+        # Only standalone occurrences: retiring «43» must not touch «143,00 €» or a «Norma 43» elsewhere.
+        literal = re.escape(violacion.literal.strip())
+        texto = re.sub(rf"(?<![\w.,]){literal}(?!\w|[.,]\d)", MARCA_RETIRADA, texto)
     return texto
 
 

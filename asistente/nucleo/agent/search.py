@@ -10,12 +10,16 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from dataclasses import dataclass
+import logging
+from pathlib import Path
 import re
 from typing import Any, Protocol
 
 from langchain_core.documents import Document
 
 from asistente.nucleo.agent.evidence import infer_authority, source_type_for
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -106,6 +110,14 @@ def build_filter_predicate(filters: SearchFilters) -> Callable[[dict[str, Any]],
     return predicate
 
 
+class SinCorpus:
+    """No corpus built yet: every search finds nothing, so the grounding gate abstains on normative questions
+    while the rest of the brain (calculations, other modules) keeps working."""
+
+    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
+        return []
+
+
 class FaissCorpusSearcher:
     """Dense FAISS search + optional cross-encoder rerank, with sanitization."""
 
@@ -115,11 +127,17 @@ class FaissCorpusSearcher:
         self._first_stage_k = first_stage_k
 
     @classmethod
-    def from_settings(cls) -> FaissCorpusSearcher:
+    def from_settings(cls) -> FaissCorpusSearcher | SinCorpus:
         from langchain_community.vectorstores import FAISS
 
         from asistente.conocimiento.llm.embeddings import create_embeddings
         from asistente.plataforma import settings
+
+        if not Path(settings.FAISS_INDEX_PATH).exists():
+            # A missing index must not take the whole brain down: searches find nothing (the grounding gate
+            # abstains on normative questions) and every other specialist stays available.
+            logger.warning("No FAISS index at %s: searching without a corpus.", settings.FAISS_INDEX_PATH)
+            return SinCorpus()
 
         if not settings.FAISS_TRUSTED_INDEX:
             raise RuntimeError(

@@ -179,3 +179,45 @@ def test_paralelo_no_mezcla_fuentes():
         "critico": _llm({"criticas": []}), "redactor": _llm({"resumen": "", "afirmaciones": []})})
     assert sorted(f.id for f in informe.fuentes) == ["F1", "F2", "F3", "F4"]
     assert len({f.url for f in informe.fuentes}) == 4
+
+
+def test_el_extracto_conserva_el_contenido_relevante_aunque_este_al_final():
+    from asistente.investigador import seguridad
+
+    menu = "Inicio Sede Ayuda Contacto Mapa web Accesibilidad " * 400
+    clave = "Régimen transitorio: contratos de arrendamiento celebrados antes del 1 de enero de 2015."
+    texto = menu + clave
+    sobre = seguridad.envolver("F1", "https://x", texto, 6000, foco="régimen transitorio arrendamiento 2015")
+    assert clave in sobre
+    assert len(sobre) < 6200
+
+
+def test_el_resumen_puede_usar_cifras_de_la_pregunta():
+    redaccion = {"resumen": "Según la Ley 37/1992, el tipo general es del 21%.",
+                 "afirmaciones": [{"texto": "El tipo general del IVA es del 21%", "hallazgos": ["H1"]}]}
+    informe = investigar(
+        "¿Qué dice la Ley 37/1992 del tipo general de IVA?", _presupuesto(),
+        llm={"planificador": _llm(PLAN), "lector": _llm(*LECTURAS), "critico": _llm(CRITICA), "redactor": _llm(redaccion)},
+        web=_web(),
+    )
+    assert informe.resumen.startswith("Según la Ley 37/1992")
+
+
+def test_una_fuente_ya_leida_se_reutiliza_en_otra_subpregunta():
+    pagina = Documento("https://agenciatributaria.es/iva", "AEAT IVA", PAGINA_IVA)
+    web = WebFalsa({"IVA general": [pagina], "IVA libros": [pagina]})
+    lecturas = [
+        {"hallazgos": [{"texto": "El tipo general del IVA es del 21%", "fuente": "F1",
+                        "cita": "El tipo general del IVA es del 21 por ciento"}]},
+        {"hallazgos": [{"texto": "La hostelería tiene tipo reducido", "fuente": "F1",
+                        "cita": "se aplica a la hostelería"}]},
+    ]
+    critica = {"criticas": [], "lagunas": []}
+    redaccion = {"resumen": "", "afirmaciones": []}
+    informe = investigar(
+        "¿Qué tipos de IVA hay?", _presupuesto(),
+        llm={"planificador": _llm(PLAN), "lector": _llm(*lecturas), "critico": _llm(critica), "redactor": _llm(redaccion)},
+        web=web,
+    )
+    assert len(informe.fuentes) == 1
+    assert {h.texto for h in informe.hallazgos} == {"El tipo general del IVA es del 21%", "La hostelería tiene tipo reducido"}

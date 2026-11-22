@@ -53,7 +53,9 @@ SISTEMA = {
         '"lagunas": ["subpregunta pendiente"]}. ' + seguridad.AVISO_SISTEMA
     ),
     "redactor": (
-        "Eres el REDACTOR. Escribe la respuesta a la pregunta usando SOLO los hallazgos dados. Cada afirmación "
+        "Eres el REDACTOR. Escribe la respuesta a la pregunta usando SOLO los hallazgos dados. El resumen responde "
+        "directamente a lo que se pregunta en 2-4 frases; si los hallazgos no lo responden del todo, dilo. Cada "
+        "afirmación dice a quién se aplica (p. ej. inquilino o arrendador) cuando la fuente lo indica. Cada afirmación "
         "debe citar los ids de los hallazgos que la respaldan; no añadas nada que no esté en ellos ni cifras que "
         'no aparezcan en sus citas. Responde SOLO JSON: {"resumen": "...", '
         '"afirmaciones": [{"texto": "...", "hallazgos": ["H1"]}]}'
@@ -136,8 +138,16 @@ class Ejercito:
         for d in docs[: self.presupuesto.max_fuentes_por_subpregunta]:
             if not d.texto.strip():
                 continue
-            self.contador.reservar_lectura()
             with self.contador._lock:  # ids and dedup shared across parallel searchers
+                ya = next((x for x in self.fuentes.values() if x.url == d.url), None)
+            if ya is not None:
+                # Already read for another subquestion: this one needs it too (its reader looks for something
+                # else in it), and it is not paid for twice.
+                if ya not in leidas:
+                    leidas.append(ya)
+                continue
+            self.contador.reservar_lectura()
+            with self.contador._lock:
                 if d.url in self._vistas:
                     continue
                 self._vistas.add(d.url)
@@ -154,7 +164,7 @@ class Ejercito:
     def leer(self, sub: Subpregunta, fuentes: list[Fuente]) -> list[Hallazgo]:
         if not fuentes:
             return []
-        cuerpo = "\n\n".join(seguridad.envolver(f.id, f.url, f.texto) for f in fuentes)
+        cuerpo = "\n\n".join(seguridad.envolver(f.id, f.url, f.texto, foco=sub.texto) for f in fuentes)
         try:
             datos = self._llamar("lector", f"Subpregunta: {sub.texto}\n\nFuentes:\n{cuerpo}")
         except RespuestaInvalidaError as exc:
@@ -186,7 +196,7 @@ class Ejercito:
         bloques = []
         for h in hallazgos:
             f = self.fuentes[h.fuente]
-            bloques.append(f"Hallazgo {h.id}: {h.texto}\nCita: «{h.cita}»\n{seguridad.envolver(f.id, f.url, f.texto, 3000)}")
+            bloques.append(f"Hallazgo {h.id}: {h.texto}\nCita: «{h.cita}»\n{seguridad.envolver(f.id, f.url, f.texto, 3000, foco=f"{h.texto} {h.cita}")}")
         try:
             datos = self._llamar("critico", "\n\n".join(bloques))
         except RespuestaInvalidaError as exc:
@@ -219,9 +229,11 @@ class Ejercito:
         except RespuestaInvalidaError as exc:
             self._aviso(f"Redacción no válida ({exc}); el informe lista los hallazgos verificados.")
             resumen, crudas = "", [{"texto": h.texto, "hallazgos": [h.id]} for h in self.hallazgos.values()]
-        return self._verificar(resumen, crudas, dudosos)
+        return self._verificar(resumen, crudas, dudosos, pregunta)
 
-    def _verificar(self, resumen: str, crudas: list, dudosos: set[str]) -> tuple[str, list[Afirmacion], list[Afirmacion]]:
+    def _verificar(
+        self, resumen: str, crudas: list, dudosos: set[str], pregunta: str = ""
+    ) -> tuple[str, list[Afirmacion], list[Afirmacion]]:
         validas, eliminadas = [], []
         for c in crudas:
             if not isinstance(c, dict) or not str(c.get("texto", "")).strip():
@@ -241,7 +253,8 @@ class Ejercito:
                     eliminadas.append(a)
                     continue
             validas.append(a)
-        citas_validas = [ci for a in validas if a.estado == "verificada" for ci in a.citas]
+        # A figure in the summary must come from a verified quote or from the user's own words (the question).
+        citas_validas = [ci for a in validas if a.estado == "verificada" for ci in a.citas] + [pregunta]
         if not resumen or not cifras_respaldadas(resumen, citas_validas):
             if resumen:
                 self._aviso("El resumen contenía cifras sin respaldo: se sustituye.")

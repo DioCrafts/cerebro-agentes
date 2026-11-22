@@ -248,7 +248,7 @@ _MASCARAS: tuple[tuple[TipoNumero, re.Pattern[str]], ...] = (
         re.compile(
             r"\b(?:art(?:[íi]culo)?s?\.?|apartados?|apdos?\.|p[áa]rrafos?|letras?|n[úu]meros?|n[úu]m\.|n\.?\s?º|"
             r"disposici[óo]n(?:es)?\s+(?:adicional|transitoria|final|derogatoria)(?:es)?|cap[íi]tulos?|t[íi]tulos?|"
-            r"secci[óo]n(?:es)?|anexos?|casillas?|modelos?|reglas?|ep[íi]grafes?|cl[áa]usulas?|puntos?|l[íi]neas?)"
+            r"secci[óo]n(?:es)?|anexos?|casillas?|modelos?|normas?|reglas?|ep[íi]grafes?|cl[áa]usulas?|puntos?|l[íi]neas?)"
             rf"\s*{_REF}(?:\s*(?:,|y|e|o|u|a|al|-|–)\s*{_REF})*",
             _I,
         ),

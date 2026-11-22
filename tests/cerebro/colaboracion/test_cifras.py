@@ -330,3 +330,9 @@ def test_references_never_become_figures(semilla: int) -> None:
         }
         texto = azar.choice(plantillas).format(**datos)
         assert numeros_de(texto) == [], texto
+
+
+def test_norma_43_es_un_formato_no_una_cifra():
+    numeros = [n for n in escanear("Sirven los formatos Norma 43, CSV o camt.053; cuesta 43 €.") if n.es_cifra]
+    assert [n.literal.strip() for n in numeros] == ["43 €"] or [n.valor for n in numeros] == [43]
+    assert len(numeros) == 1

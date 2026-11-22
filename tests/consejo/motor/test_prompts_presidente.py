@@ -240,3 +240,12 @@ def test_code_ruling_for_a_split_council_and_unanimity() -> None:
 def test_agreement_in_words() -> None:
     assert nivel_de_acuerdo(None).startswith("no medible")
     assert [nivel_de_acuerdo(w) for w in (0.9, 0.5, 0.1)] == ["alto", "moderado", "bajo"]
+
+
+def test_retirar_cifras_no_toca_numeros_que_la_contienen():
+    from asistente.nucleo.cerebro.cerebro import MARCA_RETIRADA, retirar_cifras
+    from asistente.nucleo.cerebro.contrato import Violacion
+
+    v = Violacion(tipo="cifra_sin_origen", literal="43", detalle="x")
+    texto = retirar_cifras("Pagas 143,00 € y 43 € más; total 1.043 €.", [v])
+    assert texto == f"Pagas 143,00 € y {MARCA_RETIRADA} € más; total 1.043 €."

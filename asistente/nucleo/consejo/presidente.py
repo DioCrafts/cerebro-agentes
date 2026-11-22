@@ -184,7 +184,10 @@ def retirar_cifras(texto: str | None, violaciones: Sequence[Violacion]) -> str |
         literal = v.literal.strip()
         if not literal:
             continue
-        resultado = resultado.replace(literal, "" if v.tipo == "cita_inexistente" else MARCA_RETIRADA)
+        if v.tipo == "cita_inexistente":
+            resultado = resultado.replace(literal, "")
+        else:  # only standalone: retiring «43» must not touch «143,00 €»
+            resultado = re.sub(rf"(?<![\w.,]){re.escape(literal)}(?!\w|[.,]\d)", MARCA_RETIRADA, resultado)
     return re.sub(r"\s{2,}", " ", resultado).strip()
 
 

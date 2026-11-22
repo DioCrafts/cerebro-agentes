@@ -222,3 +222,13 @@ def test_the_flag_picks_the_runtime(monkeypatch: pytest.MonkeyPatch, valor: str,
         ScriptedProvider([]), agent="a", system="s", toolbox=Caja(), user_message="u", max_steps=1, emit=print
     )
     assert llamados == [esperado]
+
+
+def test_sin_indice_el_buscador_no_tumba_el_cerebro(tmp_path, monkeypatch):
+    from asistente.nucleo.agent.search import FaissCorpusSearcher, SearchFilters, SinCorpus
+    from asistente.plataforma import settings
+
+    monkeypatch.setattr(settings, "FAISS_INDEX_PATH", str(tmp_path / "no-existe"))
+    buscador = FaissCorpusSearcher.from_settings()
+    assert isinstance(buscador, SinCorpus)
+    assert buscador.search("deducción alquiler", k=5, filters=SearchFilters()) == []
