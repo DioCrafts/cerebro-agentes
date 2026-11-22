@@ -97,7 +97,15 @@ def _clave_documento(doc: Document) -> str:
 
 def _titulo_documento(docs: Sequence[Document]) -> str:
     meta = docs[0].metadata or {}
-    return str(meta.get("documento") or meta.get("norma") or meta.get("source_url") or _clave_documento(docs[0]))
+    if meta.get("documento"):
+        return str(meta["documento"])
+    # Pages without a stamped document name (AEAT pages are stored as ``<hash>.html``): the selector cannot
+    # judge a file name, so use the page's own first heading, which Docling takes from its <h1>.
+    primeros = [r[0] for r in (ruta_headings(d) for d in docs) if r]
+    if primeros:
+        titulo = max(set(primeros), key=primeros.count)
+        return f"{meta['norma']}: {titulo}" if meta.get("norma") else titulo
+    return str(meta.get("norma") or meta.get("source_url") or _clave_documento(docs[0]))
 
 
 def construir_arboles(docs: Iterable[Document]) -> list[Nodo]:

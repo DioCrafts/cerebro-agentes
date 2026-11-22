@@ -125,3 +125,17 @@ def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
 
     docs = navegar("reinversión vivienda", raices, elige_ganancias, Consumo(), max_docs=3)
     assert docs[0] is art
+
+
+def test_raiz_de_pagina_sin_documento_usa_su_primer_titulo() -> None:
+    from langchain_core.documents import Document
+
+    from asistente.conocimiento.llm.arbol import construir_arboles
+
+    meta = {"source_file": "data/html/x/" + "a" * 32 + ".html", "norma": "AEAT"}
+    docs = [
+        Document(page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal", "Cómo pedirlo"]}),
+        Document(page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal"]}),
+    ]
+    (raiz,) = construir_arboles(docs)
+    assert raiz.title == "AEAT: Certificados de residencia fiscal"
