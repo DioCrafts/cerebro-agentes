@@ -1,4 +1,4 @@
-"""Deep research army («ejército investigador»), built on the OpenHands SDK.
+"""Deep research army («ejército investigador»), on the product's own provider layer (ADR 0006).
 
 ``investigar(pregunta, presupuesto) -> Informe``: a planner splits the question, searchers and readers work in
 parallel (the research capability's web searcher as their tool), a critic tries to refute every finding and a
@@ -26,7 +26,8 @@ def investigar(
     al_progresar: AlProgresar | None = None,
     sin_fuente: Literal["eliminar", "marcar"] = "eliminar",
 ) -> Informe:
-    """Research ``pregunta`` within ``presupuesto``. ``llm``: an ``openhands.sdk.LLM`` (or one per role);
+    """Research ``pregunta`` within ``presupuesto``. ``llm``: an ``LLMProvider`` (or one per role; default: the
+    metered provider of purpose ``investigador``);
     ``web``: the searchers' tool (default: the research capability's web searcher for that model)."""
     if not pregunta.strip():
         raise ValueError("La pregunta está vacía.")
@@ -44,8 +45,11 @@ def investigar(
 
 
 def _proveedor_de(llm: Any) -> Any:
-    """The (name, model) the capability's ``web_para`` expects, from an OpenHands LLM ("anthropic/claude-…")."""
+    """The (name, model) the capability's ``web_para`` expects: the provider itself, or one read from a
+    ``proveedor/modelo`` model name."""
     uno = next(iter(llm.values())) if isinstance(llm, Mapping) else llm
+    if isinstance(getattr(uno, "name", None), str) and "/" not in str(uno.model):
+        return uno
     modelo = str(uno.model)
     nombre, _, resto = modelo.partition("/")
 

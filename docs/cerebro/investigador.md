@@ -1,8 +1,8 @@
 # Ejército investigador profundo (`asistente/investigador/`)
 
 Investigación profunda donde la fiabilidad manda: cada afirmación del informe lleva una cita literal de una
-fuente que se leyó de verdad; lo que no se puede respaldar se elimina (o se marca). Construido sobre el SDK de
-OpenHands (`openhands-sdk`, probado con 1.63.1).
+fuente que se leyó de verdad; lo que no se puede respaldar se elimina (o se marca). Llama al modelo con la capa de
+proveedores del producto, medida como cualquier otra llamada ([ADR 0006](../adr/0006-un-solo-runtime-propio.md)).
 
 ## Entrada
 
@@ -12,7 +12,7 @@ from asistente.investigador import investigar, Presupuesto
 informe = investigar(
     "¿Qué deducciones por alquiler hay en Madrid?",
     Presupuesto(max_tokens=200_000, max_euros=1.0, max_profundidad=2),
-    llm=mi_llm,                 # openhands.sdk.LLM, o {"planificador": …, "lector": …, "critico": …, "redactor": …}
+    llm=mi_proveedor,           # un LLMProvider, o {"planificador": …, "lector": …, "critico": …, "redactor": …}
     web=None,                   # por defecto, el buscador web de asistente/capacidades/investigacion
     al_progresar=print,         # recibe Evento(tipo, mensaje, datos)
     sin_fuente="eliminar",      # o "marcar"
@@ -22,7 +22,8 @@ print(informe.markdown())
 
 CLI: `python -m asistente.plataforma.cli.investigar "pregunta" [--max-tokens N] [--max-euros X] [--profundidad N]
 [--marcar] [--json]`. El progreso sale por stderr y el informe por stdout. Modelo: `INVESTIGADOR_MODELO`
-(nombre LiteLLM, p. ej. `anthropic/claude-sonnet-5-5`) y `INVESTIGADOR_API_KEY`/`ANTHROPIC_API_KEY`.
+(`proveedor/modelo`, p. ej. `anthropic/claude-sonnet-5-5`; sin ella, `LLM_PROVIDER` y su modelo). Las llamadas se
+registran en `llm_usage` con el propósito `investigador`.
 
 ## Roles y flujo
 
@@ -42,14 +43,13 @@ planificador ──► subpreguntas ──► [buscador → lector] × N en para
 | Crítico | Intenta refutar cada hallazgo con la fuente delante: `sostenido`, `dudoso` (se queda, con nota) o `refutado` (sale). Señala lagunas para otra ronda. | `ejercito.py: criticar` |
 | Redactor | Escribe afirmaciones que citan ids de hallazgos. Después, `citas.py` comprueba cada una: fuentes leídas, citas literales, cifras presentes en las citas. Las que fallan se eliminan o se marcan `sin_fuente`. Un resumen con cifras sin respaldo se sustituye. | `ejercito.py: redactar/_verificar`, `citas.py` |
 
-Cada rol es una llamada `openhands.sdk.LLM.completion` con mensajes `system`/`user` del SDK y respuesta JSON
-(`llm.py`). Se puede usar un `LLM` para todo o uno por rol (p. ej. un modelo barato para lectores y uno fuerte para
+Cada rol es un turno sin herramientas de un `LLMProvider` (`start(...).step(allow_tools=False)`) con respuesta
+JSON (`llm.py`). Se puede usar un proveedor para todo o uno por rol (p. ej. un modelo barato para lectores y uno fuerte para
 crítico y redactor). Buscadores y lectores corren en un `ThreadPoolExecutor` (`Presupuesto.paralelismo`).
 
-**Por qué llamadas `LLM` y no un `Agent` con herramientas por rol**: el flujo es fijo y cada paso tiene que ser
+**Por qué un turno por rol y no un agente con herramientas por rol**: el flujo es fijo y cada paso tiene que ser
 verificable; un bucle agéntico libre añadiría coste y superficie de inyección sin ganar fiabilidad. Cuando el
-cerebro (migrado a `openhands.sdk.Agent`) quiera usar el ejército, lo enchufa como una herramienta que llama a
-`investigar(...)`; `asistente/nucleo/agent/` no se ha tocado.
+cerebro quiera usar el ejército, lo enchufa como una herramienta que llama a `investigar(...)`.
 
 ## Herramientas reutilizadas
 
@@ -89,14 +89,11 @@ críticas y afirmaciones eliminadas para auditar.
 
 ## Tests
 
-`tests/investigador/test_investigador.py`, con `openhands.sdk.testing.TestLLM` (un LLM con guion por rol) y una
+`tests/investigador/test_investigador.py`, con `ProveedorGuionado` (un proveedor con guion por rol) y una
 web simulada: citas válidas contra la fuente leída, eliminación (y marcado) de afirmaciones sin fuente o con cifras
 inventadas, crítico que refuta, inyección neutralizada antes del modelo, presupuesto de tokens/€/lecturas y
 profundidad respetado, y búsquedas paralelas sin mezclar fuentes.
 
 ## Integración pendiente
 
-- La dependencia `openhands-sdk>=1.63.1` se añadió a mano en `pyproject.toml` (no había `uv` en esta máquina;
-  `uv.lock` sin regenerar). La sesión que migra `asistente/nucleo/agent/` añade la misma: dejar una sola línea y
-  ejecutar `uv lock`.
 - Enchufar `investigar` como herramienta del cerebro.

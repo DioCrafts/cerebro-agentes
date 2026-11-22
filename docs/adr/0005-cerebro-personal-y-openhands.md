@@ -1,6 +1,7 @@
 # ADR 0005: Reenfoque del producto — cerebro personal fiable, Hacienda como primer módulo y orquestación con el SDK de OpenHands
 
-- **Estado**: Aprobado (Fase 0: documentación; la migración del código va en fases posteriores)
+- **Estado**: Aprobado; el punto 4 (orquestación con OpenHands) queda sustituido por el
+  [ADR 0006](0006-un-solo-runtime-propio.md)
 - **Fecha**: 2026-11-22
 - **Decisores**: Plataforma del asistente
 - **Ámbito**: identidad del producto, `README.md`, `docs/`; orquestación de `asistente/nucleo/` y de los

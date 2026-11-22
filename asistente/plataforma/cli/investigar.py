@@ -4,7 +4,8 @@
         [--max-tokens 200000] [--max-euros 1.0] [--profundidad 2] [--marcar] [--json]
 
 Progress (plan, sources, findings, critiques) goes to stderr as it happens; the report (Markdown, or JSON with
-``--json``) to stdout. Model from ``INVESTIGADOR_MODELO`` (OpenHands/LiteLLM name, e.g. ``anthropic/claude-…``).
+``--json``) to stdout. Model from ``INVESTIGADOR_MODELO`` (``proveedor/modelo``, e.g. ``anthropic/claude-…``;
+without it, the configured provider).
 """
 
 from __future__ import annotations
