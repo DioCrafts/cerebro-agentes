@@ -165,8 +165,8 @@ export TOP_K="3"
 # Umbrales de similitud (coseno) del EmbeddingsFilter. Defaults pensados para
 # Qwen3 (coseno normalizado); calíbralos con benchmark_retrieval. Subirlos =
 # más precisión/menos recall (riesgo de abstención); bajarlos = lo contrario.
-export RETRIEVAL_DECISION_THRESHOLD="0.45"   # perfil "decision" (más estricto)
-export RETRIEVAL_EXPLAIN_THRESHOLD="0.35"    # perfil "explain" (más recall)
+export RETRIEVAL_DECISION_THRESHOLD="0.55"   # perfil "decision" (más estricto)
+export RETRIEVAL_EXPLAIN_THRESHOLD="0.525"   # perfil "explain" (más recall)
 # La cadena de Q&A (`/qa` y el chat de la UI) usa el perfil "explain" por
 # defecto, ya que son consultas explicativas. El perfil "decision" (más
 # estricto) queda para el motor de decisión y el benchmark de retrieval.
