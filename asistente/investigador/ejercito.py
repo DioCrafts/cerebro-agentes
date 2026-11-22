@@ -257,7 +257,10 @@ class Ejercito:
         citas_validas = [ci for a in validas if a.estado == "verificada" for ci in a.citas] + [pregunta]
         if not resumen or not cifras_respaldadas(resumen, citas_validas):
             if resumen:
-                self._aviso("El resumen contenía cifras sin respaldo: se sustituye.")
+                from asistente.investigador.citas import _cifras
+
+                faltan = sorted(_cifras(resumen) - _cifras(" ".join(citas_validas)))
+                self._aviso(f"El resumen contenía cifras sin respaldo ({', '.join(faltan)}): se sustituye.")
             resumen = f"Respuesta basada en {len(validas)} afirmaciones verificadas con fuentes leídas."
         return resumen, validas, eliminadas
 

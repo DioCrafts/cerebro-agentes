@@ -2,14 +2,30 @@
 
 ``asistente.capacidades.investigacion.web`` already searches and reads (server-side web search + fetch, domain
 allow / block lists). The army reuses it through :class:`WebDeCapacidad`; tests pass a fake ``HerramientaWeb``.
+
+The server-side fetch cannot open many official pages (the AEAT's sede answers ``url_not_accessible``), which
+left whole subquestions without a single source. Search results that were found but not read are then read
+locally by :class:`LectorLocal`: public http(s) only, private addresses refused (also after redirects), HTML
+only, size and time capped.
 """
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
+import ipaddress
+import logging
+import socket
 from typing import Any, Protocol
+from urllib.parse import urljoin, urlparse
+
+logger = logging.getLogger(__name__)
+
+MAX_BYTES = 3_000_000
+TIMEOUT_S = 15
+MAX_REDIRECCIONES = 3
+_AGENTE = "Mozilla/5.0 (compatible; asistente-investigador/1.0)"
 
 
 @dataclass(frozen=True)
@@ -24,13 +40,99 @@ class HerramientaWeb(Protocol):
     def buscar_y_leer(self, *, pregunta: str, consultas: Sequence[str], max_lecturas: int) -> list[Documento]: ...
 
 
+def _host_publico(url: str) -> bool:
+    partes = urlparse(url)
+    if partes.scheme not in {"http", "https"} or not partes.hostname:
+        return False
+    try:
+        direcciones = {info[4][0] for info in socket.getaddrinfo(partes.hostname, None)}
+    except OSError:
+        return False
+    for d in direcciones:
+        ip = ipaddress.ip_address(d.split("%")[0])
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
+            return False
+    return bool(direcciones)
+
+
+def texto_de_html(html: str) -> tuple[str, str]:
+    """(title, visible text) of an HTML page, without scripts, styles and navigation."""
+    import lxml.html
+
+    raiz = lxml.html.fromstring(html)
+    for nodo in raiz.xpath("//script|//style|//noscript|//nav|//header|//footer|//form|//svg"):
+        nodo.drop_tree()
+    titulo = (raiz.findtext(".//title") or "").strip()
+    lineas = (linea.strip() for linea in raiz.text_content().splitlines())
+    return titulo, "\n".join(linea for linea in lineas if linea)
+
+
+def _decodificar(cuerpo: bytes, content_type: str) -> str:
+    """UTF-8 first (most pages, often without a declared charset: HTTP's ISO-8859-1 default garbled «Exención»
+    into «ExenciÃ³n»), then the declared charset, then Latin-1."""
+    try:
+        return cuerpo.decode("utf-8")
+    except UnicodeDecodeError:
+        pass
+    declarado = content_type.lower().partition("charset=")[2].split(";")[0].strip()
+    if declarado:
+        try:
+            return cuerpo.decode(declarado, errors="replace")
+        except LookupError:
+            pass
+    return cuerpo.decode("latin-1", errors="replace")
+
+
+class LectorLocal:
+    """Reads one public HTML page; None when it is not public, not HTML, too big or unreachable."""
+
+    def __init__(self, obtener: Callable[..., Any] | None = None):
+        if obtener is None:
+            import requests
+
+            obtener = requests.get
+        self._obtener = obtener
+
+    def leer(self, url: str, titulo: str = "") -> Documento | None:
+        actual = url
+        for _ in range(MAX_REDIRECCIONES + 1):
+            if not _host_publico(actual):
+                return None
+            try:
+                r = self._obtener(actual, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
+                                  headers={"User-Agent": _AGENTE, "Accept": "text/html"})
+            except Exception as exc:  # network errors: the page is simply not read
+                logger.info("local read of %s failed: %s", actual, type(exc).__name__)
+                return None
+            if r.status_code in {301, 302, 303, 307, 308} and r.headers.get("Location"):
+                actual = urljoin(actual, r.headers["Location"])
+                continue
+            if r.status_code != 200 or "html" not in r.headers.get("Content-Type", "").lower():
+                return None
+            cuerpo = b""
+            for trozo in r.iter_content(65536):
+                cuerpo += trozo
+                if len(cuerpo) > MAX_BYTES:
+                    return None
+            try:
+                propio, texto = texto_de_html(_decodificar(cuerpo, r.headers.get("Content-Type", "")))
+            except Exception:
+                return None
+            if not texto.strip():
+                return None
+            return Documento(actual, propio or titulo or actual, texto, datetime.now(UTC))
+        return None
+
+
 class WebDeCapacidad:
     """Adapter over ``asistente.capacidades.investigacion.web.BuscadorWeb`` (``web_para(proveedor)``)."""
 
-    def __init__(self, buscador: Any, *, permitidos: Sequence[str] | None = None, bloqueados: Sequence[str] = ()):
+    def __init__(self, buscador: Any, *, permitidos: Sequence[str] | None = None, bloqueados: Sequence[str] = (),
+                 lector: LectorLocal | None = None):
         self.buscador = buscador
         self.permitidos = permitidos
         self.bloqueados = tuple(bloqueados)
+        self.lector = lector
 
     def buscar_y_leer(self, *, pregunta: str, consultas: Sequence[str], max_lecturas: int) -> list[Documento]:
         r = self.buscador.buscar(
@@ -41,10 +143,25 @@ class WebDeCapacidad:
             max_busquedas=max(1, len(consultas)),
             max_lecturas=max_lecturas,
         )
-        return [Documento(d.url, d.titulo, d.texto, d.recuperado_el) for d in r.documentos]
+        docs = [Documento(d.url, d.titulo, d.texto, d.recuperado_el) for d in r.documentos]
+        if getattr(r, "errores", None):
+            logger.info("web search for %r: %s", pregunta[:80], "; ".join(r.errores))
+        if self.lector is not None:
+            leidas = {d.url for d in docs}
+            # Found by the search but not read (vistos is already filtered by the domain lists).
+            for url, titulo in getattr(r, "vistos", []):
+                if len(docs) >= max_lecturas:
+                    break
+                if url in leidas:
+                    continue
+                doc = self.lector.leer(url, titulo)
+                if doc is not None:
+                    docs.append(doc)
+                    leidas.add(url)
+        return docs
 
 
 def web_por_defecto(proveedor: Any) -> HerramientaWeb:
     from asistente.capacidades.investigacion.web import web_para
 
-    return WebDeCapacidad(web_para(proveedor))
+    return WebDeCapacidad(web_para(proveedor), lector=LectorLocal())

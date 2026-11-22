@@ -17,13 +17,29 @@ _CIFRA = re.compile(r"\d+(?:[.,]\d+)*")
 
 def normalizar(texto: str) -> str:
     t = unicodedata.normalize("NFKC", texto).lower()
-    t = t.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'")
+    t = t.replace("“", '"').replace("”", '"').replace("’", "'").replace("‘", "'").replace("«", '"').replace("»", '"')
+    t = t.replace("–", "-").replace("—", "-").replace("\u00ad", "")
     return _ESPACIOS.sub(" ", t).strip()
 
 
+_ELISION = re.compile(r"\s*(?:\[\s*(?:…|\.\.\.)\s*\]|\(\s*(?:…|\.\.\.)\s*\)|…|\.\.\.)\s*")
+
+
 def cita_literal(cita: str, fuente: Fuente, minimo: int = 12) -> bool:
-    c = normalizar(cita).strip(' ."\'…')
-    return len(c) >= minimo and c in normalizar(fuente.texto)
+    """Literal quote check. A quote elided with «…» / «[…]» counts only if every piece is at least ``minimo``
+    characters and the pieces appear literally, in order, in the source (models elide long passages)."""
+    texto = normalizar(fuente.texto)
+    trozos = [t.strip(' ."\'') for t in _ELISION.split(normalizar(cita))]
+    trozos = [t for t in trozos if t]
+    if not trozos or any(len(t) < minimo for t in trozos):
+        return False
+    pos = 0
+    for t in trozos:
+        i = texto.find(t, pos)
+        if i < 0:
+            return False
+        pos = i + len(t)
+    return True
 
 
 def _cifras(texto: str) -> set[str]:

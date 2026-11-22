@@ -221,3 +221,81 @@ def test_una_fuente_ya_leida_se_reutiliza_en_otra_subpregunta():
     )
     assert len(informe.fuentes) == 1
     assert {h.texto for h in informe.hallazgos} == {"El tipo general del IVA es del 21%", "La hostelería tiene tipo reducido"}
+
+
+def test_cita_con_elision_vale_si_cada_tramo_es_literal_y_en_orden():
+    from datetime import UTC, datetime
+
+    from asistente.investigador.citas import cita_literal
+    from asistente.investigador.modelo import Fuente
+
+    f = Fuente("F1", "https://x", "t", "Artículo 38. Exención por reinversión. Podrán excluirse de gravamen las "
+               "ganancias patrimoniales obtenidas por la transmisión de la vivienda habitual del contribuyente, "
+               "siempre que el importe total obtenido se reinvierta en la adquisición de una nueva vivienda.",
+               "S1", False, datetime.now(UTC))
+    assert cita_literal("Podrán excluirse de gravamen las ganancias patrimoniales […] siempre que el importe total "
+                        "obtenido se reinvierta", f)
+    assert not cita_literal("siempre que el importe total obtenido … Podrán excluirse de gravamen", f)  # wrong order
+    assert not cita_literal("Podrán excluirse de gravamen las ganancias … vivienda", f)  # piece too short
+    assert not cita_literal("Podrán excluirse de gravamen las pérdidas patrimoniales", f)  # not literal
+
+
+class _Resp:
+    def __init__(self, status=200, html="", ctype="text/html; charset=utf-8", location=None):
+        self.status_code, self.encoding = status, "utf-8"
+        self.headers = {"Content-Type": ctype, **({"Location": location} if location else {})}
+        self._b = html.encode()
+
+    def iter_content(self, n):
+        yield self._b
+
+
+def test_lector_local_lee_lo_que_web_fetch_no_pudo(monkeypatch):
+    from types import SimpleNamespace
+
+    from asistente.investigador import web as w
+
+    monkeypatch.setattr(w, "_host_publico", lambda url: True)
+    html = "<html><head><title>Reinversión</title><script>x()</script></head><body><nav>Menú</nav>" \
+           "<p>Podrán excluirse de gravamen las ganancias patrimoniales.</p></body></html>"
+    lector = w.LectorLocal(obtener=lambda url, **k: _Resp(html=html))
+    buscador = SimpleNamespace(buscar=lambda **k: SimpleNamespace(
+        documentos=[], vistos=[("https://sede.agenciatributaria.gob.es/x", "AEAT")], errores=["url_not_accessible"]))
+    docs = w.WebDeCapacidad(buscador, lector=lector).buscar_y_leer(pregunta="p", consultas=["q"], max_lecturas=3)
+    assert len(docs) == 1 and docs[0].titulo == "Reinversión"
+    assert "Podrán excluirse" in docs[0].texto and "x()" not in docs[0].texto and "Menú" not in docs[0].texto
+
+
+def test_lector_local_rechaza_ips_privadas_y_redirecciones_a_ellas():
+    from asistente.investigador import web as w
+
+    assert not w._host_publico("http://127.0.0.1/admin")
+    assert not w._host_publico("http://169.254.169.254/latest/meta-data")
+    assert not w._host_publico("file:///etc/passwd")
+    lector = w.LectorLocal(obtener=lambda url, **k: _Resp(status=302, location="http://127.0.0.1/"))
+    import asistente.investigador.web as mod
+    orig = mod._host_publico
+    mod._host_publico = lambda url: not url.startswith("http://127.")
+    try:
+        assert lector.leer("https://ejemplo.es/") is None
+    finally:
+        mod._host_publico = orig
+
+
+def test_lector_local_rechaza_no_html():
+    from asistente.investigador import web as w
+
+    lector = w.LectorLocal(obtener=lambda url, **k: _Resp(ctype="application/pdf", html="%PDF"))
+    w_orig = w._host_publico
+    w._host_publico = lambda url: True
+    try:
+        assert lector.leer("https://ejemplo.es/a.pdf") is None
+    finally:
+        w._host_publico = w_orig
+
+
+def test_lector_local_decodifica_utf8_sin_charset_declarado():
+    from asistente.investigador import web as w
+
+    assert w._decodificar("Exención".encode(), "text/html") == "Exención"
+    assert w._decodificar("Exención".encode("latin-1"), "text/html; charset=iso-8859-1") == "Exención"
