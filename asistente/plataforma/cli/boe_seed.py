@@ -106,7 +106,14 @@ def fetch_document(boe_id: str, target_path: Path, retries: int = 2, backoff_s: 
     default=False,
     help="Print what would be downloaded without making HTTP calls.",
 )
-def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: bool) -> None:
+@click.option(
+    "--delay",
+    default=0.5,
+    show_default=True,
+    type=click.FloatRange(min=0.0),
+    help="Polite pause (seconds) between two BOE downloads.",
+)
+def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: bool, delay: float) -> None:
     """Fetch every BOE ID listed in CATALOG into OUTPUT_DIR."""
     snapshot = snapshot_date or datetime.now(UTC).strftime("%Y-%m-%d")
     entries = load_catalog(catalog)
@@ -115,14 +122,23 @@ def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: boo
 
     snapshot_root = output_dir / snapshot
     summary: list[dict[str, str | int]] = []
-    for entry in entries:
+    failed: list[dict[str, str]] = []
+    for index, entry in enumerate(entries):
         target = snapshot_root / entry["subdir"] / f"{entry['id']}.html"
         if dry_run:
             click.echo(f"[dry-run] {entry['id']:18} → {target}")
             summary.append({"id": entry["id"], "path": str(target), "bytes": 0})
             continue
+        if index and delay:
+            time.sleep(delay)
         click.echo(f"Fetching {entry['id']} ({entry['label']}) → {target}")
-        size = fetch_document(entry["id"], target)
+        # One bad or withdrawn ID must not throw away the rest of the run (and its manifest).
+        try:
+            size = fetch_document(entry["id"], target)
+        except click.ClickException as exc:
+            click.echo(f"  FAILED: {exc.message}", err=True)
+            failed.append({"id": entry["id"], "error": exc.message})
+            continue
         summary.append({"id": entry["id"], "path": str(target), "bytes": size})
 
     manifest = snapshot_root / "boe-seed-manifest.json"
@@ -135,6 +151,7 @@ def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: boo
                     "fetched_at": datetime.now(UTC).isoformat(),
                     "catalog_path": str(catalog),
                     "documents": summary,
+                    "failed": failed,
                 },
                 ensure_ascii=False,
                 indent=2,
@@ -142,6 +159,10 @@ def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: boo
             encoding="utf-8",
         )
         click.echo(f"Wrote manifest: {manifest}")
+    if failed:
+        raise click.ClickException(
+            f"{len(failed)} of {len(entries)} BOE documents failed: " + ", ".join(f["id"] for f in failed)
+        )
 
 
 if __name__ == "__main__":

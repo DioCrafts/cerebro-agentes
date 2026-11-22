@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Ejemplo: actualiza el corpus fiscal los domingos a las 04:00.
+  Cambia las rutas, copia a ~/Library/LaunchAgents/ y carga con
+  launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/es.hacienda-asesor.actualizar-corpus.plist
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>es.hacienda-asesor.actualizar-corpus</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/RUTA/AL/REPO/hacienda-asesor/scripts/actualizar_corpus.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>REPO</key>
+    <string>/RUTA/AL/REPO/hacienda-asesor</string>
+    <key>PYTHON</key>
+    <string>/RUTA/AL/REPO/hacienda-asesor/.venv/bin/python</string>
+    <key>INDEX_DIR</key>
+    <string>/RUTA/AL/REPO/hacienda-asesor/data/faiss-v2</string>
+  </dict>
+  <key>StartCalendarInterval</key>
+  <dict>
+    <key>Weekday</key>
+    <integer>0</integer>
+    <key>Hour</key>
+    <integer>4</integer>
+    <key>Minute</key>
+    <integer>0</integer>
+  </dict>
+  <key>StandardOutPath</key>
+  <string>/tmp/hacienda-asesor-actualizar-corpus.out</string>
+  <key>StandardErrorPath</key>
+  <string>/tmp/hacienda-asesor-actualizar-corpus.err</string>
+</dict>
+</plist>

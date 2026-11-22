@@ -344,6 +344,53 @@ uv run python -m asistente.plataforma.cli.crawler --crawler pdf --folder ./data/
 
 > El crawler guarda por defecto en carpetas con `snapshot_date` (YYYY-MM-DD).
 
+### Manuales prácticos de la AEAT
+
+Los manuales de Renta 2025 (con el tomo de deducciones autonómicas), Sociedades 2025,
+IVA 2026 y Patrimonio 2025 son HTML estático: un índice con la tabla de contenidos y una
+página por epígrafe. `aeat_manuales_seed` los baja con `requests`, sin Playwright ni
+capturas. Lee `robots.txt`, espera medio segundo entre peticiones, no baja los PDF
+(repiten el mismo texto en cientos de páginas) y no guarda el índice, que solo sirve para
+descubrir epígrafes. Si se corta, al relanzarlo salta lo que ya está en disco.
+
+```bash
+uv run python -m asistente.plataforma.cli.aeat_manuales_seed --output-dir ./data/html
+uv run python -m asistente.plataforma.cli.aeat_manuales_seed --manual irpf-2025 --dry-run
+```
+
+Cada página queda en `<snapshot>/aeat-manuales/<manual>/<ruta>.html` con un `.json` al lado
+(`url`, `manual`, `impuesto`, `ejercicio`) que el processor copia a los metadatos del chunk.
+Al cambiar de ejercicio hay que añadir el manual nuevo a `MANUALES` en
+[aeat_manuales_seed.py](asistente/plataforma/cli/aeat_manuales_seed.py). Sucesiones y
+Donaciones no tiene manual de la AEAT porque lo gestionan las comunidades; su normativa
+entra por el catálogo BOE (ley, reglamento y los textos autonómicos de tributos cedidos).
+
+### Actualización periódica
+
+[scripts/actualizar_corpus.sh](scripts/actualizar_corpus.sh) encadena `boe_seed`,
+`aeat_manuales_seed`, `dgt_seed` (los últimos `DGT_MESES` meses, 3 por defecto) y
+`processor --incremental`. Descarga en el último snapshot que exista bajo `data/html`:
+el processor recorre la carpeta entera, y abrir un snapshot nuevo cada vez duplicaría los
+documentos en el índice. Un fallo de descarga no para la cadena; el índice se actualiza con
+lo que haya llegado y el script sale con código 1.
+
+```bash
+PYTHON=.venv/bin/python INDEX_DIR=./data/faiss-v2 scripts/actualizar_corpus.sh
+SALTAR=dgt,aeat scripts/actualizar_corpus.sh   # solo BOE e índice
+```
+
+Para programarlo hay un plist de ejemplo en
+[docs/operations/es.hacienda-asesor.actualizar-corpus.plist](docs/operations/es.hacienda-asesor.actualizar-corpus.plist)
+(domingos a las 04:00). Con cron, la línea equivalente es:
+
+```
+0 4 * * 0 REPO=/ruta/hacienda-asesor PYTHON=/ruta/hacienda-asesor/.venv/bin/python /ruta/hacienda-asesor/scripts/actualizar_corpus.sh
+```
+
+Ninguno de los dos se instala solo. Para que el servicio use el índice nuevo, apunta
+`FAISS_INDEX_PATH` a `./data/faiss-v2`.
+
+
 ---
 
 ## 🧩 2) Construcción del índice FAISS
