@@ -15,6 +15,7 @@ from asistente.ambitos.suscripciones.almacen import NOMBRE_HECHO, validar_servic
 from asistente.ambitos.suscripciones.avisos import generar_avisos
 from asistente.ambitos.suscripciones.derechos import cargar
 from asistente.ambitos.suscripciones.herramientas import HERRAMIENTAS
+from asistente.nucleo.calculo.herramientas import instrucciones_calculo
 from asistente.nucleo.eventos.tipos import CARGOS_IMPORTADOS, FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
 from asistente.nucleo.modulos.ganchos import DatoOfrecido, Declaracion, Ganchos, GanchosEventos
@@ -29,7 +30,8 @@ Las cifras, fechas y plazos salen de las herramientas; los derechos, de sus cita
 fechas de próximo cargo son estimaciones: pide al usuario que confirme en su contrato las fechas de \
 renovación. No sabes si el usuario usa un servicio: pregúntalo en vez de suponerlo. Si una herramienta dice \
 que hay columnas ambiguas o importes sin signo, pregunta al usuario. No repitas en la conversación números \
-de cuenta ni movimientos que no sean cargos recurrentes."""
+de cuenta ni movimientos que no sean cargos recurrentes. Si el usuario da los importes en la conversación \
+(sin extracto), calcula con suscripciones_calculo_importes y di que son sus importes, no cargos detectados.""" + instrucciones_calculo("suscripciones")
 
 
 @dataclass

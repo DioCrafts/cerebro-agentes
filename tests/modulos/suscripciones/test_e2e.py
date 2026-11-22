@@ -23,6 +23,8 @@ def test_cumple_el_contrato() -> None:
         "suscripciones_preparar_baja": "prepara",
         # What it asks of the mail capability: modulos/suscripciones/capacidades.py.
         "suscripciones_cargos_del_correo": "lectura",
+        # Arithmetic over amounts the user gives (nucleo/calculo).
+        "suscripciones_calculo_importes": "lectura",
     }
     assert all(h.sensible for h in MODULO.hechos)
     assert {f.identificador for f in MODULO.fuentes} == {
