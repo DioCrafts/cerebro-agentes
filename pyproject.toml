@@ -52,14 +52,13 @@ dependencies = [
     "ptpython==3.0.32",
     "fastapi==0.118.0",
     "uvicorn==0.37.0",
-    "pydantic==2.12.3",
+    "pydantic==2.13.5",
     "anthropic==2.8.0",
     # The browser agent (asistente/capacidades/navegador) drives Chromium through Playwright directly; it also comes
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.48",
-    # Agent SDK for the brain and the deep research army (asistente/investigador). Also added by the
-    # nucleo/agent migration: keep one line when merging.
-    "openhands-sdk>=1.63.1",
+    # Agent SDK for the brain and the deep research army (asistente/investigador).
+    "openhands-sdk==1.60.2",
 ]
 
 [dependency-groups]
