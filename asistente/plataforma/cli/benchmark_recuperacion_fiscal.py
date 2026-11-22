@@ -32,6 +32,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import re
 import statistics
@@ -175,6 +176,9 @@ class RecuperadorDensoBM25(BaseRetriever):
 
 
 def construir_base(corpus: list[Document], embeddings: Embeddings, *, k: int, umbral: float) -> BaseRetriever:
+    # En macOS, torch y faiss traen cada uno su libomp; cargar el segundo en el mismo proceso
+    # aborta el intérprete. Debe fijarse antes de que faiss cargue su OpenMP.
+    os.environ.setdefault("KMP_DUPLICATE_LIB_OK", "TRUE")
     from langchain_community.vectorstores import FAISS
     from rank_bm25 import BM25Okapi
 
