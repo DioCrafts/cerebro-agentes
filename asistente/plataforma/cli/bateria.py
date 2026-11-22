@@ -102,11 +102,14 @@ def run(sistemas: tuple[str, ...], ids: tuple[str, ...], presupuesto_total: floa
     )
     destino = out_path or b.INFORMES_DIR / f"{datetime.now(UTC):%Y%m%dT%H%M%SZ}-{informe.commit}.json"
     b.guardar(informe, destino)
-    parcial.unlink(missing_ok=True)
+    if not ids and not sistemas:  # a partial selection keeps accumulating for the full run
+        parcial.unlink(missing_ok=True)
     click.echo(b.tabla(informe))
     click.echo(f"\nInforme: {destino}")
     codigo = _informar_comparacion(informe, None if fijar_linea_base else baseline, estricto)
-    if fijar_linea_base:
+    if fijar_linea_base and (ids or sistemas):
+        click.echo("La línea base solo se fija con la batería completa.", err=True)
+    elif fijar_linea_base:
         b.guardar(informe, b.LINEA_BASE_PATH)
         click.echo(f"Línea base fijada: {b.LINEA_BASE_PATH}")
     raise SystemExit(codigo)
