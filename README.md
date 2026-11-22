@@ -1,12 +1,79 @@
-# 🚀 HaciendaGPT
+# 🧠 Cerebro personal fiable
 
-> **Asistente RAG en español especializado en consultas sobre la Agencia Tributaria de España (AEAT).**
+> **Un cerebro central que investiga a fondo por ti: cada afirmación con su fuente y cada cifra verificada.**
+>
+> *Nombre de producto propuesto: **Criterio** (ver [ADR 0005](docs/adr/0005-cerebro-personal-y-openhands.md)). El
+> código conserva sus nombres de paquete (`asistente/`, alias `hacienda_gpt`).*
 
-HaciendaGPT combina recuperación semántica (RAG), reglas de decisión fiscal y una interfaz simple para ayudar a responder consultas tributarias con mayor trazabilidad, contexto y foco en seguridad.
+Este proyecto nació como «HaciendaGPT», un asistente RAG sobre la Agencia Tributaria. Hoy es otra cosa: un
+**cerebro personal** que entiende lo que le preguntas, reparte el trabajo entre un **ejército de agentes
+investigadores** y **módulos especializados**, y solo te enseña lo que puede respaldar. Hacienda es **el primer
+módulo**, no el producto: junto a él están la luz, la hipoteca, las ayudas, las caducidades y las suscripciones.
 
 ---
 
-## ✨ ¿Qué ofrece?
+## ✨ La visión
+
+### 1. Un cerebro central
+
+Recibe la pregunta, decide qué hace falta saber, encarga el trabajo (en paralelo cuando es independiente, en cadena
+cuando una pieza necesita la cifra de otra), une los informes en una sola respuesta y la comprueba antes de
+enseñarla. Recuerda lo que sabe de ti —con su origen, visible y borrable— y te avisa sin que preguntes cuando algo
+cambia. La orquestación de agentes se apoya en el **SDK de OpenHands** en lugar de un bucle propio
+([ADR 0005](docs/adr/0005-cerebro-personal-y-openhands.md)). Detalle: [arquitectura del
+cerebro](docs/cerebro/arquitectura.md), [colaboración](docs/cerebro/colaboracion.md),
+[memoria](docs/cerebro/memoria.md), [repaso proactivo](docs/cerebro/repaso.md).
+
+### 2. Un ejército investigador
+
+Agentes que buscan, leen y contrastan fuentes primarias (BOE, sedes oficiales, documentos del usuario, la web)
+hasta poder responder con pruebas o decir con honestidad que no se sabe. Para decisiones difíciles, un
+[consejo](docs/consejo/arquitectura.md) de varias IA independientes delibera con críticas anónimas y devuelve
+consenso **y** disenso. Detalle: [investigación](docs/capacidades/investigacion.md).
+
+### 3. Módulos especializados
+
+Cada módulo es dueño de sus datos, sus calculadoras y sus avisos, y se integra por un contrato común
+([módulos](docs/modulos/README.md)):
+
+| Módulo | Qué hace |
+|---|---|
+| **Fiscal (Hacienda)** — el primero | IRPF y otros impuestos con citas del BOE, calculadora, optimizador, calendario, doctrina y jurisprudencia. Es la mayor parte de la referencia técnica de abajo. |
+| [Luz](docs/modulos/luz.md) | Facturas y consumo, comparación de tarifas. |
+| [Hipoteca](docs/modulos/hipoteca.md) | Amortizar o invertir, revisiones, condiciones. |
+| [Ayudas](docs/modulos/ayudas.md) | Ayudas y bonos a los que puedes tener derecho. |
+| [Caducidades](docs/modulos/caducidades.md) | Documentos, garantías y plazos que vencen. |
+| [Suscripciones](docs/modulos/suscripciones.md) | Cargos recurrentes que conviene revisar. |
+
+### 4. Garantías de fiabilidad
+
+La propuesta de valor es la confianza, así que las garantías se aplican **en código**, no por instrucciones al
+modelo:
+
+- 📎 **Fuentes obligatorias**: una afirmación sin cita comprobada no sale; si no hay fuentes suficientes, el sistema
+  se abstiene (ver «Grounding gate» más abajo).
+- 🔢 **Puerta de cifras**: cada número de la respuesta procede de una herramienta o de tus propias palabras,
+  atribuido a quien lo dio; nada de cifras inventadas ni sumas que ninguna calculadora haya hecho
+  ([colaboración](docs/cerebro/colaboracion.md)).
+- 🔁 **Verificación cruzada**: las citas se comprueban contra el texto literal de la fuente y las conclusiones
+  delicadas se contrastan entre agentes o en el consejo.
+- 📅 **Vigencia**: cada dato legal sabe de qué norma y fecha procede; un detector de deriva avisa cuando una fuente
+  cambia ([gobernanza normativa](#-gobernanza-normativa-drift-detector)).
+- ✋ **Confirmación humana**: nada que actúe en tu nombre (enviar, descargar, gastar) ocurre sin que lo confirmes.
+- 🔐 **Privacidad**: datos mínimos y seudonimizados hacia los proveedores de IA, consentimiento por capacidad,
+  exportación y borrado ([privacidad](docs/privacidad.md)).
+- 🛡️ **Defensa ante prompt injection**: todo contenido de terceros (webs, correos, documentos) se trata como dato
+  no confiable, nunca como instrucción ([endurecimiento](docs/security/rag-prompt-injection-hardening.md),
+  [seguridad](docs/seguridad.md)).
+
+---
+
+## 📚 Referencia técnica
+
+Lo que sigue documenta el sistema tal como está hoy. Buena parte describe el **módulo fiscal** (corpus del BOE y la
+AEAT, índice FAISS, reglas, calculadoras), que fue el origen del proyecto y sigue siendo el módulo más completo.
+
+### Piezas del módulo fiscal
 
 - 📚 **RAG sobre contenido fiscal** (HTML/PDF) con FAISS.
 - 🧠 **Motor de reglas** para evaluación de obligaciones y casos.
@@ -2182,9 +2249,10 @@ El estado de cada sesión se persiste en SQLite usando `DECISION_STATE_DB_PATH`.
 
 ## 📌 Roadmap sugerido
 
+- Migrar la orquestación del cerebro y los investigadores al SDK de OpenHands ([ADR 0005](docs/adr/0005-cerebro-personal-y-openhands.md)).
+- Investigador profundo: búsqueda multi-fuente con verificación cruzada de cada afirmación.
+- Llevar las garantías del módulo fiscal (citas, puerta de cifras, vigencia) a todos los módulos.
 - Mejorar observabilidad y métricas de retrieval/grounding.
-- Extender cobertura de reglas por campañas fiscales.
-- Añadir perfiles de respuesta por tipo de contribuyente.
 - Consolidar pipeline CI para smoke tests de extremo a extremo.
 
 ---
@@ -2200,5 +2268,5 @@ El estado de cada sesión se persiste en SQLite usando `DECISION_STATE_DB_PATH`.
 
 ## ⚠️ Descargo
 
-HaciendaGPT es una herramienta de apoyo. **No sustituye asesoramiento fiscal profesional ni criterio jurídico oficial.**
+Este cerebro personal es una herramienta de apoyo. **No sustituye asesoramiento fiscal, financiero ni jurídico profesional.**
 
