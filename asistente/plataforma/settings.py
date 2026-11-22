@@ -467,9 +467,6 @@ INVESTIGACION_AGENTE = _env_bool("INVESTIGACION_AGENTE", default=False)
 # "hogar" (default): the household brain answers (it understands the request, consults the specialists and writes one
 # answer; the tax advisor is one of them). "fiscal": the single tax advisor exactly as it was (legacy mode).
 CEREBRO_MODO = os.environ.get("CEREBRO_MODO", "hogar")
-# Who runs the bounded agent loops (specialists, researchers, critic): "openhands" (default: the OpenHands SDK, see
-# asistente/nucleo/agent/openhands_runtime.py) or "propio" (the in-house loop in team.py). Guarantees are identical.
-CEREBRO_RUNTIME = os.environ.get("CEREBRO_RUNTIME", "openhands")
 # Below this confidence in what was asked (0..1) the brain asks one clarifying question instead of guessing.
 CEREBRO_UMBRAL_CONFIANZA = float(os.environ.get("CEREBRO_UMBRAL_CONFIANZA", "0.45"))
 # The small model (purpose cerebro:intencion) is asked only when the rules are not sure; false: rules only.

@@ -19,8 +19,8 @@ módulo**, no el producto: junto a él están la luz, la hipoteca, las ayudas, l
 Recibe la pregunta, decide qué hace falta saber, encarga el trabajo (en paralelo cuando es independiente, en cadena
 cuando una pieza necesita la cifra de otra), une los informes en una sola respuesta y la comprueba antes de
 enseñarla. Recuerda lo que sabe de ti —con su origen, visible y borrable— y te avisa sin que preguntes cuando algo
-cambia. La orquestación de agentes se apoya en el **SDK de OpenHands** en lugar de un bucle propio
-([ADR 0005](docs/adr/0005-cerebro-personal-y-openhands.md)). Detalle: [arquitectura del
+cambia. La orquestación de agentes es un bucle propio; el SDK de OpenHands se probó y se retiró al medir que no aportaba
+nada ([ADR 0006](docs/adr/0006-un-solo-runtime-propio.md)). Detalle: [arquitectura del
 cerebro](docs/cerebro/arquitectura.md), [colaboración](docs/cerebro/colaboracion.md),
 [memoria](docs/cerebro/memoria.md), [repaso proactivo](docs/cerebro/repaso.md).
 
@@ -2249,7 +2249,6 @@ El estado de cada sesión se persiste en SQLite usando `DECISION_STATE_DB_PATH`.
 
 ## 📌 Roadmap sugerido
 
-- Migrar la orquestación del cerebro y los investigadores al SDK de OpenHands ([ADR 0005](docs/adr/0005-cerebro-personal-y-openhands.md)).
 - Investigador profundo: búsqueda multi-fuente con verificación cruzada de cada afirmación.
 - Llevar las garantías del módulo fiscal (citas, puerta de cifras, vigencia) a todos los módulos.
 - Mejorar observabilidad y métricas de retrieval/grounding.
