@@ -25,7 +25,14 @@ from asistente.ambitos.caducidades.herramientas import HERRAMIENTAS
 from asistente.ambitos.caducidades.reglas import cargar_reglas
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosDocumentos, GanchosEventos
+from asistente.nucleo.modulos.ganchos import (
+    DatoOfrecido,
+    DatoPedido,
+    Declaracion,
+    Ganchos,
+    GanchosDocumentos,
+    GanchosEventos,
+)
 
 HECHOS: tuple[HechoModulo, ...] = (
     HechoModulo(
@@ -134,6 +141,35 @@ class ModuloCaducidades(ModuloBase):
             entradas={"compra": f"herramienta:{self.herramienta_de_documento}"},
             # «léeme este ticket»: the documents capability reads the upload.
             capacidades=("documentos.leer_campos", "investigacion"),
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Calcula la caducidad de DNI, pasaporte, permiso de conducir, ITV, certificado electrónico, seguros, garantías y desistimientos con la regla del BOE.",
+                    "Lista lo que vence en el hogar por fecha, con qué hacer.",
+                    "Registra compras y lee tiques para sus plazos de devolución y garantía.",
+                ),
+                evaluacion="eval_data/modulos/caducidades.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="proximas",
+                        descripcion="Caducidades y renovaciones de los próximos 90 días.",
+                        origen="herramienta:caducidades_proximas",
+                        argumentos={"dias": 90},
+                    ),
+                    DatoOfrecido(
+                        nombre="contratos",
+                        descripcion="Contratos con fecha de vencimiento (seguros y otros).",
+                        origen="hecho:caducidades_contratos",
+                    ),
+                ),
+                pide=(
+                    DatoPedido(
+                        modulo="suscripciones",
+                        dato="servicios",
+                        para="Cruzar los contratos con vencimiento con los cargos recurrentes que constan en el banco.",
+                    ),
+                ),
+            ),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

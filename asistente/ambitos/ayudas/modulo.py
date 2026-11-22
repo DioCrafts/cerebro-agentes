@@ -36,7 +36,7 @@ from asistente.nucleo.modulos.contrato import (
     ModuloBase,
     ResultadoHerramienta,
 )
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
+from asistente.nucleo.modulos.ganchos import DatoOfrecido, DatoPedido, Declaracion, Ganchos, GanchosEventos
 
 CLAVE = "ayudas"
 ETIQUETAS_ESTADO = {
@@ -576,6 +576,29 @@ class ModuloAyudas(ModuloBase):
             ficheros_legales=tuple(FICHEROS_LEGALES),
             # Research with sources (read-only) for questions its data does not answer.
             capacidades=("investigacion",),
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Comprueba las prestaciones estatales (IMV, complemento de infancia, hijo con discapacidad, nacimiento, bonos sociales, título monoparental) con su cálculo y sus citas.",
+                    "Revisa las convocatorias de ayudas del BOE dirigidas al hogar.",
+                    "Dice qué datos faltan y qué queda fuera (ayudas autonómicas y locales).",
+                ),
+                evaluacion="eval_data/modulos/ayudas.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="prestaciones",
+                        descripcion="Prestaciones estatales que corresponden al hogar, con importe y plazo.",
+                        origen="herramienta:ayudas_comprobar",
+                    ),
+                ),
+                pide=(
+                    DatoPedido(
+                        modulo="luz",
+                        dato="tarifa_actual",
+                        para="Saber si el contrato de luz está en el PVPC, requisito del bono social eléctrico.",
+                    ),
+                ),
+            ),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

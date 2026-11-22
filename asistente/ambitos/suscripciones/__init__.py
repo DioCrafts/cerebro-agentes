@@ -17,7 +17,7 @@ from asistente.ambitos.suscripciones.derechos import cargar
 from asistente.ambitos.suscripciones.herramientas import HERRAMIENTAS
 from asistente.nucleo.eventos.tipos import CARGOS_IMPORTADOS, FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
+from asistente.nucleo.modulos.ganchos import DatoOfrecido, Declaracion, Ganchos, GanchosEventos
 
 INSTRUCCIONES = """\
 Eres el especialista en suscripciones y cargos recurrentes del hogar. Trabajas SOLO con extractos que el \
@@ -45,6 +45,28 @@ class ModuloSuscripciones(ModuloBase):
             ficheros_legales=tuple(FICHEROS_LEGALES),
             # «facturas de este emisor»: the receipts and charges the mail found for one sender.
             capacidades=("correo.facturas_de_emisor", "investigacion"),
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Detecta cargos recurrentes, subidas de precio, duplicados y pruebas convertidas en pago en extractos bancarios exportados.",
+                    "Estima el gasto anual por categoría.",
+                    "Redacta borradores de baja con su fundamento legal (nunca los envía).",
+                ),
+                evaluacion="eval_data/modulos/suscripciones.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="servicios",
+                        descripcion="Servicios recurrentes detectados (sin movimientos ni cuentas).",
+                        origen="hecho:suscripciones_servicios",
+                    ),
+                    DatoOfrecido(
+                        nombre="gasto_anual",
+                        descripcion="Gasto anual estimado en servicios recurrentes.",
+                        origen="herramienta:suscripciones_gasto_anual",
+                    ),
+                ),
+                pide=(),
+            ),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

@@ -15,7 +15,7 @@ from asistente.ambitos.hipoteca.modelo import validar_prestamo
 from asistente.ambitos.hipoteca.normativa import cargar_normativa
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos, PuenteAmbito
+from asistente.nucleo.modulos.ganchos import DatoOfrecido, Declaracion, Ganchos, GanchosEventos, PuenteAmbito
 
 __all__ = ["MODULO", "pagos_del_ejercicio"]
 
@@ -111,6 +111,28 @@ class ModuloHipoteca(ModuloBase):
             puentes=(PuenteAmbito(destino="fiscal", proponer=proponer_vivienda_pre2013),),
             # Research with sources (read-only) for questions its data does not answer.
             capacidades=("investigacion",),
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Calcula el cuadro de amortización, el capital pendiente y lo pagado en un año.",
+                    "Estima la revisión del tipo con los índices oficiales publicados en el BOE.",
+                    "Compara amortizar plazo o cuota con las comisiones de la Ley 5/2019 y el cambio de banco.",
+                ),
+                evaluacion="eval_data/modulos/hipoteca.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="pagos_del_ejercicio",
+                        descripcion="Cuotas, capital e intereses pagados en el año (cuadro de amortización).",
+                        origen="herramienta:hipoteca_cuadro",
+                    ),
+                    DatoOfrecido(
+                        nombre="prestamo",
+                        descripcion="Condiciones del préstamo hipotecario.",
+                        origen="hecho:hipoteca_prestamo",
+                    ),
+                ),
+                pide=(),
+            ),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:

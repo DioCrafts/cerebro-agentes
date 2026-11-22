@@ -33,7 +33,7 @@ from asistente.nucleo.modulos.contrato import (
     HechoModulo,
     HerramientaModulo,
 )
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosEventos
+from asistente.nucleo.modulos.ganchos import DatoOfrecido, Declaracion, Ganchos, GanchosEventos
 
 UMBRAL_ENV = "LUZ_UMBRAL_AHORRO_EUR"
 UMBRAL_DEFECTO = Decimal(50)
@@ -149,6 +149,28 @@ class ModuloLuz:
             entradas={"potencia_contratada": f"hecho:{HECHO_P1}"},
             # «descarga mi consumo» (browser, Datadis) and «facturas de este emisor» (mail).
             capacidades=("navegador.preparar_descarga_consumo", "correo.facturas_de_emisor", "investigacion"),
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Simula la factura de la luz línea a línea con los peajes, cargos e impuestos del BOE y la compara con la real.",
+                    "Compara tarifas con el consumo real y calcula la potencia óptima.",
+                    "Dice las horas baratas y los periodos punta, llano y valle de cada día.",
+                ),
+                evaluacion="eval_data/modulos/luz.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="tarifa_actual",
+                        descripcion="Tarifa de luz contratada (precios, permanencia; tipo PVPC o fijo).",
+                        origen="hecho:luz_tarifa_actual",
+                    ),
+                    DatoOfrecido(
+                        nombre="potencia_contratada",
+                        descripcion="Potencia contratada en P1 (kW).",
+                        origen="hecho:luz_potencia_p1_kw",
+                    ),
+                ),
+                pide=(),
+            ),
         )
 
     def avisos(self, contexto: ContextoModulo) -> list[AvisoModulo]:
