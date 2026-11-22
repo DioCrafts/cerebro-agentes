@@ -57,6 +57,9 @@ dependencies = [
     # The browser agent (asistente/capacidades/navegador) drives Chromium through Playwright directly; it also comes
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.48",
+    # Agent SDK for the brain and the deep research army (asistente/investigador). Also added by the
+    # nucleo/agent migration: keep one line when merging.
+    "openhands-sdk>=1.63.1",
 ]
 
 [dependency-groups]
