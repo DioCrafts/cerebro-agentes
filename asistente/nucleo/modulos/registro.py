@@ -274,6 +274,53 @@ def problemas_de_ganchos(modulo: Modulo, ganchos: Ganchos) -> list[str]:
     for pedida in ganchos.capacidades:
         if not isinstance(pedida, str) or not re.match(r"^[a-z][a-z0-9_]{1,30}(\.[a-z][a-z0-9_]{1,30})?$", pedida):
             problemas.append(f"capacidad no válida: {pedida!r} («capacidad» o «capacidad.operacion»)")
+    problemas += problemas_de_declaracion(modulo, ganchos, por_nombre, propios)
+    return problemas
+
+
+def problemas_de_declaracion(
+    modulo: Modulo, ganchos: Ganchos, por_nombre: Mapping[str, HerramientaModulo], propios: set[str]
+) -> list[str]:
+    """Shape of ``Ganchos.declaracion`` (an empty declaration is valid here; the contract test demands it)."""
+    from asistente.nucleo.modulos.ganchos import DatoOfrecido, DatoPedido, Declaracion
+
+    declaracion = ganchos.declaracion
+    if not isinstance(declaracion, Declaracion):
+        return [f"declaracion no válida: {declaracion!r}"]
+    problemas: list[str] = []
+    if not all(_texto(c) for c in declaracion.capacidades):
+        problemas.append("declaracion.capacidades debe ser una lista de frases")
+    if declaracion.evaluacion is not None and (
+        not isinstance(declaracion.evaluacion, str) or not declaracion.evaluacion.endswith(".jsonl")
+    ):
+        problemas.append("declaracion.evaluacion debe ser la ruta de un fichero .jsonl")
+    if not isinstance(declaracion.umbral_evaluacion, (int, float)) or not 0 < declaracion.umbral_evaluacion <= 1:
+        problemas.append("declaracion.umbral_evaluacion debe estar entre 0 (excluido) y 1")
+    nombres: set[str] = set()
+    for dato in declaracion.ofrece:
+        if not isinstance(dato, DatoOfrecido) or not _texto(dato.nombre) or not _texto(dato.descripcion):
+            problemas.append(f"dato ofrecido no válido: {dato!r}")
+            continue
+        if dato.nombre in nombres:
+            problemas.append(f"dato ofrecido repetido: {dato.nombre}")
+        nombres.add(dato.nombre)
+        clase, _, nombre = str(dato.origen).partition(":")
+        if clase == "hecho":
+            if nombre not in propios:
+                problemas.append(f"dato {dato.nombre!r}: {nombre!r} no es un hecho del módulo")
+        elif clase == "herramienta":
+            herramienta = por_nombre.get(nombre)
+            if herramienta is None:
+                problemas.append(f"dato {dato.nombre!r}: {nombre!r} no es una herramienta del módulo")
+            elif herramienta.efecto != "lectura":
+                problemas.append(f"dato {dato.nombre!r}: {nombre!r} no es de solo lectura")
+        else:
+            problemas.append(f"dato {dato.nombre!r}: origen debe ser «hecho:<nombre>» o «herramienta:<nombre>»")
+    for pedido in declaracion.pide:
+        if not isinstance(pedido, DatoPedido) or not _texto(pedido.dato) or not _texto(pedido.para):
+            problemas.append(f"dato pedido no válido: {pedido!r}")
+        elif pedido.modulo == modulo.clave or not _CLAVE_RE.match(str(pedido.modulo)):
+            problemas.append(f"el dato pedido {pedido.dato!r} debe pedirse a otro ámbito, no a {pedido.modulo!r}")
     return problemas
 
 

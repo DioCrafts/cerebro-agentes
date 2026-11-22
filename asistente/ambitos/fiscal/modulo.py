@@ -42,7 +42,15 @@ from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.eventos.tipos import CAMBIO_NORMATIVO, FECHA_UMBRAL, NORMA_BOE, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, HerramientaModulo
-from asistente.nucleo.modulos.ganchos import Ganchos, GanchosAgente, GanchosBandeja, GanchosEventos
+from asistente.nucleo.modulos.ganchos import (
+    DatoOfrecido,
+    DatoPedido,
+    Declaracion,
+    Ganchos,
+    GanchosAgente,
+    GanchosBandeja,
+    GanchosEventos,
+)
 from asistente.nucleo.proactive.store import NotificationStore
 
 # The reminder window of ``recordatorios_de_plazos`` (its default ``dias``).
@@ -140,6 +148,35 @@ class ModuloFiscal:
             capacidades=("documentos.leer_campos", "investigacion"),
             # Its laws are the tax parameters' (``tax/fuentes.py``), checked by ``params-check`` on their own.
             fuentes_vigiladas_aparte=True,
+            # What it promises (capabilities), its own evaluation and the data it serves to / asks of others.
+            declaracion=Declaracion(
+                capacidades=(
+                    "Calcula IRPF, declaración conjunta, modelos 130 y 303, Sociedades, Patrimonio y Sucesiones y Donaciones con los parámetros del BOE.",
+                    "Dice si hay obligación de declarar y propone el plan de fin de ejercicio.",
+                    "Mantiene el calendario fiscal del hogar.",
+                ),
+                evaluacion="eval_data/modulos/fiscal.jsonl",
+                ofrece=(
+                    DatoOfrecido(
+                        nombre="calendario",
+                        descripcion="Obligaciones fiscales de los próximos 90 días.",
+                        origen="herramienta:calendario_fiscal",
+                        argumentos={"dias": 90},
+                    ),
+                ),
+                pide=(
+                    DatoPedido(
+                        modulo="hipoteca",
+                        dato="pagos_del_ejercicio",
+                        para="Deducción transitoria por vivienda habitual adquirida antes de 2013.",
+                    ),
+                    DatoPedido(
+                        modulo="ayudas",
+                        dato="prestaciones",
+                        para="Saber qué prestaciones públicas cobra o puede cobrar el hogar (rentas exentas y deducciones del art. 81 LIRPF).",
+                    ),
+                ),
+            ),
         )
 
     # v1 views of the declaration (older callers and tests read them).

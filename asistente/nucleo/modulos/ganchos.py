@@ -35,6 +35,12 @@ What each concern means:
   ``obligatorio`` — always on (the user cannot switch it off: the tax module, the advisor's base);
   ``fuentes_vigiladas_aparte`` — its ``fuentes`` are watched by its own maintenance (the tax module's laws: the
   tax parameters' ``params-check``), so the household modules' BOE watch (``modulos/fuentes.py``) leaves them out.
+* :class:`Declaracion` — what the domain PROMISES, for the plan's rule «a module only counts if it passes its own
+  evaluation»: the capabilities it claims (Spanish sentences), its own evaluation cases (a JSONL file under
+  ``eval_data/modulos/``, run by ``asistente.nucleo.evaluacion.modulos``) and the minimum score it must reach, the
+  data it OFFERS other domains (:class:`DatoOfrecido`: one of its facts or read-only tools) and the data it may ASK
+  of them (:class:`DatoPedido`), served by ``asistente.nucleo.modulos.datos.pedir_dato``. A v1 module (or a v2 one
+  that declares nothing) gets an empty declaration: it still loads, but the contract test flags it.
 """
 
 from __future__ import annotations
@@ -104,6 +110,40 @@ class PuenteAmbito:
 
 
 @dataclass(frozen=True)
+class DatoOfrecido:
+    """A datum this domain serves to others: ``nombre`` (unique within the domain) from ``origen``.
+
+    ``origen`` is ``hecho:<one of its facts>`` (the stored value) or ``herramienta:<one of its read-only tools>``
+    (its result, run with ``argumentos``).
+    """
+
+    nombre: str
+    descripcion: str
+    origen: str
+    argumentos: Mapping[str, Any] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
+class DatoPedido:
+    """A datum this domain may ask of another (``modulo``'s :class:`DatoOfrecido` ``dato``) and what for."""
+
+    modulo: str
+    dato: str
+    para: str
+
+
+@dataclass(frozen=True)
+class Declaracion:
+    capacidades: tuple[str, ...] = ()
+    # Path relative to the repository root (``eval_data/modulos/<clave>.jsonl``); None: no evaluation (flagged).
+    evaluacion: str | None = None
+    # Minimum share of its cases the domain must pass (0..1) to count.
+    umbral_evaluacion: float = 1.0
+    ofrece: tuple[DatoOfrecido, ...] = ()
+    pide: tuple[DatoPedido, ...] = ()
+
+
+@dataclass(frozen=True)
 class Ganchos:
     version: int = 2
     obligatorio: bool = False
@@ -119,6 +159,7 @@ class Ganchos:
     entradas: Mapping[str, str] = field(default_factory=dict)
     capacidades: tuple[str, ...] = ()
     fuentes_vigiladas_aparte: bool = False
+    declaracion: Declaracion = field(default_factory=Declaracion)
 
     @property
     def directas(self) -> tuple[str, ...]:
@@ -222,6 +263,10 @@ def ganchos_de(modulo: Any) -> Ganchos:
     return desde_v1(modulo)
 
 
+def declaracion_de(modulo: Any) -> Declaracion:
+    return ganchos_de(modulo).declaracion
+
+
 def es_v2(modulo: Any) -> bool:
     return isinstance(getattr(modulo, "ganchos", None), Ganchos)
 
@@ -295,6 +340,9 @@ def destino_de_entrada(tipo: str, modulos: Sequence[Any]) -> tuple[Any, str, str
 __all__ = [
     "TAREAS_DIARIAS_V1",
     "TODOS",
+    "DatoOfrecido",
+    "DatoPedido",
+    "Declaracion",
     "Ganchos",
     "GanchosAgente",
     "GanchosBandeja",
@@ -302,6 +350,7 @@ __all__ = [
     "GanchosEventos",
     "Puente",
     "PuenteAmbito",
+    "declaracion_de",
     "desde_v1",
     "destino_de_entrada",
     "directas_de",
