@@ -162,3 +162,39 @@ def test_boe_seed_retries_on_transient_failure(catalog_path: Path, tmp_path: Pat
     assert result.exit_code == 0, result.output
     assert (tmp_path / "out" / "2026-01-15" / "boe-flaky" / "BOE-X-9999.html").exists()
     assert len(attempts) == 2, "expected one retry on the transient TimeoutError"
+
+
+def test_boe_seed_one_bad_id_does_not_abort_the_run(
+    catalog_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A withdrawn ID used to abort the loop before the manifest was written."""
+
+    class _FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def read(self) -> bytes:
+            return b"<html><title>ok</title></html>"
+
+    def urlopen(req, timeout):  # noqa: ANN001
+        if req.full_url.endswith("BOE-X-0001"):
+            raise boe_seed.URLError("gone")
+        return _FakeResponse()
+
+    monkeypatch.setattr(boe_seed.urllib.request, "urlopen", urlopen)
+    monkeypatch.setattr(boe_seed.time, "sleep", lambda _s: None)
+
+    result = CliRunner().invoke(
+        boe_seed.cli,
+        ["--catalog", str(catalog_path), "--output-dir", str(tmp_path / "out"), "--snapshot-date", "2026-01-15"],
+    )
+    assert result.exit_code != 0
+    assert "BOE-X-0001" in result.output
+    out = tmp_path / "out" / "2026-01-15"
+    assert (out / "boe-test" / "BOE-X-0002.html").exists()
+    manifest = json.loads((out / "boe-seed-manifest.json").read_text())
+    assert [d["id"] for d in manifest["documents"]] == ["BOE-X-0002"]
+    assert [f["id"] for f in manifest["failed"]] == ["BOE-X-0001"]
