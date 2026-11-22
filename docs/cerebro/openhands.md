@@ -1,4 +1,7 @@
-# El cerebro sobre el SDK de OpenHands
+# El cerebro sobre el SDK de OpenHands (histórico)
+
+> Retirado por el [ADR 0006](../adr/0006-un-solo-runtime-propio.md): el adaptador, `CEREBRO_RUNTIME` y la
+> dependencia ya no existen. Este documento queda como registro de la auditoría que llevó a esa decisión.
 
 Este documento recoge la auditoría de `asistente/nucleo/agent/`: qué parte es fontanería, que puede delegarse en el
 SDK de OpenHands, y qué parte es lo propio del producto, que no se delega. También describe el adaptador que ya está

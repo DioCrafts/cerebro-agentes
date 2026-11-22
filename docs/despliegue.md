@@ -422,8 +422,8 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `RAGAS_JUDGE_MAX_TOKENS` | `1024` | Tokens del juez. |
 | `TOP_K` | `3` | Resultados de la cadena clásica. |
 | `MEMORY_KEY` | `chat_history` | Clave del historial en la cadena clásica. |
-| `RETRIEVAL_DECISION_THRESHOLD` | `0.45` | Umbral de similitud (decisión). |
-| `RETRIEVAL_EXPLAIN_THRESHOLD` | `0.35` | Umbral de similitud (explicación). |
+| `RETRIEVAL_DECISION_THRESHOLD` | `0.55` | Umbral de similitud (decisión). |
+| `RETRIEVAL_EXPLAIN_THRESHOLD` | `0.525` | Umbral de similitud (explicación; el del módulo fiscal). Calibrado en `docs/cerebro/benchmark-recuperacion.md`. |
 | `GROUNDING_MIN_CITATIONS` | `1` | Citas mínimas para responder. |
 | `GROUNDING_SNIPPET_CHARS` | `240` | Longitud de los fragmentos citados. |
 

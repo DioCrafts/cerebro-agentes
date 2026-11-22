@@ -1,7 +1,9 @@
-"""Model calls through the OpenHands SDK (``openhands.sdk.LLM``), metered against the budget.
+"""Model calls through the product's own provider layer (``LLMProvider``), metered against the budget.
 
-Every role is one ``LLM.completion`` call with a system and a user ``Message``; the answer is JSON. The same
-``LLM`` object (or one per role) is what the brain already configures; tests pass ``openhands.sdk.testing.TestLLM``.
+Every role is one turn without tools: a system prompt and a user message; the answer is JSON. The provider is the
+same kind the brain uses (``create_provider`` wrapped by ``medir``), so the research army's calls go through the
+usage table, the per-question budget and the configured routing like every other call (ADR 0006). Tests pass any
+object with ``start(...)`` returning a conversation whose ``step`` gives a turn with ``text`` and ``usage``.
 """
 
 from __future__ import annotations
@@ -11,44 +13,25 @@ import os
 import re
 from typing import Any
 
-os.environ.setdefault("OPENHANDS_SUPPRESS_BANNER", "1")
-
-from openhands.sdk import LLM, Message, TextContent  # noqa: E402
-
-from asistente.investigador.presupuesto import Contador, estimar_tokens  # noqa: E402
+from asistente.investigador.presupuesto import Contador, estimar_tokens
 
 _JSON = re.compile(r"\{.*\}", re.DOTALL)
+_TOKENS = ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens")
 
 
 class RespuestaInvalidaError(ValueError):
     pass
 
 
-def _texto(respuesta: Any) -> str:
-    return "".join(getattr(c, "text", "") for c in respuesta.message.content)
-
-
-def _uso(respuesta: Any) -> tuple[int | None, float | None]:
-    raw = getattr(respuesta, "raw_response", None)
-    usage = getattr(raw, "usage", None)
-    tokens = getattr(usage, "total_tokens", None) if usage is not None else None
-    coste = (getattr(raw, "_hidden_params", None) or {}).get("response_cost") if raw is not None else None
-    return (int(tokens) if tokens else None), (float(coste) if coste else None)
-
-
-def completar_json(llm: LLM, sistema: str, usuario: str, contador: Contador, *, max_salida: int = 2000) -> dict:
+def completar_json(llm: Any, sistema: str, usuario: str, contador: Contador, *, max_salida: int = 2000) -> dict:
     """One metered completion whose answer must be a JSON object."""
     previstos = estimar_tokens(sistema) + estimar_tokens(usuario) + max_salida
     contador.comprobar(previstos)
-    respuesta = llm.completion(
-        [
-            Message(role="system", content=[TextContent(text=sistema)]),
-            Message(role="user", content=[TextContent(text=usuario)]),
-        ]
-    )
-    texto = _texto(respuesta)
-    tokens, euros = _uso(respuesta)
-    contador.registrar(tokens or (estimar_tokens(sistema) + estimar_tokens(usuario) + estimar_tokens(texto)), euros)
+    turno = llm.start(system=sistema, tools=[], history=[], user_message=usuario).step(allow_tools=False)
+    texto = turno.text or ""
+    uso = getattr(turno, "usage", None) or {}
+    tokens = sum(int(uso.get(k, 0) or 0) for k in _TOKENS)
+    contador.registrar(tokens or (estimar_tokens(sistema) + estimar_tokens(usuario) + estimar_tokens(texto)), None)
     encontrado = _JSON.search(texto)
     if not encontrado:
         raise RespuestaInvalidaError("El modelo no devolvió JSON.")
@@ -61,8 +44,18 @@ def completar_json(llm: LLM, sistema: str, usuario: str, contador: Contador, *, 
     return datos
 
 
-def llm_por_defecto() -> LLM:
-    """An OpenHands LLM from the environment (``INVESTIGADOR_MODELO``, ``INVESTIGADOR_API_KEY`` / provider keys)."""
-    modelo = os.environ.get("INVESTIGADOR_MODELO", "anthropic/claude-sonnet-5-5")
-    clave = os.environ.get("INVESTIGADOR_API_KEY") or os.environ.get("ANTHROPIC_API_KEY")
-    return LLM(model=modelo, api_key=clave, usage_id="investigador")
+def llm_por_defecto() -> Any:
+    """The metered provider for the army (purpose ``investigador``).
+
+    ``INVESTIGADOR_MODELO`` pins a model; a ``proveedor/modelo`` value (``anthropic/claude-…``, the old LiteLLM
+    form) also picks the provider. Without it, the configured provider and model (``LLM_PROVIDER``…).
+    """
+    from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma.ops.consumo import medir
+
+    valor = os.environ.get("INVESTIGADOR_MODELO", "").strip()
+    nombre, _, modelo = valor.partition("/")
+    if not modelo:
+        nombre, modelo = "", valor
+    proveedor = create_provider(nombre or None, model=modelo or None)
+    return medir(proveedor, "investigador")

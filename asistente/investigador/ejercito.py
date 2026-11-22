@@ -1,6 +1,6 @@
 """The deep research army: planner → searchers/readers in parallel → critic (refutes) → writer (cites).
 
-Each model role is an OpenHands ``LLM`` (one for all or one per role). The searchers' tool is a
+Each model role is an ``LLMProvider`` (one for all or one per role). The searchers' tool is a
 :class:`~asistente.investigador.web.HerramientaWeb`. Facts are never taken on a model's word: findings keep only
 literal quotes from pages actually read, the critic can refute them, and the writer's claims are re-checked
 deterministically before they reach the report.

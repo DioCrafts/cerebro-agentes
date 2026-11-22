@@ -185,36 +185,8 @@ def run_subagent(
     max_steps: int,
     emit: Emit,
 ) -> SubagentRun:
-    """A bounded tool loop that ends in a memo, run by the active runtime (``CEREBRO_RUNTIME``).
-
-    ``openhands`` (default): the OpenHands SDK runs the loop (:mod:`asistente.nucleo.agent.openhands_runtime`);
-    ``propio``: the in-house loop below. Same arguments, same result, same guarantees.
-    """
-    from asistente.nucleo.agent import openhands_runtime
-
-    runner = openhands_runtime.run_subagent if openhands_runtime.runtime_activo() == "openhands" else run_subagent_propio
-    return runner(
-        provider,
-        agent=agent,
-        system=system,
-        toolbox=toolbox,
-        user_message=user_message,
-        max_steps=max_steps,
-        emit=emit,
-    )
-
-
-def run_subagent_propio(
-    provider: LLMProvider,
-    *,
-    agent: str,
-    system: str,
-    toolbox: ToolRunner,
-    user_message: str,
-    max_steps: int,
-    emit: Emit,
-) -> SubagentRun:
-    """The in-house bounded tool loop that ends in a memo (the subagent's last text turn).
+    """The bounded tool loop that ends in a memo (the subagent's last text turn), the one loop every sub-agent
+    of the brain goes through (ADR 0006: the in-house loop, no external agent runtime).
 
     A subagent that fails or produces nothing yields an empty memo: the team
     degrades to fewer inputs rather than failing the user's question.

@@ -177,15 +177,20 @@ API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "0"))
 
 # --- Retrieval thresholds ---------------------------------------------------
 # Cosine-similarity floor applied by the EmbeddingsFilter compressor in the
-# retrieval chain. The historical values (0.82 / 0.75) were tuned for OpenAI
-# embeddings; with the local Qwen3-Embedding (normalized cosine) those floors
-# over-filter and can starve the grounding gate, making it abstain even when
-# retrieval is good. The defaults below are lowered to bias toward recall.
-# Calibrate empirically per corpus/embedder with:
-#   uv run python -m asistente.plataforma.cli.benchmark_retrieval
-# and override via env when you have measured numbers.
-RETRIEVAL_DECISION_THRESHOLD = float(os.environ.get("RETRIEVAL_DECISION_THRESHOLD", "0.45"))
-RETRIEVAL_EXPLAIN_THRESHOLD = float(os.environ.get("RETRIEVAL_EXPLAIN_THRESHOLD", "0.35"))
+# retrieval chain: a chunk below it is dropped, and when none survives the
+# context is empty and the grounding gate abstains. ``explain`` is the profile
+# of ``create_openai_chain`` (the fiscal module, /qa); ``decision`` is stricter.
+# Calibrated on 22 Nov 2026 with Qwen3-Embedding-0.6B over data/faiss (five
+# laws + RIRPF + AEAT pages), 97 citation and 21 out-of-corpus queries:
+#   python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
+#     --indice data/faiss --real --umbrales 0.35,0.45,0.5,0.525,0.55,0.6
+# 0.525 maximises correct behaviour (right source in top-3 or abstention):
+# 62 % of out-of-corpus queries abstain (19 % at the old 0.45, 10 % at 0.35)
+# for 2 % false abstentions; 0.55 trades 8 % false abstentions for 71 %.
+# See docs/cerebro/benchmark-recuperacion.md. Re-run it when the embedder or
+# the corpus changes, and override via env meanwhile.
+RETRIEVAL_DECISION_THRESHOLD = float(os.environ.get("RETRIEVAL_DECISION_THRESHOLD", "0.55"))
+RETRIEVAL_EXPLAIN_THRESHOLD = float(os.environ.get("RETRIEVAL_EXPLAIN_THRESHOLD", "0.525"))
 
 # --- Agent (tool-using advisor) ---------------------------------------------
 # Which LLM drives the agent loop and the verifier:
@@ -467,9 +472,6 @@ INVESTIGACION_AGENTE = _env_bool("INVESTIGACION_AGENTE", default=False)
 # "hogar" (default): the household brain answers (it understands the request, consults the specialists and writes one
 # answer; the tax advisor is one of them). "fiscal": the single tax advisor exactly as it was (legacy mode).
 CEREBRO_MODO = os.environ.get("CEREBRO_MODO", "hogar")
-# Who runs the bounded agent loops (specialists, researchers, critic): "openhands" (default: the OpenHands SDK, see
-# asistente/nucleo/agent/openhands_runtime.py) or "propio" (the in-house loop in team.py). Guarantees are identical.
-CEREBRO_RUNTIME = os.environ.get("CEREBRO_RUNTIME", "openhands")
 # Below this confidence in what was asked (0..1) the brain asks one clarifying question instead of guessing.
 CEREBRO_UMBRAL_CONFIANZA = float(os.environ.get("CEREBRO_UMBRAL_CONFIANZA", "0.45"))
 # The small model (purpose cerebro:intencion) is asked only when the rules are not sure; false: rules only.

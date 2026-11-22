@@ -13,6 +13,7 @@ from asistente.ambitos.hipoteca.avisos import avisos_hipoteca
 from asistente.ambitos.hipoteca.herramientas import HERRAMIENTAS, pagos_del_ejercicio
 from asistente.ambitos.hipoteca.modelo import validar_prestamo
 from asistente.ambitos.hipoteca.normativa import cargar_normativa
+from asistente.nucleo.calculo.herramientas import instrucciones_calculo
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
 from asistente.nucleo.modulos.ganchos import DatoOfrecido, Declaracion, Ganchos, GanchosEventos, PuenteAmbito
@@ -91,7 +92,10 @@ INSTRUCCIONES = (
     "comisiones que calculas son máximos legales. Al comparar amortizar con invertir, usa solo la rentabilidad que "
     "dé el usuario, sin recomendar productos. La deducción por vivienda habitual (compras anteriores a 2013) es del "
     "módulo fiscal: menciónala y deriva el cálculo. No contrates, no envíes nada al banco: como mucho prepara un "
-    "borrador de solicitud para que el usuario lo envíe."
+    "borrador de solicitud para que el usuario lo envíe. Si el usuario da los datos del préstamo en la conversación "
+    "y no hay dato hipoteca_prestamo, no te pares a pedirlos: calcula con hipoteca_calculo_prestamo (supone tipo fijo; dilo, "
+    "y di que sin la escritura no se conocen comisiones ni revisiones), sin guardar nada."
+    + instrucciones_calculo("hipoteca", prestamo=True)
 )
 
 

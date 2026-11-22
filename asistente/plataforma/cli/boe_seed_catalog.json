@@ -287,6 +287,41 @@
       "label": "Ley 22/2009 — sistema de financiación de las comunidades autónomas (puntos de conexión)",
       "subdir": "boe-seed",
       "track": true
+    },
+    {
+      "id": "BOE-A-1993-25359",
+      "topic": "itpajd",
+      "label": "Real Decreto Legislativo 1/1993 — Texto refundido de la Ley del Impuesto sobre Transmisiones Patrimoniales y Actos Jurídicos Documentados (TRLITPAJD) — texto consolidado",
+      "subdir": "boe-leyes-fundamentales",
+      "track": true
+    },
+    {
+      "id": "BOE-A-2004-4527",
+      "topic": "irnr",
+      "label": "Real Decreto Legislativo 5/2004 — Texto refundido de la Ley del Impuesto sobre la Renta de no Residentes (TRLIRNR) — texto consolidado",
+      "subdir": "boe-leyes-fundamentales",
+      "track": true
+    },
+    {
+      "id": "BOE-A-2012-14696",
+      "topic": "facturacion",
+      "label": "Real Decreto 1619/2012 — Reglamento de obligaciones de facturación — texto consolidado",
+      "subdir": "boe-reglamentos-desarrollo",
+      "track": true
+    },
+    {
+      "id": "BOE-A-2005-14803",
+      "topic": "recaudacion",
+      "label": "Real Decreto 939/2005 — Reglamento General de Recaudación — texto consolidado",
+      "subdir": "boe-reglamentos-desarrollo",
+      "track": true
+    },
+    {
+      "id": "BOE-A-2004-18398",
+      "topic": "sanciones",
+      "label": "Real Decreto 2063/2004 — Reglamento general del régimen sancionador tributario — texto consolidado",
+      "subdir": "boe-reglamentos-desarrollo",
+      "track": true
     }
   ]
 }

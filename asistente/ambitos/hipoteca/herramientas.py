@@ -35,6 +35,7 @@ from asistente.ambitos.hipoteca.indices import BOE_DOC_URL, INDICES, Dato, Serie
 from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo
 from asistente.ambitos.hipoteca.normativa import Normativa, cargar_normativa
 from asistente.nucleo.agent.providers.base import ToolSpec
+from asistente.nucleo.calculo.herramientas import herramientas_de_modulo
 from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
 ZERO = Decimal(0)
@@ -822,4 +823,6 @@ HERRAMIENTAS: tuple[HerramientaModulo, ...] = (
         ),
         ejecutar=hipoteca_cambiar_banco,
     ),
+    # With the user's figures in the conversation, when the loan is not stored (fixed rate assumed, and said).
+    *herramientas_de_modulo("hipoteca", prestamo=True),
 )

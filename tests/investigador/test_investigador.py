@@ -1,19 +1,14 @@
-"""Deep research army with a simulated LLM (openhands.sdk.testing.TestLLM, one per role) and a simulated web."""
+"""Deep research army with a simulated provider (scripted JSON turns, one per role) and a simulated web."""
 
 from __future__ import annotations
 
 import json
-import os
+import threading
 
 import pytest
 
-os.environ.setdefault("OPENHANDS_SUPPRESS_BANNER", "1")
-pytest.importorskip("openhands.sdk")
-
-from openhands.sdk import Message, TextContent  # noqa: E402
-from openhands.sdk.testing import TestLLM  # noqa: E402
-
-from asistente.investigador import Documento, Presupuesto, investigar  # noqa: E402
+from asistente.investigador import Documento, Presupuesto, investigar
+from asistente.nucleo.agent.providers.base import ModelTurn
 
 PAGINA_IVA = (
     "Tipos de IVA en España. El tipo general del IVA es del 21 por ciento. "
@@ -35,10 +30,32 @@ class WebFalsa:
         return self.paginas.get(pregunta, [])[:max_lecturas]
 
 
-def _llm(*respuestas: dict) -> TestLLM:
-    return TestLLM.from_messages(
-        [Message(role="assistant", content=[TextContent(text=json.dumps(r, ensure_ascii=False))]) for r in respuestas]
-    )
+class ProveedorGuionado:
+    """An ``LLMProvider`` stand-in: each ``start(...).step()`` returns the next scripted JSON answer."""
+
+    name = "anthropic"
+    model = "claude-prueba"
+
+    def __init__(self, respuestas: list[dict]):
+        self._respuestas = list(respuestas)
+        self._lock = threading.Lock()
+        self.vistos: list[str] = []
+
+    def start(self, *, system, tools, history, user_message):
+        with self._lock:
+            self.vistos.append(f"{system} {user_message}")
+        return self
+
+    def step(self, *, allow_tools=True, on_text=None):
+        with self._lock:
+            if not self._respuestas:
+                raise AssertionError("ProveedorGuionado sin más respuestas")
+            texto = json.dumps(self._respuestas.pop(0), ensure_ascii=False)
+        return ModelTurn(text=texto, tool_calls=[], stop_reason="end")  # no usage: the meter estimates
+
+
+def _llm(*respuestas: dict) -> ProveedorGuionado:
+    return ProveedorGuionado(list(respuestas))
 
 
 def _web() -> WebFalsa:
@@ -109,18 +126,10 @@ def test_marcar_en_vez_de_eliminar():
 
 def test_inyeccion_neutralizada_antes_del_modelo():
     lector = _llm(*LECTURAS)
-    vistos = []
-    original = lector.completion
-
-    def espia(mensajes, *a, **kw):
-        vistos.append(" ".join(c.text for m in mensajes for c in m.content))
-        return original(mensajes, *a, **kw)
-
-    object.__setattr__(lector, "completion", espia)
     investigar("¿IVA?", _presupuesto(), web=_web(), llm={
         "planificador": _llm(PLAN), "lector": lector, "critico": _llm(CRITICA),
         "redactor": _llm({"resumen": "", "afirmaciones": []})})
-    texto = " ".join(vistos)
+    texto = " ".join(lector.vistos)
     assert "Ignore all previous instructions" not in texto
     assert "<contenido_web" in texto and "NO CONFIABLES" in texto
 
@@ -299,3 +308,18 @@ def test_lector_local_decodifica_utf8_sin_charset_declarado():
 
     assert w._decodificar("Exención".encode(), "text/html") == "Exención"
     assert w._decodificar("Exención".encode("latin-1"), "text/html; charset=iso-8859-1") == "Exención"
+
+
+def test_completar_json_cuenta_los_tokens_que_informa_el_proveedor():
+    from asistente.investigador.llm import completar_json
+    from asistente.investigador.presupuesto import Contador
+
+    class ConUso(ProveedorGuionado):
+        def step(self, *, allow_tools=True, on_text=None):
+            turno = super().step(allow_tools=allow_tools)
+            return ModelTurn(text=turno.text, tool_calls=[], stop_reason="end",
+                             usage={"input_tokens": 1200, "output_tokens": 300})
+
+    contador = Contador(Presupuesto())
+    assert completar_json(ConUso([{"ok": 1}]), "sistema", "usuario", contador) == {"ok": 1}
+    assert contador.coste.tokens == 1500

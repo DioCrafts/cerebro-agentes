@@ -41,8 +41,9 @@ def test_retrieval_threshold_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
 
     reloaded = importlib.reload(settings)
 
-    assert reloaded.RETRIEVAL_DECISION_THRESHOLD == 0.45
-    assert reloaded.RETRIEVAL_EXPLAIN_THRESHOLD == 0.35
+    # Calibrated with benchmark_recuperacion_fiscal (docs/cerebro/benchmark-recuperacion.md).
+    assert reloaded.RETRIEVAL_DECISION_THRESHOLD == 0.55
+    assert reloaded.RETRIEVAL_EXPLAIN_THRESHOLD == 0.525
     # decision favours precision; explain favours recall.
     assert reloaded.RETRIEVAL_DECISION_THRESHOLD > reloaded.RETRIEVAL_EXPLAIN_THRESHOLD
 
