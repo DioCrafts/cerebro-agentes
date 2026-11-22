@@ -146,6 +146,11 @@ FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", ".faiss")
 FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
 MEMORY_KEY = os.environ.get("MEMORY_KEY", "chat_history")
 TOP_K = int(os.environ.get("TOP_K", "3"))
+# Recuperador experimental del módulo fiscal: ``faiss`` (por defecto, el
+# pipeline denso/BM25 de siempre), ``pageindex`` (navegación en árbol sin
+# vectores) o ``hibrido`` (FAISS/BM25 elige documento, el árbol la sección).
+# Ver docs/cerebro/benchmark-recuperacion.md.
+FISCAL_RECUPERADOR = os.environ.get("FISCAL_RECUPERADOR", "faiss").strip().lower()
 
 DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")

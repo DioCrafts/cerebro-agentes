@@ -26,6 +26,7 @@ from asistente.plataforma.settings import (
     BM25_K,
     FAISS_INDEX_PATH,
     FAISS_TRUSTED_INDEX,
+    FISCAL_RECUPERADOR,
     GROUNDING_MIN_CITATIONS,
     GROUNDING_SNIPPET_CHARS,
     OPENAI_MODEL,
@@ -221,6 +222,18 @@ def _create_retriever(
 
         reranker = MLXReranker(model_path=RERANKER_MODEL, top_k=RERANKER_TOP_K)
         compressed = ContextualCompressionRetriever(base_retriever=compressed, base_compressor=reranker)
+    if FISCAL_RECUPERADOR != "faiss":
+        # Experimental (flag): navegación en árbol estilo PageIndex sobre los
+        # mismos chunks del docstore. Con ``faiss`` (defecto) no se toca nada.
+        from asistente.conocimiento.llm.arbol import SelectorLLM, envolver_recuperador
+
+        compressed = envolver_recuperador(
+            FISCAL_RECUPERADOR,
+            compressed,
+            list(faiss.docstore._dict.values()),  # type: ignore[attr-defined]
+            SelectorLLM(llm),
+            k=TOP_K,
+        )
     return SanitizingRetriever(inner=compressed)
 
 

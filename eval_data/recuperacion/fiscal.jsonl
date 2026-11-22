@@ -1,0 +1,32 @@
+{"id": "q-iva-deduccion-trimestre", "consulta": "¿Cómo se restan las cuotas de IVA soportado deducible del IVA devengado en la declaración trimestral?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "99"}, "origen": "eval_data/modulos/fiscal.jsonl#modelo-303-dos-tipos"}
+{"id": "q-iva-a-compensar", "consulta": "Si el IVA soportado supera al devengado en un trimestre, ¿puedo pedir la devolución o se compensa?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "115"}, "origen": "eval_data/modulos/fiscal.jsonl#modelo-303-a-compensar"}
+{"id": "q-devengo-irpf", "consulta": "¿Qué día se devenga el IRPF y cuál es el período impositivo?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "12"}, "origen": "eval_data/modulos/fiscal.jsonl#calendario-fin-de-ejercicio"}
+{"id": "q-130-dificil", "consulta": "¿Qué porcentaje de gastos de difícil justificación puede deducir un autónomo en estimación directa simplificada?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "30"}, "origen": "eval_data/modulos/fiscal.jsonl#modelo-130-gastos-dificil-justificacion"}
+{"id": "q-130-pago", "consulta": "¿Qué porcentaje del rendimiento neto se ingresa en el pago fraccionado trimestral de los autónomos?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "110"}, "origen": "eval_data/modulos/fiscal.jsonl#modelo-130-perdidas"}
+{"id": "q-isd-parentesco", "consulta": "¿Qué reducciones por parentesco hay en una herencia para descendientes y cónyuges?", "tipo": "cita", "espera": {"norma": "LISD", "articulo": "20"}, "origen": "eval_data/modulos/fiscal.jsonl#sucesion-madrid-bonificacion"}
+{"id": "q-residencia", "consulta": "¿Cuántos días tengo que estar en España para ser residente fiscal?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "9"}}
+{"id": "q-obligacion-declarar", "consulta": "Cobré de dos pagadores, ¿cuál es el límite para estar obligado a presentar la renta?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "96"}}
+{"id": "q-beckham", "consulta": "¿Durante cuántos años se aplica el régimen de trabajadores desplazados a territorio español?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "93"}}
+{"id": "q-reinversion", "consulta": "Vendo mi vivienda habitual y compro otra, ¿en qué plazo debo reinvertir para que no tribute la ganancia?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "38"}}
+{"id": "q-mayores-65", "consulta": "¿Está exenta la ganancia por vender la vivienda habitual si tengo más de 65 años?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "33"}}
+{"id": "q-gastos-trabajo", "consulta": "¿Qué gastos deducibles se restan del rendimiento íntegro del trabajo?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "19"}}
+{"id": "q-dividendos-irpf", "consulta": "¿Los dividendos de acciones son rendimientos del capital mobiliario?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "25"}}
+{"id": "q-alquiler-gastos", "consulta": "¿Qué gastos puedo deducir de los ingresos por alquiler de un piso?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "23"}}
+{"id": "q-retenciones", "consulta": "¿Quién está obligado a practicar retenciones a cuenta del IRPF?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "99"}}
+{"id": "q-suministros-autonomo", "consulta": "¿Qué porcentaje de los suministros de casa puede deducir un autónomo que trabaja en su vivienda?", "tipo": "cita", "espera": {"norma": "LIRPF", "articulo": "30"}}
+{"id": "q-iva-tipo-reducido", "consulta": "¿Qué tipo de IVA se aplica al pan, los libros y los medicamentos?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "91"}}
+{"id": "q-iva-exento-alquiler", "consulta": "¿El alquiler de una vivienda está exento de IVA?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "20"}}
+{"id": "q-iva-base", "consulta": "¿Qué forma la base imponible del IVA?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "78"}}
+{"id": "q-iva-factura", "consulta": "¿Qué obligaciones de facturación y registros tiene un sujeto pasivo de IVA?", "tipo": "cita", "espera": {"norma": "LIVA", "articulo": "164"}}
+{"id": "q-is-tipo", "consulta": "¿Cuál es el tipo de gravamen del Impuesto sobre Sociedades para una empresa de nueva creación?", "tipo": "cita", "espera": {"norma": "LIS", "articulo": "29"}}
+{"id": "q-is-dividendos", "consulta": "¿Qué participación mínima hace falta para la exención de dividendos en Sociedades?", "tipo": "cita", "espera": {"norma": "LIS", "articulo": "21"}}
+{"id": "q-prescripcion", "consulta": "¿En cuántos años prescribe el derecho de Hacienda a liquidar una deuda tributaria?", "tipo": "cita", "espera": {"norma": "LGT", "articulo": "66"}}
+{"id": "q-recargo", "consulta": "Presenté la autoliquidación fuera de plazo sin requerimiento, ¿qué recargo me aplican?", "tipo": "cita", "espera": {"norma": "LGT", "articulo": "27"}}
+{"id": "q-sancion", "consulta": "¿Qué infracción comete quien deja de ingresar la deuda de una autoliquidación?", "tipo": "cita", "espera": {"norma": "LGT", "articulo": "191"}}
+{"id": "q-empresa-familiar", "consulta": "¿Qué reducción tiene la herencia de una empresa familiar en Sucesiones?", "tipo": "cita", "espera": {"norma": "LISD", "articulo": "20"}}
+{"id": "a-multa-trafico", "consulta": "¿Cómo recurro una multa de tráfico por exceso de velocidad?", "tipo": "abstencion", "origen": "eval_data/modulos/fiscal.jsonl#sucesion-sin-parentesco"}
+{"id": "a-ibi", "consulta": "¿Cuándo se paga el IBI de mi ayuntamiento?", "tipo": "abstencion"}
+{"id": "a-hipoteca-tipo", "consulta": "¿Me conviene una hipoteca a tipo fijo o variable?", "tipo": "abstencion"}
+{"id": "a-paro", "consulta": "¿Cuántos meses de paro me corresponden si me despiden?", "tipo": "abstencion"}
+{"id": "a-patrimonio-2019", "consulta": "¿Cuáles eran los parámetros del Impuesto sobre el Patrimonio en 2019?", "tipo": "abstencion", "origen": "eval_data/modulos/fiscal.jsonl#patrimonio-ejercicio-sin-parametros"}
+{"id": "a-luz", "consulta": "¿Qué tarifa de la luz es más barata por la noche?", "tipo": "abstencion"}
