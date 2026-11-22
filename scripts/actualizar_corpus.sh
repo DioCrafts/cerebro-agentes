@@ -41,6 +41,10 @@ if [[ -f "$REPO/.env" ]]; then
 fi
 # faiss y docling enlazan cada uno su libomp en macOS.
 export KMP_DUPLICATE_LIB_OK=TRUE
+# El modo incremental deserializa $INDEX_DIR (pickle) y se niega sin esta marca
+# (docs/seguridad.md, S-17). Aquí el índice es el que construye este mismo script;
+# si INDEX_DIR apunta a un índice de otra procedencia, exporta FAISS_TRUSTED_INDEX=false.
+export FAISS_TRUSTED_INDEX="${FAISS_TRUSTED_INDEX:-true}"
 
 if [[ -z "${SNAPSHOT:-}" ]]; then
   SNAPSHOT="$(find "$CONTENT_DIR" -mindepth 1 -maxdepth 1 -type d -name '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \
