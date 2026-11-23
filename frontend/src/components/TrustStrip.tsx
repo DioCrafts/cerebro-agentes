@@ -1,14 +1,17 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// The verdict banner above every answer: how far this answer can be trusted,
-// in one line plus a plain-language explanation.
-
-import { AlertCircle, CheckCircle2, HelpCircle, ShieldAlert } from "lucide-react";
-import clsx from "clsx";
+// How far an answer can be trusted, in one line plus a plain-language explanation. In GitHub's terms it is the
+// state of the answer, so it is a StateLabel (green: verified; amber: partly or not verified; grey: needs a datum).
 
 import type { AnswerMode } from "../api";
 import { TRUST } from "../lib/presentation";
+import type { Icon } from "../ui/iconos";
+import { AlertIcon, CheckCircleIcon, QuestionIcon, ShieldIcon } from "../ui/iconos";
+import { EtiquetaEstado, type TonoEstado } from "./conversacion/EtiquetaEstado";
 
-const ICON_BY_CLS = { cited: CheckCircle2, uncited: AlertCircle, abstain: ShieldAlert } as const;
+const ESTILO: Record<"cited" | "uncited" | "abstain", { tono: TonoEstado; icono: Icon }> = {
+  cited: { tono: "exito", icono: CheckCircleIcon },
+  uncited: { tono: "atencion", icono: AlertIcon },
+  abstain: { tono: "neutro", icono: ShieldIcon },
+};
 
 interface TrustStripProps {
   mode: AnswerMode;
@@ -18,42 +21,17 @@ interface TrustStripProps {
 
 export function TrustStrip({ mode, detail }: TrustStripProps) {
   const copy = TRUST[mode];
-  const Icon = mode === "clarification" ? HelpCircle : ICON_BY_CLS[copy.cls];
+  const estilo = ESTILO[copy.cls];
+  const Icono = mode === "clarification" ? QuestionIcon : estilo.icono;
   return (
-    <div
-      role="status"
-      className={clsx(
-        "mt-4 flex items-start gap-3 rounded-xl border px-4 py-3",
-        copy.cls === "cited" && "border-grounding-cited-bd bg-grounding-cited-bg",
-        copy.cls === "uncited" && "border-grounding-uncited-bd bg-grounding-uncited-bg",
-        copy.cls === "abstain" && "border-grounding-abstain-bd bg-grounding-abstain-bg",
-      )}
-    >
-      <Icon
-        size={20}
-        aria-hidden
-        strokeWidth={2.25}
-        className={clsx(
-          "mt-0.5 shrink-0",
-          copy.cls === "cited" && "text-grounding-cited-fg",
-          copy.cls === "uncited" && "text-grounding-uncited-fg",
-          copy.cls === "abstain" && "text-grounding-abstain-fg",
-        )}
-      />
-      <div className="min-w-0">
-        <p
-          className={clsx(
-            "text-[14.5px] font-bold leading-snug",
-            copy.cls === "cited" && "text-grounding-cited-fg",
-            copy.cls === "uncited" && "text-grounding-uncited-fg",
-            copy.cls === "abstain" && "text-grounding-abstain-fg",
-          )}
-        >
+    <div role="status" className="mt-4 flex flex-col gap-1">
+      <p className="m-0 flex flex-wrap items-center gap-2">
+        <EtiquetaEstado tono={estilo.tono} size="medium" visual={<Icono />}>
           {copy.label}
-          {detail && <span className="font-medium"> · {detail}</span>}
-        </p>
-        <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{copy.short}</p>
-      </div>
+        </EtiquetaEstado>
+        {detail && <span className="font-semibold text-fg-default">{detail}</span>}
+      </p>
+      <p className="m-0 text-xs text-fg-muted">{copy.short}</p>
     </div>
   );
 }

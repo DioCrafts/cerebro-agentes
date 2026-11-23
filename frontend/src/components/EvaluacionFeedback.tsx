@@ -1,16 +1,19 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Feedback under each answer: 👍 / 👎 and «Corregir» (what was wrong, and optionally the right answer or
 // figure). Storing the conversation for evaluation is a separate, unticked checkbox with its consent text,
 // for THIS answer only; without it only the vote is recorded (unless the user switched on «aprender de los
 // fallos» for the case, in «Revisión de casos»). A stored 👎 becomes a masked candidate case the user can
 // review there; a stored conversation can be withdrawn here.
+//
+// It sits in the footer of the answer's comment, like GitHub's reactions: two icon buttons and «Corregir», which
+// opens a small form in a Box (Primer FormControl, RadioGroup, Textarea, Checkbox).
 
-import { PencilLine, ThumbsDown, ThumbsUp } from "lucide-react";
 import { useState } from "react";
 
 import { ApiError } from "../api";
 import type { ConsentimientoEvaluacion, FeedbackRespuesta, TipoCorreccion } from "../apiEvaluacion";
 import { enviarFeedback, getConsentimientoEvaluacion, retirarFeedback } from "../apiEvaluacion";
+import { Button, Checkbox, Flash, FormControl, IconButton, Radio, RadioGroup, Textarea, TextInput } from "../ui";
+import { PencilIcon, ThumbsdownIcon, ThumbsupIcon } from "../ui/iconos";
 
 interface Props {
   caseId: string | null;
@@ -89,128 +92,85 @@ export function EvaluacionFeedback({ caseId, question, answer }: Props) {
 
   if (estado === "enviado" && resultado) {
     return (
-      <div role="status" className="mt-2 text-[12.5px] text-muted">
-        {retirado ? "Has retirado la conversación: ya no se guarda para evaluación ni como caso a revisar." : resultado.mensaje}
+      <div role="status" className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+        <span>{retirado ? "Has retirado la conversación: ya no se guarda para evaluación ni como caso a revisar." : resultado.mensaje}</span>
         {resultado.guardado_para_evaluacion && !retirado && (
-          <button type="button" onClick={retirar} className="ml-2 font-semibold text-ink-soft underline hover:text-ink">
+          <Button size="small" variant="invisible" onClick={retirar}>
             Retirar
-          </button>
+          </Button>
         )}
-        {error && <span className="ml-2 text-risk-high-fg">{error}</span>}
+        {error && <span className="text-fg-danger">{error}</span>}
       </div>
     );
   }
 
-  const botonBase =
-    "inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-[12.5px] font-medium text-muted transition hover:bg-line/60 hover:text-ink-soft disabled:cursor-not-allowed disabled:opacity-50";
   const tipos = consentimiento?.tipos ?? TIPOS_POR_DEFECTO;
+  const ocupado = estado === "enviando";
 
   return (
-    <div className="mt-2">
-      <div className="flex flex-wrap items-center gap-1" aria-label="Valora esta respuesta">
-        <span className="mr-1 text-[12.5px] text-muted">¿Te ha sido útil?</span>
-        <button type="button" className={botonBase} disabled={estado === "enviando"} onClick={() => enviar("positiva")} aria-label="Sí, útil">
-          <ThumbsUp size={14} aria-hidden />
-        </button>
-        <button type="button" className={botonBase} disabled={estado === "enviando"} onClick={abrirFormulario} aria-label="No, no es correcta">
-          <ThumbsDown size={14} aria-hidden />
-        </button>
-        <button type="button" className={botonBase} disabled={estado === "enviando"} onClick={abrirFormulario}>
-          <PencilLine size={14} aria-hidden />
+    <div>
+      <div role="group" className="flex flex-wrap items-center gap-1" aria-label="Valora esta respuesta">
+        <span className="mr-1 text-xs text-fg-muted">¿Te ha sido útil?</span>
+        <IconButton icon={ThumbsupIcon} size="small" variant="invisible" disabled={ocupado} onClick={() => enviar("positiva")} aria-label="Sí, útil" />
+        <IconButton icon={ThumbsdownIcon} size="small" variant="invisible" disabled={ocupado} onClick={abrirFormulario} aria-label="No, no es correcta" />
+        <Button size="small" variant="invisible" leadingVisual={PencilIcon} disabled={ocupado} onClick={abrirFormulario}>
           Corregir
-        </button>
+        </Button>
       </div>
 
-      {(estado === "formulario" || estado === "enviando") && (
+      {(estado === "formulario" || ocupado) && (
         <form
-          className="mt-2 flex flex-col gap-2.5 rounded-xl border border-line bg-surface px-4 py-3 text-[13px] text-ink shadow-card"
+          aria-label="Corregir la respuesta"
+          className="mt-2 flex flex-col gap-3 rounded-medium border border-border-default bg-canvas-default p-4"
           onSubmit={(event) => {
             event.preventDefault();
             enviar("negativa");
           }}
         >
-          <fieldset className="flex flex-col gap-1">
-            <legend className="mb-1 font-semibold">¿Qué estaba mal?</legend>
+          <RadioGroup name="tipo-correccion" onChange={(valor) => setTipo(valor as TipoCorreccion | null)}>
+            <RadioGroup.Label>¿Qué estaba mal?</RadioGroup.Label>
             {tipos.map((t) => (
-              <label key={t.clave} className="flex items-center gap-2">
-                <input type="radio" name="tipo-correccion" checked={tipo === t.clave} onChange={() => setTipo(t.clave)} />
-                {t.etiqueta}
-              </label>
+              <FormControl key={t.clave}>
+                <Radio value={t.clave} checked={tipo === t.clave} onChange={() => setTipo(t.clave)} />
+                <FormControl.Label>{t.etiqueta}</FormControl.Label>
+              </FormControl>
             ))}
-          </fieldset>
-          <label className="flex flex-col gap-1">
-            <span className="font-semibold">Explícalo (opcional)</span>
-            <textarea
-              value={comentario}
-              onChange={(e) => setComentario(e.target.value)}
-              maxLength={2000}
-              rows={2}
-              className="rounded-lg border border-line bg-paper px-2 py-1.5"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-semibold">Respuesta correcta (opcional)</span>
-            <textarea
-              value={respuestaCorrecta}
-              onChange={(e) => setRespuestaCorrecta(e.target.value)}
-              maxLength={4000}
-              rows={2}
-              className="rounded-lg border border-line bg-paper px-2 py-1.5"
-            />
-          </label>
-          <label className="flex flex-col gap-1">
-            <span className="font-semibold">Cifra correcta (opcional)</span>
-            <input
-              value={cifraCorrecta}
-              onChange={(e) => setCifraCorrecta(e.target.value)}
-              maxLength={100}
-              placeholder="p. ej. 1.234,56 €"
-              className="rounded-lg border border-line bg-paper px-2 py-1.5"
-            />
-          </label>
+          </RadioGroup>
+          <FormControl>
+            <FormControl.Label>Explícalo (opcional)</FormControl.Label>
+            <Textarea block value={comentario} onChange={(e) => setComentario(e.target.value)} maxLength={2000} rows={2} />
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Respuesta correcta (opcional)</FormControl.Label>
+            <Textarea block value={respuestaCorrecta} onChange={(e) => setRespuestaCorrecta(e.target.value)} maxLength={4000} rows={2} />
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Cifra correcta (opcional)</FormControl.Label>
+            <TextInput value={cifraCorrecta} onChange={(e) => setCifraCorrecta(e.target.value)} maxLength={100} placeholder="p. ej. 1.234,56 €" />
+          </FormControl>
           {caseId ? (
-            <label className="flex items-start gap-2 rounded-lg bg-paper px-3 py-2">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={guardar}
-                disabled={consentimiento === null}
-                onChange={(e) => setGuardar(e.target.checked)}
-              />
-              <span className="text-[12.5px] leading-snug text-ink-soft">
+            <FormControl disabled={consentimiento === null}>
+              <Checkbox checked={guardar} onChange={(e) => setGuardar(e.target.checked)} />
+              <FormControl.Label className="font-normal!">
                 {consentimiento?.texto ?? "Cargando las condiciones para guardar la conversación…"}
-              </span>
-            </label>
+              </FormControl.Label>
+            </FormControl>
           ) : (
-            <p className="text-[12.5px] text-muted">Sin expediente solo se registra tu valoración, no la conversación.</p>
+            <p className="m-0 text-xs text-fg-muted">Sin expediente solo se registra tu valoración, no la conversación.</p>
           )}
-          {error && (
-            <p role="alert" className="text-[12.5px] text-risk-high-fg">
-              {error}
-            </p>
-          )}
+          {error && <Flash variant="danger" role="alert">{error}</Flash>}
           <div className="flex gap-2">
-            <button
-              type="submit"
-              disabled={estado === "enviando"}
-              className="rounded-lg bg-navy px-3 py-1.5 text-[13px] font-semibold text-white disabled:opacity-50"
-            >
-              {estado === "enviando" ? "Enviando…" : "Enviar"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEstado("inicio")}
-              className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-line/60"
-            >
-              Cancelar
-            </button>
+            <Button type="submit" variant="primary" disabled={ocupado} loading={ocupado}>
+              Enviar
+            </Button>
+            <Button onClick={() => setEstado("inicio")}>Cancelar</Button>
           </div>
         </form>
       )}
       {estado === "inicio" && error && (
-        <p role="alert" className="mt-1 text-[12.5px] text-risk-high-fg">
+        <Flash variant="danger" role="alert" className="mt-2">
           {error}
-        </p>
+        </Flash>
       )}
     </div>
   );
