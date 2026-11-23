@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -153,6 +153,7 @@ class ServicioGuardado(_Modelo):
     sector: Sector
     periodicidad: Periodicidad
     importe: Decimal  # last charge, positive
+    divisa: str = Field(default="EUR", pattern=r"^[A-Z]{3}$")  # of ``importe``; totals only add EUR
     importe_variable: bool = False
     medio: Medio = "desconocido"
     primera_fecha: date
@@ -167,7 +168,7 @@ class ServicioGuardado(_Modelo):
 
     @property
     def coste_anual(self) -> Decimal:
-        return (self.importe * CARGOS_POR_ANO[self.periodicidad]).quantize(Decimal("0.01"))
+        return (self.importe * CARGOS_POR_ANO[self.periodicidad]).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
 
 class ServiciosGuardados(_Modelo):

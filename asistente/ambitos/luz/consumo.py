@@ -36,6 +36,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_valida
 
 from asistente.ambitos.luz.datos import PERIODOS
 from asistente.ambitos.luz.periodos import ZONAS, Zona, hora_local, horas_del_dia, periodo_energia
+from asistente.ambitos.numeros import importe
 
 DIAS_GUARDADOS = 400
 DIAS_HORARIOS = 62
@@ -82,12 +83,10 @@ def _columna(cabecera: list[str], *claves: str, excluir: tuple[str, ...] = ()) -
 
 
 def _decimal(texto: str) -> Decimal:
-    t = texto.strip().replace(" ", "")
-    if "," in t and "." in t:  # 1.234,5 -> 1234.5
-        t = t.replace(".", "").replace(",", ".")
-    else:
-        t = t.replace(",", ".")
-    return Decimal(t)
+    numero = importe(texto, coma_decimal=True)
+    if numero is None:
+        raise InvalidOperation(f"no es un número: «{texto}»")
+    return numero
 
 
 def _fecha(texto: str) -> date:
@@ -347,11 +346,27 @@ def compactar(
         for lectura in del_mes:
             h = hora_local(lectura.fecha, lectura.indice, zona)
             perfil[h] += lectura.kwh
-        meses[mes] = ResumenMes(
-            kwh=sum((x.kwh for x in del_mes), Decimal(0)),
-            max_kwh_hora=max((x.kwh for x in del_mes), default=Decimal(0)),
-            perfil=perfil,
-        )
+        kwh_mes = sum((x.kwh for x in del_mes), Decimal(0))
+        max_hora = max((x.kwh for x in del_mes), default=Decimal(0))
+        anterior = meses.get(mes)
+        if anterior is not None and previo is not None:
+            # A second file with other days of the month adds to the summary instead of replacing it;
+            # days present in both are taken out of the old summary first (new days win).
+            base = list(anterior.perfil)
+            kwh_base = anterior.kwh
+            for dia in {x.fecha for x in del_mes}:
+                if dia in previo.horario:
+                    for i, kwh in enumerate(previo.horario[dia]):
+                        base[hora_local(dia, i, zona)] -= kwh
+                        kwh_base -= kwh
+                elif dia in previo.dias and anterior.kwh:
+                    viejo = sum(previo.dias[dia], Decimal(0))
+                    base = [b - b * viejo / anterior.kwh for b in base]
+                    kwh_base -= viejo
+            perfil = [max(Decimal(0), b) + p for b, p in zip(base, perfil, strict=True)]
+            kwh_mes += max(Decimal(0), kwh_base)
+            max_hora = max(max_hora, anterior.max_kwh_hora)
+        meses[mes] = ResumenMes(kwh=kwh_mes, max_kwh_hora=max_hora, perfil=perfil)
     if dias:
         ultimo = max(dias)
         dias = {d: v for d, v in dias.items() if (ultimo - d).days < DIAS_GUARDADOS}

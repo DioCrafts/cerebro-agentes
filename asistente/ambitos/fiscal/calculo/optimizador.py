@@ -52,7 +52,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from asistente.ambitos.fiscal.calculo.conjunta import _conjunta, hijos_comunes
-from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, _minimo_descendientes, calcular_irpf
+from asistente.ambitos.fiscal.calculo.irpf import (
+    IRPFInput,
+    IRPFResult,
+    _minimo_descendientes,
+    calcular_irpf,
+    importe_linea,
+)
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import (
     GASTOS_DESGLOSADOS,
     DeduccionCalculable,
@@ -464,10 +471,6 @@ def _alrededor(valor: Decimal) -> set[Decimal]:
     return {abajo - CENT, abajo, arriba, arriba + CENT}
 
 
-def _linea(result: IRPFResult, prefijo: str) -> Decimal:
-    return sum((line.importe for line in result.lineas if line.concepto.startswith(prefijo)), ZERO)
-
-
 def _fecha(dia: date) -> str:
     return dia.strftime("%d/%m/%Y")
 
@@ -505,7 +508,9 @@ def _valores_base(inp: IRPFInput, res: IRPFResult, p: IRPFParams) -> dict[str, D
     big, bia = res.base_imponible_general, res.base_imponible_ahorro
     blg, bla = res.base_liquidable_general, res.base_liquidable_ahorro
     bit, blt, minimo = big + bia, blg + bla, res.minimo_personal_familiar
-    alquiler = inp.rendimiento_alquiler_vivienda_sin_reducir + _linea(res, "Reducción por arrendamiento de vivienda")
+    alquiler = inp.rendimiento_alquiler_vivienda_sin_reducir + importe_linea(
+        res, ClaveLinea.REDUCCION_ARRENDAMIENTO_VIVIENDA
+    )
     otras = sum(
         (
             max(ZERO, v)
@@ -925,8 +930,8 @@ class _Optimizador:
 
     def _rendimientos_para_limite(self, inp: IRPFInput, res: IRPFResult) -> Decimal:
         """Net work income before the art. 20 reduction plus net activity income, as calcular_irpf caps on."""
-        neto = _linea(res, "Rendimiento neto reducido del trabajo")
-        reduccion = -_linea(res, "Reducción por obtención de rendimientos del trabajo")
+        neto = importe_linea(res, ClaveLinea.RENDIMIENTO_NETO_TRABAJO)
+        reduccion = -importe_linea(res, ClaveLinea.REDUCCION_TRABAJO)
         return neto + reduccion + inp.rendimiento_actividad_neto
 
     def _max_pension(self, i: int) -> Decimal:
@@ -1971,7 +1976,9 @@ class _Optimizador:
                     opcion=(
                         self._hogar(optimo).tributacion
                         if tipo == "modo"
-                        else optimo.donativo[0] if tipo == "donativo" and optimo.donativo else None
+                        else optimo.donativo[0]
+                        if tipo == "donativo" and optimo.donativo
+                        else None
                     ),
                     naturaleza=naturalezas[tipo],
                     compromiso=compromiso,

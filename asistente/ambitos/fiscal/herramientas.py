@@ -119,6 +119,17 @@ def _cifras_del_conyuge(guardado: Any, pedido: dict[str, Any] | None) -> tuple[d
     return cifras, [f"Cónyuge B: cifras guardadas en el expediente — {resumen_conyuge(base, usados)}."]
 
 
+def _ejercicio_explicito(valor: Any) -> int | None:
+    """An explicit fiscal year: an int or a numeric text («2025»); None when not given; error when unreadable."""
+    if valor is None or valor == "":
+        return None
+    if isinstance(valor, int) and not isinstance(valor, bool):
+        return valor
+    if isinstance(valor, str) and re.fullmatch(r"\s*\d{4}\s*", valor):
+        return int(valor)
+    raise DatosInvalidosError(f"'ejercicio' debe ser un año de cuatro cifras (recibido: {valor!r}).")
+
+
 class EjecucionFiscal:
     """One tool call's state: the evidence ledger it registers its fragments in and the case it reads."""
 
@@ -157,7 +168,7 @@ class EjecucionFiscal:
                 ComparacionInput,
                 comparar_autonomo_vs_sociedad,
                 "Autónomo frente a sociedad",
-                [2025, 2026],
+                sorted(set(ejercicios_sociedades_disponibles()) & set(ejercicios_disponibles())),
                 "sociedades",
             ),
             PATRIMONIO_TOOL.name: lambda a: self._calculadora(
@@ -192,13 +203,28 @@ class EjecucionFiscal:
         if not isinstance(datos, dict):
             raise DatosInvalidosError("'datos' debe ser un objeto {campo: valor}.")
         facts = {fact.name: fact.value for fact in self.case.facts} if self.case is not None else {}
-        raw_year = arguments.get("ejercicio")
-        if isinstance(raw_year, int) and not isinstance(raw_year, bool):
-            year = raw_year
-        else:
-            case_year = parse_fiscal_year(self.case.tax_period) if self.case is not None else None
-            year = case_year if case_year is not None else max(ejercicios_disponibles())
+        year = self._ejercicio(arguments.get("ejercicio"), ejercicios_disponibles(), "IRPF")
         return year, facts, datos
+
+    def _ejercicio(self, raw_year: Any, ejercicios: list[int], que: str) -> int:
+        """The fiscal year to compute: the one asked for («2025» as text counts), else the case's, else the latest.
+
+        A year without parameter files is never swapped for another one in silence: the year asked for goes to
+        the calculator, which rejects it with the list of loaded years, and a case year that is not loaded is
+        rejected here with the same message.
+        """
+        pedido = _ejercicio_explicito(raw_year)
+        if pedido is not None:
+            return pedido
+        case_year = parse_fiscal_year(self.case.tax_period) if self.case is not None else None
+        if case_year is None:
+            return max(ejercicios)
+        if case_year not in ejercicios:
+            raise EjercicioNoDisponibleError(
+                f"El caso es del ejercicio {case_year} y no hay parámetros de {que} cargados para ese año "
+                f"(disponibles: {', '.join(map(str, ejercicios))}). Indica un ejercicio disponible de forma explícita."
+            )
+        return case_year
 
     def _calculate(self, arguments: dict[str, Any]) -> ResultadoHerramienta:
         try:
@@ -282,9 +308,10 @@ class EjecucionFiscal:
     ) -> ResultadoHerramienta:
         """Shared handler of the deterministic calculators: validate, compute, register as evidence."""
         datos = dict(arguments)
-        if not isinstance(datos.get("ejercicio"), int) or isinstance(datos.get("ejercicio"), bool):
-            case_year = parse_fiscal_year(self.case.tax_period) if self.case is not None else None
-            datos["ejercicio"] = case_year if case_year in ejercicios else max(ejercicios)
+        try:
+            datos["ejercicio"] = self._ejercicio(datos.get("ejercicio"), ejercicios, titulo)
+        except (DatosInvalidosError, EjercicioNoDisponibleError) as exc:
+            return _error(str(exc))
         try:
             result = calcular(modelo(**datos))
         except ValidationError as exc:

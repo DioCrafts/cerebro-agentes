@@ -21,7 +21,7 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -136,7 +136,9 @@ def base_deducible(
     pagos: Mapping[str, Decimal | float | int | None], fundamento: FundamentoPuente | None = None
 ) -> Decimal:
     """Sum of :func:`importes_deducibles` to the cent (before the calculator's cap and rate)."""
-    return sum(importes_deducibles(pagos, fundamento).values(), Decimal(0)).quantize(Decimal("0.01"))
+    return sum(importes_deducibles(pagos, fundamento).values(), Decimal(0)).quantize(
+        Decimal("0.01"), rounding=ROUND_HALF_UP
+    )
 
 
 ORTOGRAFIA = Ortografia(leer_cifra=leer_cifra, frontera=FRONTERA_LIBRE)

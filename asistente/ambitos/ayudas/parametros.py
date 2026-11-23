@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from dataclasses import replace
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from functools import lru_cache
 import json
 from pathlib import Path
@@ -97,7 +97,9 @@ class IMV(Grupo):
     @property
     def renta_garantizada_individual(self) -> Decimal:
         """Monthly guaranteed income of one person living alone (art. 13.2.a)."""
-        return (self.pension_no_contributiva_anual * self.porcentaje_pnc / self.meses).quantize(Decimal("0.01"))
+        return (self.pension_no_contributiva_anual * self.porcentaje_pnc / self.meses).quantize(
+            Decimal("0.01"), rounding=ROUND_HALF_UP
+        )
 
     def escala(self, adultos: int, menores: int) -> Decimal:
         """Art. 13.2.b): +30 % per member from the second, up to 220 %."""
@@ -234,9 +236,28 @@ def load_prestaciones(ejercicio: int | None = None) -> PrestacionesParams:
 
 
 def ejercicio_para(hoy: date) -> int:
-    """The year whose figures apply on ``hoy``: that year if loaded, else the latest earlier one."""
+    """The year whose figures apply on ``hoy``: that year if loaded, else the latest earlier one.
+
+    Falling back to an earlier year is announced by :func:`aviso_ejercicio`; a date before every loaded year
+    has no figures at all and raises instead of borrowing a later year's.
+    """
     disponibles = [year for year in ejercicios_disponibles() if year <= hoy.year]
-    return max(disponibles) if disponibles else min(ejercicios_disponibles())
+    if not disponibles:
+        raise EjercicioNoDisponibleError(
+            f"No hay cifras de ayudas cargadas para {hoy.year} ni para años anteriores "
+            f"(disponibles: {', '.join(map(str, ejercicios_disponibles()))})."
+        )
+    return max(disponibles)
+
+
+def aviso_ejercicio(ejercicio: int, hoy: date) -> str | None:
+    """Explicit notice when the figures used are not those of ``hoy``'s year."""
+    if ejercicio == hoy.year:
+        return None
+    return (
+        f"Aviso: aún no hay cifras de ayudas cargadas para {hoy.year}; se usan las de {ejercicio}, "
+        "que pueden haber cambiado (umbrales e importes se actualizan cada año)."
+    )
 
 
 # --- Self-check of the data against the law ---------------------------------

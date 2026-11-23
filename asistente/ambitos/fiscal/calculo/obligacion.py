@@ -34,6 +34,7 @@ from typing import TYPE_CHECKING, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import IRPFParams, ObligacionDeclarar, load_params
 
 if TYPE_CHECKING:
@@ -48,8 +49,8 @@ Obligado = Literal["si", "no", "no_se_sabe"]
 TipoDato = Literal["si_no", "importe", "numero"]
 
 # Lines of ``calcular_irpf`` whose amount means a right that obliges to file when it is exercised.
-LINEA_REDUCCION_PREVISION = "Reducción por aportaciones a sistemas de previsión social"
-LINEA_VIVIENDA_TRANSITORIA = "Deducción por inversión en vivienda habitual (régimen transitorio)"
+LINEA_REDUCCION_PREVISION = ClaveLinea.REDUCCION_PREVISION_SOCIAL
+LINEA_VIVIENDA_TRANSITORIA = ClaveLinea.DEDUCCION_VIVIENDA_TRANSITORIA
 
 
 class _Model(BaseModel):
@@ -311,8 +312,8 @@ def _regla(clave: str, aplicacion: str) -> Regla:
     return Regla(referencia=cita.referencia, boe_id=cita.boe_id, cita=cita.texto, aplicacion=aplicacion)
 
 
-def _linea(resultado: IRPFResult, concepto: str) -> Decimal:
-    return sum((abs(linea.importe) for linea in resultado.lineas if linea.concepto == concepto), ZERO)
+def _linea(resultado: IRPFResult, clave: str) -> Decimal:
+    return sum((abs(linea.importe) for linea in resultado.lineas if linea.clave == clave), ZERO)
 
 
 _PREGUNTAS: dict[str, tuple[str, TipoDato]] = {
@@ -601,8 +602,7 @@ def _fuentes_exentas(c: _Contexto) -> tuple[_Estado, list[Regla]]:
         estado.cumple = False
         estado.motivo = _regla(
             "96.1",
-            f"Tienes {' y '.join(ajenas)}, que no están entre las rentas del art. 96.2 a) a c) que eximen de "
-            "declarar.",
+            f"Tienes {' y '.join(ajenas)}, que no están entre las rentas del art. 96.2 a) a c) que eximen de declarar.",
         )
         return estado, reglas
 

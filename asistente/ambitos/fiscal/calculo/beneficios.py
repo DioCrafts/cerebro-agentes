@@ -19,7 +19,8 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict
 
 from asistente.ambitos.fiscal.calculo.autonomicas import campo_que_la_activa
-from asistente.ambitos.fiscal.calculo.irpf import ZERO, IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.irpf import ZERO, IRPFInput, IRPFResult, calcular_irpf, importe_linea
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import Fuente, IRPFParams, load_params, normalizar_comunidad
 
 Estado = Literal["aplicado", "disponible", "por_confirmar", "no_aplica"]
@@ -40,8 +41,8 @@ class Beneficio(BaseModel):
     datos_que_faltan: list[str] = []
 
 
-def _importe_linea(result: IRPFResult, prefix: str) -> Decimal:
-    return sum((-line.importe for line in result.lineas if line.concepto.startswith(prefix)), ZERO)
+def _importe_linea(result: IRPFResult, clave: str) -> Decimal:
+    return -importe_linea(result, clave)
 
 
 def _ahorro(base: IRPFResult, inp: IRPFInput, params: IRPFParams, **cambios: Any) -> Decimal:
@@ -129,7 +130,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "tributacion_conjunta",
             "Tributación conjunta",
             "aplicado",
-            f"Reducción aplicada: {_importe_linea(base, 'Reducción por tributación conjunta'):.2f} €.",
+            f"Reducción aplicada: {_importe_linea(base, ClaveLinea.REDUCCION_CONJUNTA):.2f} €.",
             ["Deben incluirse las rentas de todos los miembros de la unidad familiar."],
             tc.fuente,
         )
@@ -160,7 +161,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "minimo_descendientes",
             "Mínimo por descendientes",
             "aplicado",
-            f"Aplicado por {inp.num_descendientes} descendiente(s): {-_importe_linea(base, 'Mínimo por descendientes'):.0f} € de mínimo.",
+            f"Aplicado por {inp.num_descendientes} descendiente(s): {-_importe_linea(base, ClaveLinea.MINIMO_DESCENDIENTES):.0f} € de mínimo.",
             [
                 "Menores de 25 años (o con discapacidad), que convivan contigo y sin rentas superiores a 8.000 €.",
                 "Si ambos progenitores tienen derecho, se reparte al 50 %.",
@@ -184,7 +185,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "minimo_ascendientes",
             "Mínimo por ascendientes",
             "aplicado",
-            f"Aplicado por {ascendientes} ascendiente(s): {-_importe_linea(base, 'Mínimo por ascendientes'):.0f} € de "
+            f"Aplicado por {ascendientes} ascendiente(s): {-_importe_linea(base, ClaveLinea.MINIMO_ASCENDIENTES):.0f} € de "
             "mínimo.",
             [
                 "Mayores de 65 años (o con discapacidad, a cualquier edad), que convivan contigo al menos medio año y "
@@ -220,8 +221,8 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             ["Grado de discapacidad reconocido igual o superior al 33 %."],
             m.fuente,
         )
-    familiares = _importe_linea(base, "Mínimo por discapacidad de descendientes") + _importe_linea(
-        base, "Mínimo por discapacidad de ascendientes"
+    familiares = _importe_linea(base, ClaveLinea.MINIMO_DISCAPACIDAD_DESCENDIENTES) + _importe_linea(
+        base, ClaveLinea.MINIMO_DISCAPACIDAD_ASCENDIENTES
     )
     sin_desglose = inp.num_familiares_discapacidad_a_cargo - (
         inp.num_descendientes_discapacidad + inp.num_ascendientes_discapacidad
@@ -256,7 +257,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
         )
 
     # --- Work income --------------------------------------------------------
-    reduccion_trabajo = _importe_linea(base, "Reducción por obtención de rendimientos del trabajo")
+    reduccion_trabajo = _importe_linea(base, ClaveLinea.REDUCCION_TRABAJO)
     if reduccion_trabajo:
         add(
             "reduccion_trabajo",
@@ -266,7 +267,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             ["Rendimientos netos del trabajo inferiores al umbral y otras rentas no superiores a 6.500 €."],
             p.trabajo.fuente,
         )
-    deduccion_trabajo = _importe_linea(base, "Deducción por obtención de rendimientos del trabajo")
+    deduccion_trabajo = _importe_linea(base, ClaveLinea.DEDUCCION_TRABAJO)
     if deduccion_trabajo and p.deduccion_rendimientos_trabajo is not None:
         add(
             "deduccion_trabajo",
@@ -284,7 +285,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "donativos",
             "Deducción por donativos",
             "aplicado",
-            f"Deducción aplicada: {_importe_linea(base, 'Deducción por donativos'):.2f} €.",
+            f"Deducción aplicada: {_importe_linea(base, ClaveLinea.DEDUCCION_DONATIVOS):.2f} €.",
             ["Donativos a entidades acogidas a la Ley 49/2002, con certificado de la entidad."],
             d.fuente,
         )
@@ -310,7 +311,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "maternidad",
             "Deducción por maternidad",
             "aplicado",
-            f"Deducción aplicada: {_importe_linea(base, 'Deducción por maternidad'):.2f} €.",
+            f"Deducción aplicada: {_importe_linea(base, ClaveLinea.DEDUCCION_MATERNIDAD):.2f} €.",
             ["Se prorratea por meses y se descuenta lo cobrado por anticipado."],
             mat.fuente,
         )
@@ -339,7 +340,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "50 km de la alquilada.",
             "La introdujo el Real Decreto-ley 29/2026, pendiente de convalidación por el Congreso.",
         ]
-        aplicada = _importe_linea(base, nombre_av)
+        aplicada = _importe_linea(base, ClaveLinea.DEDUCCION_ALQUILER_ESTATAL)
         if aplicada:
             add(
                 "alquiler_estatal",
@@ -385,7 +386,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
             "vivienda_pre2013",
             "Deducción por vivienda habitual comprada antes de 2013",
             "aplicado",
-            f"Deducción aplicada: {_importe_linea(base, 'Deducción por inversión en vivienda habitual'):.2f} €.",
+            f"Deducción aplicada: {_importe_linea(base, ClaveLinea.DEDUCCION_VIVIENDA_TRANSITORIA):.2f} €.",
             ["Haber comprado antes del 1-1-2013 y haberse aplicado la deducción antes de esa fecha."],
             v.fuente,
         )
@@ -433,10 +434,10 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
     norma = f"DLeg. 1/2010 de la {comunidad.nombre}" if es_madrid else comunidad.nombre
     # article → (calculator line it produces, input that triggers it)
     calculadas = {
-        "art. 4": ("Deducción autonómica por nacimiento", "hijos_nacidos_ultimos_3_ejercicios"),
-        "art. 8": ("Deducción autonómica por alquiler", "alquiler_vivienda_habitual"),
-        "art. 11": ("Deducción autonómica por gastos educativos", "gastos_escolaridad"),
-        "art. 11 bis": ("Deducción autonómica por cuidado", "cotizaciones_empleada_hogar"),
+        "art. 4": (ClaveLinea.MADRID_NACIMIENTO, "hijos_nacidos_ultimos_3_ejercicios"),
+        "art. 8": (ClaveLinea.MADRID_ALQUILER, "alquiler_vivienda_habitual"),
+        "art. 11": (ClaveLinea.MADRID_GASTOS_EDUCATIVOS, "gastos_escolaridad"),
+        "art. 11 bis": (ClaveLinea.MADRID_CUIDADO, "cotizaciones_empleada_hogar"),
     }
     for deduccion in comunidad.deducciones:
         linea, campo = calculadas.get(deduccion.articulo, ("", ""))
@@ -470,7 +471,7 @@ def evaluar_beneficios(inp: IRPFInput, *, conocidos: set[str], params: IRPFParam
         )
     for calculable in comunidad.deducciones_calculables:
         activador = campo_que_la_activa(calculable)
-        aplicado = _importe_linea(base, f"Deducción autonómica: {calculable.titulo}")
+        aplicado = _importe_linea(base, ClaveLinea.autonomica(calculable.articulo))
         add(
             f"autonomica_{normalizar_comunidad(calculable.articulo).replace('.', '').replace(' ', '_')}",
             f"{comunidad.nombre}: {calculable.titulo}",

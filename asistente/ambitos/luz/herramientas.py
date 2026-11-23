@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import date, timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 import json
 from typing import Any
 
@@ -32,6 +32,7 @@ from asistente.ambitos.luz.datos import PERIODOS, DatoNoDisponibleError, cargar_
 from asistente.ambitos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
 from asistente.ambitos.luz.ofertas import Oferta, cargar_oferta, cargar_ofertas
 from asistente.ambitos.luz.periodos import ZONAS, Zona, describir_periodos
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.agent.providers.base import ToolSpec
 from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
 
@@ -67,10 +68,10 @@ def _fecha(args: Mapping[str, Any], clave: str, defecto: date | None = None) -> 
 
 
 def _dec(valor: Any, que: str) -> Decimal:
-    try:
-        return Decimal(str(valor).replace(",", "."))
-    except InvalidOperation as exc:
-        raise _EntradaError(f"«{que}» debe ser un número (recibido: {valor}).") from exc
+    numero = importe(valor)
+    if numero is None:
+        raise _EntradaError(f"«{que}» debe ser un número (recibido: {valor}).")
+    return numero
 
 
 def _zona(ctx: ContextoModulo) -> Zona:

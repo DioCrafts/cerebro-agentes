@@ -66,7 +66,8 @@ def test_regional_scale_and_minimums_change_the_result() -> None:
     assert galicia.minimos is not None and galicia.minimos.contribuyente == D("5789")
     r = calcular_irpf(IRPFInput(comunidad_autonoma="Galicia", **base))
     assert not any("no está cargada" in aviso for aviso in r.avisos)
-    assert any("deducciones autonómicas NO están incluidas" in aviso for aviso in r.avisos)
+    # Galicia has data-driven deductions: the notice says only those are computed, not that none are.
+    assert any("el resto NO está incluido" in aviso for aviso in r.avisos)
 
 
 def test_scales_that_changed_between_2025_and_2026() -> None:
@@ -89,6 +90,8 @@ def test_caveats_are_repeated_as_warnings() -> None:
     assert baleares.minimos.descendientes == [D("2400"), D("2970"), D("4400"), D("4950")]
 
 
-def test_foral_territories_remain_an_approximation() -> None:
-    r = calcular_irpf(IRPFInput(ejercicio=2026, comunidad_autonoma="Navarra", rendimiento_trabajo_bruto=D(30000)))
-    assert any("no está cargada" in aviso for aviso in r.avisos)
+def test_foral_territories_are_not_approximated() -> None:
+    from asistente.ambitos.fiscal.calculo.params import TerritorioForalError
+
+    with pytest.raises(TerritorioForalError):
+        calcular_irpf(IRPFInput(ejercicio=2026, comunidad_autonoma="Navarra", rendimiento_trabajo_bruto=D(30000)))

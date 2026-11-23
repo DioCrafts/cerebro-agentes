@@ -7,7 +7,7 @@ calculator with no translation layer to drift out of sync.
 
 from __future__ import annotations
 
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 import json
 from typing import Any
 
@@ -20,7 +20,9 @@ from asistente.ambitos.fiscal.calculo.actividad import (
 )
 from asistente.ambitos.fiscal.calculo.autonomos_params import load_autonomos_params
 from asistente.ambitos.fiscal.calculo.irpf import Descendiente, IRPFInput, IRPFResult, calcular_irpf
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import CAMPOS_GASTO, GASTOS_DESGLOSADOS, EjercicioNoDisponibleError
+from asistente.ambitos.numeros import importe
 
 # Profile facts and their value types ("string" | "number" | "boolean"); merged
 # into the extractor's vocabulary. Plain strings on purpose: this module must
@@ -492,13 +494,7 @@ def datos_conyuge_a_texto(valor: Any) -> str:
 
 
 def _decimal(valor: Any) -> Decimal | None:
-    if isinstance(valor, bool) or valor is None:
-        return None
-    try:
-        numero = Decimal(str(valor))
-    except InvalidOperation:
-        return None
-    return numero if numero.is_finite() else None
+    return importe(valor)
 
 
 def _conciliar(merged: dict[str, Any], origen: dict[str, int]) -> None:
@@ -636,12 +632,12 @@ def _irpf_input(ejercicio: int, merged: dict[str, Any]) -> IRPFInput:
         raise DatosInvalidosError(f"Datos no válidos para el cálculo: {_problemas(exc)}.{pista}") from exc
 
 
-_LINEA_REDUCCION_TRABAJO = "Reducción por obtención de rendimientos del trabajo"
-_LINEA_NETO_TRABAJO = "Rendimiento neto reducido del trabajo"
+_LINEA_REDUCCION_TRABAJO = ClaveLinea.REDUCCION_TRABAJO
+_LINEA_NETO_TRABAJO = ClaveLinea.RENDIMIENTO_NETO_TRABAJO
 
 
-def _linea(result: IRPFResult, concepto: str) -> Decimal | None:
-    return next((line.importe for line in result.lineas if line.concepto == concepto), None)
+def _linea(result: IRPFResult, clave: str) -> Decimal | None:
+    return next((line.importe for line in result.lineas if line.clave == clave), None)
 
 
 def _reduccion_trabajo(ejercicio: int, merged: dict[str, Any], actividad_neto: Decimal) -> Decimal:

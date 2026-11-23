@@ -9,26 +9,20 @@ be given, so the schedule reproduces the bank's figures instead of re-deriving t
 from __future__ import annotations
 
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
 from asistente.ambitos.hipoteca.indices import INDICES
+from asistente.ambitos.numeros import importe
 
 
 def _decimal(value: Any) -> Any:
     """Accept '2,5', '150.000,00', 2.5 or Decimal; leave anything else to pydantic."""
-    if isinstance(value, str):
-        texto = value.strip().replace("€", "").replace("%", "").replace(" ", "")
-        if "," in texto:
-            texto = texto.replace(".", "").replace(",", ".")
-        try:
-            return Decimal(texto)
-        except InvalidOperation:
-            return value
-    if isinstance(value, float):
-        return Decimal(str(value))
+    if isinstance(value, (str, float)):
+        numero = importe(value)
+        return value if numero is None else numero
     return value
 
 

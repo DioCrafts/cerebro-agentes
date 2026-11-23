@@ -329,7 +329,32 @@ def serie_desde_json(raw: dict) -> SerieIndices:
             )
             for mes, v in meses.items()
         }
+    _validar_serie(datos)
     return SerieIndices(consultado_el=raw["consultado_el"], datos=datos, documentos=raw.get("documentos", {}))
+
+
+_MES_SERIE = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+
+
+def _validar_serie(datos: dict[str, dict[str, Dato]]) -> None:
+    """Refuse a series that would give wrong rates: a malformed month, a non-finite or implausible value
+    (an index above 25 % or below −5 % is a typo, not a market), or a value «published» before its month
+    ended (it would be used for reviews that could not have known it)."""
+    problemas: list[str] = []
+    for indice, meses in datos.items():
+        for mes, dato in meses.items():
+            m = _MES_SERIE.match(mes)
+            if not m:
+                problemas.append(f"{indice}: mes «{mes}» no tiene la forma AAAA-MM")
+                continue
+            if not dato.valor.is_finite() or not Decimal(-5) <= dato.valor <= Decimal(25):
+                problemas.append(f"{indice} {mes}: valor {dato.valor} fuera de rango")
+            year, month = int(m.group(1)), int(m.group(2))
+            fin_de_mes = date(year + month // 12, month % 12 + 1, 1)
+            if dato.publicado < fin_de_mes:
+                problemas.append(f"{indice} {mes}: publicado el {dato.publicado} antes de acabar el mes")
+    if problemas:
+        raise ValueError("Serie de índices no válida: " + "; ".join(problemas))
 
 
 @lru_cache(maxsize=1)
