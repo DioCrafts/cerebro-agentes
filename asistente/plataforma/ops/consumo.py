@@ -178,6 +178,23 @@ def cargar_precios(path: str | Path | None = None) -> TablaPrecios:
     return _leer_precios(str(path or settings.LLM_PRICES_PATH or PRECIOS_PATH))
 
 
+def coste_prudente(usage: Usage, precios: TablaPrecios | None = None) -> Decimal | None:
+    """Cost of one call for a HARD cap: the exact cost when it is known, else the call priced at the most expensive
+    model in the table (an unknown price never lets a capped session spend for free). None only when the API
+    reported no usage at all."""
+    if not usage.reported:
+        return None
+    tabla = precios or cargar_precios()
+    exacto = calcular_coste(usage, tabla)
+    if exacto is not None:
+        return exacto
+    tarifas = list(tabla.modelos.values())
+    maximo_in = max((t.input for t in tarifas if t.input is not None), default=Decimal(0))
+    maximo_out = max((t.output for t in tarifas if t.output is not None), default=Decimal(0))
+    entrada = usage.input_tokens + usage.cache_read_tokens + usage.cache_write_tokens
+    return (Decimal(entrada) * maximo_in + Decimal(usage.output_tokens) * maximo_out) / _MILLON
+
+
 def calcular_coste(usage: Usage, precios: TablaPrecios | None = None) -> Decimal | None:
     """Cost in USD of one call, or None when it cannot be known.
 
@@ -607,8 +624,7 @@ class Presupuesto:
             and self.store.coste_del_dia(dia, user_id=user_id) >= self.diario_por_usuario_usd
         ):
             raise PresupuestoAgotadoError(
-                "Has alcanzado tu límite diario de uso de modelos de IA. "
-                f"Se restablece {_formato_reinicio(reinicio)}.",
+                f"Has alcanzado tu límite diario de uso de modelos de IA. Se restablece {_formato_reinicio(reinicio)}.",
                 limite="diario_por_usuario",
                 se_restablece=reinicio,
             )

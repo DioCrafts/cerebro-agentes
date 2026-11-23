@@ -296,3 +296,14 @@ def test_abstain_message_backwards_compatible_when_query_omitted() -> None:
     assert envelope.answer.startswith(DEFAULT_ABSTAIN_MESSAGE)
     # No "missing entity" line when we don't know what the user asked.
     assert "No encontré información específica sobre" not in envelope.answer
+
+
+def test_an_answer_naming_a_law_nothing_retrieved_contains_is_uncited() -> None:
+    docs = [_doc(title="Manual IRPF", source_url="https://sede.agenciatributaria.gob.es/y", content="Ley 35/2006")]
+    gate = GroundingGate(min_citations=1)
+
+    respaldada = gate.evaluate(answer="Lo regula la Ley 35/2006.", documents=docs)
+    inventada = gate.evaluate(answer="Lo regula la Ley 35/2006 y el Real Decreto 999/2031.", documents=docs)
+
+    assert respaldada.mode is AnswerMode.CITED
+    assert inventada.mode is AnswerMode.UNCITED and "Real Decreto 999/2031" in (inventada.reason or "")

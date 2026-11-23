@@ -425,3 +425,15 @@ def test_local_streaming_omits_stream_options_and_truncation_wins_over_tool_call
     assert "stream_options" not in completions.calls[0]
     # A turn cut off mid tool call must surface as truncated, not as runnable tools.
     assert turn.stop_reason == "max_tokens" and turn.tool_calls[0].arguments_error is not None
+
+
+def test_the_anthropic_client_times_out_before_the_encargo_deadline(monkeypatch) -> None:
+    from asistente.nucleo.agent.providers import anthropic_provider
+    from asistente.plataforma import settings
+
+    monkeypatch.setattr(settings, "ANTHROPIC_TIMEOUT_S", "")
+    monkeypatch.setattr(settings, "CEREBRO_TIMEOUT_ENCARGO_S", 180.0)
+    timeout_s, reintentos = anthropic_provider.limites_cliente()
+    assert timeout_s * (reintentos + 1) < 180
+    monkeypatch.setattr(settings, "ANTHROPIC_TIMEOUT_S", "42")
+    assert anthropic_provider.limites_cliente()[0] == 42.0

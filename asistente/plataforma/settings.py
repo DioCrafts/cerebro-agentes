@@ -347,8 +347,9 @@ PRIVACY_NOTICE_URL = os.environ.get("PRIVACY_NOTICE_URL", "")
 LLM_DAILY_BUDGET_USD = os.environ.get("LLM_DAILY_BUDGET_USD", "")
 LLM_DAILY_BUDGET_USD_PER_USER = os.environ.get("LLM_DAILY_BUDGET_USD_PER_USER", "")
 # Hard cap on model calls spent on ONE user question (agent turns, planner,
-# researchers, critic and verifier together).
-LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "")
+# researchers, critic and verifier together). On by default: a loop must never
+# spend without end; set it to an empty value explicitly to lift it.
+LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "60")
 # Replacement price table (same format as the bundled one), for when prices change.
 LLM_PRICES_PATH = os.environ.get("LLM_PRICES_PATH", "")
 
@@ -449,6 +450,8 @@ PLATAFORMA_TRABAJOS = os.environ.get("PLATAFORMA_TRABAJOS", "")
 PLATAFORMA_TRABAJOS_DESACTIVADOS = os.environ.get("PLATAFORMA_TRABAJOS_DESACTIVADOS", "")
 # A slot missed while no worker ran (restart, deploy) still runs if the worker is back within this many hours.
 PLATAFORMA_RECUPERAR_HORAS = float(os.environ.get("PLATAFORMA_RECUPERAR_HORAS", "6"))
+# Wall-clock limit of one scheduled child-process job; past it its process group is killed (exit code 124).
+PLATAFORMA_TIMEOUT_TRABAJO_S = float(os.environ.get("PLATAFORMA_TIMEOUT_TRABAJO_S", "3600"))
 # Seconds between the worker's heartbeats (and scheduler checks).
 PLATAFORMA_LATIDO_SEGUNDOS = float(os.environ.get("PLATAFORMA_LATIDO_SEGUNDOS", "30"))
 # Extra modules (comma-separated) whose ``registrar_en_plataforma(registro)`` adds services or jobs to the worker.
@@ -528,6 +531,9 @@ CEREBRO_MAX_PARALELO = int(os.environ.get("CEREBRO_MAX_PARALELO", "4"))
 # Seconds one specialist may take on one encargo, its requests to other specialists included; past it the report says
 # so and the specialist stops at its next model call. 0: no limit.
 CEREBRO_TIMEOUT_ENCARGO_S = float(os.environ.get("CEREBRO_TIMEOUT_ENCARGO_S", "180"))
+# Per-attempt HTTP timeout of the Anthropic client; empty = derived from CEREBRO_TIMEOUT_ENCARGO_S so that every
+# attempt together ends before the encargo's deadline.
+ANTHROPIC_TIMEOUT_S = os.environ.get("ANTHROPIC_TIMEOUT_S", "")
 # How deep a request between specialists may go (1: a specialist may ask another, which may not ask a third). Never
 # above the contract's MAX_PROFUNDIDAD_PETICIONES (2): a larger value is lowered to it.
 CEREBRO_MAX_PROFUNDIDAD_PETICIONES = int(os.environ.get("CEREBRO_MAX_PROFUNDIDAD_PETICIONES", "2"))
@@ -553,6 +559,8 @@ CONSEJO_ACTIVO = _env_bool("CONSEJO_ACTIVO", default=True)
 CONSEJO_FAMILIAS = os.environ.get("CONSEJO_FAMILIAS", "")
 # Members working at the same time in one phase (1 = one after another).
 CONSEJO_MAX_PARALELO = int(os.environ.get("CONSEJO_MAX_PARALELO", "3"))
+# Deadline of one deliberation phase (all its members together); a member still running is left out.
+CONSEJO_PLAZO_FASE_S = float(os.environ.get("CONSEJO_PLAZO_FASE_S", "600"))
 # Hard cap of a session = the estimate shown to the user × this factor, never above CONSEJO_TOPE_MAX_USD (an estimate
 # above that maximum cannot be convened). Past the cap no further model call is made: the engine rules with what it has
 # (a partial ruling written by code, labelled «Dictamen parcial») or the session ends «fallida»; nothing is invented.

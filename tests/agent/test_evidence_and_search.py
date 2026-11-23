@@ -142,3 +142,18 @@ def test_date_filter_drops_older_dated_documents_but_keeps_undated_law() -> None
     assert normalize_date("2024-03-09T10:00:00+00:00") == "2024-03-09"
     assert normalize_date("ayer") is None and normalize_date(None) is None
     assert SearchFilters(date_from="2024").is_empty() is False
+
+
+def test_the_corpus_searcher_is_loaded_once_per_process(monkeypatch) -> None:
+    from asistente.nucleo.agent import search as search_mod
+
+    cargas: list[int] = []
+
+    def cargar(cls):
+        cargas.append(1)
+        return search_mod.FaissCorpusSearcher(object())
+
+    monkeypatch.setattr(search_mod, "_BUSCADORES", {})
+    monkeypatch.setattr(search_mod.FaissCorpusSearcher, "_cargar", classmethod(cargar))
+    primero = search_mod.FaissCorpusSearcher.from_settings()
+    assert search_mod.FaissCorpusSearcher.from_settings() is primero and cargas == [1]

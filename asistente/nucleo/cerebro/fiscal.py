@@ -507,6 +507,11 @@ class EspecialistaFiscal:
             if directo:
                 raise
             return None, self._fallo(contexto, exc, inicio, ledger, peticiones)
+        if getattr(contexto.pizarra, "cancelada", False):
+            # The encargo ran out of time (or the turn was cancelled) while the advisor was working: its late result
+            # never writes into the case or proposes actions behind the user's back.
+            logger.info("tax encargo %s finished after its cancellation: result discarded", contexto.encargo.id)
+            return resultado, self._informe(contexto, resultado, ledger, peticiones, inicio)
         if resultado.updated_case is not None and inicial is not None:
             final = resultado.updated_case
             turno.expediente.actualizar(lambda actual: _fusionar_caso(actual, inicial, final))

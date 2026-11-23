@@ -136,9 +136,13 @@ class ControlSesion:
     """The cost, the cap and the cancellation of ONE run of a session, shared by every call it makes (threads
     included). :meth:`comprobar` runs before each call (through the session's budget)."""
 
-    def __init__(self, *, tope_usd: Decimal, max_llamadas: int | None = None) -> None:
+    def __init__(
+        self, *, tope_usd: Decimal, max_llamadas: int | None = None, inicial: CosteSesion | None = None
+    ) -> None:
         self._lock = threading.Lock()
-        self._coste = CosteSesion()
+        # Seeded with what earlier runs of the same session already spent: the cap is per session, not per attempt.
+        self.inicial = inicial.model_copy() if inicial is not None else CosteSesion()
+        self._coste = self.inicial.model_copy()
         self.tope_usd = tope_usd
         self.max_llamadas = max_llamadas
         self.cancelada = threading.Event()
@@ -196,6 +200,16 @@ class _ConsumoDeSesion(ConsumoStore):
         ts: datetime | None = None,
     ) -> Decimal | None:
         coste = super().registrar(usage, user_id=user_id, case_id=case_id, ts=ts)
+        if coste is None:
+            # An unpriced model counts at the dearest price of the table against the hard cap.
+            from asistente.plataforma.ops.consumo import coste_prudente
+
+            try:
+                self._control.anotar(usage, coste_prudente(usage))
+            except Exception:  # a broken price table never breaks the session
+                logger.warning("could not price a council call for the cap", exc_info=True)
+                self._control.anotar(usage, None)
+            return coste
         self._control.anotar(usage, coste)
         return coste
 
@@ -742,7 +756,9 @@ class ServicioConsejo:
         """One run of a claimed session. Returns the final state («terminada», «fallida» or «perdida»)."""
         sesion = registro.sesion
         control = ControlSesion(
-            tope_usd=sesion.tope_usd, max_llamadas=int(getattr(settings, "CONSEJO_MAX_LLAMADAS", 150) or 150)
+            tope_usd=sesion.tope_usd,
+            max_llamadas=int(getattr(settings, "CONSEJO_MAX_LLAMADAS", 150) or 150),
+            inicial=sesion.coste,
         )
         with _controles_lock:
             _controles[sesion.id] = control
@@ -866,7 +882,16 @@ class ServicioConsejo:
             dictamen = dictamen.model_copy(update={"sesion_id": sesion.id})
             dictamen = self._puertas(dictamen, sesion, instruccion, entorno)
         medido = control.coste()
-        coste = medido if medido.llamadas else resultado.coste
+        if medido.llamadas > control.inicial.llamadas:
+            coste = medido
+        else:  # nothing metered in this run: the engine's own accounting, on top of earlier runs
+            previo, motor = control.inicial, resultado.coste
+            coste = CosteSesion(
+                llamadas=previo.llamadas + motor.llamadas,
+                usd=previo.usd + motor.usd,
+                tokens_entrada=previo.tokens_entrada + motor.tokens_entrada,
+                tokens_salida=previo.tokens_salida + motor.tokens_salida,
+            )
         if estado == "fallida" and not error:
             error = "El consejo no pudo terminar la deliberación."
         return sesion.model_copy(
@@ -904,6 +929,13 @@ class ServicioConsejo:
             puerta = puerta_de_cifras(
                 _texto_del_dictamen(dictamen), informes, ledger=instruccion.ledger, textos_usuario=textos_usuario
             )
+            if puerta is None:
+                # The gate did not run: it never fails open; the ruling's figures are flagged and its confidence
+                # capped.
+                from asistente.nucleo.cerebro.cerebro import AVISO_PUERTA_CAIDA
+
+                avisos.append(AVISO_PUERTA_CAIDA)
+                dictamen = dictamen.model_copy(update={"confianza": min(dictamen.confianza, 0.5)})
             if puerta is not None and puerta.violaciones:
                 dictamen = dictamen.model_copy(
                     update={

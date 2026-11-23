@@ -159,3 +159,10 @@ def test_the_answer_is_only_the_verified_claims_with_their_sources() -> None:
         "- La tasa es de 30 euros. [S1]",
         "- Es rápido. [S2] (solo fuentes no oficiales)",
     ]
+
+
+def test_a_figure_is_not_backed_by_a_longer_number_that_contains_it() -> None:
+    from asistente.capacidades.investigacion.puerta import _cifra_respaldada
+
+    assert not _cifra_respaldada("12", "el plazo de 2012 y 120 euros")
+    assert _cifra_respaldada("1.200,50", "importe de 1.200,50 euros")

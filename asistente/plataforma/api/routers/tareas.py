@@ -95,9 +95,11 @@ class Cancelacion(_Modelo):
 def proveedor_planificador() -> LLMProvider:
     """The model that proposes custom plans (tests override this dependency)."""
     from asistente.nucleo.agent.providers import create_provider
+    from asistente.plataforma.ops.consumo import medir
 
     try:
-        return create_provider()
+        # Metered and capped like every other model call (the call runs inside ``contexto_consumo``).
+        return medir(create_provider(), "tareas:plan")
     except Exception as exc:
         raise HTTPException(status_code=503, detail="No hay ningún modelo configurado para proponer planes.") from exc
 
@@ -215,7 +217,10 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         with _motor(cases, access) as motor:
             modulos = list(motor.modulos_de(payload.case_id))
             try:
-                titulo, pasos, _avisos = proponer_con_modelo(provider, objetivo=payload.objetivo, modulos=modulos)
+                from asistente.plataforma.ops.consumo import contexto_consumo
+
+                with contexto_consumo(user_id=_user_id(access), case_id=payload.case_id):
+                    titulo, pasos, _avisos = proponer_con_modelo(provider, objetivo=payload.objetivo, modulos=modulos)
                 tarea, avisos = servicio.proponer_plan(
                     motor.store,
                     case_id=payload.case_id,

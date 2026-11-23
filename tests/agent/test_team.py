@@ -352,3 +352,22 @@ def test_researchers_share_one_ledger_without_id_collisions(monkeypatch, paralle
     result = _agent(provider, [LAW, OLD, RULING]).run(COMPLEX)
     # Both researchers retrieved the same three chunks: three ids, not six.
     assert sorted(c.fragment_id for c in result.citations) == ["F1", "F2", "F3"]
+
+
+def test_a_failed_escalation_keeps_the_first_answer_with_a_warning(monkeypatch) -> None:
+    stale = "El valor de adquisición es el declarado [F1]."
+    supported = verdict("respuesta", ("Valor declarado", ["F1"], "respaldada"))
+    provider = RoutedProvider(
+        asesor=[_tool("buscar_fuentes", consulta="valor adquisición herencia"), _text(stale), _text(stale)],
+        verdicts=[supported, supported],
+    )
+    agent = _agent(provider, [OLD, RULING], graph=_graph())
+
+    def falla(*_a, **_k):
+        raise ProviderError("sin red")
+
+    monkeypatch.setattr(agent, "_run_team", falla)
+    result = agent.run("¿Qué valor de adquisición uso al vender un piso heredado?")
+
+    assert result.answer == stale  # the paid-for first answer is not lost
+    assert any("equipo" in w for w in result.warnings)
