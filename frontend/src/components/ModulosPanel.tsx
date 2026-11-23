@@ -1,28 +1,42 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// "Módulos": the household areas the assistant can help with beyond taxes (electricity, expiries,
+// «Módulos»: the household areas the assistant can help with beyond taxes (electricity, expiries,
 // subscriptions…). The user switches each one on or off, fills in its data with a form built from the
 // module's own fact declarations, reads a document with it when it can, and decides on the actions its
 // specialist prepared: nothing that acts outside the app runs until the user confirms it here.
+//
+// Shown as a page (registro.ts: presentacion "pagina") with the layout of GitHub's settings pages: a NavList
+// of sections on the left (general, one per module, capabilities, history) and the section on the right.
 
-import { Check, ChevronDown, FileUp, House, ShieldAlert, Trash2, X } from "lucide-react";
-import clsx from "clsx";
-import { useEffect, useId, useState } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 
 import type { CaseState, Fact } from "../api";
 import { ApiError, deleteCaseFact, getCase, updateCaseFact } from "../api";
 import type { AccionPendiente, CampoPropuesto, HechoInfo, HerramientaInfo, ModuloInfo, ModulosResponse, PropuestaHecho } from "../apiModulos";
 import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos";
+import { textoDeValor } from "../lib/guards";
 import { fileToBase64, relativeTime } from "../lib/presentation";
+import {
+  Blankslate,
+  Button,
+  Caja,
+  CargandoLista,
+  CounterLabel,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Link,
+  NavList,
+  Select,
+  TextInput,
+  Textarea,
+  ToggleSwitch,
+} from "../ui";
+import { CheckIcon, GearIcon, HistoryIcon, HomeIcon, PlugIcon, ShieldIcon, TrashIcon, UploadIcon } from "../ui/iconos";
 import { CapacidadesSeccion } from "./CapacidadesSeccion";
 import { CorreoSeccion } from "./CorreoSeccion";
-import { textoDeValor } from "../lib/guards";
-
-const FIELD_CLASS =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
-const BUTTON_PRIMARY =
-  "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
-const BUTTON_QUIET =
-  "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-line/60 disabled:cursor-not-allowed disabled:opacity-50";
+import { DialogoEleccion, FilaPeligro, ZonaPeligro } from "./ZonaPeligro";
+import { useConfirmar } from "./useConfirmar";
 
 function message(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -30,8 +44,8 @@ function message(err: unknown): string {
 }
 
 interface ModulosPanelProps {
-  open: boolean;
-  onClose: () => void;
+  /** The page is on screen (capabilities and mail are read again each time it becomes so). */
+  open?: boolean;
   modulos: ModulosResponse | null;
   loading: boolean;
   error: string | null;
@@ -46,99 +60,12 @@ interface ModulosPanelProps {
   disabled: boolean;
 }
 
-export function ModulosPanel(props: ModulosPanelProps) {
-  const { open, onClose, modulos, loading, error, acciones } = props;
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-  const nombres = Object.fromEntries((modulos?.modulos ?? []).map((m) => [m.clave, m.nombre]));
-  const pendientes = acciones.filter((a) => a.estado === "pendiente");
-  const decididas = acciones.filter((a) => a.estado !== "pendiente");
-  return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar los módulos" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label="Módulos del hogar" className="relative flex h-full w-full max-w-[480px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h2 className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <House size={18} aria-hidden className="text-primary-dark" />
-              Módulos
-            </h2>
-            <p className="text-[12.5px] text-muted">Lo que tu asistente puede llevarte además de los impuestos</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-          {error && (
-            <p role="alert" className="rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              {error}
-            </p>
-          )}
-          {loading && !modulos && <p className="text-[13.5px] text-muted">Cargando los módulos…</p>}
-
-          {pendientes.length > 0 && (
-            <section aria-labelledby="acciones-pendientes" className="rounded-xl border border-risk-high-fg/40 bg-surface px-4 py-3.5 shadow-card">
-              <h3 id="acciones-pendientes" className="flex items-center gap-2 text-[15px] font-bold text-ink">
-                <ShieldAlert size={16} aria-hidden className="text-risk-high-fg" />
-                Pendiente de tu confirmación ({pendientes.length})
-              </h3>
-              <p className="mt-1 text-[12.5px] leading-snug text-muted">
-                Estas acciones actúan fuera de la aplicación. No se ha hecho nada todavía: solo se ejecutan si las confirmas.
-              </p>
-              <ul className="mt-3 space-y-3">
-                {pendientes.map((a) => (
-                  <AccionItem key={a.id} accion={a} modulo={nombres[a.modulo] ?? a.modulo} onDecide={props.onDecide} disabled={props.disabled} />
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {props.caseId && (
-            <Propuestas caseId={props.caseId} facts={props.facts} onCaseUpdated={props.onCaseUpdated} disabled={props.disabled} nombres={nombres} />
-          )}
-
-          {modulos && !modulos.configurable && (
-            <p className="rounded-lg bg-line/50 px-3 py-2 text-[13px] leading-snug text-ink-soft">
-              Sin cuentas de usuario, los módulos los activa el operador del servicio.
-            </p>
-          )}
-
-          {modulos?.modulos.map((m) => (
-            <ModuloCard key={m.clave} modulo={m} configurable={modulos.configurable} {...props} />
-          ))}
-
-          {modulos && <CapacidadesSeccion nombres={nombres} disabled={props.disabled} />}
-
-          {decididas.length > 0 && (
-            <details className="rounded-xl border border-line bg-surface px-4 py-3">
-              <summary className="cursor-pointer text-[13.5px] font-semibold text-ink-soft">Acciones ya decididas ({decididas.length})</summary>
-              <ul className="mt-2 space-y-2 text-[13px] leading-snug">
-                {decididas.map((a) => (
-                  <li key={a.id}>
-                    <span className="font-semibold text-ink">{ESTADO[a.estado] ?? a.estado}</span> · {a.resumen}
-                    {a.resultado && <p className={clsx("mt-0.5", a.es_error ? "text-risk-high-fg" : "text-muted")}>{a.resultado}</p>}
-                  </li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
-        <footer className="border-t border-line px-5 py-3 text-[11.5px] leading-relaxed text-muted">
-          Cada módulo calcula con datos oficiales y sus propias fuentes. El asistente nunca suma cifras de módulos distintos si
-          ningún módulo ha calculado esa combinación.
-        </footer>
-      </aside>
-    </div>
-  );
-}
+const ESTADO: Record<string, string> = {
+  ejecutada: "Hecha",
+  fallida: "Falló",
+  rechazada: "Rechazada",
+  ejecutando: "En curso",
+};
 
 const DESGLOSE: Record<string, string> = {
   capital: "Capital",
@@ -146,6 +73,287 @@ const DESGLOSE: Record<string, string> = {
   amortizaciones_anticipadas: "Amortizaciones anticipadas",
   comisiones_amortizacion_anticipada: "Comisiones de amortización anticipada",
 };
+
+type Seccion = "general" | "capacidades" | "historial" | `modulo:${string}`;
+
+/** Back from Google's consent screen (`?correo=`): open on the mail module. */
+function seccionInicial(): Seccion {
+  try {
+    return new URLSearchParams(window.location.search).has("correo") ? "modulo:correo" : "general";
+  } catch {
+    return "general";
+  }
+}
+
+export function ModulosPanel(props: ModulosPanelProps) {
+  const { open = true, modulos, loading, error, acciones } = props;
+  const [seccion, setSeccion] = useState<Seccion>(seccionInicial);
+  const nombres = Object.fromEntries((modulos?.modulos ?? []).map((m) => [m.clave, m.nombre]));
+  const pendientes = acciones.filter((a) => a.estado === "pendiente");
+  const decididas = acciones.filter((a) => a.estado !== "pendiente");
+  const lista = modulos?.modulos ?? [];
+  const moduloAbierto = seccion.startsWith("modulo:") ? lista.find((m) => `modulo:${m.clave}` === seccion) : undefined;
+  // A section that no longer exists (a module the server stopped offering, an empty history) falls back to «General».
+  const actual: Seccion =
+    (seccion.startsWith("modulo:") && !moduloAbierto && modulos !== null) || (seccion === "historial" && decididas.length === 0) ? "general" : seccion;
+
+  const ir = (s: Seccion) => (e: MouseEvent) => {
+    e.preventDefault();
+    setSeccion(s);
+  };
+
+  return (
+    <div className="flex flex-col gap-6 md:flex-row md:items-start">
+      <div className="md:w-64 md:shrink-0">
+        <NavList aria-label="Secciones de los módulos">
+          <NavList.Item href="#modulos-general" aria-current={actual === "general" ? "page" : undefined} onClick={ir("general")}>
+            <NavList.LeadingVisual>
+              <GearIcon />
+            </NavList.LeadingVisual>
+            General
+            {pendientes.length > 0 && (
+              <NavList.TrailingVisual>
+                <CounterLabel aria-label={`${pendientes.length} pendientes de tu confirmación`}>{pendientes.length}</CounterLabel>
+              </NavList.TrailingVisual>
+            )}
+          </NavList.Item>
+          {lista.length > 0 && (
+            <NavList.Group title="Tus módulos">
+              {lista.map((m) => (
+                <NavList.Item
+                  key={m.clave}
+                  href={`#modulo-${m.clave}`}
+                  aria-current={actual === `modulo:${m.clave}` ? "page" : undefined}
+                  onClick={ir(`modulo:${m.clave}`)}
+                >
+                  <NavList.LeadingVisual>
+                    <HomeIcon />
+                  </NavList.LeadingVisual>
+                  {m.nombre}
+                  {!m.activo && <NavList.TrailingVisual>desactivado</NavList.TrailingVisual>}
+                </NavList.Item>
+              ))}
+            </NavList.Group>
+          )}
+          {modulos && (
+            <NavList.Group title="Más">
+              <NavList.Item href="#modulos-capacidades" aria-current={actual === "capacidades" ? "page" : undefined} onClick={ir("capacidades")}>
+                <NavList.LeadingVisual>
+                  <PlugIcon />
+                </NavList.LeadingVisual>
+                Capacidades
+              </NavList.Item>
+              {decididas.length > 0 && (
+                <NavList.Item href="#modulos-historial" aria-current={actual === "historial" ? "page" : undefined} onClick={ir("historial")}>
+                  <NavList.LeadingVisual>
+                    <HistoryIcon />
+                  </NavList.LeadingVisual>
+                  Acciones ya decididas
+                  <NavList.TrailingVisual>{decididas.length}</NavList.TrailingVisual>
+                </NavList.Item>
+              )}
+            </NavList.Group>
+          )}
+        </NavList>
+      </div>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-6">
+        {error && <Flash variant="danger">{error}</Flash>}
+        {loading && !modulos && <CargandoLista filas={3} etiqueta="Cargando los módulos" />}
+
+        {actual === "general" && (
+          <SeccionGeneral {...props} nombres={nombres} pendientes={pendientes} onAbrir={(clave) => setSeccion(`modulo:${clave}`)} />
+        )}
+        {moduloAbierto && modulos && (
+          <SeccionModulo key={moduloAbierto.clave} {...props} open={open} modulo={moduloAbierto} configurable={modulos.configurable} />
+        )}
+        {actual === "capacidades" && modulos && (
+          <section aria-labelledby="modulos-capacidades" className="flex flex-col gap-4">
+            <Subcabecera id="modulos-capacidades" titulo="Capacidades" />
+            <CapacidadesSeccion nombres={nombres} disabled={props.disabled} activa={open} />
+          </section>
+        )}
+        {actual === "historial" && (
+          <section aria-labelledby="modulos-historial" className="flex flex-col gap-4">
+            <Subcabecera id="modulos-historial" titulo="Acciones ya decididas" />
+            <Caja>
+              <Caja.Lista>
+                {decididas.map((a) => (
+                  <Caja.Fila key={a.id} className="flex flex-col gap-1">
+                    <p className="m-0 flex flex-wrap items-center gap-2">
+                      <Label variant={a.estado === "ejecutada" ? "success" : a.estado === "fallida" ? "danger" : "secondary"}>
+                        {ESTADO[a.estado] ?? a.estado}
+                      </Label>
+                      <span>{a.resumen}</span>
+                    </p>
+                    <p className="m-0 text-xs text-fg-muted">
+                      {nombres[a.modulo] ?? a.modulo} · {relativeTime(Date.parse(a.created_at))}
+                    </p>
+                    {a.resultado && <p className={a.es_error ? "m-0 text-fg-danger" : "m-0 text-fg-muted"}>{a.resultado}</p>}
+                  </Caja.Fila>
+                ))}
+              </Caja.Lista>
+            </Caja>
+          </section>
+        )}
+
+        <p className="m-0 text-xs text-fg-muted">
+          Cada módulo calcula con datos oficiales y sus propias fuentes. El asistente nunca suma cifras de módulos distintos si ningún
+          módulo ha calculado esa combinación.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+/** GitHub's «Subhead»: the section title with a rule under it. */
+function Subcabecera({ id, titulo, descripcion, acciones }: { id: string; titulo: string; descripcion?: string; acciones?: ReactNode }) {
+  return (
+    <div className="flex flex-wrap items-end gap-3 border-b border-border-default pb-2">
+      <div className="min-w-0 flex-1">
+        <Heading as="h3" variant="medium" id={id}>
+          {titulo}
+        </Heading>
+        {descripcion && <p className="m-0 mt-1 text-fg-muted">{descripcion}</p>}
+      </div>
+      {acciones}
+    </div>
+  );
+}
+
+function SeccionGeneral(
+  props: ModulosPanelProps & { nombres: Record<string, string>; pendientes: AccionPendiente[]; onAbrir: (clave: string) => void },
+) {
+  const { modulos, nombres, pendientes, onAbrir } = props;
+  return (
+    <section aria-labelledby="modulos-general" className="flex flex-col gap-4">
+      <Subcabecera id="modulos-general" titulo="General" descripcion="Activa los módulos que quieras que tu asistente lleve por ti." />
+
+      {pendientes.length > 0 && (
+        <Caja as="section" variante="peligro" aria-label="Pendiente de tu confirmación">
+          <Caja.Cabecera
+            titulo={
+              <span className="inline-flex items-center gap-2">
+                <ShieldIcon />
+                Pendiente de tu confirmación
+              </span>
+            }
+            nivel={4}
+            acciones={<CounterLabel>{pendientes.length}</CounterLabel>}
+          />
+          <Caja.Cuerpo className="text-fg-muted">
+            Estas acciones actúan fuera de la aplicación. No se ha hecho nada todavía: solo se ejecutan si las confirmas.
+          </Caja.Cuerpo>
+          <Caja.Lista>
+            {pendientes.map((a) => (
+              <AccionItem key={a.id} accion={a} modulo={nombres[a.modulo] ?? a.modulo} onDecide={props.onDecide} disabled={props.disabled} />
+            ))}
+          </Caja.Lista>
+        </Caja>
+      )}
+
+      {props.caseId && <Propuestas caseId={props.caseId} facts={props.facts} onCaseUpdated={props.onCaseUpdated} disabled={props.disabled} nombres={nombres} />}
+
+      {modulos && !modulos.configurable && <Flash>Sin cuentas de usuario, los módulos los activa el operador del servicio.</Flash>}
+
+      {modulos && modulos.modulos.length > 0 && (
+        <Caja as="section" aria-label="Módulos">
+          <Caja.Cabecera titulo="Módulos" nivel={4} />
+          <Caja.Lista>
+            {modulos.modulos.map((m) => (
+              <Caja.Fila key={m.clave} className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <h5 className="m-0 text-sm font-semibold">
+                    <Link
+                      href={`#modulo-${m.clave}`}
+                      id={`modulo-nombre-${m.clave}`}
+                      onClick={(e: MouseEvent) => {
+                        e.preventDefault();
+                        onAbrir(m.clave);
+                      }}
+                    >
+                      {m.nombre}
+                    </Link>
+                  </h5>
+                  <p className="m-0 text-fg-muted">{m.descripcion}</p>
+                </div>
+                <InterruptorModulo modulo={m} configurable={modulos.configurable} etiquetaId={`modulo-nombre-${m.clave}`} {...props} />
+              </Caja.Fila>
+            ))}
+          </Caja.Lista>
+        </Caja>
+      )}
+      {modulos && modulos.modulos.length === 0 && (
+        <Blankslate narrow>
+          <Blankslate.Visual>
+            <HomeIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading as="h4">No hay módulos</Blankslate.Heading>
+          <Blankslate.Description>Este servicio todavía no ofrece módulos del hogar.</Blankslate.Description>
+        </Blankslate>
+      )}
+    </section>
+  );
+}
+
+/**
+ * The on/off switch of a module. Switching on is immediate; switching off asks first (its notices and pending
+ * actions go away) and, when the module has data in the case, whether to keep it or erase it.
+ */
+function InterruptorModulo({
+  modulo,
+  configurable,
+  etiquetaId,
+  onToggle,
+  facts,
+  disabled,
+}: ModulosPanelProps & { modulo: ModuloInfo; configurable: boolean; etiquetaId: string }) {
+  const [preguntando, setPreguntando] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const conDatos = facts.some((f) => modulo.hechos.some((h) => h.nombre === f.name));
+
+  if (modulo.obligatorio) return <Label variant="secondary">Siempre activo</Label>;
+
+  async function cambiar(activo: boolean, borrar = false) {
+    setPreguntando(false);
+    setBusy(true);
+    await onToggle(modulo.clave, activo, borrar);
+    setBusy(false);
+  }
+
+  return (
+    <>
+      <ToggleSwitch
+        aria-labelledby={etiquetaId}
+        size="small"
+        checked={modulo.activo}
+        disabled={!configurable || disabled}
+        loading={busy}
+        loadingLabel="Guardando"
+        buttonLabelOn="Activado"
+        buttonLabelOff="Desactivado"
+        onClick={() => (modulo.activo ? setPreguntando(true) : void cambiar(true))}
+      />
+      {preguntando && (
+        <DialogoEleccion
+          titulo={`Desactivar ${modulo.nombre}`}
+          onCerrar={() => setPreguntando(false)}
+          botones={
+            conDatos
+              ? [
+                  { contenido: "Desactivar y conservar los datos", onClick: () => void cambiar(false) },
+                  { contenido: "Desactivar y borrar sus datos", tipo: "danger", onClick: () => void cambiar(false, true) },
+                ]
+              : [{ contenido: "Desactivar", tipo: "danger", onClick: () => void cambiar(false) }]
+          }
+        >
+          Dejará de usarse en tus consultas y se quitarán sus avisos y sus acciones pendientes.
+          {conDatos ? " ¿Quieres borrar también sus datos de tu expediente?" : ""}
+        </DialogoEleccion>
+      )}
+    </>
+  );
+}
 
 /** Tax facts a module can fill in (e.g. the mortgage payments for the pre-2013 home deduction). */
 function Propuestas({
@@ -184,196 +392,157 @@ function Propuestas({
     }
   }
   return (
-    <section aria-labelledby="propuestas-fiscales" className="rounded-xl border border-primary/50 bg-surface px-4 py-3.5 shadow-card">
-      <h3 id="propuestas-fiscales" className="text-[15px] font-bold text-ink">
-        Para tu declaración de la renta
-      </h3>
+    <Caja as="section" variante="acento" aria-label="Para tu declaración de la renta">
+      <Caja.Cabecera titulo="Para tu declaración de la renta" nivel={4} />
       {error && (
-        <p role="alert" className="mt-1 text-[12.5px] text-risk-high-fg">
-          {error}
-        </p>
+        <Caja.Cuerpo>
+          <Flash variant="danger">{error}</Flash>
+        </Caja.Cuerpo>
       )}
-      <ul className="mt-2 space-y-3">
+      <Caja.Lista>
         {items.map((p) => (
-          <li key={p.nombre} className="rounded-lg border border-line bg-paper px-3 py-2.5">
-            <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">Desde {nombres[p.modulo] ?? p.modulo}</p>
-            <p className="mt-1 text-[14px] font-bold text-ink">{p.titulo}</p>
-            <p className="mt-1 text-[13px] leading-snug text-ink-soft">{p.explicacion}</p>
+          <Caja.Fila key={p.nombre} className="flex flex-col gap-1">
+            <p className="m-0 text-xs text-fg-muted">Desde {nombres[p.modulo] ?? p.modulo}</p>
+            <p className="m-0 font-semibold">{p.titulo}</p>
+            <p className="m-0">{p.explicacion}</p>
             {Object.keys(p.desglose).length > 0 && (
-              <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 text-[12.5px] text-ink-soft">
+              <dl className="m-0 grid grid-cols-[auto_1fr] gap-x-3 text-xs">
                 {Object.entries(p.desglose).map(([k, v]) => (
                   <div key={k} className="contents">
-                    <dt>{DESGLOSE[k] ?? k.replace(/_/g, " ")}</dt>
-                    <dd className="text-right font-semibold text-ink">{v}</dd>
+                    <dt className="text-fg-muted">{DESGLOSE[k] ?? k.replace(/_/g, " ")}</dt>
+                    <dd className="m-0 text-right font-semibold">{v}</dd>
                   </div>
                 ))}
               </dl>
             )}
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" className={BUTTON_PRIMARY} disabled={disabled || busy !== null} onClick={() => void accept(p)}>
-                <Check size={14} aria-hidden />
-                {busy === p.nombre ? "Guardando…" : "Usar esta cifra"}
-              </button>
+            <div className="mt-1">
+              <Button size="small" variant="primary" leadingVisual={CheckIcon} disabled={disabled || busy !== null} loading={busy === p.nombre} onClick={() => void accept(p)}>
+                Usar esta cifra
+              </Button>
             </div>
-          </li>
+          </Caja.Fila>
         ))}
-      </ul>
-    </section>
+      </Caja.Lista>
+    </Caja>
   );
 }
-
-const ESTADO: Record<string, string> = {
-  ejecutada: "Hecha",
-  fallida: "Falló",
-  rechazada: "Rechazada",
-  ejecutando: "En curso",
-};
 
 function AccionItem({ accion, modulo, onDecide, disabled }: { accion: AccionPendiente; modulo: string; onDecide: ModulosPanelProps["onDecide"]; disabled: boolean }) {
-  const [step, setStep] = useState<"idle" | "confirming" | "busy">("idle");
-  async function decide(confirmar: boolean) {
-    setStep("busy");
-    await onDecide(accion.id, confirmar);
-    setStep("idle");
+  const [busy, setBusy] = useState(false);
+  const confirmar = useConfirmar();
+  async function decide(si: boolean) {
+    setBusy(true);
+    await onDecide(accion.id, si);
+    setBusy(false);
   }
   return (
-    <li className="rounded-lg border border-line bg-paper px-3 py-2.5">
-      <p className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
+    <Caja.Fila className="flex flex-col gap-1">
+      <p className="m-0 text-xs text-fg-muted">
         {modulo} · {relativeTime(Date.parse(accion.created_at))}
       </p>
-      <p className="mt-1 text-[13.5px] leading-snug text-ink">{accion.resumen}</p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {step === "confirming" ? (
-          <>
-            <button type="button" className={BUTTON_PRIMARY} onClick={() => void decide(true)} disabled={disabled}>
-              <Check size={14} aria-hidden />
-              Sí, ejecutarla ahora
-            </button>
-            <button type="button" className={BUTTON_QUIET} onClick={() => setStep("idle")}>
-              Cancelar
-            </button>
-          </>
-        ) : (
-          <>
-            <button type="button" className={BUTTON_PRIMARY} onClick={() => setStep("confirming")} disabled={disabled || step === "busy"}>
-              Confirmar
-            </button>
-            <button type="button" className={BUTTON_QUIET} onClick={() => void decide(false)} disabled={disabled || step === "busy"}>
-              Rechazar
-            </button>
-          </>
-        )}
+      <p className="m-0">{accion.resumen}</p>
+      <div className="mt-1 flex flex-wrap gap-2">
+        <Button
+          size="small"
+          variant="primary"
+          disabled={disabled || busy}
+          loading={busy}
+          onClick={() =>
+            void confirmar("¿Ejecutar esta acción ahora?", accion.resumen, "Sí, ejecutarla ahora", "primary").then((si) => {
+              if (si) void decide(true);
+            })
+          }
+        >
+          Confirmar
+        </Button>
+        <Button size="small" disabled={disabled || busy} onClick={() => void decide(false)}>
+          Rechazar
+        </Button>
       </div>
-    </li>
+    </Caja.Fila>
   );
 }
 
-function ModuloCard({
+function SeccionModulo({
   modulo,
   configurable,
-  onToggle,
-  caseId,
-  facts,
-  onCaseUpdated,
-  disabled,
-}: ModulosPanelProps & { modulo: ModuloInfo; configurable: boolean }) {
-  const [turningOff, setTurningOff] = useState(false);
+  open,
+  ...props
+}: ModulosPanelProps & { modulo: ModuloInfo; configurable: boolean; open: boolean }) {
+  const { onToggle, caseId, facts, onCaseUpdated, disabled } = props;
+  const confirmar = useConfirmar();
   const [busy, setBusy] = useState(false);
-  const switchId = useId();
-  const editable = configurable && !modulo.obligatorio;
+  const idTitulo = `modulo-${modulo.clave}`;
   const ownFacts = facts.filter((f) => modulo.hechos.some((h) => h.nombre === f.name));
   const actua = modulo.herramientas.some((h) => h.efecto === "actua");
+  const editable = configurable && !modulo.obligatorio;
 
-  async function toggle(activo: boolean, borrar = false) {
+  async function desactivar(borrar: boolean) {
+    const si = borrar
+      ? await confirmar(
+          `¿Desactivar ${modulo.nombre} y borrar sus datos?`,
+          "Se borrarán de tu expediente los datos de este módulo, sus avisos y sus acciones pendientes. No se puede deshacer.",
+          "Desactivar y borrar",
+        )
+      : await confirmar(
+          `¿Desactivar ${modulo.nombre}?`,
+          "Dejará de usarse en tus consultas y se quitarán sus avisos y sus acciones pendientes. Sus datos se conservan.",
+          "Desactivar",
+        );
+    if (!si) return;
     setBusy(true);
-    if (await onToggle(modulo.clave, activo, borrar)) setTurningOff(false);
+    await onToggle(modulo.clave, false, borrar);
     setBusy(false);
   }
 
   return (
-    <article aria-labelledby={`${switchId}-title`} className={clsx("rounded-xl border bg-surface px-4 py-3.5 shadow-card", modulo.activo ? "border-primary/50" : "border-line")}>
-      <div className="flex items-start gap-3">
-        <div className="min-w-0 flex-1">
-          <h3 id={`${switchId}-title`} className="text-[15.5px] font-bold text-ink">
-            {modulo.nombre}
-          </h3>
-          <p className="mt-0.5 text-[13px] leading-snug text-ink-soft">{modulo.descripcion}</p>
-        </div>
-        {modulo.obligatorio ? (
-          <span className="shrink-0 rounded-pill bg-line/70 px-2 py-0.5 text-[11.5px] font-semibold text-ink-soft">Siempre activo</span>
-        ) : (
-          <button
-            type="button"
-            role="switch"
-            aria-checked={modulo.activo}
-            aria-label={`${modulo.activo ? "Desactivar" : "Activar"} ${modulo.nombre}`}
-            disabled={!editable || busy || disabled}
-            onClick={() => (modulo.activo ? setTurningOff(true) : void toggle(true))}
-            className={clsx(
-              "relative h-7 w-12 shrink-0 rounded-pill transition disabled:cursor-not-allowed disabled:opacity-60",
-              modulo.activo ? "bg-primary" : "bg-line",
-            )}
-          >
-            <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all", modulo.activo ? "left-6" : "left-1")} />
-          </button>
-        )}
-      </div>
+    <section aria-labelledby={idTitulo} className="flex flex-col gap-4">
+      <Subcabecera
+        id={idTitulo}
+        titulo={modulo.nombre}
+        descripcion={modulo.descripcion}
+        acciones={modulo.obligatorio ? <Label variant="secondary">Siempre activo</Label> : <Label variant={modulo.activo ? "success" : "secondary"}>{modulo.activo ? "Activado" : "Desactivado"}</Label>}
+      />
 
-      {turningOff && (
-        <div role="group" aria-label={`Desactivar ${modulo.nombre}`} className="mt-3 rounded-lg border border-line bg-paper px-3 py-2.5 text-[13px] leading-snug">
-          <p className="text-ink">
-            Dejará de usarse en tus consultas y se quitarán sus avisos y sus acciones pendientes.
-            {ownFacts.length > 0 ? " ¿Quieres borrar también sus datos de tu expediente?" : ""}
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button type="button" className={BUTTON_PRIMARY} disabled={busy} onClick={() => void toggle(false)}>
-              {ownFacts.length > 0 ? "Desactivar y conservar los datos" : "Desactivar"}
-            </button>
-            {ownFacts.length > 0 && (
-              <button type="button" className={clsx(BUTTON_QUIET, "text-risk-high-fg")} disabled={busy} onClick={() => void toggle(false, true)}>
-                <Trash2 size={14} aria-hidden />
-                Desactivar y borrar sus datos
-              </button>
-            )}
-            <button type="button" className={BUTTON_QUIET} onClick={() => setTurningOff(false)}>
-              Cancelar
-            </button>
-          </div>
-        </div>
+      {!modulo.activo && (
+        <Flash className="flex flex-wrap items-center gap-3">
+          <span className="flex-1">Este módulo está desactivado: no se usa en tus consultas.</span>
+          {editable && (
+            <Button size="small" variant="primary" disabled={disabled || busy} loading={busy} onClick={() => void onToggle(modulo.clave, true, false)}>
+              Activar
+            </Button>
+          )}
+        </Flash>
       )}
 
-      {modulo.activo && modulo.clave === "fiscal" && (
-        <p className="mt-2 text-[12.5px] text-muted">Sus datos se editan en «Tu expediente».</p>
-      )}
+      {modulo.activo && modulo.clave === "fiscal" && <p className="m-0 text-fg-muted">Sus datos se editan en «Tu expediente».</p>}
       {modulo.activo && actua && (
-        <p className="mt-2 text-[12.5px] leading-snug text-muted">
-          Este módulo puede preparar acciones fuera de la aplicación; ninguna se ejecuta sin tu confirmación.
-        </p>
+        <Flash variant="warning">Este módulo puede preparar acciones fuera de la aplicación; ninguna se ejecuta sin tu confirmación.</Flash>
       )}
 
       {modulo.activo && modulo.hechos.length > 0 && (
-        <details className="mt-3">
-          <summary className="flex cursor-pointer items-center gap-1 text-[13.5px] font-semibold text-primary-dark">
-            <ChevronDown size={14} aria-hidden />
-            Tus datos de este módulo ({ownFacts.length} de {modulo.hechos.length})
-          </summary>
+        <Caja as="section" aria-label={`Tus datos de ${modulo.nombre}`}>
+          <Caja.Cabecera
+            titulo="Tus datos de este módulo"
+            nivel={4}
+            acciones={
+              <CounterLabel aria-label={`${ownFacts.length} de ${modulo.hechos.length} datos`}>
+                {ownFacts.length}/{modulo.hechos.length}
+              </CounterLabel>
+            }
+          />
           {!caseId ? (
-            <p className="mt-2 text-[13px] text-muted">Haz una primera consulta para crear tu expediente y poder guardar datos.</p>
+            <Caja.Cuerpo className="text-fg-muted">Haz una primera consulta para crear tu expediente y poder guardar datos.</Caja.Cuerpo>
           ) : (
-            <div className="mt-2 space-y-3">
+            <Caja.Lista>
               {modulo.hechos.map((h) => (
-                <HechoField
-                  key={h.nombre}
-                  hecho={h}
-                  caseId={caseId}
-                  fact={facts.find((f) => f.name === h.nombre)}
-                  onCaseUpdated={onCaseUpdated}
-                  disabled={disabled}
-                />
+                <Caja.Fila key={h.nombre}>
+                  <HechoField hecho={h} caseId={caseId} fact={facts.find((f) => f.name === h.nombre)} onCaseUpdated={onCaseUpdated} disabled={disabled} />
+                </Caja.Fila>
               ))}
-            </div>
+            </Caja.Lista>
           )}
-        </details>
+        </Caja>
       )}
 
       {modulo.activo &&
@@ -382,32 +551,55 @@ function ModuloCard({
           .filter((h) => h.acepta_fichero && h.efecto !== "actua")
           .map((h) => <FileTool key={h.nombre} modulo={modulo} herramienta={h} caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />)}
 
-      {modulo.activo && modulo.lee_documentos && caseId && (
-        <DocumentReader modulo={modulo} caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />
-      )}
+      {modulo.activo && modulo.lee_documentos && caseId && <DocumentReader modulo={modulo} caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />}
 
-      {modulo.activo && modulo.clave === "correo" && caseId && <CorreoSeccion caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} />}
+      {modulo.activo && modulo.clave === "correo" && caseId && <CorreoSeccion caseId={caseId} onCaseUpdated={onCaseUpdated} disabled={disabled} activa={open} />}
 
       {modulo.fuentes.length > 0 && (
-        <details className="mt-3">
-          <summary className="cursor-pointer text-[12.5px] font-semibold text-muted">Fuentes ({modulo.fuentes.length})</summary>
-          <ul className="mt-1 space-y-1 text-[12px] leading-snug text-muted">
+        <Caja as="section" aria-label={`Fuentes de ${modulo.nombre}`} condensada>
+          <Caja.Cabecera titulo="Fuentes" nivel={4} acciones={<CounterLabel>{modulo.fuentes.length}</CounterLabel>} />
+          <Caja.Lista>
             {modulo.fuentes.map((f) => (
-              <li key={f.identificador}>
+              <Caja.Fila key={f.identificador} className="text-xs">
                 {f.url.startsWith("https://") ? (
-                  <a href={f.url} target="_blank" rel="noreferrer" className="underline hover:text-ink">
+                  <Link href={f.url} target="_blank" rel="noreferrer">
                     {f.descripcion}
-                  </a>
+                  </Link>
                 ) : (
                   f.descripcion
                 )}{" "}
-                ({f.identificador})
-              </li>
+                <span className="text-fg-muted">({f.identificador})</span>
+              </Caja.Fila>
             ))}
-          </ul>
-        </details>
+          </Caja.Lista>
+        </Caja>
       )}
-    </article>
+
+      {modulo.activo && editable && (
+        <ZonaPeligro>
+          <FilaPeligro
+            titulo="Desactivar este módulo"
+            descripcion="Deja de usarse en tus consultas y se quitan sus avisos y sus acciones pendientes. Sus datos se conservan."
+            accion={
+              <Button variant="danger" disabled={disabled || busy} onClick={() => void desactivar(false)}>
+                Desactivar
+              </Button>
+            }
+          />
+          {ownFacts.length > 0 && (
+            <FilaPeligro
+              titulo="Desactivar y borrar sus datos"
+              descripcion={`Además, borra de tu expediente ${ownFacts.length === 1 ? "el dato" : `los ${ownFacts.length} datos`} de este módulo. No se puede deshacer.`}
+              accion={
+                <Button variant="danger" leadingVisual={TrashIcon} disabled={disabled || busy} onClick={() => void desactivar(true)}>
+                  Desactivar y borrar
+                </Button>
+              }
+            />
+          )}
+        </ZonaPeligro>
+      )}
+    </section>
   );
 }
 
@@ -423,6 +615,7 @@ function initialText(hecho: HechoInfo, fact: Fact | undefined): string {
   return textoDeValor(fact.value);
 }
 
+/** One editable row of a module's data: label, explanation, the field, save and delete. */
 function HechoField({
   hecho,
   caseId,
@@ -436,7 +629,6 @@ function HechoField({
   onCaseUpdated: (updated: CaseState) => void;
   disabled: boolean;
 }) {
-  const id = useId();
   const [draft, setDraft] = useState(() => initialText(hecho, fact));
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -484,68 +676,66 @@ function HechoField({
     }
   }
 
-  const describedBy = `${id}-desc${error ? ` ${id}-err` : ""}`;
   return (
     <form
-      className="rounded-lg border border-line bg-paper px-3 py-2.5"
+      className="flex flex-col gap-2"
       onSubmit={(e) => {
         e.preventDefault();
         void save();
       }}
     >
-      <label htmlFor={id} className="flex flex-wrap items-center gap-2 text-[13.5px] font-semibold text-ink">
-        {hecho.etiqueta}
-        {hecho.sensible && <span className="rounded-pill bg-risk-high-bg px-2 py-px text-[11px] font-semibold text-risk-high-fg">Dato sensible</span>}
-      </label>
-      <p id={`${id}-desc`} className="mb-1.5 text-[12px] leading-snug text-muted">
-        {hecho.descripcion}
-        {hecho.tipo === "json" ? " (en formato JSON)" : ""}
-      </p>
-      {hecho.tipo === "boolean" ? (
-        <select id={id} value={draft} onChange={(e) => setDraft(e.target.value)} className={FIELD_CLASS} aria-describedby={describedBy} aria-invalid={error !== null}>
-          <option value="">— sin indicar —</option>
-          <option value="true">Sí</option>
-          <option value="false">No</option>
-        </select>
-      ) : hecho.tipo === "json" ? (
-        <textarea
-          id={id}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          rows={5}
-          spellCheck={false}
-          className={clsx(FIELD_CLASS, "font-mono text-[13px]")}
-          aria-describedby={describedBy}
-          aria-invalid={error !== null}
-        />
-      ) : (
-        <input
-          id={id}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          inputMode={hecho.tipo === "number" ? "decimal" : undefined}
-          className={FIELD_CLASS}
-          aria-describedby={describedBy}
-          aria-invalid={error !== null}
-        />
-      )}
-      {error && (
-        <p id={`${id}-err`} role="alert" className="mt-1.5 text-[12.5px] leading-snug text-risk-high-fg">
-          {error}
-        </p>
-      )}
-      <div className="mt-2 flex flex-wrap items-center gap-2">
-        <button type="submit" className={BUTTON_PRIMARY} disabled={busy || disabled || draft === stored}>
-          <Check size={14} aria-hidden />
-          {busy ? "Guardando…" : "Guardar"}
-        </button>
-        {fact && (
-          <button type="button" className={BUTTON_QUIET} onClick={() => void remove()} disabled={busy || disabled}>
-            <Trash2 size={14} aria-hidden />
-            Borrar
-          </button>
+      <FormControl>
+        <FormControl.Label>
+          <span className="inline-flex flex-wrap items-center gap-2">
+            {hecho.etiqueta}
+            {hecho.sensible && <Label variant="danger">Dato sensible</Label>}
+          </span>
+        </FormControl.Label>
+        {hecho.tipo === "boolean" ? (
+          <Select value={draft} onChange={(e) => setDraft(e.target.value)} block validationStatus={error ? "error" : undefined}>
+            <Select.Option value="">— sin indicar —</Select.Option>
+            <Select.Option value="true">Sí</Select.Option>
+            <Select.Option value="false">No</Select.Option>
+          </Select>
+        ) : hecho.tipo === "json" ? (
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={5}
+            spellCheck={false}
+            block
+            className="font-mono"
+            validationStatus={error ? "error" : undefined}
+          />
+        ) : (
+          <TextInput
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            inputMode={hecho.tipo === "number" ? "decimal" : undefined}
+            block
+            validationStatus={error ? "error" : undefined}
+          />
         )}
-        {saved && <span role="status" className="text-[12.5px] text-grounding-cited-fg">Guardado</span>}
+        <FormControl.Caption>
+          {hecho.descripcion}
+          {hecho.tipo === "json" ? " (en formato JSON)" : ""}
+        </FormControl.Caption>
+        {error && <FormControl.Validation variant="error">{error}</FormControl.Validation>}
+      </FormControl>
+      <div className="flex flex-wrap items-center gap-2">
+        <Button type="submit" size="small" variant="primary" leadingVisual={CheckIcon} disabled={busy || disabled || draft === stored} loading={busy}>
+          Guardar
+        </Button>
+        {fact && (
+          <Button type="button" size="small" variant="invisible" leadingVisual={TrashIcon} onClick={() => void remove()} disabled={busy || disabled}>
+            Borrar
+          </Button>
+        )}
+        {saved && (
+          <span role="status" className="text-xs text-fg-success">
+            Guardado
+          </span>
+        )}
       </div>
     </form>
   );
@@ -553,6 +743,34 @@ function HechoField({
 
 // Binary formats travel as base64; everything else as text.
 const BINARY_FILE = /\.(xlsx|xls|ods|zip)$/i;
+
+/** A hidden file input opened by a button (the button is what the keyboard and the screen reader reach). */
+function SelectorFichero({ etiqueta, accept, disabled, cargando, onFichero }: { etiqueta: string; accept?: string; disabled: boolean; cargando: boolean; onFichero: (f: File) => void }) {
+  const ref = useRef<HTMLInputElement | null>(null);
+  const id = useId();
+  return (
+    <>
+      <input
+        ref={ref}
+        id={id}
+        type="file"
+        accept={accept}
+        className="sr-only"
+        tabIndex={-1}
+        aria-label={etiqueta}
+        disabled={disabled}
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          e.target.value = "";
+          if (file) onFichero(file);
+        }}
+      />
+      <Button leadingVisual={UploadIcon} disabled={disabled} loading={cargando} onClick={() => ref.current?.click()}>
+        {etiqueta}
+      </Button>
+    </>
+  );
+}
 
 /** Upload a file straight to a module tool (a bank statement): it never goes to the model or the audit trail. */
 function FileTool({
@@ -568,7 +786,6 @@ function FileTool({
   onCaseUpdated: (updated: CaseState) => void;
   disabled: boolean;
 }) {
-  const id = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [resultado, setResultado] = useState<string | null>(null);
@@ -591,37 +808,28 @@ function FileTool({
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-dashed border-line px-3 py-2.5">
-      <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-[13.5px] font-semibold text-primary-dark">
-        <FileUp size={15} aria-hidden />
-        {busy ? "Analizando el fichero…" : "Analizar un fichero"}
-      </label>
-      <input
-        id={id}
-        type="file"
-        className="sr-only"
-        disabled={busy || disabled}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void send(file);
-        }}
-      />
-      <p className="mt-1 text-[12px] leading-snug text-muted">
-        {herramienta.descripcion.split(". ")[0]}. El fichero se analiza en el servidor sin pasar por el modelo de lenguaje y no se
-        guarda: solo lo que se deduce de él.
-      </p>
-      {error && (
-        <p role="alert" className="mt-1.5 whitespace-pre-line text-[12.5px] text-risk-high-fg">
-          {error}
+    <Caja as="section" aria-label={`Analizar un fichero: ${herramienta.nombre}`}>
+      <Caja.Cabecera titulo="Analizar un fichero" nivel={4} />
+      <Caja.Cuerpo className="flex flex-col gap-3">
+        <p className="m-0 text-fg-muted">
+          {herramienta.descripcion.split(". ")[0]}. El fichero se analiza en el servidor sin pasar por el modelo de lenguaje y no se
+          guarda: solo lo que se deduce de él.
         </p>
-      )}
-      {resultado && (
-        <p role="status" className="mt-2 max-h-64 overflow-y-auto whitespace-pre-line text-[13px] leading-snug text-ink">
-          {resultado}
-        </p>
-      )}
-    </div>
+        <div>
+          <SelectorFichero etiqueta={busy ? "Analizando el fichero…" : "Elegir un fichero"} disabled={busy || disabled} cargando={busy} onFichero={(f) => void send(f)} />
+        </div>
+        {error && (
+          <Flash variant="danger" className="whitespace-pre-line">
+            {error}
+          </Flash>
+        )}
+        {resultado && (
+          <p role="status" className="m-0 max-h-64 overflow-y-auto whitespace-pre-line">
+            {resultado}
+          </p>
+        )}
+      </Caja.Cuerpo>
+    </Caja>
   );
 }
 
@@ -636,7 +844,6 @@ function DocumentReader({
   onCaseUpdated: (updated: CaseState) => void;
   disabled: boolean;
 }) {
-  const id = useId();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [campos, setCampos] = useState<CampoPropuesto[] | null>(null);
@@ -686,68 +893,60 @@ function DocumentReader({
   }
 
   return (
-    <div className="mt-3 rounded-lg border border-dashed border-line px-3 py-2.5">
-      <label htmlFor={id} className="flex cursor-pointer items-center gap-2 text-[13.5px] font-semibold text-primary-dark">
-        <FileUp size={15} aria-hidden />
-        {busy && !campos ? "Leyendo el documento…" : "Leer un documento (tique, factura…)"}
-      </label>
-      <input
-        id={id}
-        type="file"
-        accept=".pdf,.txt,image/*"
-        className="sr-only"
-        disabled={busy || disabled}
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          e.target.value = "";
-          if (file) void read(file);
-        }}
-      />
-      <p className="mt-1 text-[12px] leading-snug text-muted">
-        Se envía al proveedor del modelo de lenguaje para leerlo y no se guarda. Revisa los datos antes de usarlos.
-      </p>
-      {error && (
-        <p role="alert" className="mt-1.5 text-[12.5px] text-risk-high-fg">
-          {error}
-        </p>
-      )}
-      {campos && (
-        <div className="mt-2 space-y-2">
-          {campos.length === 0 && <p className="text-[13px] text-muted">No he encontrado datos que pueda respaldar con el texto del documento.</p>}
+    <Caja as="section" aria-label={`Leer un documento con ${modulo.nombre}`}>
+      <Caja.Cabecera titulo="Leer un documento" nivel={4} />
+      <Caja.Cuerpo className="flex flex-col gap-3">
+        <p className="m-0 text-fg-muted">Tique, factura… Se envía al proveedor del modelo de lenguaje para leerlo y no se guarda. Revisa los datos antes de usarlos.</p>
+        <div>
+          <SelectorFichero
+            etiqueta={busy && !campos ? "Leyendo el documento…" : "Elegir un documento"}
+            accept=".pdf,.txt,image/*"
+            disabled={busy || disabled}
+            cargando={busy && !campos}
+            onFichero={(f) => void read(f)}
+          />
+        </div>
+        {error && <Flash variant="danger">{error}</Flash>}
+        {campos && campos.length === 0 && <p className="m-0 text-fg-muted">No he encontrado datos que pueda respaldar con el texto del documento.</p>}
+      </Caja.Cuerpo>
+      {campos && campos.length > 0 && (
+        <Caja.Lista>
           {campos.map((c, i) => (
-            <div key={c.campo}>
-              <label htmlFor={`${id}-${c.campo}`} className="text-[12.5px] font-semibold text-ink">
-                {c.campo.replace(/_/g, " ")}
-              </label>
-              <input
-                id={`${id}-${c.campo}`}
-                value={c.valor}
-                onChange={(e) => setCampos((prev) => prev?.map((p, j) => (j === i ? { ...p, valor: e.target.value } : p)) ?? prev)}
-                className={FIELD_CLASS}
-              />
-              <p className="text-[11.5px] text-muted">En el documento: «{c.evidencia}»</p>
-            </div>
+            <Caja.Fila key={c.campo}>
+              <FormControl>
+                <FormControl.Label>{c.campo.replace(/_/g, " ")}</FormControl.Label>
+                <TextInput block value={c.valor} onChange={(e) => setCampos((prev) => prev?.map((p, j) => (j === i ? { ...p, valor: e.target.value } : p)) ?? prev)} />
+                <FormControl.Caption>En el documento: «{c.evidencia}»</FormControl.Caption>
+              </FormControl>
+            </Caja.Fila>
           ))}
+        </Caja.Lista>
+      )}
+      {campos && (avisos.length > 0 || (campos.length > 0 && modulo.herramienta_de_documento)) && (
+        <Caja.Pie className="flex flex-col gap-2">
           {avisos.length > 0 && (
-            <ul className="list-disc pl-5 text-[12px] text-muted">
+            <ul className="m-0 list-disc pl-5 text-xs text-fg-muted">
               {avisos.map((a, i) => (
                 <li key={i}>{a}</li>
               ))}
             </ul>
           )}
           {campos.length > 0 && modulo.herramienta_de_documento && (
-            <button type="button" className={BUTTON_PRIMARY} disabled={busy || disabled} onClick={() => void use()}>
-              <Check size={14} aria-hidden />
-              Usar estos datos
-            </button>
+            <div>
+              <Button variant="primary" leadingVisual={CheckIcon} disabled={busy || disabled} loading={busy} onClick={() => void use()}>
+                Usar estos datos
+              </Button>
+            </div>
           )}
-        </div>
+        </Caja.Pie>
       )}
       {resultado && !error && (
-        <p role="status" className="mt-2 whitespace-pre-line text-[13px] leading-snug text-ink">
-          {resultado}
-        </p>
+        <Caja.Pie>
+          <p role="status" className="m-0 whitespace-pre-line">
+            {resultado}
+          </p>
+        </Caja.Pie>
       )}
-    </div>
+    </Caja>
   );
 }

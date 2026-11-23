@@ -1,15 +1,14 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Capacidades» inside «Módulos»: the means any module can use (mail, browser, documents, research), apart from the
 // modules themselves, with the user's consent to each. A capability that is also a module (mail, browser) keeps its
-// one switch on its module card; here it only says so. Read when the panel opens, so a change made elsewhere shows.
+// one switch on its module; here it only says so. Read each time the page is shown (`activa`), so a change made
+// elsewhere shows.
 
-import { Plug } from "lucide-react";
-import clsx from "clsx";
 import { useEffect, useId, useState } from "react";
 
 import { ApiError } from "../api";
 import type { CapacidadInfo, CapacidadesResponse } from "../apiModulos";
 import { getCapacidades, setCapacidad } from "../apiModulos";
+import { Caja, CargandoLista, Flash, ToggleSwitch } from "../ui";
 
 function message(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -26,13 +25,21 @@ function estadoCapacidad(c: CapacidadInfo, nombres: Record<string, string>): str
   return c.activa ? "Activada: le has dado permiso." : "Desactivada: no la usará ningún módulo sin tu permiso.";
 }
 
-export function CapacidadesSeccion({ nombres, disabled }: { nombres: Record<string, string>; disabled: boolean }) {
+interface CapacidadesSeccionProps {
+  nombres: Record<string, string>;
+  disabled: boolean;
+  /** The page is on screen: the capabilities are read again each time it becomes so. */
+  activa?: boolean;
+}
+
+export function CapacidadesSeccion({ nombres, disabled, activa = true }: CapacidadesSeccionProps) {
   const [datos, setDatos] = useState<CapacidadesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [sinSoporte, setSinSoporte] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const titulo = useId();
 
   useEffect(() => {
+    if (!activa) return;
     const controller = new AbortController();
     getCapacidades(controller.signal).then(
       (resp) => {
@@ -40,17 +47,14 @@ export function CapacidadesSeccion({ nombres, disabled }: { nombres: Record<stri
         setError(null);
       },
       (err: unknown) => {
-        // An older backend without capabilities: the section is simply not shown.
-        if (!controller.signal.aborted && !(err instanceof ApiError && err.status === 404)) {
-          setError(`No se pudieron cargar las capacidades. ${message(err)}`);
-        }
+        if (controller.signal.aborted) return;
+        // An older backend without capabilities: the section says so instead of an error.
+        if (err instanceof ApiError && err.status === 404) setSinSoporte(true);
+        else setError(`No se pudieron cargar las capacidades. ${message(err)}`);
       },
     );
     return () => controller.abort();
-  }, []);
-
-  if (!datos && !error) return null;
-  if (datos && datos.capacidades.length === 0) return null;
+  }, [activa]);
 
   async function cambiar(c: CapacidadInfo) {
     setBusy(c.clave);
@@ -65,63 +69,75 @@ export function CapacidadesSeccion({ nombres, disabled }: { nombres: Record<stri
   }
 
   return (
-    <section aria-labelledby={titulo} className="space-y-3 border-t border-line pt-4">
-      <div>
-        <h3 id={titulo} className="flex items-center gap-2 text-[15px] font-bold text-ink">
-          <Plug size={16} aria-hidden className="text-primary-dark" />
-          Capacidades
-        </h3>
-        <p className="mt-0.5 text-[12.5px] leading-snug text-muted">
-          Medios que cualquier módulo puede usar. Lo que actúa fuera de la aplicación nunca se ejecuta sin tu confirmación.
+    <div className="flex flex-col gap-4">
+      <p className="m-0 text-fg-muted">
+        Medios que cualquier módulo puede usar. Lo que actúa fuera de la aplicación nunca se ejecuta sin tu confirmación.
+      </p>
+      {error && <Flash variant="danger">{error}</Flash>}
+      {sinSoporte && <Flash>Este servicio todavía no gestiona las capacidades por separado.</Flash>}
+      {!datos && !error && !sinSoporte && <CargandoLista filas={3} etiqueta="Cargando las capacidades" />}
+      {datos && !datos.configurable && <Flash>Sin cuentas de usuario, las capacidades las activa el operador del servicio.</Flash>}
+      {datos && datos.capacidades.length > 0 && (
+        <Caja as="section" aria-label="Capacidades">
+          <Caja.Cabecera titulo="Capacidades" />
+          <Caja.Lista>
+            {datos.capacidades.map((c) => (
+              <FilaCapacidad
+                key={c.clave}
+                c={c}
+                nombres={nombres}
+                conInterruptor={datos.configurable && c.requiere_consentimiento && !c.modulo}
+                disabled={disabled || busy !== null}
+                cargando={busy === c.clave}
+                onCambiar={() => void cambiar(c)}
+              />
+            ))}
+          </Caja.Lista>
+        </Caja>
+      )}
+      {datos && datos.capacidades.length === 0 && <p className="m-0 text-fg-muted">Este servicio no ofrece capacidades adicionales.</p>}
+    </div>
+  );
+}
+
+interface FilaCapacidadProps {
+  c: CapacidadInfo;
+  nombres: Record<string, string>;
+  conInterruptor: boolean;
+  disabled: boolean;
+  cargando: boolean;
+  onCambiar: () => void;
+}
+
+function FilaCapacidad({ c, nombres, conInterruptor, disabled, cargando, onCambiar }: FilaCapacidadProps) {
+  const id = useId();
+  return (
+    <Caja.Fila className="flex items-start gap-3">
+      <div className="min-w-0 flex-1">
+        <h4 id={`${id}-nombre`} className="m-0 text-sm font-semibold">
+          {c.nombre}
+        </h4>
+        <p className="m-0 text-fg-muted">{c.descripcion}</p>
+        <p className="m-0 mt-1 text-xs">
+          {estadoCapacidad(c, nombres)}
         </p>
+        {c.usada_por.length > 0 && (
+          <p className="m-0 text-xs text-fg-muted">La usan: {c.usada_por.map((m) => nombres[m] ?? m).join(", ")}.</p>
+        )}
       </div>
-      {error && (
-        <p role="alert" className="rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-          {error}
-        </p>
+      {conInterruptor && (
+        <ToggleSwitch
+          aria-labelledby={`${id}-nombre`}
+          size="small"
+          checked={c.activa}
+          disabled={disabled}
+          loading={cargando}
+          loadingLabel="Guardando"
+          buttonLabelOn="Activada"
+          buttonLabelOff="Desactivada"
+          onClick={onCambiar}
+        />
       )}
-      {datos?.capacidades.map((c) => {
-        const conInterruptor = datos.configurable && c.requiere_consentimiento && !c.modulo;
-        return (
-          <article
-            key={c.clave}
-            aria-label={c.nombre}
-            className={clsx("rounded-xl border bg-surface px-4 py-3 shadow-card", c.activa ? "border-primary/40" : "border-line")}
-          >
-            <div className="flex items-start gap-3">
-              <div className="min-w-0 flex-1">
-                <h4 className="text-[14.5px] font-bold text-ink">{c.nombre}</h4>
-                <p className="mt-0.5 text-[12.5px] leading-snug text-ink-soft">{c.descripcion}</p>
-              </div>
-              {conInterruptor && (
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={c.activa}
-                  aria-label={`${c.activa ? "Desactivar" : "Activar"} ${c.nombre}`}
-                  disabled={disabled || busy !== null}
-                  onClick={() => void cambiar(c)}
-                  className={clsx(
-                    "relative h-7 w-12 shrink-0 rounded-pill transition disabled:cursor-not-allowed disabled:opacity-60",
-                    c.activa ? "bg-primary" : "bg-line",
-                  )}
-                >
-                  <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all", c.activa ? "left-6" : "left-1")} />
-                </button>
-              )}
-            </div>
-            <p className="mt-1.5 text-[12.5px] font-semibold text-ink-soft">{estadoCapacidad(c, nombres)}</p>
-            {c.usada_por.length > 0 && (
-              <p className="mt-0.5 text-[12px] text-muted">La usan: {c.usada_por.map((m) => nombres[m] ?? m).join(", ")}.</p>
-            )}
-          </article>
-        );
-      })}
-      {datos && !datos.configurable && (
-        <p className="rounded-lg bg-line/50 px-3 py-2 text-[12.5px] leading-snug text-ink-soft">
-          Sin cuentas de usuario, las capacidades las activa el operador del servicio.
-        </p>
-      )}
-    </section>
+    </Caja.Fila>
   );
 }

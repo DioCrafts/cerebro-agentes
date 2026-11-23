@@ -1,22 +1,24 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// "Tu expediente": what the advisor has recorded about the user in this
-// conversation. Answers depend on these facts, so the user can see every one,
-// correct it in place, or remove it.
+// «Tu expediente»: what the advisor has recorded about the user in this conversation. Answers depend on these
+// facts, so the user can see every one, correct it in place, or remove it.
+//
+// Shown as a page (registro.ts: presentacion "pagina"). The facts are a Box of editable rows, as in GitHub's
+// settings lists: the value with an edit and a delete button; editing turns the row into a small form;
+// deleting asks first.
 
-import { CalendarClock, Check, Pencil, Trash2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import type { Fact, ObligationCandidate } from "../api";
 import { STRUCTURED_FACTS } from "../lib/expediente";
-import { factInput, factLabel, factValue, formatDate } from "../lib/presentation";
-import { DeadlinesSection, DocumentSection } from "./CaseExtras";
 import { textoDeValor } from "../lib/guards";
+import { factInput, factLabel, factValue, formatDate } from "../lib/presentation";
+import { Blankslate, Button, Caja, CounterLabel, Flash, FormControl, IconButton, Select, TextInput } from "../ui";
+import { CalendarIcon, CheckIcon, FileDirectoryIcon, PencilIcon, TrashIcon } from "../ui/iconos";
+import { DeadlinesSection, DocumentSection } from "./CaseExtras";
+import { useConfirmar } from "./useConfirmar";
 
 type FactValue = string | number | boolean;
 
 interface CasePanelProps {
-  open: boolean;
-  onClose: () => void;
   facts: Fact[];
   taxPeriod: string | null;
   obligations: ObligationCandidate[];
@@ -32,9 +34,6 @@ interface CasePanelProps {
 
 // Internal flag, not something the user states or needs to manage.
 const HIDDEN_FACTS = new Set(["menciona_ingresos"]);
-
-const FIELD_CLASS =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 
 interface EditorProps {
   fact: Pick<Fact, "name" | "value">;
@@ -63,238 +62,190 @@ function FactEditor({ fact, busy, onSave, onCancel }: EditorProps) {
     // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
       className="flex flex-col gap-2"
+      aria-label={`Editar «${label}»`}
       onSubmit={(e) => {
         e.preventDefault();
         save();
       }}
       onKeyDown={(e) => {
         if (e.key === "Escape") {
-          // Cancel the edit only; do not let the panel's Escape handler close it.
+          // Cancel the edit only; do not let an enclosing sheet or page close.
           e.stopPropagation();
           e.nativeEvent.stopImmediatePropagation();
           onCancel();
         }
       }}
     >
-      <label className="text-[12px] text-muted" htmlFor={`fact-${fact.name}`}>
-        {label}
-      </label>
-      {input.kind === "choice" ? (
-        // The editor opens on the user's click: focus goes to the box being edited.
-        // eslint-disable-next-line jsx-a11y/no-autofocus
-        <select id={`fact-${fact.name}`} autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} className={FIELD_CLASS}>
-          {input.options.map((o) => (
-            <option key={String(o.value)} value={String(o.value)}>
-              {o.label}
-            </option>
-          ))}
-        </select>
-      ) : (
-        <input
-          id={`fact-${fact.name}`}
-          // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's click
-          autoFocus
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          inputMode={input.kind === "text" ? "text" : input.kind === "year" ? "numeric" : "decimal"}
-          maxLength={input.kind === "year" ? 4 : 120}
-          placeholder={input.kind === "money" ? "Importe en euros" : input.kind === "year" ? "Año, p. ej. 2025" : undefined}
-          className={FIELD_CLASS}
-        />
-      )}
+      <FormControl>
+        <FormControl.Label>{label}</FormControl.Label>
+        {input.kind === "choice" ? (
+          // The editor opens on the user's click: focus goes to the box being edited.
+          // eslint-disable-next-line jsx-a11y/no-autofocus
+          <Select autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} block>
+            {input.options.map((o) => (
+              <Select.Option key={String(o.value)} value={String(o.value)}>
+                {o.label}
+              </Select.Option>
+            ))}
+          </Select>
+        ) : (
+          <TextInput
+            // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's click
+            autoFocus
+            block
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            inputMode={input.kind === "text" ? "text" : input.kind === "year" ? "numeric" : "decimal"}
+            maxLength={input.kind === "year" ? 4 : 120}
+            placeholder={input.kind === "money" ? "Importe en euros" : input.kind === "year" ? "Año, p. ej. 2025" : undefined}
+          />
+        )}
+      </FormControl>
       <div className="flex gap-2">
-        <button
-          type="submit"
-          disabled={busy || !draft.trim()}
-          className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Check size={14} aria-hidden />
-          {busy ? "Guardando…" : "Guardar"}
-        </button>
-        <button type="button" onClick={onCancel} disabled={busy} className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-line/60">
+        <Button type="submit" size="small" variant="primary" leadingVisual={CheckIcon} disabled={busy || !draft.trim()} loading={busy}>
+          Guardar
+        </Button>
+        <Button type="button" size="small" onClick={onCancel} disabled={busy}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </form>
   );
 }
 
-export function CasePanel({ open, onClose, facts, taxPeriod, obligations, caseId, onChangeFact, saving, error, disabled, excludeFacts }: CasePanelProps) {
-  // Which row is in edit mode / awaiting delete confirmation (by fact name).
+export function CasePanel({ facts, taxPeriod, obligations, caseId, onChangeFact, saving, error, disabled, excludeFacts }: CasePanelProps) {
+  // Which row is in edit mode (by fact name).
   const [editing, setEditing] = useState<string | null>(null);
-  const [confirming, setConfirming] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
+  const confirmar = useConfirmar();
 
   // The fiscal year lives on the case even before the advisor records it as a
   // fact; show it as the first, always-present row.
   const yearFact: Pick<Fact, "name" | "value"> | null = taxPeriod ? { name: "periodo_fiscal", value: taxPeriod } : null;
   const rows: Array<Pick<Fact, "name" | "value"> & { removable: boolean }> = [
     ...(yearFact ? [{ ...yearFact, removable: false }] : []),
-    ...facts.filter((f) => f.name !== "periodo_fiscal" && !HIDDEN_FACTS.has(f.name) && !excludeFacts?.has(f.name)).map((f) => ({ name: f.name, value: f.value, removable: true })),
+    ...facts
+      .filter((f) => f.name !== "periodo_fiscal" && !HIDDEN_FACTS.has(f.name) && !excludeFacts?.has(f.name))
+      .map((f) => ({ name: f.name, value: f.value, removable: true })),
   ];
   const locked = disabled || saving !== null || !caseId;
 
   async function save(name: string, value: FactValue | null) {
-    if (await onChangeFact(name, value)) {
-      setEditing(null);
-      setConfirming(null);
-    }
+    if (await onChangeFact(name, value)) setEditing(null);
+  }
+
+  async function remove(name: string, label: string) {
+    const si = await confirmar(
+      `¿Eliminar «${label}»?`,
+      "Se borrará de tu expediente y no lo tendré en cuenta en las próximas respuestas. Si vuelves a contármelo, lo anotaré de nuevo.",
+      "Eliminar",
+    );
+    if (si) await save(name, null);
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar el expediente" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside
-        role="dialog"
-        aria-modal="true"
-        aria-label="Tu expediente"
-        className="relative flex h-full w-full max-w-[400px] flex-col border-l border-line bg-paper shadow-pop"
-      >
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h2 className="font-serif text-[19px] font-bold text-ink">Tu expediente</h2>
-            <p className="text-[12.5px] text-muted">Lo que sé de ti en esta consulta</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
+    <div className="flex flex-col gap-4">
+      <Caja as="section" aria-label="Tus datos">
+        <Caja.Cabecera titulo="Tus datos" acciones={rows.length > 0 ? <CounterLabel>{rows.length}</CounterLabel> : undefined} />
+        {rows.length === 0 ? (
+          <Caja.Cuerpo>
+            <Blankslate narrow>
+              <Blankslate.Visual>
+                <FileDirectoryIcon size={24} />
+              </Blankslate.Visual>
+              <Blankslate.Heading as="h4">Todavía no he anotado nada</Blankslate.Heading>
+              <Blankslate.Description>
+                A medida que me cuentes tu situación (dónde resides, qué ingresos tienes, si eres autónomo…), lo verás aquí y podrás
+                corregirlo.
+              </Blankslate.Description>
+            </Blankslate>
+          </Caja.Cuerpo>
+        ) : (
+          <Caja.Lista>
+            {rows.map((row) => {
+              const label = factLabel(row.name);
+              if (editing === row.name) {
+                return (
+                  <Caja.Fila key={row.name}>
+                    <FactEditor fact={row} busy={saving === row.name} onSave={(value) => void save(row.name, value)} onCancel={() => setEditing(null)} />
+                  </Caja.Fila>
+                );
+              }
+              // The children's detail, the spouse's figures and the optimiser's preferences are
+              // edited in their own screen: here only their summary (in full) and the bin.
+              const structured = STRUCTURED_FACTS.has(row.name);
+              return (
+                <Caja.Fila key={row.name} className="flex items-center gap-2">
+                  <div className="min-w-0 flex-1">
+                    <p className="m-0 text-xs text-fg-muted">{label}</p>
+                    <p className={structured ? "m-0 font-semibold wrap-anywhere" : "m-0 truncate font-semibold"}>{factValue(row)}</p>
+                  </div>
+                  {saving === row.name && <span className="text-xs text-fg-muted">Guardando…</span>}
+                  {!structured && (
+                    <IconButton
+                      icon={PencilIcon}
+                      variant="invisible"
+                      size="small"
+                      aria-label={`Editar «${label}»`}
+                      disabled={locked}
+                      onClick={() => setEditing(row.name)}
+                    />
+                  )}
+                  {row.removable && (
+                    <IconButton
+                      icon={TrashIcon}
+                      variant="invisible"
+                      size="small"
+                      aria-label={`Eliminar «${label}»`}
+                      disabled={locked}
+                      onClick={() => {
+                        setEditing(null);
+                        void remove(row.name, label);
+                      }}
+                    />
+                  )}
+                </Caja.Fila>
+              );
+            })}
+          </Caja.Lista>
+        )}
+        {error && (
+          <Caja.Cuerpo>
+            <Flash variant="danger">{error}</Flash>
+          </Caja.Cuerpo>
+        )}
+        {rows.length > 0 && (
+          <Caja.Pie className="text-xs text-fg-muted">
+            Si corriges un dato, las posibles obligaciones se recalculan al momento. Las respuestas ya dadas no cambian: vuelve a preguntar
+            para que las tenga en cuenta.
+          </Caja.Pie>
+        )}
+      </Caja>
 
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          <section>
-            <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Tus datos</h3>
-            {rows.length === 0 ? (
-              <p className="text-[13.5px] leading-relaxed text-ink-soft">
-                Todavía no he anotado nada. A medida que me cuentes tu situación (dónde resides, qué ingresos tienes, si eres
-                autónomo…), lo verás aquí y podrás corregirlo.
-              </p>
-            ) : (
-              <ul className="divide-y divide-line rounded-xl border border-line bg-surface">
-                {rows.map((row) => {
-                  const label = factLabel(row.name);
-                  if (editing === row.name) {
-                    return (
-                      <li key={row.name} className="px-3.5 py-3">
-                        <FactEditor fact={row} busy={saving === row.name} onSave={(value) => void save(row.name, value)} onCancel={() => setEditing(null)} />
-                      </li>
-                    );
-                  }
-                  if (confirming === row.name) {
-                    return (
-                      <li key={row.name} className="flex flex-wrap items-center gap-2 px-3.5 py-3">
-                        <p className="min-w-0 flex-1 text-[13.5px] text-ink">¿Eliminar «{label}»?</p>
-                        <button
-                          type="button"
-                          // eslint-disable-next-line jsx-a11y/no-autofocus -- the confirmation the user just asked for
-                          autoFocus
-                          onClick={() => void save(row.name, null)}
-                          disabled={saving !== null}
-                          className="rounded-lg bg-risk-high-fg px-3 py-1.5 text-[13px] font-semibold text-white transition hover:opacity-90 disabled:opacity-50"
-                        >
-                          {saving === row.name ? "Eliminando…" : "Eliminar"}
-                        </button>
-                        <button type="button" onClick={() => setConfirming(null)} className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:bg-line/60">
-                          Cancelar
-                        </button>
-                      </li>
-                    );
-                  }
-                  // The children's detail, the spouse's figures and the optimiser's preferences are
-                  // edited in their own screen: here only their summary (in full) and the bin.
-                  const structured = STRUCTURED_FACTS.has(row.name);
-                  return (
-                    <li key={row.name} className="flex items-center gap-1 py-2.5 pl-3.5 pr-2">
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[12px] text-muted">{label}</p>
-                        <p className={structured ? "text-[14px] font-medium leading-snug text-ink wrap-anywhere" : "truncate text-[14px] font-medium text-ink"}>
-                          {factValue(row)}
-                        </p>
-                      </div>
-                      {!structured && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setConfirming(null);
-                            setEditing(row.name);
-                          }}
-                          disabled={locked}
-                          aria-label={`Editar «${label}»`}
-                          title="Editar"
-                          className="rounded-lg p-2 text-muted transition hover:bg-primary-soft hover:text-primary-dark disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Pencil size={15} />
-                        </button>
-                      )}
-                      {row.removable && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setEditing(null);
-                            setConfirming(row.name);
-                          }}
-                          disabled={locked}
-                          aria-label={`Eliminar «${label}»`}
-                          title="Eliminar"
-                          className="rounded-lg p-2 text-muted transition hover:bg-risk-high-bg hover:text-risk-high-fg disabled:cursor-not-allowed disabled:opacity-40"
-                        >
-                          <Trash2 size={15} />
-                        </button>
-                      )}
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-            {error && (
-              <p role="alert" className="mt-2 text-[12.5px] text-risk-high-fg">
-                {error}
-              </p>
-            )}
-            {rows.length > 0 && (
-              <p className="mt-2 text-[12.5px] leading-relaxed text-muted">
-                Si corriges un dato, las posibles obligaciones se recalculan al momento. Las respuestas ya dadas no cambian:
-                vuelve a preguntar para que las tenga en cuenta.
-              </p>
-            )}
-          </section>
+      <DocumentSection caseId={caseId} disabled={disabled || saving !== null} onApply={(name, value) => onChangeFact(name, value)} />
 
-          <DocumentSection caseId={caseId} disabled={disabled || saving !== null} onApply={(name, value) => onChangeFact(name, value)} />
+      {/* Re-fetched whenever the facts change: a new fact can add obligations. */}
+      <DeadlinesSection caseId={caseId} refreshKey={facts.map((f) => `${f.name}=${textoDeValor(f.value)}`).join("&")} />
 
-          {/* Re-fetched whenever the facts change: a new fact can add obligations. */}
-          <DeadlinesSection caseId={caseId} refreshKey={facts.map((f) => `${f.name}=${textoDeValor(f.value)}`).join("&")} />
+      {obligations.length > 0 && (
+        <Caja as="section" aria-label="Posibles obligaciones">
+          <Caja.Cabecera titulo="Posibles obligaciones" acciones={<CounterLabel>{obligations.length}</CounterLabel>} />
+          <Caja.Lista>
+            {obligations.map((o) => (
+              <Caja.Fila key={o.obligation_id}>
+                <p className="m-0 font-semibold">{o.title}</p>
+                {o.due_date && (
+                  <p className="m-0 mt-1 flex items-center gap-1 text-xs text-fg-muted">
+                    <CalendarIcon size={12} />
+                    Hasta el {formatDate(o.due_date)}
+                  </p>
+                )}
+              </Caja.Fila>
+            ))}
+          </Caja.Lista>
+        </Caja>
+      )}
 
-          {obligations.length > 0 && (
-            <section>
-              <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Posibles obligaciones</h3>
-              <ul className="space-y-2">
-                {obligations.map((o) => (
-                  <li key={o.obligation_id} className="rounded-xl border border-line bg-surface px-3.5 py-2.5">
-                    <p className="text-[14px] font-semibold text-ink">{o.title}</p>
-                    {o.due_date && (
-                      <p className="mt-0.5 flex items-center gap-1.5 text-[12.5px] text-ink-soft">
-                        <CalendarClock size={13} aria-hidden />
-                        Hasta el {formatDate(o.due_date)}
-                      </p>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-        </div>
-
-        <footer className="border-t border-line px-5 py-3 text-[12px] leading-relaxed text-muted">
-          Estos datos se guardan con tu consulta para no volver a preguntártelos.
-        </footer>
-      </aside>
+      <p className="m-0 text-xs text-fg-muted">Estos datos se guardan con tu consulta para no volver a preguntártelos.</p>
     </div>
   );
 }
