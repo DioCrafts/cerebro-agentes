@@ -227,7 +227,7 @@ def test_webhook_rejects_an_unknown_format() -> None:
 
 
 class _FakeSMTP:
-    instances: list["_FakeSMTP"] = []
+    instances: list[_FakeSMTP] = []
 
     def __init__(self, host, port, timeout=None, **kwargs) -> None:
         self.host, self.port, self.kwargs = host, port, kwargs

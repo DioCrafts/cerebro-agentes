@@ -173,7 +173,7 @@ class _Datadis(_Base):
         if url.path == "/privado/api/consumo":
             try:
                 desde, hasta = date.fromisoformat(q["desde"]), date.fromisoformat(q["hasta"])
-            except (KeyError, ValueError):
+            except KeyError, ValueError:
                 return self._enviar(400, b"{}", tipo="application/json")
             total = sum(0.1 + ((h * 7 + d) % 10) / 20 for d in range(1, 2) for h in range(1, 25))
             cuerpo = json.dumps({"total": f"{total * ((hasta - desde).days + 1):.1f}"}).encode()
@@ -181,7 +181,7 @@ class _Datadis(_Base):
         if url.path in ("/privado/consumo.csv", "/privado/consumo.exe"):
             try:
                 cups, desde, hasta = q["cups"], date.fromisoformat(q["desde"]), date.fromisoformat(q["hasta"])
-            except (KeyError, ValueError):
+            except KeyError, ValueError:
                 return self._enviar(400, b"parametros")
             texto = csv_datadis(cups, desde, hasta)
             if reg.variante == "descarga_grande":

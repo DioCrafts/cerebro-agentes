@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import hashlib
 import sqlite3
 
+from fastapi.routing import iter_route_contexts
 from fastapi.testclient import TestClient
 import pytest
 
@@ -267,7 +268,7 @@ def no_model() -> None:
 def test_every_case_endpoint_is_covered_by_the_isolation_tests() -> None:
     covered = {path.replace("case_x", "{case_id}") for _, path, _ in _case_requests("case_x", "{notification_id}")}
     covered = {path.replace("/facts/edad", "/facts/{fact_name}") for path in covered}
-    declared = {route.path for route in app.routes if "{case_id}" in getattr(route, "path", "")}
+    declared = {route.path for route in iter_route_contexts(app.routes) if "{case_id}" in getattr(route, "path", "")}
     assert declared <= covered, declared - covered
 
 

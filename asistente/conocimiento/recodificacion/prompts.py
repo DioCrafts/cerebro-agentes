@@ -306,7 +306,7 @@ def fuente_de(
             fin = completo.index(hasta, inicio) if hasta else len(completo)
             return completo[inicio:fin].rstrip()
         return "\n\n".join(inspect.getsource(m).rstrip() for m in modelos)
-    except (OSError, TypeError, ValueError):
+    except OSError, TypeError, ValueError:
         import json
 
         return "\n\n".join(json.dumps(m.model_json_schema(), ensure_ascii=False) for m in modelos)

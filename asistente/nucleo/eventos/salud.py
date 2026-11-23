@@ -40,7 +40,7 @@ def problemas(db_path: str | None = None, *, ahora: datetime | None = None) -> l
         )
     try:
         maximo = float(getattr(settings, "EVENTOS_ATRASO_MAX_MINUTOS", 30)) * 60
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         maximo = 1800.0
     if maximo > 0 and salud["atraso_s"] > maximo:
         out.append(

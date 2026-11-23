@@ -141,7 +141,7 @@ def _conyuge(perfil: Mapping[str, Any]) -> tuple[bool, dict[str, Any]]:
     if perfil.get("datos_conyuge"):
         try:
             datos = normalizar_datos_conyuge(perfil["datos_conyuge"])
-        except (DatosInvalidosError, ValueError):
+        except DatosInvalidosError, ValueError:
             datos = {}
     return con_pareja, datos
 

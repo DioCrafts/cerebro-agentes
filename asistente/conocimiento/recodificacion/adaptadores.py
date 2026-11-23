@@ -978,7 +978,7 @@ class GrupoDeCifras(_CitasDeParametros):
             control.fallos.append("«fuente» la escribe el programa, no la propuesta")
         try:
             candidato, fallos = self._con_ajenos({k: v for k, v in valor.items() if k != "fuente"}, objetivo.antes)
-        except (InvalidOperation, ValueError):
+        except InvalidOperation, ValueError:
             control.fallos.append("un campo que esta ley no imprime no es un número")
             return None, control
         control.fallos += fallos

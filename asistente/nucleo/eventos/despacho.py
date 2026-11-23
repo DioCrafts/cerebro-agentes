@@ -65,7 +65,7 @@ class _Despachador:
 def _intervalo() -> float:
     try:
         return max(0.5, float(getattr(settings, "EVENTOS_INTERVALO_SEGUNDOS", 5)))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 5.0
 
 

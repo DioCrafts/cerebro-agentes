@@ -50,7 +50,7 @@ def _ip_publica(url: str) -> str | None:
         return None
     try:
         direcciones = [str(info[4][0]) for info in socket.getaddrinfo(partes.hostname, partes.port or None)]
-    except (OSError, UnicodeError, ValueError):
+    except OSError, UnicodeError, ValueError:
         return None
     elegida: str | None = None
     for d in direcciones:

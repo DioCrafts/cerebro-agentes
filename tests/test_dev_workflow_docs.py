@@ -14,6 +14,6 @@ def test_dev_workflow_doc_exists_and_mentions_quality_command() -> None:
     assert workflow.exists()
     text = workflow.read_text(encoding="utf-8")
     assert "make quality" in text
-    assert "mypy" in text
+    assert "`ty`" in text
     assert "ruff" in text
     assert "pytest" in text

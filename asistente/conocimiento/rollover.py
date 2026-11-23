@@ -147,7 +147,7 @@ def heredar_citas(origen: int, destino: int, data: dict[str, Any], *, data_dir: 
     for ruta, entrada in previas.items():
         try:
             _nodo(data, ruta.split("/"))
-        except (KeyError, IndexError, TypeError):
+        except KeyError, IndexError, TypeError:
             continue
         heredadas[ruta] = entrada
     if not heredadas:

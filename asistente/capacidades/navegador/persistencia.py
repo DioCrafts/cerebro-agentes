@@ -171,7 +171,7 @@ class AlmacenTareas:
         if fila["parametros_json"]:
             try:
                 parametros = validar_parametros(guion_activo(fila["clave"]).reglas, json.loads(fila["parametros_json"]))
-            except (GuionError, ValueError):
+            except GuionError, ValueError:
                 parametros = {}
         return Tarea(
             id=fila["id"],

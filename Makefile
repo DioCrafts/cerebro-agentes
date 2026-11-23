@@ -10,7 +10,7 @@ lint:
 	uv run ruff check .
 
 type-check:
-	uv run mypy asistente
+	uv run ty check asistente
 
 # Contrato de capas (pyproject, [tool.importlinter]). Hoy solo informa: no corta `make quality` hasta que se
 # paguen las importaciones que lo incumplen.

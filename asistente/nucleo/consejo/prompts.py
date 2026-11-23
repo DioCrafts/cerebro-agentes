@@ -488,7 +488,7 @@ def mensaje_reparacion(mensaje: str, motivo: str, anterior: Any | None) -> str:
     if anterior is not None:
         try:
             texto = json.dumps(anterior, ensure_ascii=False)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             texto = str(anterior)
         partes.append(f"<respuesta_anterior>{neutralizar(texto)[:6000]}</respuesta_anterior>")
     return "\n".join(partes)

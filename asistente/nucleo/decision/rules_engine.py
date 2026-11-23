@@ -194,7 +194,7 @@ class RulesEngine:
                 if expected is None or isinstance(expected, list):
                     return False  # float() would raise TypeError, caught below
                 return actual >= float(expected)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return False
         if op is ConditionOperator.LTE:
             try:
@@ -202,7 +202,7 @@ class RulesEngine:
                 if expected is None or isinstance(expected, list):
                     return False  # float() would raise TypeError, caught below
                 return actual <= float(expected)
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 return False
         return False
 

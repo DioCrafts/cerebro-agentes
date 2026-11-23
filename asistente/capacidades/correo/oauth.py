@@ -213,7 +213,7 @@ def _revocar(conf: Configuracion, token: str, http: Transporte) -> bool:
 def _revocar_conexion(conf: Configuracion, conexion: almacen.Conexion, http: Transporte) -> bool:
     try:
         refresco = cifrado.descifrar(conexion.token_cifrado, case_id=conexion.case_id, user_id=conexion.user_id)
-    except (ValueError, cifrado.CifradoNoDisponibleError):
+    except ValueError, cifrado.CifradoNoDisponibleError:
         return False
     return _revocar(conf, refresco, http)
 
@@ -227,7 +227,7 @@ def revocar_token_cifrado(
         return False
     try:
         refresco = cifrado.descifrar(token_cifrado, case_id=case_id, user_id=user_id)
-    except (ValueError, cifrado.CifradoNoDisponibleError):
+    except ValueError, cifrado.CifradoNoDisponibleError:
         return False
     return _revocar(conf, refresco, http or transporte())
 

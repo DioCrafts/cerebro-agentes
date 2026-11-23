@@ -45,7 +45,7 @@ def rechazar_dtd(datos: bytes | str) -> None:
         parser.Parse(datos, True)
     except _DtdError as exc:
         raise XmlInseguroError("El XML declara un DOCTYPE o entidades; por seguridad no se procesa.") from exc
-    except (_PrimerElementoError, expat.ExpatError):
+    except _PrimerElementoError, expat.ExpatError:
         return
 
 

@@ -497,7 +497,7 @@ def _canarios_teac_listado(ids: Any, muestra: str, contexto: str, reglas: Any) -
         try:
             desde, hasta = (date(*reversed([int(x) for x in parte.split("/")])) for parte in contexto.split(".."))
             dias = (hasta - desde).days
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             dias = 0
         detalle = (
             f"La primera página del listado ({contexto}) no enlaza ningún criterio: se da por terminado el rango "

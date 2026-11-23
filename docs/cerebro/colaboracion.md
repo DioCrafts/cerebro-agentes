@@ -20,24 +20,29 @@ Intencion.encargos ──► Despachador.ejecutar ──► [InformeEspecialista
 
 ```python
 from asistente.nucleo.cerebro.colaboracion import (
-    Despachador, revisar_cifras, material_de_sintesis, EspecialistaDeModulo, extraer_cifras,
-    mensaje_de_revision, tabla_de_procedencia,
+    Despachador,
+    revisar_cifras,
+    material_de_sintesis,
+    EspecialistaDeModulo,
+    extraer_cifras,
+    mensaje_de_revision,
+    tabla_de_procedencia,
 )
 
-despachador = Despachador(especialistas, max_paralelo=None, emit=None)   # uno por turno
-informes = despachador.ejecutar(intencion.encargos, contexto)            # en orden del plan; se puede volver a llamar
-despachador.peticiones          # [PeticionDato] de todo el turno (auditoría)
-despachador.pizarra             # la Pizarra usada (registros, subinformes…)
-despachador.subinformes         # informes de los subencargos que respondieron peticiones
-despachador.presupuesto_agotado # PresupuestoAgotadoError | None
+despachador = Despachador(especialistas, max_paralelo=None, emit=None)  # uno por turno
+informes = despachador.ejecutar(intencion.encargos, contexto)  # en orden del plan; se puede volver a llamar
+despachador.peticiones  # [PeticionDato] de todo el turno (auditoría)
+despachador.pizarra  # la Pizarra usada (registros, subinformes…)
+despachador.subinformes  # informes de los subencargos que respondieron peticiones
+despachador.presupuesto_agotado  # PresupuestoAgotadoError | None
 
-bloque = material_de_sintesis(informes, ledger=contexto.ledger)         # datos para el prompt de síntesis (ledger opcional)
+bloque = material_de_sintesis(informes, ledger=contexto.ledger)  # datos para el prompt de síntesis (ledger opcional)
 resultado = revisar_cifras(respuesta, informes, ledger=contexto.ledger, textos_usuario=[...])
 if not resultado.ok:
-    mensaje = mensaje_de_revision(resultado)                             # se devuelve al modelo para que corrija
-filas = tabla_de_procedencia(resultado, informes)                        # para la interfaz
+    mensaje = mensaje_de_revision(resultado)  # se devuelve al modelo para que corrija
+filas = tabla_de_procedencia(resultado, informes)  # para la interfaz
 
-EspecialistaDeModulo(modulo)                                             # un ámbito del hogar como especialista
+EspecialistaDeModulo(modulo)  # un ámbito del hogar como especialista
 extraer_cifras(texto, especialista=..., fragment_id=..., herramienta=...)  # cifras de la salida de una herramienta
 ```
 

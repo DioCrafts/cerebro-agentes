@@ -205,7 +205,7 @@ def _en_modelo(params: Any, ruta: Sequence[str]) -> Any:
                 nodo = nodo[paso]
             else:
                 nodo = nodo[int(paso)]
-    except (AttributeError, KeyError, IndexError, ValueError, TypeError):
+    except AttributeError, KeyError, IndexError, ValueError, TypeError:
         return None
     return nodo
 
@@ -894,7 +894,7 @@ class GrupoConEvidencia(Adaptador):
         def vale(literal: str, ruta: str, cita: str) -> bool:
             try:
                 return _es_token(literal, cita) and familia.leer_cifra(literal, ruta) == hojas[ruta]  # type: ignore[misc]
-            except (InvalidOperation, IndexError, ValueError, KeyError, ArithmeticError):
+            except InvalidOperation, IndexError, ValueError, KeyError, ArithmeticError:
                 return False
 
         cubiertas: set[str] = set()

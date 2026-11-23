@@ -137,7 +137,7 @@ Las órdenes son `python -m asistente.plataforma.cli.<orden>` y la API `uvicorn 
 
 ## ✅ Requisitos
 
-- Python `>=3.13,<3.14`
+- Python `>=3.14,<3.15`
 - [uv](https://docs.astral.sh/uv/)
 - (Opcional para crawler web) Playwright/Chromium
 

@@ -15,7 +15,7 @@ El código vive en `asistente/`:
 
 ## Arranque
 
-Hace falta Python 3.13 y [uv](https://docs.astral.sh/uv/). Los modelos locales solo corren en Mac con Apple
+Hace falta Python 3.14 y [uv](https://docs.astral.sh/uv/). Los modelos locales solo corren en Mac con Apple
 Silicon; en Linux el resto funciona y esas rutas quedan desactivadas.
 
 ```bash
@@ -32,7 +32,7 @@ están en la referencia de operación.
 ```bash
 make test-rapido     # sin tests lentos, sin navegador y sin red
 make test-completo   # todo salvo los marcados en_vivo
-make quality         # formato, ruff, mypy, contrato de capas (informe), tests y frontend
+make quality         # formato, ruff, ty, contrato de capas (informe), tests y frontend
 ```
 
 Los tests no salen de 127.0.0.1, no ven claves reales y usan su propia base de casos. Lo que necesite red se
