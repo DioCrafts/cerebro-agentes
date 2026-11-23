@@ -83,7 +83,7 @@ def leer_estados(path: str | Path | None = None) -> dict[str, EstadoNorma]:
     try:
         raw = json.loads(ruta.read_text(encoding="utf-8"))
         estados = {boe_id: EstadoNorma(**item) for boe_id, item in raw.items()}
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return {}
     _cache = (ruta, mtime, estados)
     return estados

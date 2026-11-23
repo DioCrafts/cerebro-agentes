@@ -109,7 +109,7 @@ def fechas(texto: str, referencia: date) -> Iterator[tuple[date, re.Match[str]]]
                 anio = int(m.group("a3")) if m.group("a3") else _anio_probable(dia, mes, referencia)
                 if anio is not None:
                     yield date(anio, mes, dia), m
-        except (ValueError, KeyError):
+        except ValueError, KeyError:
             continue
 
 
@@ -129,7 +129,7 @@ def importe_decimal(literal: str) -> Decimal | None:
         numero = f"{entero.replace('.', '')}.{dec}" if len(dec) <= 2 else numero.replace(".", "")
     try:
         valor = Decimal(numero).quantize(Decimal("0.01"))
-    except (InvalidOperation, ValueError):
+    except InvalidOperation, ValueError:
         return None
     return valor if Decimal(0) < valor < Decimal(1_000_000) else None
 

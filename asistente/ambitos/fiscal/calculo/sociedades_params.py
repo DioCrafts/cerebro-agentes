@@ -305,7 +305,7 @@ def comprobar_evidencias(params: SociedadesParams, textos: dict[str, str] | None
                     continue
                 try:
                     leido = cifra_a_decimal(literal)
-                except (InvalidOperation, IndexError):
+                except InvalidOperation, IndexError:
                     problemas.append(f"{nombre}.{ruta}: «{literal}» no es una cifra")
                     continue
                 if leido != hojas[ruta]:

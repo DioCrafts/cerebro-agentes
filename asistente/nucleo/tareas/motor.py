@@ -73,7 +73,7 @@ Evento_ = tuple[str, str | None, dict[str, Any]]
 def _numero(nombre: str, defecto: float) -> float:
     try:
         return float(getattr(settings, nombre, defecto))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return defecto
 
 

@@ -104,7 +104,7 @@ def frecuencia() -> str:
 def max_puntos() -> int:
     try:
         return int(getattr(settings, "REPASO_MAX_PUNTOS", MAX_PUNTOS_POR_DEFECTO))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return MAX_PUNTOS_POR_DEFECTO
 
 
@@ -123,7 +123,7 @@ def hora() -> time:
 def dia_semana() -> int:
     try:
         return max(0, min(6, int(getattr(settings, "REPASO_DIA", 0))))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return 0
 
 

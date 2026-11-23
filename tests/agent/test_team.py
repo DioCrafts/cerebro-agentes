@@ -59,7 +59,7 @@ def _text(text: str) -> ModelTurn:
 
 
 class _Conversation:
-    def __init__(self, provider: "RoutedProvider", role: str) -> None:
+    def __init__(self, provider: RoutedProvider, role: str) -> None:
         self.provider, self.role = provider, role
 
     def step(self, *, allow_tools: bool = True, on_text=None) -> ModelTurn:

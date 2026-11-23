@@ -302,7 +302,7 @@ class Ejecutor:
             contexto.route("**/*", self._ruta)
             try:
                 contexto.route_web_socket("**/*", self._ruta_ws)
-            except (AttributeError, PlaywrightError):
+            except AttributeError, PlaywrightError:
                 # Without the filter a page could open a websocket to any host and carry data out of the
                 # allowed origins: the task does not run (Playwright >= 1.48 is required).
                 resultado.estado = "fallido"

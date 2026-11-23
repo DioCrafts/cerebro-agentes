@@ -203,7 +203,7 @@ def disponibles() -> list[SpecGuion]:
     for clave in claves_incorporadas():
         try:
             spec = guion_activo(clave)
-        except (GuionError, ValueError):
+        except GuionError, ValueError:
             logger.exception("browser script %s is not usable", clave)
             continue
         if spec.reglas.demostracion and not all((origen_de(o) or o) in locales for o in spec.reglas.origenes.values()):

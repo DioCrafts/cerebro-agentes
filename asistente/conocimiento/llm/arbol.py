@@ -223,7 +223,7 @@ def _parsear_ids(texto: str) -> list[str]:
             ids = datos.get("node_ids", [])
             if isinstance(ids, list):
                 return [str(i) for i in ids]
-        except (json.JSONDecodeError, AttributeError):
+        except json.JSONDecodeError, AttributeError:
             pass
     return re.findall(r"\d{4}(?:\.\d+)*", texto)
 

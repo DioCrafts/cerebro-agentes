@@ -101,7 +101,7 @@
             uv
             nodejs_22
             poppler
-            python313
+            python314
             stdenv
             tesseract
           ];

@@ -249,7 +249,7 @@ def recortar_contraste(crudo: str) -> str:
         for ley, art in articulos:
             carga[ley][art] = carga[ley][art][:cuota]
         return json.dumps(carga, ensure_ascii=False, indent=1)
-    except (ValueError, AttributeError, TypeError):
+    except ValueError, AttributeError, TypeError:
         return crudo[: formatos.MAX_MUESTRA_CHARS]
 
 

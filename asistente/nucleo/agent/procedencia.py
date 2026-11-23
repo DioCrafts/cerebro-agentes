@@ -146,7 +146,7 @@ def numero_dicho(valor: Any, mensajes: Sequence[str], numeros: set[Decimal] | No
     """Whether the user wrote ``valor`` (its magnitude), or said «none» for a zero."""
     try:
         buscado = abs(Decimal(str(valor))).quantize(_CENT)
-    except (InvalidOperation, ValueError):
+    except InvalidOperation, ValueError:
         return False
     if buscado == 0 and _dice_cero(mensajes):
         return True

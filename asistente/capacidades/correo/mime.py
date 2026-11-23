@@ -155,7 +155,7 @@ class _Html(HTMLParser):
 def _decodificar_cabecera(valor: str) -> str:
     try:
         return str(make_header(decode_header(valor)))
-    except (UnicodeError, LookupError, binascii.Error, ValueError):
+    except UnicodeError, LookupError, binascii.Error, ValueError:
         return valor
 
 
@@ -163,7 +163,7 @@ def _b64url(dato: str) -> bytes:
     relleno = "=" * (-len(dato) % 4)
     try:
         return base64.urlsafe_b64decode(dato + relleno)
-    except (binascii.Error, ValueError):
+    except binascii.Error, ValueError:
         return b""
 
 
@@ -271,7 +271,7 @@ def leer_mensaje(recurso: Mapping[str, Any], *, solo_metadatos: bool = False) ->
     cabeceras = _cabeceras(payload)
     try:
         momento = datetime.fromtimestamp(int(str(recurso.get("internalDate") or "0")) / 1000, tz=UTC)
-    except (ValueError, OverflowError, OSError):
+    except ValueError, OverflowError, OSError:
         momento = datetime.fromtimestamp(0, tz=UTC)
     nombre, direccion = _direccion((cabeceras.get("from") or [""])[0])
     responder = cabeceras.get("reply-to")

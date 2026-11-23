@@ -145,7 +145,7 @@ def formatear_valor(valor: Decimal, unidad: str | None = None) -> str:
     """``valor`` written the Spanish way with the decimals it carries (1234.5 → «1.234,5»), plus its unit."""
     try:
         texto = format(valor, "f")
-    except (ValueError, InvalidOperation):  # pragma: no cover - a Decimal always formats
+    except ValueError, InvalidOperation:  # pragma: no cover - a Decimal always formats
         texto = str(valor)
     signo = ""
     if texto.startswith("-"):

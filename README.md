@@ -15,7 +15,7 @@ El código vive en `asistente/`:
 
 ## Arranque
 
-Hace falta Python 3.13 y [uv](https://docs.astral.sh/uv/). Los modelos locales solo corren en Mac con Apple
+Hace falta Python 3.14 y [uv](https://docs.astral.sh/uv/). Los modelos locales solo corren en Mac con Apple
 Silicon; en Linux el resto funciona y esas rutas quedan desactivadas.
 
 ```bash

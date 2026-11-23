@@ -222,7 +222,7 @@ class ModuloLuz:
             p2 = Decimal(str(perfil.get(HECHO_P2) or perfil[HECHO_P1]))
             zona = zona_valida(perfil.get(HECHO_ZONA) or "peninsula")
             resultado = comparar(Contrato(p1, p2, zona), consumo, ofertas, actual)
-        except (FacturaError, DatoNoDisponibleError, ValueError):
+        except FacturaError, DatoNoDisponibleError, ValueError:
             return salida
         act, mejor = resultado.actual(), resultado.mejor()
         if act is None or mejor is None or mejor.es_actual or resultado.dias < 90:

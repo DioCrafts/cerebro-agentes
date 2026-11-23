@@ -340,7 +340,7 @@ MIN_LEIDOS_COBERTURA = 15
 def _json_o_vacio(payload: Any) -> str:
     try:
         return json.dumps(payload, ensure_ascii=False)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return ""
 
 

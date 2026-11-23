@@ -127,7 +127,7 @@ def leer_estado(path: str | Path | None = None) -> dict[str, Any]:
         return {"fuentes": {}}
     try:
         datos = json.loads(ruta.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return {"fuentes": {}}
     return datos if isinstance(datos, dict) and isinstance(datos.get("fuentes"), dict) else {"fuentes": {}}
 

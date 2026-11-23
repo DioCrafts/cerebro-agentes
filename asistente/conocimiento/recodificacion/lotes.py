@@ -229,7 +229,7 @@ class EjecutorPorLotes:
                     continue  # its next call is queued
                 except PresupuestoAgotadoError:
                     return  # the final run reports it
-                except (ProviderError, RecodificacionError):
+                except ProviderError, RecodificacionError:
                     continue  # the final run reports it, as the synchronous one would
 
         espera = {**_opciones_de_espera(), **self.opciones}

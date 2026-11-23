@@ -121,7 +121,7 @@ def registrar_fuentes() -> None:
     for clave in claves_incorporadas():
         try:
             spec = guion_incorporado(clave)
-        except (ValueError, ValidationError):
+        except ValueError, ValidationError:
             logger.exception("Bundled browser script %s is invalid", clave)
             continue
 
@@ -288,7 +288,7 @@ def diagnosticos_de(case_id: str, *, base: str | Path | None = None) -> list[dic
     for ruta in sorted((_dir_diagnostico(base) / case_id).glob("*.json")):
         try:
             out.append(json.loads(ruta.read_text(encoding="utf-8")))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             continue
     return out
 

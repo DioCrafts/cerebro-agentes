@@ -492,7 +492,7 @@ class OpenAIFactExtractor:
         # clamp in `_materialize_facts`.
         try:
             confidence = float(data.get("intent_confidence", 0.0))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             confidence = 0.0
         confidence = max(0.0, min(1.0, confidence))
 
@@ -562,7 +562,7 @@ class OpenAIFactExtractor:
 
             try:
                 confidence = float(raw.get("confidence", 0.5))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 confidence = 0.5
             confidence = max(0.0, min(1.0, confidence))
 
@@ -662,7 +662,7 @@ class ProviderFactExtractor:
             intent = "unknown"
         try:
             confidence = float(data.get("intent_confidence", 0.0))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             confidence = 0.0
         confidence = max(0.0, min(1.0, confidence))
 

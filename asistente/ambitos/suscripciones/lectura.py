@@ -29,7 +29,7 @@ def decodificar(datos: bytes, declarada: str | None = None) -> str:
     for codificacion in candidatas:
         try:
             return datos.decode(codificacion)
-        except (UnicodeDecodeError, LookupError):
+        except UnicodeDecodeError, LookupError:
             continue
     raise ImportacionError("No se ha podido leer la codificación del fichero.")  # pragma: no cover (latin-1)
 

@@ -53,7 +53,7 @@ def tokens_aprox(texto: str) -> int:
 def _decimal(nombre: str, por_defecto: str) -> Decimal:
     try:
         return Decimal(str(getattr(settings, nombre, por_defecto)))
-    except (InvalidOperation, ValueError):
+    except InvalidOperation, ValueError:
         return Decimal(por_defecto)
 
 

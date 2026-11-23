@@ -420,7 +420,7 @@ def observaciones_de(entrada: dict[str, Any] | None) -> list[Observacion]:
     for raw in (entrada or {}).get("observaciones") or []:
         try:
             out.append(Observacion(**raw))
-        except (TypeError, ValidationError):
+        except TypeError, ValidationError:
             continue
     return out
 
@@ -495,7 +495,7 @@ def leer_muestra(clave: str, nombre: str, directorio: str | Path | None = None) 
     path = _ruta_muestra(clave, nombre, directorio)
     try:
         return Muestra(**json.loads(path.read_text(encoding="utf-8")))
-    except (OSError, ValueError, ValidationError):
+    except OSError, ValueError, ValidationError:
         return None
 
 
@@ -851,7 +851,7 @@ def listar_propuestas(directorio: str | Path | None = None) -> list[Propuesta]:
     for path in sorted((_base(directorio) / "propuestas").glob("*.json")):
         try:
             out.append(Propuesta(**json.loads(path.read_text(encoding="utf-8"))))
-        except (OSError, ValueError, ValidationError):
+        except OSError, ValueError, ValidationError:
             logger.warning("Unreadable format proposal: %s", path)
     return out
 

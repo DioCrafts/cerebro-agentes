@@ -81,7 +81,7 @@ def espera_retry_after(valor: str | None, *, ahora: datetime | None = None) -> f
         return float(valor)
     try:
         cuando = parsedate_to_datetime(valor)
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
     if cuando.tzinfo is None:
         cuando = cuando.replace(tzinfo=UTC)

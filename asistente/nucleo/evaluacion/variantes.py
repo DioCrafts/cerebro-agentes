@@ -366,7 +366,7 @@ def _campos_integrados(rol: Rol) -> set[str] | None:
     integrated text is not a valid format template: then nothing is checked)."""
     try:
         return _campos(texto_integrado(rol))
-    except (RolNoDisponibleError, ValueError):
+    except RolNoDisponibleError, ValueError:
         return None
 
 

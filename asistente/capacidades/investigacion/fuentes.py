@@ -263,7 +263,7 @@ class ClienteBOE:
             return []
         try:
             datos = json.loads(crudo)
-        except (json.JSONDecodeError, UnicodeDecodeError):
+        except json.JSONDecodeError, UnicodeDecodeError:
             logger.warning("BOE search answered something that is not JSON")
             return []
         filas = datos.get("data") if isinstance(datos, dict) else None

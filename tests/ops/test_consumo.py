@@ -53,7 +53,7 @@ PRECIOS = TablaPrecios(
 
 
 class FakeConversation:
-    def __init__(self, provider: "FakeProvider") -> None:
+    def __init__(self, provider: FakeProvider) -> None:
         self._provider = provider
 
     def step(self, *, allow_tools: bool = True, on_text: Callable[[str], None] | None = None) -> ModelTurn:

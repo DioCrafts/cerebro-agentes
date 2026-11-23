@@ -239,7 +239,7 @@ def _decimal(valor: Any) -> Decimal | None:
         return None
     try:
         numero = Decimal(str(valor).strip().replace(" ", ""))
-    except (InvalidOperation, ValueError):
+    except InvalidOperation, ValueError:
         return None
     return numero if numero.is_finite() else None
 

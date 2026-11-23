@@ -208,7 +208,7 @@ def comprobar_grupo(
             leer = ortografia.leer_fecha if es_fecha and ortografia.leer_fecha else ortografia.leer_cifra
             try:
                 leido = leer(literal)
-            except (InvalidOperation, ArithmeticError, ValueError, IndexError, KeyError):
+            except InvalidOperation, ArithmeticError, ValueError, IndexError, KeyError:
                 problemas.append(f"{_con(prefijo, ruta)}: «{literal}» no se puede leer como {ortografia.sustantivo}")
                 continue
             if leido != grupo.cifras[ruta]:

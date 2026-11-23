@@ -506,7 +506,7 @@ def decidir_un_paso(expediente: ExpedienteConsejo, proveedor: Any) -> RespuestaD
     ]
     try:
         confianza = min(1.0, max(0.0, float(datos.get("confianza", 0.5))))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         confianza = 0.5
     return RespuestaDecision(
         sistema="un_paso",

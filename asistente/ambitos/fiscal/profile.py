@@ -327,7 +327,7 @@ def _problemas(exc: ValidationError) -> str:
         elif plantilla is not None:
             try:
                 mensaje = plantilla.format(**(error.get("ctx") or {})).replace("' or '", "' o '")
-            except (KeyError, IndexError):
+            except KeyError, IndexError:
                 mensaje = error["msg"]
         else:
             mensaje = error["msg"]

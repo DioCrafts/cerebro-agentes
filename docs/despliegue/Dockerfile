@@ -16,8 +16,8 @@
 # variable de entorno (pendiente en Python); hasta entonces la actualización llega con la imagen nueva.
 #
 # Imagen fijada a una versión exacta. Para fijarla además por digest (recomendado en producción):
-#   docker buildx imagetools inspect python:3.13.9-slim     → FROM python:3.13.9-slim@sha256:…
-FROM python:3.13.9-slim
+#   docker buildx imagetools inspect python:3.14.10-slim     → FROM python:3.14.10-slim@sha256:…
+FROM python:3.14.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

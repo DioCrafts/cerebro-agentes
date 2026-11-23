@@ -138,7 +138,7 @@ def _aviso_comision(e: _Entorno) -> list[AvisoModulo]:
     p, n, hoy = e.prestamo, e.normativa, e.hoy
     try:
         capital = e.cuadro().capital_pendiente(hoy)
-    except (ValueError, ArithmeticError):
+    except ValueError, ArithmeticError:
         return []
     if capital <= 0:
         return []

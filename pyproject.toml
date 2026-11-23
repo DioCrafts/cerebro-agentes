@@ -7,7 +7,7 @@ authors = [
 ]
 license = "MIT"
 readme = "README.md"
-requires-python = ">=3.13,<3.14"
+requires-python = ">=3.14,<3.15"
 dependencies = [
     "requests==2.34.2",
     # The project's one HTTP client (asistente/plataforma/http.py). requests stays only for
@@ -77,7 +77,7 @@ packages = ["asistente"]
 
 [tool.ruff]
 line-length = 120
-target-version = "py313"
+target-version = "py314"
 fix = true
 
 [tool.ruff.format]
@@ -112,7 +112,7 @@ markers = [
 ]
 
 [tool.mypy]
-python_version = "3.13"
+python_version = "3.14"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false

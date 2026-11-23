@@ -210,7 +210,7 @@ class vigilado(ContextDecorator):  # noqa: N801 - used as a decorator, like cont
 def _parse(value: Any) -> datetime | None:
     try:
         return _aware(datetime.fromisoformat(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 
