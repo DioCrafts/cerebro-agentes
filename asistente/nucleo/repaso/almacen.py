@@ -13,7 +13,7 @@ the watermark). Batch ``custom_id`` values are hashes: no personal data travels 
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 import hashlib
@@ -84,7 +84,7 @@ class RepasoStore:
         self._lock = RLock()
 
     @contextmanager
-    def _conectar(self) -> Iterator[sqlite3.Connection]:
+    def _conectar(self) -> Generator[sqlite3.Connection]:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         conn = abrir_sqlite(self.db_path, timeout=30.0, filas=True)
         try:

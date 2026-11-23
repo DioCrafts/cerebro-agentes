@@ -25,7 +25,7 @@ from asistente.ambitos.caducidades.hechos import (
 from asistente.ambitos.caducidades.reglas import Evidencia, Reglas, cargar_reglas
 from asistente.ambitos.caducidades.ticket import verificar_propuesta
 from asistente.nucleo.agent.providers.base import ToolSpec
-from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.nucleo.modulos.contrato import ContextoModulo, Efecto, HerramientaModulo, ResultadoHerramienta
 
 _FECHA = {"type": "string", "description": "Fecha AAAA-MM-DD."}
 
@@ -413,7 +413,7 @@ def _herramienta(
     propiedades: dict[str, Any],
     ejecutar: Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta],
     requeridos: list[str] | None = None,
-    efecto: str = "lectura",
+    efecto: Efecto = "lectura",
 ) -> HerramientaModulo:
     schema: dict[str, Any] = {"type": "object", "additionalProperties": False, "properties": propiedades}
     if requeridos:
@@ -421,7 +421,7 @@ def _herramienta(
     return HerramientaModulo(
         spec=ToolSpec(name=nombre, description=descripcion, input_schema=schema),
         ejecutar=ejecutar,
-        efecto=efecto,  # type: ignore[arg-type]
+        efecto=efecto,
     )
 
 

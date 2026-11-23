@@ -247,11 +247,12 @@ def calcular_factura(
         else:
             tramos.append([d])
 
-    total_kwh_periodo: dict[str, Decimal] = (
-        {p: sum((por_dia[d][p] for d in dias), CERO) for p in PERIODOS}
-        if por_dia is not None
-        else {p: Decimal(totales[p]) for p in PERIODOS}  # type: ignore[index]
-    )
+    total_kwh_periodo: dict[str, Decimal]
+    if por_dia is not None:
+        total_kwh_periodo = {p: sum((por_dia[d][p] for d in dias), CERO) for p in PERIODOS}
+    else:
+        assert totales is not None  # without hourly or daily data the check above already demanded totals
+        total_kwh_periodo = {p: Decimal(totales[p]) for p in PERIODOS}
     if por_dia is None and len(tramos) > 1:
         avisos.add(
             "El periodo se parte en tramos con precios o impuestos distintos y solo hay totales por periodo: los kWh "
@@ -284,7 +285,7 @@ def calcular_factura(
         for p, kw in (("p1", contrato.potencia_p1_kw), ("p2", contrato.potencia_p2_kw)):
             nombre = "punta-llano" if p == "p1" else "valle"
             if oferta.tipo == "pvpc" or not oferta.incluye_peajes_cargos:
-                anual = peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]  # type: ignore[index]
+                anual = peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]
                 brutas.append(
                     _Bruta(
                         1,
@@ -379,7 +380,7 @@ def calcular_factura(
             for p in PERIODOS:
                 precio = getattr(oferta.energia_eur_kwh, p)
                 if not oferta.incluye_peajes_cargos:
-                    regulada = peaje.energia_eur_kwh[p] + cargo.energia_eur_kwh[p]  # type: ignore[index]
+                    regulada = peaje.energia_eur_kwh[p] + cargo.energia_eur_kwh[p]
                     brutas.append(
                         _Bruta(
                             5,

@@ -43,7 +43,7 @@ file never breaks the agent: it falls back to the base variant and logs an error
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -56,7 +56,7 @@ from pathlib import Path
 import re
 import string
 import threading
-from typing import Any, Literal, get_args
+from typing import Any, Literal, TypeIs, get_args
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -81,6 +81,11 @@ Rol = Literal[
     "consejo_expediente",
 ]
 ROLES: tuple[Rol, ...] = get_args(Rol)
+
+
+def es_rol(valor: object) -> TypeIs[Rol]:
+    return valor in ROLES
+
 
 PAQUETE = Path(__file__).resolve().parent
 PROMPTS_DIR = PAQUETE / "prompts"
@@ -561,7 +566,7 @@ _EN_USO: ContextVar[Variante | None] = ContextVar("evaluacion_variante_en_uso", 
 
 
 @contextmanager
-def usar_variante(variante: Variante) -> Iterator[Variante]:
+def usar_variante(variante: Variante) -> Generator[Variante]:
     """Run the block with ``variante`` instead of the active one (the evaluation runner uses this).
 
     A ``ContextVar``: a worker thread sees it only if it runs inside ``contextvars.copy_context().run``.

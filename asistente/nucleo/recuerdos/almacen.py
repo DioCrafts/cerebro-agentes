@@ -28,7 +28,7 @@ from pathlib import Path
 import secrets
 import sqlite3
 from threading import RLock
-from typing import Any, Literal
+from typing import Any, Literal, TypeIs
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -43,6 +43,12 @@ TipoGuardado = Literal["dato", "preferencia", "contexto"]
 EstadoRecuerdo = Literal["activo", "sustituido", "olvidado"]
 EstadoConversacion = Literal["abierta", "en_lote", "resumida", "sin_resumen"]
 TIPOS_GUARDADOS: tuple[TipoGuardado, ...] = ("dato", "preferencia", "contexto")
+
+
+def es_tipo_guardado(valor: object) -> TypeIs[TipoGuardado]:
+    return valor in TIPOS_GUARDADOS
+
+
 MAX_TITULO = 80
 
 

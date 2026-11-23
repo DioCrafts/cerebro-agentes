@@ -157,7 +157,7 @@ def memoria_real(caso: CasoEvaluacion, directorio: Path) -> ProveedorMemoria:
         servicio.store.guardar(
             titular, recuerdo_cls(**{k: v for k, v in datos.items() if k in recuerdo_cls.model_fields})
         )
-    return servicio  # type: ignore[no-any-return]
+    return servicio
 
 
 def memoria_para(caso: CasoEvaluacion, directorio: Path | None = None) -> ProveedorMemoria:

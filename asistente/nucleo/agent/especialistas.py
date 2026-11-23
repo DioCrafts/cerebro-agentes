@@ -26,12 +26,13 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field, replace
 import json
 import logging
-from typing import Any
+from typing import Any, Protocol
 
 from asistente.nucleo.agent.evidence import EvidenceLedger
 from asistente.nucleo.agent.providers.base import LLMProvider, ToolCall, ToolSpec
 from asistente.nucleo.agent.team import SubagentRun, run_subagent
-from asistente.nucleo.agent.tools import ExtraTool, Toolbox, ToolOutcome
+from asistente.nucleo.agent.tools import ExtraTool, ToolOutcome
+from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.evaluacion.variantes import prompt_activo
 from asistente.nucleo.modulos.acciones import AccionPendiente, describir
 from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, Modulo, ResultadoHerramienta
@@ -106,6 +107,13 @@ def _contiene_no_confiable(texto: str | None) -> bool:
     from asistente.capacidades.peticion import contiene_no_confiable
 
     return contiene_no_confiable(texto)
+
+
+class CajaExpediente(Protocol):
+    """What the coordinator reads from the advisor's toolbox (:class:`Toolbox` or a task's own box)."""
+
+    case: CaseState | None
+    case_changed: bool
 
 
 class ModuleToolbox:
@@ -185,7 +193,7 @@ class Coordinador:
     acciones: list[AccionPendiente] = field(default_factory=list)
     # True once a specialist of this run read third-party data (see ModuleToolbox.execute).
     leyo_no_confiable: bool = False
-    _toolbox: Toolbox | None = None
+    _toolbox: CajaExpediente | None = None
 
     @classmethod
     def para(
@@ -199,7 +207,7 @@ class Coordinador:
             return None
         return cls(provider=provider, ledger=ledger, modulos=especialistas, emit=emit)
 
-    def vincular(self, toolbox: Toolbox) -> None:
+    def vincular(self, toolbox: CajaExpediente) -> None:
         """The advisor's toolbox: its case is the household profile the specialists read and write."""
         self._toolbox = toolbox
 

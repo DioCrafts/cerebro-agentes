@@ -19,7 +19,7 @@ The schema is the ``navegador`` owner of the migrations (``plataforma/migracione
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -116,7 +116,7 @@ class AlmacenTareas:
         return self._conn
 
     @contextmanager
-    def _transaccion(self) -> Iterator[sqlite3.Connection]:
+    def _transaccion(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             conn = self._get()
             conn.execute("BEGIN IMMEDIATE")

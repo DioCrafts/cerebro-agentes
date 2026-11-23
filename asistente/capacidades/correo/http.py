@@ -94,7 +94,7 @@ def configurar_transporte(nuevo: Transporte | Callable[..., RespuestaHttp] | Non
     """Replace the transport (tests, the local fake server); None restores the default."""
     _transporte.clear()
     if nuevo is not None:
-        _transporte.append(nuevo)  # type: ignore[arg-type]
+        _transporte.append(nuevo)
 
 
 __all__ = ["CorreoError", "RespuestaHttp", "Transporte", "configurar_transporte", "transporte", "transporte_http"]

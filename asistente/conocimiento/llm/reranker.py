@@ -143,5 +143,5 @@ class MLXReranker:
         no_logits = mx.stack([logits[i, int(last_pos[i]), no_id] for i in range(len(docs))])
         paired = mx.stack([no_logits, yes_logits], axis=1)  # (B, 2)
         probs = mx.softmax(paired, axis=1)  # (B, 2)
-        scores = [float(x) for x in probs[:, 1].tolist()]  # type: ignore[union-attr,arg-type]
+        scores = [float(x) for x in probs[:, 1].tolist()]  # ty: ignore[invalid-argument-type, not-iterable]  # mlx stubs: tolist() of a 1-D array is a list of floats
         return scores

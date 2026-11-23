@@ -183,7 +183,7 @@ class PasoRellenar(_ConSelector):
 
 
 class PasoSeleccionar(PasoRellenar):
-    accion: Literal["seleccionar"] = "seleccionar"  # type: ignore[assignment]
+    accion: Literal["seleccionar"] = "seleccionar"  # ty: ignore[incompatible-attribute-override]  # pydantic discriminator; the subclass keeps the parent's checks
 
 
 class PasoPulsar(_ConSelector):
@@ -193,7 +193,7 @@ class PasoPulsar(_ConSelector):
 
 
 class PasoDescargar(PasoPulsar):
-    accion: Literal["descargar"] = "descargar"  # type: ignore[assignment]
+    accion: Literal["descargar"] = "descargar"  # ty: ignore[incompatible-attribute-override]  # pydantic discriminator; the subclass keeps the parent's checks
 
 
 class Resumen(_M):
@@ -212,7 +212,7 @@ class Resumen(_M):
 class PasoDetener(PasoPulsar):
     """The control that would submit/sign/pay: located and checked, NEVER clicked."""
 
-    accion: Literal["detener"] = "detener"  # type: ignore[assignment]
+    accion: Literal["detener"] = "detener"  # ty: ignore[incompatible-attribute-override]  # pydantic discriminator; the subclass keeps the parent's checks
     resumen: Resumen | None = None
 
 

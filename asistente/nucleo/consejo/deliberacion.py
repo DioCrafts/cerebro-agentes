@@ -182,9 +182,10 @@ def observar_usos(proveedor: Any) -> bool:
         previo(usage)
         _observar(usage)
 
-    ambos.observa_consejo = True  # type: ignore[attr-defined]
+    ambos.observa_consejo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     if getattr(previo, "__name__", "") == "_capturar" or getattr(previo, "captura_consumo", False):
-        ambos.captura_consumo = True  # type: ignore[attr-defined]  # the metering capture is inside ``previo``
+        # The metering capture is inside ``previo``.
+        ambos.captura_consumo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     real.on_usage = ambos
     return True
 
@@ -479,7 +480,7 @@ def validar_criticas(datos: Any, *, evaluador_id: str, etiquetas: Sequence[str])
                     f"tipo de error «{tipo}» no válido en {etiqueta}: usa {', '.join(TIPOS_ERROR)}."
                 )
             texto = _texto(error.get("texto"), "texto", 500, obligatorio=True, minimo=5)
-            errores.append(ErrorSenalado(tipo=tipo, texto=texto))  # type: ignore[arg-type]
+            errores.append(ErrorSenalado(tipo=tipo, texto=texto))
         puntuacion = cruda.get("puntuacion")
         if not isinstance(puntuacion, dict):
             raise SalidaInvalidaError(f"falta la «puntuacion» de {etiqueta} ({', '.join(EJES)}, de 1 a 5).")

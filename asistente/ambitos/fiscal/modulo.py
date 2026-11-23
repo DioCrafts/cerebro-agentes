@@ -201,7 +201,7 @@ class ModuloFiscal:
         return EVENTOS
 
     @cached_property
-    def fuentes(self) -> Sequence[FuenteModulo]:  # type: ignore[override]
+    def fuentes(self) -> Sequence[FuenteModulo]:
         from asistente.conocimiento.fuentes import normas_de_parametros
 
         return tuple(

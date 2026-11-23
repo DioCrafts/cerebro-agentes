@@ -339,7 +339,7 @@ class CENDOJCrawler(scrapy.Spider):
     def _fallida(self, failure: Any) -> None:
         peticion_fallida(self, failure)
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         for index, url in enumerate(self._urls):
             yield scrapy.Request(url, callback=self.parse_document, cb_kwargs={"slot": index}, errback=self._fallida)
 

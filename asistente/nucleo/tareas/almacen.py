@@ -18,7 +18,7 @@ When a case is erased (``SQLiteCaseStateStore.delete_case``, e.g. ``DELETE /me``
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 import json
@@ -163,7 +163,7 @@ class TareaStore:
         return self._conn
 
     @contextmanager
-    def _tx(self) -> Iterator[sqlite3.Connection]:
+    def _tx(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             conn = self._get()
             with conn:

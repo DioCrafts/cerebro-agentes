@@ -208,7 +208,7 @@ class RegionalBoletinCrawler(scrapy.Spider):
     def start_requests(self) -> Generator[scrapy.Request]:
         yield from self._build_search_requests()
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         for request in self._build_search_requests():
             yield request
 

@@ -877,11 +877,12 @@ class DeduccionCalculable(Condiciones):
                 if escala is None:
                     continue
                 topes = [t.hasta for t in escala]
+                intermedios = [t for t in topes[:-1] if t is not None]
                 if (
                     not escala
                     or topes[-1] is not None
-                    or any(t is None for t in topes[:-1])
-                    or topes[:-1] != sorted(topes[:-1])  # type: ignore[type-var]
+                    or len(intermedios) != len(topes) - 1
+                    or intermedios != sorted(intermedios)
                     or any(not 0 < t.porcentaje <= 1 for t in escala)
                 ):
                     raise ValueError("tramos_porcentaje: topes crecientes, el último sin tope, porcentajes en (0, 1]")

@@ -69,6 +69,7 @@ from asistente.nucleo.planificador.modelos import (
     EntradaPlan,
     Escenario,
     LineaAsignacion,
+    Modalidad,
     PalancaNoUsada,
     PalancaPlan,
     PlanHogar,
@@ -722,8 +723,9 @@ class Planificador:
     # Candidates and search
     # ------------------------------------------------------------------ #
 
-    def modalidades(self) -> list[str]:
-        return [m for m in ("plazo", "cuota") if m not in self.entrada.restricciones.modalidades_excluidas]
+    def modalidades(self) -> list[Modalidad]:
+        todas: tuple[Modalidad, ...] = ("plazo", "cuota")
+        return [m for m in todas if m not in self.entrada.restricciones.modalidades_excluidas]
 
     def maximo_hipoteca(self) -> Decimal:
         if self.hipoteca is None or self._excluida("amortizar_hipoteca") or not self.modalidades():
@@ -866,14 +868,14 @@ class Planificador:
         rellenos: dict[Decimal, Decimal] = {}
         vistas: set[tuple[Any, ...]] = set()
 
-        def nueva(h: Decimal, modo: str | None, p0: Decimal, p1: Decimal, d: Decimal) -> Asignacion | None:
+        def nueva(h: Decimal, modo: Modalidad | None, p0: Decimal, p1: Decimal, d: Decimal) -> Asignacion | None:
             clave = (h, modo, p0, p1, d)
             if clave in vistas:
                 return None
             vistas.add(clave)
             return Asignacion(
                 amortizar_hipoteca=h,
-                modalidad=modo,  # type: ignore[arg-type]
+                modalidad=modo,
                 plan_pensiones_contribuyente=p0,
                 plan_pensiones_conyuge=p1,
                 donativo=d,
@@ -1006,9 +1008,9 @@ class Planificador:
             assert self.hipoteca is not None
             importes = set(rejilla[palanca]) | {tope}
             for h in sorted(importes):
-                modos: list[str | None] = list(self.modalidades()) if h > 0 else [None]
+                modos: list[Modalidad | None] = list(self.modalidades()) if h > 0 else [None]
                 for modo in modos:
-                    opciones.append(Asignacion(amortizar_hipoteca=h, modalidad=modo))  # type: ignore[arg-type]
+                    opciones.append(Asignacion(amortizar_hipoteca=h, modalidad=modo))
         elif palanca == "donativo":
             opciones = [Asignacion(donativo=d) for d in rejilla[palanca] if d > 0] or [Asignacion()]
         else:
@@ -1182,7 +1184,7 @@ def _escenarios(planif: Planificador, rejilla: dict[str, list[Decimal]], plan: A
                 out.append(
                     escenario(
                         f"Todo lo posible a la hipoteca, {texto}",
-                        Asignacion(amortizar_hipoteca=tope, modalidad=modo),  # type: ignore[arg-type]
+                        Asignacion(amortizar_hipoteca=tope, modalidad=modo),
                     )
                 )
     m = planif.maximos_pension()
@@ -1313,7 +1315,7 @@ def planificar(
                             nombre=nombre,
                             causa=causa
                             if causa in ("restricciones", "faltan_datos", "sin_margen", "fecha")
-                            else "sin_margen",  # type: ignore[arg-type]
+                            else "sin_margen",
                             detalle=detalle,
                         )
                     )

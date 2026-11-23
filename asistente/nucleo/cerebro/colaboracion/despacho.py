@@ -404,7 +404,8 @@ class Despachador:
         ctx = ContextoEncargo(turno=turno, encargo=encargo, pizarra=linea, previos=previos, profundidad=0)
         limite = time.monotonic() + self.timeout_s if self.timeout_s is not None else math.inf
         # The copy is taken HERE, in the caller's thread: usage metering and the prompt variant cross into the worker.
-        futuro = pool.submit(contextvars.copy_context().run, self._tarea, encargo, ctx)
+        copia = contextvars.copy_context()
+        futuro = pool.submit(lambda: copia.run(self._tarea, encargo, ctx))
         return futuro, _Tarea(encargo=encargo, token=token, limite=limite)
 
     def _previo(

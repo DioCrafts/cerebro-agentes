@@ -181,6 +181,7 @@ def _ordinales() -> dict[str, int]:
     for n in range(1, 200):
         centena, resto = divmod(n, 100)
         prefijo = "centesima" if centena else ""
+        formas: list[str]
         if resto == 0:
             formas = [prefijo]
         elif resto < 10:

@@ -244,7 +244,7 @@ def potencia_optima(
         try:
             peaje, cargo = datos.peaje(hoy), datos.cargo(hoy)
         except DatoNoDisponibleError:
-            peaje = cargo = None  # type: ignore[assignment]
+            peaje = cargo = None
         if actual.potencia_eur_kw_dia is not None:
             precios = {p: getattr(actual.potencia_eur_kw_dia, p) * 365 for p in ("p1", "p2")}
         else:
@@ -252,7 +252,7 @@ def potencia_optima(
             precios = {p: getattr(actual.potencia_eur_kw_anio, p) for p in ("p1", "p2")}
         if not actual.incluye_peajes_cargos and peaje is not None and cargo is not None:
             for p in ("p1", "p2"):
-                precios[p] += peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]  # type: ignore[index]
+                precios[p] += peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]
         delta = {
             "p1": max(contrato.potencia_p1_kw - recomendada_p1, CERO),
             "p2": max(contrato.potencia_p2_kw - recomendada_p2, CERO),

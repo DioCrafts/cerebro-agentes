@@ -331,7 +331,7 @@ class TaxAgent:
         conversation = self._provider.start(
             system=system,
             tools=toolbox.specs(),
-            history=chat_history or [],  # type: ignore[arg-type]  # normalized by the provider
+            history=chat_history or [],  # normalized by the provider
             user_message="\n\n".join(
                 part
                 for part in (

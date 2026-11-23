@@ -114,7 +114,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
         return bool(_BOE_TITLE_RE.search(head))
 
     def parse(self, file_path: str) -> Sequence[FragmentoRecuperado]:
-        from lxml import etree
+        from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
         from lxml import html as lxml_html
 
         from asistente.conocimiento.processor.strategies.default import (
@@ -260,7 +260,7 @@ def _split_block_tables(block_html: str) -> list[str]:
     Implementation uses lxml DOM ops over **just the block's HTML** —
     safe because a block is at most a few MB even in pathological files.
     """
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     try:
@@ -303,7 +303,7 @@ def _split_table(table) -> list[str]:
     :data:`MAX_ROWS_PER_TABLE` rows each, each wrapped in a fresh
     ``<table>`` carrying the original ``<thead>`` so the sub-table is
     self-describing."""
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     thead = table.find(".//thead")
@@ -363,7 +363,7 @@ def _deepcopy(element):
     """Deep-copy an lxml element. ``copy.deepcopy`` doesn't preserve
     namespaces in some lxml builds — using ``fromstring(tostring(...))``
     is the canonical idiom."""
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     return (

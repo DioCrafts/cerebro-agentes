@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
-from typing import Literal
+from typing import Literal, TypeIs, get_args
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -40,7 +40,17 @@ Categoria = Literal[
     "comercio_online",
     "otros",
 ]
-CATEGORIAS: tuple[str, ...] = Categoria.__args__  # type: ignore[attr-defined]
+CATEGORIAS: tuple[Categoria, ...] = get_args(Categoria)
+SECTORES: tuple[Sector, ...] = get_args(Sector)
+
+
+def es_categoria(valor: object) -> TypeIs[Categoria]:
+    return valor in CATEGORIAS
+
+
+def es_sector(valor: object) -> TypeIs[Sector]:
+    return valor in SECTORES
+
 
 ETIQUETAS_CATEGORIA: dict[str, str] = {
     "streaming_video": "Streaming de vídeo",

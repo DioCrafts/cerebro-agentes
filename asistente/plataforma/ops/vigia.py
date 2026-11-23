@@ -17,7 +17,7 @@ when it does not arrive covers that case.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import ContextDecorator, contextmanager
 from datetime import UTC, datetime
 import fcntl
@@ -70,7 +70,7 @@ def leer_estado(path: str | Path | None = None) -> dict[str, dict[str, Any]]:
 
 
 @contextmanager
-def _locked(target: Path) -> Iterator[None]:
+def _locked(target: Path) -> Generator[None]:
     """Serialise read-modify-write across processes (several cron jobs may finish at once)."""
     with open(target.with_name(target.name + ".lock"), "w") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)

@@ -147,7 +147,7 @@ class BOECCAACrawler(scrapy.Spider):
                 dont_filter=True,
             )
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         for ccaa_key in self._targets:
             urls = build_code_urls(ccaa_key, base_url=self.base_url)
             yield scrapy.Request(

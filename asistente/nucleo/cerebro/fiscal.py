@@ -49,6 +49,7 @@ from asistente.nucleo.cerebro.contrato import (
     InformeEspecialista,
     PeticionDato,
     RespuestaPeticion,
+    Unidad,
 )
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.modulos.contrato import Modulo
@@ -149,7 +150,7 @@ _NUMERO = r"[-−]?\d{1,3}(?:[.  ]\d{3})+(?:,\d+)?|[-−]?\d+(?:[.,]\d+)?"
 _CIFRA_RE = re.compile(
     rf"(?<![\w/])({_NUMERO})\s*(€|euros?|%|por\s+ciento|kwh|kw|d[ií]as|meses|años)(?![\w])", re.IGNORECASE
 )
-_UNIDADES: dict[str, str] = {
+_UNIDADES: dict[str, Unidad] = {
     "€": "EUR",
     "euro": "EUR",
     "euros": "EUR",
@@ -247,7 +248,7 @@ def extraer_cifras(
                     especialista=especialista,
                     concepto=_concepto(frase, m.start()),
                     valor=valor,
-                    unidad=unidad,  # type: ignore[arg-type]
+                    unidad=unidad,
                     fragment_id=fuente.fragment_id,
                     herramienta=herramienta,
                     literal=m.group(0)[:80],
@@ -627,7 +628,7 @@ class EspecialistaFiscal:
             encargo_id=contexto.encargo.id,
             especialista=CLAVE_FISCAL,
             nombre=self.nombre,
-            estado=estado,  # type: ignore[arg-type]
+            estado=estado,
             fragment_ids=ledger.propios(),
             peticiones=peticiones,
             avisos=[aviso[:500]],

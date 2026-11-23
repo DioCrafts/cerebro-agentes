@@ -36,8 +36,7 @@ import logging
 import os
 import socket
 import sqlite3
-from types import SimpleNamespace
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.eventos.tipos import CORREO_CLASIFICADO, FECHA_UMBRAL, Evento
@@ -58,6 +57,9 @@ from asistente.nucleo.tareas.modelo import (
 )
 from asistente.plataforma import settings
 
+if TYPE_CHECKING:
+    from asistente.nucleo.proactive.store import Severity
+
 logger = logging.getLogger(__name__)
 
 # The bus timer's "module" for tasks (one per case: the earliest date any of its tasks waits for).
@@ -75,6 +77,14 @@ def _numero(nombre: str, defecto: float) -> float:
         return float(getattr(settings, nombre, defecto))
     except TypeError, ValueError:
         return defecto
+
+
+@dataclass
+class _Caja:
+    """The case a task's specialist reads and writes (what :class:`Toolbox` holds in a chat turn)."""
+
+    case: CaseState | None
+    case_changed: bool = False
 
 
 @dataclass(frozen=True)
@@ -191,8 +201,7 @@ def consultor_por_defecto(modulo: Modulo, pregunta: str, case: CaseState) -> tup
     coordinador = Coordinador.para(proveedor, ledger, [modulo], lambda *_a, **_k: None)
     if coordinador is None:
         raise RuntimeError(f"el módulo {modulo.clave} no tiene especialista")
-    caja = SimpleNamespace(case=case, case_changed=False, ledger=ledger)
-    coordinador.vincular(caja)  # type: ignore[arg-type]
+    coordinador.vincular(_Caja(case))
     _spec, consultar = coordinador.herramientas()[0]
     with contexto_consumo(user_id=case.user_id, case_id=case.case_id):
         salida = consultar({"pregunta": pregunta})
@@ -749,7 +758,7 @@ class Motor:
         *,
         titulo: str,
         cuerpo: str,
-        gravedad: str = "info",
+        gravedad: Severity = "info",
         sufijo: str = "",
         vence: date | None = None,
     ) -> str:
@@ -765,7 +774,7 @@ class Motor:
                     key=clave,
                     title=f"{tarea.titulo}: {titulo}"[:300],
                     body=cuerpo,
-                    severity=gravedad,  # type: ignore[arg-type]
+                    severity=gravedad,
                     actions=["Ábrela en «Tareas»."],
                     due_date=vence,
                 )

@@ -30,7 +30,7 @@ as before the migrations existed); ``python -m asistente.plataforma.cli.platafor
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -73,7 +73,9 @@ def nombre_de_funcion(funcion: Callable[..., Any]) -> str:
         if modulo.startswith(actual):
             modulo = historico + modulo[len(actual) :]
             break
-    return f"{modulo}.{funcion.__qualname__}"
+    # A callable object (not a function) has no ``__qualname__`` of its own: its class names it.
+    qualname = getattr(funcion, "__qualname__", None) or type(funcion).__qualname__
+    return f"{modulo}.{qualname}"
 
 
 class MigracionError(RuntimeError):
@@ -391,7 +393,7 @@ def _abrir(ruta: str, *, solo_lectura: bool) -> sqlite3.Connection | None:
 
 
 @contextmanager
-def _conexion(destino: str | sqlite3.Connection, *, solo_lectura: bool) -> Iterator[sqlite3.Connection | None]:
+def _conexion(destino: str | sqlite3.Connection, *, solo_lectura: bool) -> Generator[sqlite3.Connection | None]:
     if isinstance(destino, sqlite3.Connection):
         yield destino
         return

@@ -185,7 +185,7 @@ class Servicios:
 
 def modos_permitidos() -> list[Modo]:
     modos = [m.strip() for m in settings.NAVEGADOR_MODOS.split(",")]
-    return [m for m in ("ventana", "sesion") if m in modos]  # type: ignore[misc]
+    return [m for m in ("ventana", "sesion") if m in modos]
 
 
 def sustitutos() -> dict[str, str]:

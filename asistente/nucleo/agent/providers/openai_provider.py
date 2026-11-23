@@ -76,7 +76,7 @@ def resolve_api_style(*, name: str, base_url: str | None = None, api_style: str 
     """
     choice = (api_style or "").strip().lower()
     if choice in ("responses", "chat"):
-        return choice  # type: ignore[return-value]
+        return choice
     if choice:
         raise ValueError(f"OPENAI_API_STYLE desconocido: {choice!r} (usa responses o chat)")
     if name == "local" or _is_local_url(base_url or os.environ.get("OPENAI_BASE_URL")):

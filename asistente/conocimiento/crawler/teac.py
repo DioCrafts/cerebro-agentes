@@ -303,7 +303,7 @@ class TEACCrawler(scrapy.Spider):
     def _fallida(self, failure: Any) -> None:
         peticion_fallida(self, failure)
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         # Required entry point for scrapy >= 2.13.
         for criterio_id in range(self.start_id, self.end_id + 1):
             url = f"{self.base_url}/criterio.aspx?{urlencode({'id': criterio_id})}"

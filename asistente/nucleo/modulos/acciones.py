@@ -9,6 +9,7 @@ erasure cover it.
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime, timedelta
 import json
@@ -172,7 +173,7 @@ class AccionStore:
             )
         return AccionPendiente.model_validate_json(row["payload_json"]) if row else None
 
-    def list(self, case_id: str, *, estado: EstadoAccion | None = None) -> list[AccionPendiente]:
+    def list(self, case_id: str, *, estado: EstadoAccion | None = None) -> builtins.list[AccionPendiente]:
         """Actions of a case, newest first."""
         query = "SELECT payload_json FROM acciones_pendientes WHERE case_id = ?"
         params: tuple[Any, ...] = (case_id,)

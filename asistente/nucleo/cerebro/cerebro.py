@@ -861,7 +861,7 @@ class Cerebro:
             conversacion = proveedor.start(
                 system=self._sistema(turno, "" if charla else herramientas.addendum),
                 tools=specs,
-                history=turno.historial,  # type: ignore[arg-type]  # normalised by the provider
+                history=turno.historial,  # normalised by the provider
                 user_message=self._mensaje(turno, herramientas.contexto),
             )
         except ProviderError as exc:

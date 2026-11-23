@@ -77,11 +77,11 @@ def _dec(valor: Any, que: str) -> Decimal:
 def _zona(ctx: ContextoModulo) -> Zona:
     zona = ctx.perfil.get(HECHO_ZONA)
     if zona in ZONAS:
-        return zona  # type: ignore[no-any-return]
+        return zona
     ccaa = str(ctx.perfil.get("comunidad_autonoma") or "").lower()
     for clave, valor in (("canari", "canarias"), ("balear", "baleares"), ("ceuta", "ceuta"), ("melilla", "melilla")):
         if clave in ccaa:
-            return valor  # type: ignore[return-value]
+            return valor
     return "peninsula"
 
 
@@ -202,7 +202,7 @@ def calcular(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
             dias_kwh=dias_kwh,
             totales=totales,
             precios_pvpc=precios,
-            tipos_reducidos=tipos,  # type: ignore[arg-type]
+            tipos_reducidos=tipos,
         )
     except (_EntradaError, FacturaError, DatoNoDisponibleError, FormatoNoReconocidoError) as exc:
         return _error(str(exc))

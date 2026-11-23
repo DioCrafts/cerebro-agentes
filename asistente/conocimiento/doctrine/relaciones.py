@@ -87,7 +87,7 @@ def leer_heuristica(contexto: str) -> Lectura:
     ):
         hit = _first(patterns, contexto)
         if hit:
-            return Lectura(relacion, confianza, hit, "heuristica")  # type: ignore[arg-type]
+            return Lectura(relacion, confianza, hit, "heuristica")
     return Lectura("cita", 0.9, "", "heuristica")
 
 

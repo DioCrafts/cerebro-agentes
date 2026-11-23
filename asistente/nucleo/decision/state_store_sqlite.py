@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime
 import json
@@ -53,7 +53,7 @@ class SQLiteCaseStateStore(CaseStateStore):
         return self._conn
 
     @contextmanager
-    def _connect(self) -> Iterator[sqlite3.Connection]:
+    def _connect(self) -> Generator[sqlite3.Connection]:
         conn = self._get_conn()
         try:
             yield conn

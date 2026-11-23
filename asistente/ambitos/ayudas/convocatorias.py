@@ -632,7 +632,7 @@ def aceptar_respuesta_llm(
     if _compacto(cita) not in _compacto(texto):
         return None
     temas_validos = [t for t in temas if isinstance(t, str) and t in TEMAS]
-    return destinatario, temas_validos, _compacto(cita)  # type: ignore[return-value]
+    return destinatario, temas_validos, _compacto(cita)
 
 
 # --- The detected call -----------------------------------------------------------

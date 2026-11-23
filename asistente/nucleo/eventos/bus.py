@@ -26,7 +26,7 @@ asistente.plataforma.cli.eventos worker`` (or the API's in-process dispatcher) c
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
@@ -230,7 +230,7 @@ class Bus:
                     store.close()
 
     @contextmanager
-    def _tx(self) -> Iterator[sqlite3.Connection]:
+    def _tx(self) -> Generator[sqlite3.Connection]:
         """One write transaction (``BEGIN IMMEDIATE``: writers queue here, so claims never overlap)."""
         with self._lock:
             self._conn.execute("BEGIN IMMEDIATE")

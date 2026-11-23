@@ -30,7 +30,7 @@ import smtplib
 import sqlite3
 import ssl
 from threading import RLock
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
 
 from asistente.nucleo.proactive.store import Notification, NotificationStore
@@ -57,6 +57,15 @@ class Canal(Protocol):
     def enviar(self, asunto: str, cuerpo: str) -> None:
         """Send one message; raise on any failure."""
         ...
+
+
+@runtime_checkable
+class CanalPorUsuario(Protocol):
+    """A channel that reads its recipients and their opt-in from the database (Web Push)."""
+
+    def preparar(self, db_path: str) -> Callable[[Notification], bool]: ...
+
+    def enviar_aviso(self, notification: Notification) -> None: ...
 
 
 class WebhookCanal:
@@ -306,9 +315,9 @@ def entregar_pendientes(
     for canal in canales:
         pendientes = store.pendientes(canal.nombre)
         # A per-user channel (Web Push) reads its recipients and their opt-in from this database instead.
-        por_usuario = getattr(canal, "enviar_aviso", None)
+        por_usuario = canal if isinstance(canal, CanalPorUsuario) else None
         if por_usuario is not None:
-            filtro = canal.preparar(store.db_path)  # type: ignore[attr-defined]
+            filtro = por_usuario.preparar(store.db_path)
             pendientes = [n for n in pendientes if filtro(n)]
         elif permitido is not None:
             # e.g. the owner of the case has not consented to notices leaving the app:
@@ -319,7 +328,9 @@ def entregar_pendientes(
         for notification in pendientes:
             try:
                 if por_usuario is not None:
-                    por_usuario(notification)  # only a generic sentence leaves: asistente/plataforma/push/envio.py
+                    por_usuario.enviar_aviso(
+                        notification
+                    )  # only a generic sentence leaves: asistente/plataforma/push/envio.py
                 else:
                     canal.enviar(notification.title, texto_plano(notification))
             except Exception as exc:  # one broken channel must not stop the others

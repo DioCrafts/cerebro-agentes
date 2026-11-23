@@ -53,3 +53,27 @@ def test_generate_pdf_path_is_traversal_safe(tmp_path: Path) -> None:
     path = crawler._generate_pdf_path("https://x/a/b/../../../../etc/evil.pdf")
     assert ".." not in path
     assert Path(path).resolve().parent == Path(crawler.folder).resolve()
+
+
+def test_parse_keeps_a_pdf_served_without_pdf_extension(tmp_path: Path) -> None:
+    # A binary answer has no links: the LinkExtractor used to fail on it (no ``base_url``) and the PDF was lost.
+    from scrapy.http import Response
+
+    crawler = _crawler(tmp_path)
+    respuesta = Response(
+        "https://sede.agenciatributaria.gob.es/descarga/manual",
+        body=b"%PDF-1.7 contenido",
+        headers={"Content-Type": "application/pdf"},
+    )
+    assert list(crawler.parse(respuesta)) == []
+    assert len(list(Path(crawler.folder).glob("*"))) == 1
+
+
+def test_web_crawler_ignores_binary_answers(tmp_path: Path) -> None:
+    from scrapy.http import Response
+
+    from asistente.conocimiento.crawler.crawlers import AgenciaTributariaWebCrawler
+
+    crawler = AgenciaTributariaWebCrawler(folder=str(tmp_path), snapshot_date="2026-01-01")
+    respuesta = Response("https://sede.agenciatributaria.gob.es/imagen", body=b"\x89PNG")
+    assert list(crawler._follow_domain_links(respuesta)) == []

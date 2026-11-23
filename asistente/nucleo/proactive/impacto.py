@@ -518,7 +518,7 @@ def preparar_eventos(eventos: Iterable[Mapping[str, Any]], html_por_boe_id: Html
         claves = [clave_evento(evento) for evento in grupo]
         desde = min(d for e in grupo if (d := parse_fecha_actualizacion(e.get("previous_actualizacion"))) is not None)
         ultimo = grupo[-1]
-        html = html_por_boe_id(boe_id) if callable(html_por_boe_id) else html_por_boe_id.get(boe_id)
+        html = html_por_boe_id.get(boe_id) if isinstance(html_por_boe_id, Mapping) else html_por_boe_id(boe_id)
         if not html:
             out.sin_html.extend(claves)
             continue
