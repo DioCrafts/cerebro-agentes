@@ -79,7 +79,7 @@ function isEstado(value: unknown): value is EstadoNavegador {
   return isRecord(value) && typeof value.activo === "boolean" && Array.isArray(value.tareas);
 }
 
-function isTarea(value: unknown): value is TareaInfo {
+export function isTarea(value: unknown): value is TareaInfo {
   return isRecord(value) && typeof value.id === "string" && typeof value.estado === "string" && Array.isArray(value.eventos);
 }
 
@@ -120,6 +120,11 @@ export function getTareas(caseId: string, signal?: AbortSignal): Promise<TareaIn
   return request(`/navegador/tareas?case_id=${encodeURIComponent(caseId)}`, undefined, isTareas, { method: "GET", signal }).then(
     (r) => r.tareas,
   );
+}
+
+/** The task's live stream (Server-Sent Events `tarea`, then `fin` once it stops). */
+export function rutaEventosTarea(id: string): string {
+  return `/navegador/tareas/${encodeURIComponent(id)}/eventos`;
 }
 
 export function getTarea(id: string, signal?: AbortSignal): Promise<TareaInfo> {

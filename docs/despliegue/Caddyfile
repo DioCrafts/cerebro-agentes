@@ -18,7 +18,7 @@ http://:8081 {
 
 	# La API, bajo /api (el prefijo se quita: la API no lo conoce).
 	handle_path /api/* {
-		# La respuesta del agente llega en streaming (application/x-ndjson): sin búfer.
+		# La respuesta del agente y el progreso del consejo y del navegador llegan como SSE (text/event-stream): sin búfer.
 		reverse_proxy api:8000 {
 			flush_interval -1
 			# Caddy ya añade X-Forwarded-For/-Proto/-Host; uvicorn --proxy-headers los usa.

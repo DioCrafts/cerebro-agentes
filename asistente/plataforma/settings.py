@@ -120,6 +120,10 @@ RULES_DIR = os.environ.get("RULES_DIR", str(Path(__file__).resolve().parents[2] 
 # LLM tokens and loads multi-GB models per process.
 # Requests per minute per client (peer IP, or the configured API key). On by default; 0 disables it.
 API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "300"))
+# Agent turns streamed at the same time by this process (/agent/stream). Each one runs in its own thread and
+# spends model tokens; a turn over the cap waits (up to AGENT_STREAM_ESPERA_SEGUNDOS) before it is refused.
+AGENT_MAX_TURNOS_SIMULTANEOS = max(1, int(os.environ.get("AGENT_MAX_TURNOS_SIMULTANEOS", "4")))
+AGENT_STREAM_ESPERA_SEGUNDOS = float(os.environ.get("AGENT_STREAM_ESPERA_SEGUNDOS", "30"))
 
 # --- Agent (tool-using advisor) ---------------------------------------------
 # Which LLM drives the agent loop and the verifier:

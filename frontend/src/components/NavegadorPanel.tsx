@@ -19,10 +19,12 @@ import {
   detenerTarea,
   getCaptura,
   getEstadoNavegador,
-  getTarea,
   getTareas,
   iniciarTarea,
+  isTarea,
+  rutaEventosTarea,
 } from "../apiNavegador";
+import { useFlujoSse } from "../shell/useFlujoSse";
 
 const FIELD =
   "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
@@ -378,39 +380,17 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
   const [captura, setCaptura] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const activa = ESTADOS_ACTIVOS.has(tarea.estado);
-  // The parent's callback changes on every render; polling reads the latest one through a ref.
+  // While it runs, the server pushes each change of the task (no polling); the stream closes once it
+  // stops, and on unmount.
+  const flujo = useFlujoSse(activa ? rutaEventosTarea(tarea.id) : null, "tarea", isTarea);
+  // The parent's callback changes on every render; the stream reads the latest one through a ref.
   const avisar = useRef(onActualizada);
   useEffect(() => {
     avisar.current = onActualizada;
   }, [onActualizada]);
-
   useEffect(() => {
-    if (!activa) return;
-    // One request at a time: the next one is scheduled when the previous answers (a slow server
-    // never piles up requests, as a fixed interval would).
-    const ctrl = new AbortController();
-    let id: number | undefined;
-    const consultar = () => {
-      getTarea(tarea.id, ctrl.signal).then(
-        (t) => {
-          if (ctrl.signal.aborted) return;
-          setError(null);
-          avisar.current(t);
-          id = window.setTimeout(consultar, 1000);
-        },
-        (err: unknown) => {
-          if (ctrl.signal.aborted) return;
-          setError(mensaje(err));
-          id = window.setTimeout(consultar, 3000);
-        },
-      );
-    };
-    id = window.setTimeout(consultar, 1000);
-    return () => {
-      ctrl.abort();
-      window.clearTimeout(id);
-    };
-  }, [activa, tarea.id]);
+    if (flujo.datos) avisar.current(flujo.datos);
+  }, [flujo.datos]);
 
   useEffect(() => {
     if (!tarea.tiene_captura) return;
@@ -452,7 +432,7 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
             : "Comprobando la sesión que has entregado…"}
         </p>
       )}
-      {error && <p role="alert" className="text-[12.5px] text-risk-high-fg">{error}</p>}
+      {(error ?? flujo.error) && <p role="alert" className="text-[12.5px] text-risk-high-fg">{error ?? flujo.error}</p>}
       {tarea.pasos.length > 0 && (
         <ol className="space-y-1 text-[13px]">
           {tarea.pasos.map((p) => (

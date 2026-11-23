@@ -7,6 +7,11 @@ avoids a circular import and keeps ``app.dependency_overrides`` working here.
 With ``AUTH_MODE=off`` only ``GET /auth/config`` answers; the rest return 404 so
 nobody creates an account that would protect nothing.
 
+Sessions: ``/auth/register`` and ``/auth/login`` set the token in a cookie (``HttpOnly; Secure; SameSite=Strict;
+Path=/``, named ``__Host-sesion``) that the web client's script never reads; the server keeps only its SHA-256.
+The token is also returned in the body, but only to a client without a browser (a request with no ``Origin``
+header), which then sends it as ``Authorization: Bearer``. ``/auth/logout`` and ``DELETE /me`` delete the cookie.
+
 The module deliberately has no ``from __future__ import annotations``: the
 endpoints are closures whose dependency aliases are local names, and FastAPI
 could not resolve them from strings.
@@ -17,7 +22,7 @@ from datetime import UTC, datetime
 import threading
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Request, Response
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Request, Response
 from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.capacidades.correo import almacen as correo_almacen
@@ -37,7 +42,13 @@ from asistente.nucleo.repaso.almacen import exportar_repaso
 from asistente.nucleo.tareas.almacen import exportar_tareas
 from asistente.plataforma import settings
 from asistente.plataforma.api.security import require_api_key
-from asistente.plataforma.auth.deps import auth_required, bearer_token, get_auth_store, require_user
+from asistente.plataforma.auth.deps import (
+    COOKIE_SESION,
+    auth_required,
+    get_auth_store,
+    require_user,
+    token_de_sesion,
+)
 from asistente.plataforma.auth.passwords import PASSWORD_MAX_LENGTH, PASSWORD_MIN_LENGTH, PasswordPolicyError
 from asistente.plataforma.auth.ratelimit import LoginRateLimiter
 from asistente.plataforma.auth.store import (
@@ -108,8 +119,9 @@ class LoginRequest(BaseModel):
 class SessionResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    # Shown once: the server keeps only its SHA-256.
-    token: str
+    # Shown once, and only to a client without a browser (the web client gets the HttpOnly cookie instead):
+    # the server keeps only its SHA-256.
+    token: str | None
     expires_at: datetime
     user: User
 
@@ -175,6 +187,30 @@ def _per_address(limiter: LoginRateLimiter) -> int:
     return limiter.max_attempts * _ADDRESS_FACTOR
 
 
+def _abrir_sesion(
+    request: Request, response: Response, token: str, expires_at: datetime, user: User
+) -> SessionResponse:
+    """Set the session cookie and build the answer (the token in the body only for a client without a browser:
+    every browser sends ``Origin`` with a POST, so the web client's script never holds the token)."""
+    segundos = max(0, int((expires_at - datetime.now(UTC)).total_seconds()))
+    response.set_cookie(
+        COOKIE_SESION,
+        token,
+        max_age=segundos,
+        expires=segundos,
+        path="/",
+        secure=True,
+        httponly=True,
+        samesite="strict",
+    )
+    navegador = request.headers.get("origin") is not None
+    return SessionResponse(token=None if navegador else token, expires_at=expires_at, user=user)
+
+
+def _cerrar_cookie(response: Response) -> None:
+    response.delete_cookie(COOKIE_SESION, path="/", secure=True, httponly=True, samesite="strict")
+
+
 def _too_many_attempts(retry_after: int) -> HTTPException:
     return HTTPException(
         status_code=429,
@@ -215,6 +251,7 @@ def build_router(
     def post_register(
         payload: RegisterRequest,
         request: Request,
+        response: Response,
         store: auth_store_dep,
         limiter: Annotated[LoginRateLimiter, Depends(get_login_limiter)],
     ) -> SessionResponse:
@@ -243,12 +280,13 @@ def build_router(
             ) from exc
         limiter.record_failure(key)
         token, session = store.create_session(user.id)
-        return SessionResponse(token=token, expires_at=session.expires_at, user=user)
+        return _abrir_sesion(request, response, token, session.expires_at, user)
 
     @router.post("/auth/login", response_model=SessionResponse, dependencies=guarded)
     def post_login(
         payload: LoginRequest,
         request: Request,
+        response: Response,
         store: auth_store_dep,
         limiter: Annotated[LoginRateLimiter, Depends(get_login_limiter)],
     ) -> SessionResponse:
@@ -268,18 +306,21 @@ def build_router(
             raise HTTPException(status_code=401, detail="Correo o contraseña incorrectos.")
         limiter.reset(key)
         token, session = store.create_session(user.id)
-        return SessionResponse(token=token, expires_at=session.expires_at, user=user)
+        return _abrir_sesion(request, response, token, session.expires_at, user)
 
     @router.post("/auth/logout", status_code=204, dependencies=guarded)
     def post_logout(
         user: user_dep,
         store: auth_store_dep,
         authorization: Annotated[str | None, Header()] = None,
+        sesion: Annotated[str | None, Cookie(alias=COOKIE_SESION)] = None,
     ) -> Response:
-        token = bearer_token(authorization)
+        token = token_de_sesion(authorization, sesion)
         if token:
             store.revoke_session(token)
-        return Response(status_code=204)
+        response = Response(status_code=204)
+        _cerrar_cookie(response)
+        return response
 
     @router.get("/auth/me", response_model=User, dependencies=guarded)
     def get_me(user: user_dep) -> User:
@@ -426,6 +467,8 @@ def build_router(
         investigacion_capacidad.borrar_usuario(user.id)
         store.delete_user(user.id)
         limiter.reset(key)
-        return Response(status_code=204)
+        response = Response(status_code=204)
+        _cerrar_cookie(response)
+        return response
 
     return router

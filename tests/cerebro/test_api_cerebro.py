@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-import json
-
 from fastapi.testclient import TestClient
 
 from asistente.nucleo.agent.agent import TaxAgent
 from asistente.plataforma.api.api import app, get_agent
+from asistente.plataforma.api.sse import leer_eventos
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 from tests.cerebro.fakes import Grabador, MemoriaFalsa, cerebro
 
@@ -28,7 +27,7 @@ def _caso() -> str:
 def _stream(payload: dict) -> list[dict]:
     respuesta = client.post("/agent/stream", json=payload)
     assert respuesta.status_code == 200
-    return [json.loads(linea) for linea in respuesta.text.splitlines() if linea]
+    return leer_eventos(respuesta.text)
 
 
 def test_the_stream_carries_the_plan_the_answer_and_the_brains_report() -> None:

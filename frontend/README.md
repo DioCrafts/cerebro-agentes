@@ -24,5 +24,6 @@ npm run build       # dist/
 
 ## Notas
 
-- El token de sesión se guarda en `localStorage`. Pasarlo a una cookie `HttpOnly` exige cambios en el backend y está pendiente.
+- La sesión va en una cookie `HttpOnly` que pone el servidor; el cliente no guarda el token. Las peticiones usan `credentials: "same-origin"` y llevan `X-Requested-With`, que el servidor exige a las escrituras autenticadas por la cookie.
+- El progreso del agente, del consejo y de las tareas del navegador llega por Server-Sent Events (`src/lib/sse.ts`), con reconexión por `Last-Event-ID` y espera creciente.
 - La CSP de producción es `script-src 'self'`: no añadas scripts en línea a `index.html` (el tema se aplica desde `public/tema.js`).

@@ -903,9 +903,17 @@ curl -X POST http://127.0.0.1:8000/agent \
 | `clarification` | El agente necesita un dato del usuario antes de responder. |
 | `abstained` | Sin base suficiente (si ninguna afirmación sobrevive, la respuesta se sustituye y el original queda en `raw_answer`). |
 
-`POST /agent/stream` hace lo mismo emitiendo NDJSON con el progreso en vivo
-(búsquedas, texto del borrador token a token, verificación, corrección) y una línea final `result` o `error`;
-es lo que usa el frontend.
+`POST /agent/stream` hace lo mismo como Server-Sent Events (`text/event-stream`, eventos con nombre e `id`
+creciente): `progress` con el progreso en vivo (búsquedas, texto del borrador token a token, verificación,
+corrección), `cola` si espera turno, comentarios `: ping` cada 10 s y un evento final `result` o `error`.
+Es lo que usa el frontend. El proceso atiende como mucho `AGENT_MAX_TURNOS_SIMULTANEOS` turnos a la vez
+(4 por defecto); uno que espera más de `AGENT_STREAM_ESPERA_SEGUNDOS` (30) recibe `error` con `status` 503.
+Si el cliente se desconecta, el turno se cancela antes de la siguiente llamada al modelo.
+
+El progreso del consejo y de las tareas del navegador también llega por SSE, sin sondeo:
+`GET /cases/{case_id}/consejo/{sesion_id}/eventos` (eventos `sesion`) y
+`GET /navegador/tareas/{tarea_id}/eventos` (eventos `tarea`), con `fin` cuando dejan de cambiar. El `id` de
+cada evento es un resumen de su contenido: al reconectar con `Last-Event-ID` no se repite el último estado.
 
 La respuesta incluye además `citations`, `claims` (dictamen por afirmación) y
 `tool_trace` (qué buscó el agente), y con `case_id` todo ello queda en el

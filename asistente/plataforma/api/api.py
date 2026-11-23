@@ -1,11 +1,11 @@
 from __future__ import annotations
 
+import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 import json
 import logging
-import queue
 import threading
 from typing import Annotated, Any
 from uuid import uuid4
@@ -16,6 +16,7 @@ from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 
 
@@ -108,6 +109,7 @@ from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 from asistente.nucleo.proactive.bandeja import avisos_de_modulos, kind_de
 from asistente.nucleo.proactive.jobs import ejecutar_bandejas_propias, hoy_en_espana
 from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma.api import sse
 from asistente.plataforma.api.observability import ApiMetrics, observability_middleware
 from asistente.plataforma.api.routers import auth as auth_router
 from asistente.plataforma.api.routers import autonomos as autonomos_router
@@ -141,14 +143,20 @@ from asistente.plataforma.api.security import (
     require_operator,
     security_headers_middleware,
 )
+from asistente.plataforma.api.sse import respuesta_sse
 from asistente.plataforma.auth.deps import (
     CaseAccess,
     get_case_access,
     require_case_access,
     require_document_consent,
 )
-from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
-from asistente.plataforma.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
+from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, TurnoCanceladoError, contexto_consumo, medir
+from asistente.plataforma.settings import (
+    AGENT_MAX_TURNOS_SIMULTANEOS,
+    AGENT_STREAM_ESPERA_SEGUNDOS,
+    API_RATE_LIMIT_PER_MIN,
+    DECISION_STATE_DB_PATH,
+)
 
 _logger = logging.getLogger(__name__)
 
@@ -220,7 +228,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization", "X-Requested-With", "Last-Event-ID"],
     # Lets a cross-origin web client tell "session expired" from "API key missing".
     expose_headers=["WWW-Authenticate"],
     allow_credentials=False,
@@ -775,83 +783,186 @@ def post_agent(
     return response
 
 
-# Seconds between keep-alive lines while the model is working, so proxies and
-# the browser's idle timeout do not cut a long (but healthy) run.
+# Seconds between keep-alive comments while the model is working, so proxies and the browser's idle timeout do
+# not cut a long (but healthy) run. The client's disconnection is checked more often than that.
 _STREAM_HEARTBEAT_SECONDS = 10.0
+_STREAM_DISCONNECT_CHECK_SECONDS = 1.0
+_STREAM_QUEUE_CHECK_SECONDS = 0.25
+_TURNOS_COMPLETOS = "Hay demasiadas consultas en curso en este momento. Inténtalo de nuevo dentro de un minuto."
+
+
+class _LimiteTurnos:
+    """How many agent turns this process streams at once (``AGENT_MAX_TURNOS_SIMULTANEOS``), all users together.
+
+    Not an asyncio primitive: the slot is taken on the event loop and given back by the turn's own thread when it
+    really ends, which can be after its client left (the turn then stops at its next model call)."""
+
+    def __init__(self, maximo: int) -> None:
+        self.maximo = maximo
+        self.en_curso = 0
+        self._lock = threading.Lock()
+
+    def tomar(self) -> bool:
+        with self._lock:
+            if self.en_curso >= self.maximo:
+                return False
+            self.en_curso += 1
+            return True
+
+    def soltar(self) -> None:
+        with self._lock:
+            self.en_curso = max(0, self.en_curso - 1)
+
+
+_limite_turnos = _LimiteTurnos(AGENT_MAX_TURNOS_SIMULTANEOS)
 
 
 @app.post("/agent/stream", dependencies=[Depends(require_api_key)])
-def post_agent_stream(
+async def post_agent_stream(
     payload: AgentRequest,
+    request: Request,
     agent: Annotated[Agente, Depends(get_agent)],
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     access: Annotated[CaseAccess, Depends(get_case_access)],
     acciones: Annotated[AccionStore, Depends(get_accion_store)],
 ) -> StreamingResponse:
-    """Same as ``/agent``, streamed as NDJSON so the UI can show live progress.
+    """Same as ``/agent``, streamed as Server-Sent Events (``text/event-stream``) so the UI shows live progress.
 
-    One JSON object per line: ``{"event": "progress", "data": {...}}`` while the
-    agent works (searches issued, verification, revision), ``{"event": "ping"}``
-    keep-alives, then exactly one terminal line — ``{"event": "result", "data":
-    <AgentResponse>}`` or ``{"event": "error", "data": {"status", "detail"}}``.
-    Request-level failures that happen before the run starts (404 case, 503
-    agent unavailable, 401) are still plain HTTP errors.
+    Named events, each with an increasing ``id``: ``progress`` (``data``: the agent's event — searches issued,
+    verification, revision, text deltas) while it works; ``cola`` once if the turn waits for a free slot (the
+    process runs at most ``AGENT_MAX_TURNOS_SIMULTANEOS`` turns at once); ``: ping`` comments as keep-alives; then
+    exactly one terminal event — ``result`` (``data``: the ``AgentResponse``) or ``error`` (``data``:
+    ``{"status", "detail"}``). Request-level failures that happen before the run starts (404 case, 503 agent
+    unavailable, 401) are still plain HTTP errors.
+
+    The turn runs in its own thread, not on the event loop nor in the shared worker pool. When the client goes away
+    the turn's cancellation token is set: the agent stops before its next model call, so an answer nobody will read
+    stops spending.
     """
-    case = _load_agent_case(payload.case_id, store, access)
+    case = await run_in_threadpool(_load_agent_case, payload.case_id, store, access)
     comprobar_pregunta(payload.query)
     historial = recortar_historial(payload.chat_history)
-    modulos = _modulos_del_turno(payload.case_id, access)
-    events: queue.Queue[dict] = queue.Queue()
+    modulos = await run_in_threadpool(_modulos_del_turno, payload.case_id, access)
+    del_cerebro = _del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case))
 
-    def work() -> None:
+    def turno(publicar: Callable[[dict[str, Any]], None], cancelacion: threading.Event) -> None:
+        def progreso(event: dict[str, Any]) -> None:
+            # Also checked here: a provider that is not metered (tests, a local model) stops at its next event.
+            if cancelacion.is_set():
+                raise TurnoCanceladoError("el cliente se ha desconectado")
+            publicar({"event": "progress", "data": event})
+
         try:
-            # Inside the worker thread: the usage context does not cross threads by itself.
-            with contexto_consumo(
-                user_id=access.user.id if access.user is not None else (case.user_id if case is not None else None),
-                case_id=payload.case_id,
-            ):
+            with contexto_consumo(user_id=_consumidor(access, case), case_id=payload.case_id, cancelacion=cancelacion):
                 result = agent.run(
                     payload.query,
                     chat_history=historial,
                     case=case,
-                    on_event=lambda event: events.put({"event": "progress", "data": event}),
+                    on_event=progreso,
                     **modulos,
-                    **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
+                    **del_cerebro,
                 )
             response = _finish_agent_turn(payload, case, result, store, acciones, agent)
-            events.put({"event": "result", "data": response.model_dump(mode="json")})
+            publicar({"event": "result", "data": response.model_dump(mode="json")})
             # The user already has the answer: the memory may take its time.
             _registrar_en_memoria(agent, payload, case, result, access)
+        except TurnoCanceladoError:
+            _logger.info("agent turn cancelled: the client went away")
         except PresupuestoAgotadoError as exc:
-            events.put({"event": "error", "data": {"status": 429, "detail": str(exc)}})
+            publicar({"event": "error", "data": {"status": 429, "detail": str(exc)}})
         except ProviderError as exc:
             fallo = _no_disponible(_PROVEEDOR_NO_RESPONDE, exc)
-            events.put({"event": "error", "data": {"status": 503, "detail": fallo.detail}})
+            publicar({"event": "error", "data": {"status": 503, "detail": fallo.detail}})
         except HTTPException as exc:
-            events.put({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
-        except Exception:  # the stream must always end with a terminal line
+            publicar({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
+        except Exception:  # the stream must always end with a terminal event
             # The exception text can carry paths, SQL or data of the case: it goes to the log, not to the client.
             _logger.exception("agent stream failed")
-            events.put({"event": "error", "data": {"status": 500, "detail": "Error interno."}})
+            publicar({"event": "error", "data": {"status": 500, "detail": "Error interno."}})
 
-    def lines():
-        threading.Thread(target=work, name="agent-stream", daemon=True).start()
+    return respuesta_sse(_eventos_del_turno(request, turno, _limite_turnos))
+
+
+async def _eventos_del_turno(
+    request: Request,
+    turno: Callable[[Callable[[dict[str, Any]], None], threading.Event], None],
+    limite: _LimiteTurnos,
+) -> AsyncIterator[str]:
+    """The SSE frames of one agent turn: wait for a slot, run ``turno`` in a thread, relay what it publishes.
+
+    Whatever way the stream ends before a terminal event (the client disconnected, the server cancelled the
+    response), the ``finally`` sets the turn's cancellation token.
+    """
+    loop = asyncio.get_running_loop()
+    cola: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    cancelacion = threading.Event()
+    secuencia = 0
+    terminado = False
+    slot_propio = False
+
+    def frame(nombre: str, datos: Any) -> str:
+        nonlocal secuencia
+        secuencia += 1
+        return sse.evento(nombre, datos, id=str(secuencia))
+
+    def publicar(event: dict[str, Any]) -> None:  # from the turn's thread
+        try:
+            loop.call_soon_threadsafe(cola.put_nowait, event)
+        except RuntimeError:  # the loop is gone: nobody is listening any more
+            cancelacion.set()
+
+    def en_hilo() -> None:
+        try:
+            turno(publicar, cancelacion)
+        finally:
+            limite.soltar()
+
+    try:
+        limite_espera = loop.time() + AGENT_STREAM_ESPERA_SEGUNDOS
+        en_cola = False
+        while not limite.tomar():
+            if await request.is_disconnected():
+                return
+            if loop.time() >= limite_espera:
+                terminado = True
+                yield frame("error", {"status": 503, "detail": _TURNOS_COMPLETOS})
+                return
+            if not en_cola:
+                en_cola = True
+                yield frame("cola", {"maximo": limite.maximo})
+            await asyncio.sleep(_STREAM_QUEUE_CHECK_SECONDS)
+        slot_propio = True
+        threading.Thread(target=en_hilo, name="agent-stream", daemon=True).start()
+        slot_propio = False  # the thread gives it back when the turn really ends
+
+        ultimo_envio = ultima_comprobacion = loop.time()
         while True:
             try:
-                event = events.get(timeout=_STREAM_HEARTBEAT_SECONDS)
-            except queue.Empty:
-                yield json.dumps({"event": "ping"}) + "\n"
+                event = await asyncio.wait_for(cola.get(), timeout=_STREAM_DISCONNECT_CHECK_SECONDS)
+            except TimeoutError:
+                event = None
+            # Checked on a clock, not only when the turn is quiet: a server on ASGI spec 2.4 does not cancel the
+            # response when the client leaves, and a turn streaming text never goes quiet.
+            if loop.time() - ultima_comprobacion >= _STREAM_DISCONNECT_CHECK_SECONDS:
+                ultima_comprobacion = loop.time()
+                if await request.is_disconnected():
+                    return
+            if event is None:
+                if loop.time() - ultimo_envio >= _STREAM_HEARTBEAT_SECONDS:
+                    ultimo_envio = loop.time()
+                    yield sse.comentario()
                 continue
-            yield json.dumps(event, ensure_ascii=False, default=str) + "\n"
-            if event["event"] in ("result", "error"):
+            terminal = event["event"] in ("result", "error")
+            terminado = terminado or terminal
+            ultimo_envio = loop.time()
+            yield frame(event["event"], event["data"])
+            if terminal:
                 return
-
-    return StreamingResponse(
-        lines(),
-        media_type="application/x-ndjson",
-        # Tell reverse proxies (nginx) not to buffer: progress must arrive live.
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    finally:
+        if slot_propio:
+            limite.soltar()
+        if not terminado:
+            cancelacion.set()
 
 
 def _save_case_after_user_edit(

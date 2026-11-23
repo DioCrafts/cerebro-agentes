@@ -36,7 +36,7 @@ import logging
 from pathlib import Path
 import re
 import sqlite3
-from threading import Lock, RLock
+from threading import Event, Lock, RLock
 from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -74,6 +74,7 @@ __all__ = [
     "TablaPrecios",
     "Tarifa",
     "TramoLargo",
+    "TurnoCanceladoError",
     "Usage",
     "almacen_por_defecto",
     "calcular_coste",
@@ -633,14 +634,33 @@ class Presupuesto:
 # --- Per-question context -----------------------------------------------------
 
 
+class TurnoCanceladoError(BaseException):
+    """The question was cancelled (its client went away): no further model call is made for it.
+
+    A ``BaseException``, like ``asyncio.CancelledError``: the agent and the brain swallow ``Exception`` in many
+    places so that one failing piece never breaks the answer, and a cancellation must not be swallowed there.
+    """
+
+
 @dataclass
 class ContextoConsumo:
-    """Who a question is for and how many model calls it has made so far."""
+    """Who a question is for, how many model calls it has made so far and whether it was cancelled.
+
+    ``cancelacion`` is the question's cancellation token: once set, every metered call made for the question
+    raises :class:`TurnoCanceladoError` before it starts (the threads it fans out to share the same context
+    object, so they stop too).
+    """
 
     user_id: str | None = None
     case_id: str | None = None
     llamadas: int = 0
+    cancelacion: Event | None = field(default=None, repr=False, compare=False)
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+
+    def comprobar_cancelacion(self) -> None:
+        """Raise :class:`TurnoCanceladoError` if the question was cancelled."""
+        if self.cancelacion is not None and self.cancelacion.is_set():
+            raise TurnoCanceladoError("la pregunta se ha cancelado")
 
 
 _CONTEXTO: ContextVar[ContextoConsumo | None] = ContextVar("consumo_contexto", default=None)
@@ -649,7 +669,9 @@ _CAPTURA: ContextVar[list[Usage] | None] = ContextVar("consumo_captura", default
 
 
 @contextmanager
-def contexto_consumo(*, user_id: str | None = None, case_id: str | None = None) -> Iterator[ContextoConsumo]:
+def contexto_consumo(
+    *, user_id: str | None = None, case_id: str | None = None, cancelacion: Event | None = None
+) -> Iterator[ContextoConsumo]:
     """Attribute the model calls made inside the block to one user question.
 
     For providers that live longer than a question (the API builds its agent
@@ -658,8 +680,10 @@ def contexto_consumo(*, user_id: str | None = None, case_id: str | None = None) 
     context variable: code that fans out to threads must run them inside a copy
     of the context (``contextvars.copy_context()``) or their calls are recorded
     without user / case and outside the cap.
+
+    ``cancelacion`` is the question's cancellation token (see :class:`ContextoConsumo`).
     """
-    contexto = ContextoConsumo(user_id=user_id, case_id=case_id)
+    contexto = ContextoConsumo(user_id=user_id, case_id=case_id, cancelacion=cancelacion)
     token = _CONTEXTO.set(contexto)
     try:
         yield contexto
@@ -859,6 +883,8 @@ class MeteredProvider:
 
     def _medir[T](self, llamada: Callable[[], T], usage_de: Callable[[T], Usage | None] | None = None) -> T:
         contexto, cuenta = self._contexto_activo()
+        # A cancelled question makes no further call (nothing is spent on an answer nobody will read).
+        contexto.comprobar_cancelacion()
         with contexto._lock:
             user_id, case_id = contexto.user_id, contexto.case_id
             if self._presupuesto is not None:

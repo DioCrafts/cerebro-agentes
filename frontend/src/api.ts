@@ -7,7 +7,8 @@
 // so if the backend grows a new field, only this file changes.
 
 import { trimHistory } from "./lib/historial";
-import { type AuthMode, getSessionToken } from "./lib/session";
+import { type AuthMode } from "./lib/session";
+import { leerCuerpoSse } from "./lib/sse";
 import { isRecord } from "./lib/guards";
 
 // "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
@@ -249,20 +250,20 @@ const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api";
 // surfaces a clear timeout instead of leaving the UI stuck on "Consultando…".
 const DEFAULT_TIMEOUT_MS = 30_000;
 
-// With accounts on (AUTH_MODE=required) every request carries the session
-// token. With accounts off there is no token and the headers are as before.
-function requestHeaders(hasBody: boolean): Record<string, string> | undefined {
-  const token = getSessionToken();
-  if (!hasBody && !token) return undefined;
-  const headers: Record<string, string> = {};
+// With accounts on (AUTH_MODE=required) the session travels in an HttpOnly cookie that this script
+// never sees (`credentials: "same-origin"`). `X-Requested-With` marks the request as ours: a write the
+// cookie authenticates needs it (or an Origin of ours) to pass the server's CSRF check.
+const CREDENTIALS: RequestCredentials = "same-origin";
+
+function requestHeaders(hasBody: boolean): Record<string, string> {
+  const headers: Record<string, string> = { "X-Requested-With": "cerebro" };
   if (hasBody) headers["Content-Type"] = "application/json";
-  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
 let sessionExpiredHandler: (() => void) | null = null;
 
-/** Called when the server rejects the session token (expired, revoked, account deleted). */
+/** Called when the server rejects the session (expired, revoked, account deleted). */
 export function onSessionExpired(handler: (() => void) | null): void {
   sessionExpiredHandler = handler;
 }
@@ -328,7 +329,7 @@ async function errorFromResponse(path: string, resp: Response): Promise<ApiError
   return new ApiError(detail || `${path}: error ${resp.status}`, resp.status);
 }
 
-/** Shared by the other API modules (apiAutonomos.ts): same base URL, session token, timeout and errors. */
+/** Shared by the other API modules (apiAutonomos.ts): same base URL, session cookie, timeout and errors. */
 export async function request<T>(
   path: string,
   body: unknown,
@@ -346,6 +347,7 @@ export async function request<T>(
       method,
       headers: requestHeaders(body !== undefined),
       body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: CREDENTIALS,
       signal: combined,
     });
   } catch (err) {
@@ -383,7 +385,7 @@ export function createCase(opts: {
 const CONVERSACION_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 // If the stream goes silent for this long the connection is dead: the server
-// sends a keep-alive line every ~10 s even while the model is thinking.
+// sends a keep-alive comment every ~10 s even while the model is thinking.
 const STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 const PROGRESS_TYPES: ReadonlySet<string> = new Set([
@@ -407,7 +409,11 @@ function isProgressEvent(value: unknown): value is ProgressEvent {
 }
 
 /**
- * Run one agent turn over the NDJSON stream, reporting live progress.
+ * Run one agent turn over its Server-Sent Events stream, reporting live progress.
+ *
+ * Events: `progress` (data: the agent's event), `cola` (the server waits for a free slot), then one
+ * terminal `result` (data: AgentResponse) or `error` (data: {status, detail}); `: ping` comments keep
+ * the connection alive. Aborting `signal` closes the stream, and the server then stops the turn.
  *
  * Resolves with the final AgentResponse; rejects with ApiError on a server
  * error (HTTP or in-stream), a dead connection, or a malformed stream.
@@ -437,43 +443,46 @@ export async function streamAgent(
   try {
     const resp = await fetch(`${API_BASE}/agent/stream`, {
       method: "POST",
-      headers: requestHeaders(true),
+      headers: { ...requestHeaders(true), Accept: "text/event-stream" },
       body: JSON.stringify(body),
+      credentials: CREDENTIALS,
       signal: combined,
     });
     if (!resp.ok) throw await errorFromResponse("/agent/stream", resp);
     if (!resp.body) throw new ApiError("El servidor no devolvió ninguna respuesta.", resp.status);
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      touch();
-      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const message: unknown = JSON.parse(line);
-        if (!isRecord(message)) continue;
-        if (message.event === "progress" && isProgressEvent(message.data)) onProgress(message.data);
-        if (message.event === "error") {
-          const data = isRecord(message.data) ? message.data : {};
+    // Set from the event callback (a holder, so the compiler does not narrow it to null).
+    const salida: { result: AgentResponse | null } = { result: null };
+    await leerCuerpoSse(
+      resp.body,
+      ({ event, data }) => {
+        if (event === "progress") {
+          const parsed: unknown = JSON.parse(data);
+          if (isProgressEvent(parsed)) onProgress(parsed);
+          return "seguir";
+        }
+        if (event === "error") {
+          const parsed: unknown = JSON.parse(data);
+          const detail = isRecord(parsed) ? parsed : {};
           throw new ApiError(
-            typeof data.detail === "string" ? data.detail : "El servicio no pudo procesar la consulta.",
-            typeof data.status === "number" ? data.status : null,
+            typeof detail.detail === "string" ? detail.detail : "El servicio no pudo procesar la consulta.",
+            typeof detail.status === "number" ? detail.status : null,
           );
         }
-        if (message.event === "result") {
-          if (!isAgentResponse(message.data)) {
+        if (event === "result") {
+          const parsed: unknown = JSON.parse(data);
+          if (!isAgentResponse(parsed)) {
             throw new ApiError("El servidor devolvió una respuesta con un formato inesperado.");
           }
-          return message.data;
+          salida.result = parsed;
+          return "fin";
         }
-      }
-      if (done) throw new ApiError("La conexión se cerró antes de recibir la respuesta.");
-    }
+        return "seguir"; // `cola` and anything newer: nothing to show yet
+      },
+      touch,
+    );
+    if (salida.result === null) throw new ApiError("La conexión se cerró antes de recibir la respuesta.");
+    return salida.result;
   } catch (err) {
     if (idle.signal.aborted && !opts.signal?.aborted) {
       throw new ApiError("Se perdió la conexión con el servicio mientras preparaba la respuesta.", null, {
@@ -487,6 +496,19 @@ export async function streamAgent(
   } finally {
     clearTimeout(idleTimer);
   }
+}
+
+/**
+ * Open a GET Server-Sent Events stream of the API (the council's session, a browser task), resuming
+ * after `ultimoId` when there is one. Rejects with ApiError when the server refuses it.
+ */
+export async function abrirFlujo(path: string, ultimoId: string | null, signal: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+  const headers: Record<string, string> = { ...requestHeaders(false), Accept: "text/event-stream" };
+  if (ultimoId) headers["Last-Event-ID"] = ultimoId;
+  const resp = await fetch(`${API_BASE}${path}`, { method: "GET", headers, credentials: CREDENTIALS, cache: "no-store", signal });
+  if (!resp.ok) throw await errorFromResponse(path, resp);
+  if (!resp.body) throw new ApiError("El servidor no devolvió ninguna respuesta.", resp.status);
+  return resp.body;
 }
 
 /** The case as stored now. */
@@ -802,7 +824,8 @@ export interface SessionUser {
 }
 
 export interface SessionResponse {
-  token: string;
+  // Only for a client without a browser; the web client gets the HttpOnly cookie and null here.
+  token: string | null;
   expires_at: string;
   user: SessionUser;
 }
@@ -830,7 +853,7 @@ function isSessionUser(value: unknown): value is SessionUser {
 }
 
 function isSessionResponse(value: unknown): value is SessionResponse {
-  return isRecord(value) && typeof value.token === "string" && value.token.length > 0 && isSessionUser(value.user);
+  return isRecord(value) && (value.token === null || value.token === undefined || typeof value.token === "string") && isSessionUser(value.user);
 }
 
 function isConsents(value: unknown): value is ConsentsResponse {
@@ -870,6 +893,24 @@ export function login(opts: { email: string; password: string }): Promise<Sessio
 
 export function logout(): Promise<null> {
   return request("/auth/logout", {}, isEmpty);
+}
+
+/**
+ * Revoke a session token kept by an older version of this app in localStorage (sent once, as Bearer,
+ * and then forgotten). Best effort: a token the server no longer knows is simply gone already.
+ */
+export async function revocarTokenAntiguo(token: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { ...requestHeaders(true), Authorization: `Bearer ${token}` },
+      body: "{}",
+      credentials: "omit",
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    });
+  } catch {
+    // offline or refused: nothing else to do
+  }
 }
 
 export function getMe(signal?: AbortSignal): Promise<SessionUser> {

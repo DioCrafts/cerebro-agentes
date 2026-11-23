@@ -514,7 +514,8 @@ un proxy inverso termina TLS, sirve la interfaz y pasa `/api/*` quitando el pref
   porque el puerto 8000 no se publica (solo `expose`).
 - **Tamaño de las peticiones**: el proxy debe admitir algo más que `API_MAX_BODY_BYTES` (32 MB), para que
   sea la API la que responda 413 con su mensaje (`client_max_body_size 40m` / `max_size 40MB`).
-- **Streaming**: la respuesta del agente (`/agent/stream`) llega como `application/x-ndjson`: sin búfer en
+- **Streaming**: la respuesta del agente (`/agent/stream`) y el progreso del consejo y del navegador (`…/eventos`)
+  llegan como Server-Sent Events (`text/event-stream`): sin búfer en
   el proxy (`proxy_buffering off` / `flush_interval -1`) y un tiempo de lectura amplio.
 - **PWA**: `sw.js`, `index.html` y `manifest.webmanifest` con `Cache-Control: no-cache` (cada versión nueva
   se instala); `/assets/*` con caché larga (llevan *hash*).
