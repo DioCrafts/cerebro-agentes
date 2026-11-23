@@ -122,17 +122,79 @@ class FakeAnthropicAPI:
         return httpx2.Response(404, json={"type": "error", "error": {"type": "not_found_error", "message": ruta}})
 
 
+def respuesta_openai(
+    output: list[dict[str, Any]],
+    *,
+    model: str = "gpt-test",
+    status: str = "completed",
+    incomplete: str | None = None,
+    usage: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    """A Responses API response body."""
+    return {
+        "id": "resp_fake",
+        "object": "response",
+        "created_at": 0,
+        "model": model,
+        "status": status,
+        "incomplete_details": {"reason": incomplete} if incomplete else None,
+        "output": output,
+        "parallel_tool_calls": True,
+        "tool_choice": "auto",
+        "tools": [],
+        "usage": usage
+        if usage is not None
+        else {
+            "input_tokens": 10,
+            "input_tokens_details": {"cached_tokens": 0},
+            "output_tokens": 2,
+            "output_tokens_details": {"reasoning_tokens": 0},
+            "total_tokens": 12,
+        },
+    }
+
+
+def mensaje_openai(texto: str) -> dict[str, Any]:
+    """An assistant ``message`` output item of the Responses API."""
+    return {
+        "type": "message",
+        "id": "msg_fake",
+        "role": "assistant",
+        "status": "completed",
+        "content": [{"type": "output_text", "text": texto, "annotations": []}],
+    }
+
+
+def llamada_openai(call_id: str, name: str, arguments: str) -> dict[str, Any]:
+    """A ``function_call`` output item of the Responses API."""
+    return {
+        "type": "function_call",
+        "id": f"fc_{call_id}",
+        "call_id": call_id,
+        "name": name,
+        "arguments": arguments,
+        "status": "completed",
+    }
+
+
 class FakeOpenAIAPI:
-    """Chat Completions answered with a fixed text; records the request bodies."""
+    """Responses and Chat Completions endpoints; records the request bodies.
 
-    def __init__(self, texto: str = '{"ok": true}') -> None:
+    Without ``respuestas`` every call answers ``texto``. ``respuestas`` is a queue of
+    Responses bodies (dicts), SSE event lists (lists of dicts, for streamed calls) or
+    exceptions-as-status (an int: answered with that HTTP error).
+    """
+
+    def __init__(self, texto: str = '{"ok": true}', respuestas: list[Any] | None = None) -> None:
         self.texto = texto
+        self.respuestas = list(respuestas or [])
         self.cuerpos: list[dict[str, Any]] = []
+        self.rutas: list[str] = []
 
-    def client(self) -> openai.OpenAI:
+    def client(self, base_url: str = "http://openai.invalid/v1") -> openai.OpenAI:
         return openai.OpenAI(
             api_key="sk-test-not-a-key",
-            base_url="http://openai.invalid/v1",
+            base_url=base_url,
             http_client=httpx.Client(transport=httpx.MockTransport(self._handler)),
             max_retries=0,
         )
@@ -140,6 +202,9 @@ class FakeOpenAIAPI:
     def _handler(self, request: httpx.Request) -> httpx.Response:
         cuerpo = json.loads(request.content)
         self.cuerpos.append(cuerpo)
+        self.rutas.append(request.url.path)
+        if request.url.path.endswith("/responses"):
+            return self._responses(cuerpo)
         return httpx.Response(
             200,
             json={
@@ -157,3 +222,15 @@ class FakeOpenAIAPI:
                 "usage": {"prompt_tokens": 10, "completion_tokens": 2, "total_tokens": 12},
             },
         )
+
+    def _responses(self, cuerpo: dict[str, Any]) -> httpx.Response:
+        respuesta = self.respuestas.pop(0) if self.respuestas else None
+        if respuesta is None:
+            return httpx.Response(200, json=respuesta_openai([mensaje_openai(self.texto)], model=cuerpo["model"]))
+        if isinstance(respuesta, int):
+            error = {"error": {"message": "rechazada", "type": "invalid_request_error", "code": None, "param": None}}
+            return httpx.Response(respuesta, json=error)
+        if isinstance(respuesta, list):
+            sse = "".join(f"event: {e['type']}\ndata: {json.dumps(e)}\n\n" for e in respuesta)
+            return httpx.Response(200, content=sse.encode("utf-8"), headers={"content-type": "text/event-stream"})
+        return httpx.Response(200, json=respuesta)

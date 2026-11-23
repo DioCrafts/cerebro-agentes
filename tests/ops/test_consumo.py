@@ -613,7 +613,7 @@ def test_openai_reports_usage_per_call_including_streams() -> None:
             _openai_response("sin datos", usage=None),  # local servers often send no usage
         ]
     )
-    provider = OpenAIProvider(model="gpt-4o-mini", client=client)
+    provider = OpenAIProvider(model="gpt-4o-mini", client=client, api_style="chat")
     seen: list[Usage] = []
     provider.on_usage = seen.append
 
