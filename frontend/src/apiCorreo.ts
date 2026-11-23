@@ -6,30 +6,18 @@
 
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-export interface EstadoCorreo {
-  case_id: string;
-  configurado: boolean;
-  activo: boolean;
-  conectado: boolean;
-  estado?: "conectada" | "reconectar" | null;
-  cuenta?: string | null;
-  alcance: string[];
-  conectada_el?: string | null;
-  ultima_sincronizacion?: string | null;
-  ultimo_error?: string | null;
-  elementos: number;
-  propuestas_pendientes: number;
-  ventana_dias: number;
-  solo_lectura: boolean;
-}
-
-export interface CampoCorreo {
-  campo: string;
-  valor: string;
-  literal: string;
-  fragmento: string;
-}
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts), except the digest's: GET /correo/resumen
+// answers a plain dict (asistente/capacidades/correo/resumen.py -> resumen_dict) with no model, so its types
+// (ResumenCorreo, SeccionResumen, ElementoCorreo) are kept here by hand.
+// `estado`: "conectada" | "reconectar" | null.
+export type EstadoCorreo = Respuesta<"/correo/estado", "get">;
+export type CampoCorreo = Esquemas["CampoGuardado"];
+export type PropuestaCorreo = Respuesta<"/correo/propuestas", "get">["propuestas"][number];
+export type EstadoPropuesta = PropuestaCorreo["estado"];
+export type SincronizacionCorreo = Respuesta<"/correo/sincronizar", "post">;
+export type DesconexionCorreo = Respuesta<"/correo/desconectar", "post">;
 
 export interface ElementoCorreo {
   id: string;
@@ -63,44 +51,15 @@ export interface ResumenCorreo {
   silenciados: number;
 }
 
-export type EstadoPropuesta = "pendiente" | "aplicando" | "confirmada" | "rechazada" | "fallida";
-
-export interface PropuestaCorreo {
-  id: string;
-  case_id: string;
-  elemento_id: string;
-  destino: string;
-  tipo: "herramienta" | "hechos" | "nota";
-  herramienta?: string | null;
-  argumentos: Record<string, unknown>;
-  hechos: Record<string, unknown>;
-  titulo: string;
-  explicacion: string;
-  evidencias: CampoCorreo[];
-  origen: { dominio: string; asunto?: string | null; fecha: string };
-  estado: EstadoPropuesta;
-  resultado?: string | null;
-}
-
-export interface SincronizacionCorreo {
-  modo: string;
-  leidos: number;
-  nuevos: number;
-  completos: number;
-  categorias: Record<string, number>;
-  propuestas: number;
-  purgados: number;
-}
-
 const isEstado = (v: unknown): v is EstadoCorreo => isRecord(v) && typeof v.conectado === "boolean" && typeof v.configurado === "boolean";
 const isResumen = (v: unknown): v is ResumenCorreo => isRecord(v) && Array.isArray(v.secciones);
-const isPropuestas = (v: unknown): v is { propuestas: PropuestaCorreo[] } => isRecord(v) && Array.isArray(v.propuestas);
+const isPropuestas = (v: unknown): v is Respuesta<"/correo/propuestas", "get"> => isRecord(v) && Array.isArray(v.propuestas);
 const isPropuesta = (v: unknown): v is PropuestaCorreo => isRecord(v) && typeof v.id === "string" && typeof v.estado === "string";
-const isUrl = (v: unknown): v is { url: string } => isRecord(v) && typeof v.url === "string";
+const isUrl = (v: unknown): v is Respuesta<"/correo/conexion", "post"> => isRecord(v) && typeof v.url === "string";
 const isSync = (v: unknown): v is SincronizacionCorreo => isRecord(v) && typeof v.nuevos === "number";
-const isDesconexion = (v: unknown): v is { revocado_en_google: boolean | null; datos_borrados: number } =>
+const isDesconexion = (v: unknown): v is DesconexionCorreo =>
   isRecord(v) && "revocado_en_google" in v;
-const isObjeto = (v: unknown): v is Record<string, unknown> => isRecord(v);
+const isSilenciado = (v: unknown): v is Respuesta<"/correo/silenciar", "post"> => isRecord(v);
 
 const q = (caseId: string) => `case_id=${encodeURIComponent(caseId)}`;
 
@@ -135,5 +94,5 @@ export function decidirPropuesta(id: string, confirmar: boolean): Promise<Propue
 
 /** «No me interesa» for a category or a sender domain (recorded in the decision memory). */
 export function silenciar(caseId: string, tipo: "categoria" | "remitente", valor: string) {
-  return request("/correo/silenciar", { case_id: caseId, tipo, valor }, isObjeto);
+  return request("/correo/silenciar", { case_id: caseId, tipo, valor }, isSilenciado);
 }

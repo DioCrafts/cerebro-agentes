@@ -6,7 +6,7 @@ import { baseDeExpediente, childrenInCase, estadoDeExpediente, nuevaPosicion } f
 import { cambiosPendientes, trasGuardar } from "./guardado";
 import { type ContextoPeticion, FORMULARIO_VACIO, type FormularioOptimizador, construirPeticion, resolver } from "./peticion";
 
-const fact = (name: string, value: Fact["value"]): Fact => ({ fact_id: name, name, value, value_type: typeof value, source: "user", confidence: 1, updated_at: "2026-01-01" });
+const fact = (name: string, value: Fact["value"]): Fact => ({ fact_id: name, name, value, value_type: Array.isArray(value) ? "array" : typeof value === "object" ? "object" : typeof value === "number" ? "number" : typeof value === "boolean" ? "boolean" : "string", source: "user", confidence: 1, updated_at: "2026-01-01" });
 
 function run(facts: Fact[], form: Partial<FormularioOptimizador> = {}, ctx: Partial<ContextoPeticion> = {}) {
   const f = { ...FORMULARIO_VACIO, ...form };

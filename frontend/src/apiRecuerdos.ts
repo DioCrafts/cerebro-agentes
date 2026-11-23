@@ -6,73 +6,20 @@
 
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Peticion, Respuesta } from "./api/tipos";
 
-export type TipoRecuerdo = "dato" | "preferencia" | "contexto";
-
-export interface FuenteRecuerdo {
-  conversacion_id: string;
-  fecha: string;
-  cita: string;
-  /** The conversation's title while it exists (null: deleted, or its messages were purged before a summary). */
-  titulo_conversacion: string | null;
-}
-
-export interface Recuerdo {
-  id: string;
-  tipo: TipoRecuerdo;
-  texto: string;
-  origen: FuenteRecuerdo;
-  fuentes: FuenteRecuerdo[];
-  corregido: boolean;
-  sensible: boolean;
-  estado: "activo" | "sustituido";
-  sustituido_por: string | null;
-  creado: string;
-  actualizado: string;
-  usos: number;
-  ultimo_uso: string | null;
-}
-
-export interface RecuerdosResponse {
-  disponible: boolean;
-  activa: boolean;
-  sin_cuenta: boolean;
-  retencion_dias: number;
-  explicacion: string;
-  recuerdos: Recuerdo[];
-  historial: Recuerdo[];
-  conversaciones: number;
-}
-
-export interface Interruptor {
-  disponible: boolean;
-  activa: boolean;
-  explicacion: string;
-}
-
-export interface ConversacionResumen {
-  id: string;
-  titulo: string;
-  creada: string;
-  actualizada: string;
-  estado: string;
-  resumen: string | null;
-  cita: string | null;
-  mensajes: number;
-  retenidos: number;
-  recuerdos: number;
-}
-
-export interface ConversacionesResponse {
-  retencion_dias: number;
-  conversaciones: ConversacionResumen[];
-}
-
-export interface OlvidoTotal {
-  recuerdos: number;
-  conversaciones: number;
-  mensajes: number;
-}
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts).
+export type RecuerdosResponse = Respuesta<"/recuerdos", "get">;
+export type Recuerdo = RecuerdosResponse["recuerdos"][number];
+// `titulo_conversacion`: the conversation's title while it exists (null: deleted, or its messages were purged
+// before a summary).
+export type FuenteRecuerdo = Recuerdo["origen"];
+export type TipoRecuerdo = Recuerdo["tipo"];
+export type Interruptor = Respuesta<"/recuerdos/interruptor", "get">;
+export type ConversacionesResponse = Respuesta<"/conversaciones", "get">;
+export type ConversacionResumen = ConversacionesResponse["conversaciones"][number];
+export type OlvidoTotal = Respuesta<"/recuerdos", "delete">;
+export type CambiosRecuerdo = Peticion<"/recuerdos/{recuerdo_id}", "patch">;
 
 export const TIPO_RECUERDO_LABEL: Record<TipoRecuerdo, string> = {
   preferencia: "Cómo prefieres las cosas",
@@ -124,7 +71,7 @@ export function getRecuerdos(caseId: string | null, signal?: AbortSignal): Promi
 export function corregirRecuerdo(
   caseId: string | null,
   id: string,
-  cambios: { texto: string; tipo?: TipoRecuerdo },
+  cambios: CambiosRecuerdo,
 ): Promise<Recuerdo> {
   return request(conCaso(`/recuerdos/${encodeURIComponent(id)}`, caseId), cambios, isRecuerdo, { method: "PATCH" });
 }

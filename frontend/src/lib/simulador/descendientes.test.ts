@@ -5,7 +5,7 @@ import { gruposDeComunidad, GROUPS, MADRID_GROUP } from "./campos";
 import { type ChildRow, childAge, childProblem, childToApi, derivedFromChildren, emptyChild, parseChildrenFact } from "./descendientes";
 
 const row = (patch: Partial<ChildRow>): ChildRow => ({ ...emptyChild("h"), ...patch });
-const fact = (value: Fact["value"]): Fact => ({ fact_id: "d", name: "descendientes", value, value_type: "json", source: "user", confidence: 1, updated_at: "" });
+const fact = (value: Fact["value"]): Fact => ({ fact_id: "d", name: "descendientes", value, value_type: "array", source: "user", confidence: 1, updated_at: "" });
 let n = 0;
 const ids = () => `id-${++n}`;
 

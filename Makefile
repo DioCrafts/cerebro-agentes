@@ -1,5 +1,5 @@
 .PHONY: format lint type-check imports test test-rapido test-completo \
-	frontend-test frontend-lint frontend-typecheck frontend quality
+	tipos tipos-check frontend-test frontend-lint frontend-typecheck frontend quality
 
 format:
 	uv run ruff format .
@@ -27,6 +27,22 @@ test-completo:
 
 test: test-completo
 
+# Tipos del frontend a partir del OpenAPI de la API: vuelca el esquema (importa la aplicación, no arranca el
+# servidor ni carga modelos) y genera frontend/src/api/esquema.d.ts con openapi-typescript.
+tipos:
+	uv run python -m asistente.plataforma.cli.openapi > frontend/openapi.json.tmp
+	mv frontend/openapi.json.tmp frontend/openapi.json
+	npm --prefix frontend run tipos
+
+# Falla si un modelo de la API cambió y nadie regeneró los tipos, o si alguien tocó a mano los generados.
+TIPOS_GENERADOS := frontend/openapi.json frontend/src/api/esquema.d.ts
+
+tipos-check: tipos
+	@git --no-pager diff --exit-code --stat -- $(TIPOS_GENERADOS) || \
+		{ echo "Los tipos del frontend no coinciden con la API: ejecuta 'make tipos' y versiona el resultado."; exit 1; }
+	@test -z "$$(git ls-files --others --exclude-standard -- $(TIPOS_GENERADOS))" || \
+		{ echo "Tipos generados sin versionar: añade $(TIPOS_GENERADOS) a git."; exit 1; }
+
 frontend-test:
 	npm --prefix frontend run --if-present test
 
@@ -38,4 +54,4 @@ frontend-typecheck:
 
 frontend: frontend-lint frontend-typecheck frontend-test
 
-quality: format lint type-check imports test frontend
+quality: format lint type-check imports test tipos-check frontend
