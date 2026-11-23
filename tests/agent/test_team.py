@@ -4,28 +4,28 @@ from datetime import date
 import threading
 from typing import Any
 
-from langchain_core.documents import Document
 import pytest
 
 from asistente.conocimiento.doctrine.citas import Documento
 from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.agent import AgentMode, TeamAgent
 from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolResult, ToolSpec
 from asistente.nucleo.agent.team import detectar_tributos
 from .fakes import FakeSearcher, verdict
 
-LAW = Document(
-    page_content="La adquisición por herencia tributa en el Impuesto sobre Sucesiones; la posterior venta genera ganancia patrimonial en el IRPF.",
-    metadata={
+LAW = FragmentoRecuperado(
+    texto="La adquisición por herencia tributa en el Impuesto sobre Sucesiones; la posterior venta genera ganancia patrimonial en el IRPF.",
+    metadatos={
         "title": "Ley 29/1987 ISD",
         "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-1987-28141",
         "source_authority": "BOE",
         "chunk_id": "law",
     },
 )
-OLD = Document(
-    page_content="El valor de adquisición es el declarado en Sucesiones aunque no haya sido comprobado.",
-    metadata={
+OLD = FragmentoRecuperado(
+    texto="El valor de adquisición es el declarado en Sucesiones aunque no haya sido comprobado.",
+    metadatos={
         "title": "Consulta V1234-19",
         "source": "dgt-vinculantes/2019/V1234-19.html",
         "num_consulta": "V1234-19",
@@ -34,9 +34,9 @@ OLD = Document(
         "chunk_id": "old",
     },
 )
-RULING = Document(
-    page_content="El valor de adquisición es el comprobado por la Administración en Sucesiones.",
-    metadata={
+RULING = FragmentoRecuperado(
+    texto="El valor de adquisición es el comprobado por la Administración en Sucesiones.",
+    metadatos={
         "title": "STS de 3 de junio de 2020",
         "source": "ts/STS_1500_2020.html",
         "source_authority": "TS_SALA_TERCERA",
@@ -138,7 +138,7 @@ def _graph() -> DoctrineGraph:
     return g
 
 
-def _agent(provider: RoutedProvider, docs: list[Document], **kwargs) -> TeamAgent:
+def _agent(provider: RoutedProvider, docs: list[FragmentoRecuperado], **kwargs) -> TeamAgent:
     return TeamAgent(provider=provider, searcher=FakeSearcher(docs), **kwargs)
 
 

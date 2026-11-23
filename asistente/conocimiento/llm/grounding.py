@@ -265,12 +265,12 @@ class GroundingGate:
         return citations
 
     def _document_to_citation(self, doc: Any) -> Citation | None:
-        metadata = getattr(doc, "metadata", None) or {}
+        metadata = getattr(doc, "metadatos", None) or {}
         title = self._first_non_empty(metadata, ("title", "section"))
         locator = self._first_non_empty(metadata, ("source_url", "source", "locator"))
         if not title or not locator:
             return None
-        snippet = self._truncate(getattr(doc, "page_content", "") or "")
+        snippet = self._truncate(getattr(doc, "texto", "") or "")
         return Citation(
             title=title,
             locator=locator,
@@ -331,8 +331,8 @@ def _references_not_retrieved(answer: str, documents: Sequence[Any]) -> list[str
         return []
     partes: list[str] = []
     for doc in documents:
-        partes.append(getattr(doc, "page_content", "") or "")
-        metadata = getattr(doc, "metadata", None) or {}
+        partes.append(getattr(doc, "texto", "") or "")
+        metadata = getattr(doc, "metadatos", None) or {}
         partes.extend(str(v) for v in metadata.values() if isinstance(v, str))
     haystack = " ".join(partes)
     ausentes: list[str] = []

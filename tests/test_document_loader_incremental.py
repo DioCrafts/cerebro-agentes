@@ -2,7 +2,7 @@
 
 Stubs ``_iter_chunks_streaming`` (the primary parallelism seam) so we never
 need the heavy Docling stack, but exercises the **real** FAISS code path
-(langchain-community 0.4.1) so the add/delete semantics that the plan
+(langchain-community 0.4.1, behind ``conocimiento/indice/faiss_legado.py``) so the add/delete semantics that the plan
 depends on are validated against the actual library, not our wishful
 thinking.
 
@@ -14,10 +14,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor import document_loader as dl
 from asistente.conocimiento.processor import manifest as mf
 from asistente.plataforma import settings
@@ -29,7 +28,7 @@ def indice_de_confianza(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", True)
 
 
-class _DeterministicEmbed(Embeddings):
+class _DeterministicEmbed:
     """Tiny embedder that returns a stable vector per text.
 
     FAISS only checks that all vectors have the same dimensionality and that
@@ -86,12 +85,12 @@ def _make_processor(
     )
 
 
-def _docs_for(file_path: str, n: int) -> list[Document]:
+def _docs_for(file_path: str, n: int) -> list[FragmentoRecuperado]:
     """Stub Docling output: n chunks with stable ids derived from the path."""
     return [
-        Document(
-            page_content=f"chunk {i} of {Path(file_path).name}",
-            metadata={
+        FragmentoRecuperado(
+            texto=f"chunk {i} of {Path(file_path).name}",
+            metadatos={
                 "chunk_id": dl._stable_chunk_id(file_path, i),
                 "source_file": file_path,
                 "title": Path(file_path).stem,
@@ -222,20 +221,20 @@ def test_modified_file_evicts_old_chunks_and_adds_new(corpus, patch_docling, mon
     _write(content_dir / "a.html", "<html>v2 different content</html>")
     patch_docling["a.html"] = 3  # produce 3 chunks this time
 
-    from langchain_community.vectorstores import FAISS
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
     delete_calls: list[list[str]] = []
-    real_delete = FAISS.delete
+    real_delete = AlmacenFaissLegado.delete
 
-    def spy_delete(self, ids=None, **kwargs):
-        delete_calls.append(list(ids or []))
-        return real_delete(self, ids=ids, **kwargs)
+    def spy_delete(self, ids):
+        delete_calls.append(list(ids))
+        return real_delete(self, ids)
 
-    monkeypatch.setattr(FAISS, "delete", spy_delete)
+    monkeypatch.setattr(AlmacenFaissLegado, "delete", spy_delete)
 
     _make_processor(content_dir, output_dir).process_documents()
 
-    # FAISS.delete must have been called with exactly the manifest's old ids.
+    # The index's delete must have been called with exactly the manifest's old ids.
     assert delete_calls and set(delete_calls[0]) == set(old_chunk_ids)
 
     # Manifest reflects the new chunk count.
@@ -265,16 +264,16 @@ def test_removed_file_evicts_chunks(corpus, patch_docling, monkeypatch) -> None:
 
     (content_dir / "b.html").unlink()
 
-    from langchain_community.vectorstores import FAISS
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
     deleted: list[list[str]] = []
-    real_delete = FAISS.delete
+    real_delete = AlmacenFaissLegado.delete
 
-    def spy_delete(self, ids=None, **kwargs):
-        deleted.append(list(ids or []))
-        return real_delete(self, ids=ids, **kwargs)
+    def spy_delete(self, ids):
+        deleted.append(list(ids))
+        return real_delete(self, ids)
 
-    monkeypatch.setattr(FAISS, "delete", spy_delete)
+    monkeypatch.setattr(AlmacenFaissLegado, "delete", spy_delete)
 
     _make_processor(content_dir, output_dir).process_documents()
 
@@ -517,12 +516,12 @@ def test_an_incremental_run_refuses_to_unpickle_an_untrusted_index(corpus, patch
     _write(content_dir / "b.html")
     antes = (output_dir / "index.pkl").read_bytes()
 
-    from langchain_community.vectorstores import FAISS
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
     def no_cargar(*_a, **_k):
         raise AssertionError("the index was unpickled")
 
-    monkeypatch.setattr(FAISS, "load_local", no_cargar)
+    monkeypatch.setattr(AlmacenFaissLegado, "cargar", no_cargar)
     monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)
     with pytest.raises(RuntimeError, match="FAISS_TRUSTED_INDEX"):
         _make_processor(content_dir, output_dir).process_documents()

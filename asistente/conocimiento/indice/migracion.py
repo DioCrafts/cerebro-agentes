@@ -1,8 +1,9 @@
 """Copia un índice FAISS de LangChain a ``IndiceHibrido`` sin recalcular embeddings.
 
-Es el único sitio donde se lee el pickle del docstore (``index.pkl``), una sola vez y solo con
-``FAISS_TRUSTED_INDEX=true``. Los vectores salen de ``index.reconstruct_n``; los textos y metadatos, del
-docstore; el ``chunk_id`` es el id que la ingesta le dio en FAISS.
+Lee el índice a través del adaptador ``faiss_legado`` (el pickle del docstore se abre una sola vez y solo
+con ``FAISS_TRUSTED_INDEX=true``). Los vectores salen de ``index.reconstruct_n``; los textos y metadatos, del
+docstore; el ``chunk_id`` es el id que la ingesta le dio en FAISS. Se borra con el adaptador cuando el
+índice SQLite sea el único.
 
 Tras copiar comprueba que los recuentos cuadran y que, para una muestra de fragmentos, los vecinos que
 devuelve FAISS y los de ``sqlite-vec`` coinciden.
@@ -15,9 +16,12 @@ from dataclasses import dataclass, field
 import logging
 from pathlib import Path
 import random
-from typing import Any
+from typing import TYPE_CHECKING
 
 from asistente.conocimiento.indice.almacen import Fragmento, IndiceHibrido
+
+if TYPE_CHECKING:
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
 logger = logging.getLogger(__name__)
 
@@ -57,38 +61,15 @@ class InformeMigracion:
         return "\n".join(lineas)
 
 
-class _SinEmbedder:
-    """``FAISS.load_local`` exige un embedder; la migración nunca calcula vectores."""
+def cargar_faiss(directorio: str | Path, *, confiar: bool) -> AlmacenFaissLegado:
+    """Abre el índice FAISS sin embedder: la migración nunca calcula vectores."""
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
-    def embed_query(self, text: str) -> list[float]:
-        raise RuntimeError("La migración no calcula embeddings.")
-
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        raise RuntimeError("La migración no calcula embeddings.")
-
-    def __call__(self, text: str) -> list[float]:
-        return self.embed_query(text)
-
-
-def cargar_faiss(directorio: str | Path, *, confiar: bool) -> Any:
-    if not confiar:
-        raise RuntimeError(
-            f"El índice FAISS de {directorio} se carga con un pickle. Pon FAISS_TRUSTED_INDEX=true solo si lo "
-            "construiste tú; es la última vez que hará falta."
-        )
-    from langchain_community.vectorstores import FAISS
-
-    return FAISS.load_local(str(directorio), _SinEmbedder(), allow_dangerous_deserialization=True)  # type: ignore[arg-type]
-
-
-def _fragmento(chunk_id: str, documento: Any) -> Fragmento:
-    metadatos = dict(getattr(documento, "metadata", {}) or {})
-    metadatos.setdefault("chunk_id", chunk_id)
-    return Fragmento(chunk_id=chunk_id, texto=documento.page_content, metadatos=metadatos)
+    return AlmacenFaissLegado.cargar(directorio, confiar=confiar)
 
 
 def migrar(
-    vectorstore: Any,
+    vectorstore: AlmacenFaissLegado,
     destino: str | Path,
     *,
     origen: str = "",
@@ -97,17 +78,16 @@ def migrar(
     solapamiento_minimo: float = 0.9,
     semilla: int = 0,
 ) -> InformeMigracion:
-    """Copia ``vectorstore`` (FAISS de LangChain ya cargado) a un fichero SQLite nuevo y lo verifica."""
+    """Copia ``vectorstore`` (índice FAISS ya abierto) a un fichero SQLite nuevo y lo verifica."""
     destino = Path(destino)
     if destino.exists():
         raise FileExistsError(f"{destino} ya existe: la migración escribe en un fichero nuevo.")
 
     indice_faiss = vectorstore.index
-    mapa: dict[int, str] = vectorstore.index_to_docstore_id
-    docstore = vectorstore.docstore
+    mapa = vectorstore.index_to_docstore_id
     total = int(indice_faiss.ntotal)
     informe = InformeMigracion(origen=origen, destino=str(destino), vectores_faiss=total, dimension=indice_faiss.d)
-    informe.documentos_docstore = len(getattr(docstore, "_dict", {}) or {})
+    informe.documentos_docstore = vectorstore.num_documentos()
 
     with IndiceHibrido(destino) as indice:
         for inicio in range(0, total, LOTE):
@@ -118,11 +98,13 @@ def migrar(
             for desplazamiento in range(n):
                 posicion = inicio + desplazamiento
                 chunk_id = mapa.get(posicion)
-                documento = None if chunk_id is None else docstore.search(chunk_id)
-                if chunk_id is None or isinstance(documento, str) or documento is None:
+                documento = None if chunk_id is None else vectorstore.fragmento(chunk_id)
+                if chunk_id is None or documento is None:
                     informe.problemas.append(f"El vector {posicion} no tiene documento en el docstore.")
                     continue
-                fragmentos.append(_fragmento(chunk_id, documento))
+                metadatos = dict(documento.metadatos)
+                metadatos.setdefault("chunk_id", chunk_id)
+                fragmentos.append(Fragmento(chunk_id=chunk_id, texto=documento.texto, metadatos=metadatos))
                 filas.append(vectores[desplazamiento])
             indice.anadir(fragmentos, filas)
             logger.info("Migrados %d/%d vectores.", inicio + n, total)
@@ -134,12 +116,13 @@ def migrar(
                 f"Recuentos distintos: FAISS {total}, fragmentos SQLite {informe.fragmentos_sqlite}, "
                 f"vectores SQLite {informe.vectores_sqlite}."
             )
-        _verificar_vecinos(vectorstore, indice, informe, muestra, vecinos_k, solapamiento_minimo, semilla)
+        _verificar_vecinos(vectorstore, mapa, indice, informe, muestra, vecinos_k, solapamiento_minimo, semilla)
     return informe
 
 
 def _verificar_vecinos(
-    vectorstore: Any,
+    vectorstore: AlmacenFaissLegado,
+    mapa: dict[int, str],
     indice: IndiceHibrido,
     informe: InformeMigracion,
     muestra: int,
@@ -159,7 +142,7 @@ def _verificar_vecinos(
     for posicion in posiciones:
         consulta = np.asarray(vectorstore.index.reconstruct(posicion), dtype="float32").reshape(1, -1)
         _, vecinos = vectorstore.index.search(consulta, k)
-        ids_faiss = [vectorstore.index_to_docstore_id[int(i)] for i in vecinos[0] if i >= 0]
+        ids_faiss = [mapa[int(i)] for i in vecinos[0] if i >= 0]
         ids_sqlite = [a.fragmento.chunk_id for a in indice.buscar_denso(consulta[0].tolist(), k=k)]
         solapes.append(len(set(ids_faiss) & set(ids_sqlite)) / max(len(ids_faiss), 1))
         primeros += int(bool(ids_faiss) and bool(ids_sqlite) and ids_faiss[0] == ids_sqlite[0])

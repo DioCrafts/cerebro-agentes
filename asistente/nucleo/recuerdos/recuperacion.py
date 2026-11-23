@@ -241,7 +241,7 @@ def detectar_referencia(consulta: str) -> ReferenciaExplicita | None:
 
 
 class Incrustador(Protocol):
-    """The part of a LangChain ``Embeddings`` the memory uses (the project's factory returns one)."""
+    """The part of an ``Embedder`` the memory uses (the project's factory returns one)."""
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
 

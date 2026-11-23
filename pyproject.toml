@@ -17,7 +17,6 @@ dependencies = [
     # The FAISS index on disk is LangChain's pickle format: langchain-community loads it and langchain-core
     # provides the Document type it stores. Both go when the index moves to sqlite-vec.
     "langchain-community==0.4.1",
-    "langchain-core==1.4.0",
     # Ingestion + chunking: Docling (PDF/HTML layout- and table-aware parsing,
     # tokenization-aware HybridChunker) is the single ingestion backend, called
     # directly (DocumentConverter + HybridChunker).

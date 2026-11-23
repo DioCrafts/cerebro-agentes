@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 import re
+
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 MALICIOUS_PATTERNS = [
     # English
@@ -110,20 +113,15 @@ def neutralizar_inyeccion(text: str, redaccion: str = _REDACTION) -> str:
     return INYECCION_AMPLIA.sub(redaccion, quitar_invisibles(text))
 
 
-def sanitize_context_documents(docs: list) -> list:
-    """Return copies of ``docs`` with prompt-injection fragments redacted.
+def sanitize_context_documents(docs: Sequence[FragmentoRecuperado]) -> list[FragmentoRecuperado]:
+    """Return ``docs`` with prompt-injection fragments redacted.
 
-    FAISS' ``InMemoryDocstore`` hands back the *same* ``Document`` instances it
-    stores, so mutating ``doc.page_content`` in place would permanently corrupt
-    the in-memory corpus (the searcher is cached for the process lifetime). The
-    document is copied only when sanitizing actually changed the content, so
-    the index keeps its original text and each request sees a clean view.
+    The searcher is cached for the process lifetime and fragments are immutable, so a fragment is copied
+    (``con``) only when sanitizing actually changed its text: the index keeps the original and each request
+    sees a clean view.
     """
     sanitized = []
     for doc in docs:
-        cleaned = sanitize_retrieved_context(doc.page_content)
-        if cleaned == doc.page_content:
-            sanitized.append(doc)
-        else:
-            sanitized.append(doc.model_copy(update={"page_content": cleaned}))
+        cleaned = sanitize_retrieved_context(doc.texto)
+        sanitized.append(doc if cleaned == doc.texto else doc.con(texto=cleaned))
     return sanitized

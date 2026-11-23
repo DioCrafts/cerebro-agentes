@@ -63,9 +63,19 @@ El valor por defecto sigue siendo `faiss`. Para cambiarlo:
 
 Con `INDICE_BACKEND=sqlite` la ingesta (`document_loader`) escribe directamente en `indice.sqlite`: cada lote es una transacción, el manifiesto con sha256 y huella del pipeline se escribe después y las bajas usan los `chunk_ids` del manifiesto, igual que con FAISS. Una reconstrucción completa borra el fichero y empieza de cero.
 
-Cuando `sqlite` pase a ser el valor por defecto, se puede borrar:
+### Retirar FAISS y LangChain
 
-- `FaissCorpusSearcher` en `nucleo/agent/search.py` (su `from_settings` ya delega en `SqliteCorpusSearcher`), `FAISS_TRUSTED_INDEX` y el aviso S-17 de `docs/seguridad.md`.
-- En `document_loader.py`, la carga con `FAISS.load_local`, `FAISS.from_documents` / `add_documents` y `_atomic_save_index`.
-- El `BM25Retriever` y el `EnsembleRetriever` de LangChain, y `rank-bm25` y `faiss-cpu` de `pyproject.toml`.
-- `cargar_faiss` y el subcomando `migrar` cuando ya no quede ningún índice FAISS que convertir.
+LangChain ya solo entra por un fichero: [`asistente/conocimiento/indice/faiss_legado.py`](../../asistente/conocimiento/indice/faiss_legado.py). Es el único que importa `langchain_community` y `langchain_core`, y traduce en los dos sentidos entre el `Document` de LangChain y `FragmentoRecuperado` ([`asistente/conocimiento/fragmento.py`](../../asistente/conocimiento/fragmento.py)), el tipo que usa el resto del código. `langchain-core` ya no está en `pyproject.toml`; llega como dependencia de `langchain-community`.
+
+El paso que queda, en este orden:
+
+1. Medir la línea base con FAISS (paso 1 de arriba) y guardar `base-faiss.json`.
+2. Migrar con `cli.indice migrar` (paso 2). No recalcula embeddings.
+3. Medir con `INDICE_BACKEND=sqlite`, con la misma orden y `--salida sqlite.json`, y pasar la batería y `check_critical_regressions`.
+4. Si ningún caso crítico empeora, poner `INDICE_BACKEND` a `sqlite` por defecto en `asistente/plataforma/settings.py`. Si alguno empeora, se queda en `faiss` y se apunta aquí cuál y con qué cifras.
+5. Con `sqlite` por defecto, borrar en un solo commit:
+   - `asistente/conocimiento/indice/faiss_legado.py`, `asistente/conocimiento/indice/migracion.py`, el subcomando `migrar` de `asistente/plataforma/cli/indice.py` y sus tests (`faiss_diminuto` en `tests/conocimiento/test_indice_sqlite.py`; los de FAISS en `tests/test_document_loader_incremental.py`);
+   - `faiss-cpu` y `langchain-community` de `pyproject.toml`, y regenerar `uv.lock` (con ellos se va `langchain-core`);
+   - en `nucleo/agent/search.py`, la rama FAISS de `FaissCorpusSearcher._cargar`; en `document_loader.py`, la rama FAISS de `process_documents` y `_atomic_save_index`; `FAISS_TRUSTED_INDEX` y el aviso S-17 de `docs/seguridad.md`.
+   - Antes de borrar, `leer_fragmentos` necesita un sustituto sobre `indice.sqlite`, porque lo usan el grafo de doctrina (`plataforma/cli/doctrine_graph.py`) y el benchmark (`cargar_corpus_de_indice`). `IndiceHibrido` todavía no tiene un método que devuelva todos los fragmentos.
+6. Comprobar que `git grep -n langchain -- asistente tests` no devuelve ningún import.

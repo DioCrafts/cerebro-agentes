@@ -1,4 +1,4 @@
-"""Document ingestion and chunking — Docling-only pipeline.
+"""FragmentoRecuperado ingestion and chunking — Docling-only pipeline.
 
 Docling is the single ingestion backend. It parses PDF and HTML with
 layout-, reading-order- and table-aware models, and its tokenization-aware
@@ -41,11 +41,9 @@ import queue
 import re
 import shutil
 import threading
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
-from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.manifest import (
     FileDiff,
     FileEntry,
@@ -57,6 +55,9 @@ from asistente.conocimiento.processor.manifest import (
     relative_key,
     save_manifest,
 )
+
+if TYPE_CHECKING:
+    from asistente.conocimiento.llm.embeddings import Embedder
 
 # File types Docling ingests for this corpus. PDF unlocks the BOE consolidated
 # texts and AEAT manuals/folletos that the legacy HTML-only indexer ignored.
@@ -114,7 +115,7 @@ def _first_page_no(dl_meta: dict[str, Any]) -> int | None:
     return None
 
 
-def docling_chunk_metadata(doc: Document) -> dict[str, Any]:
+def docling_chunk_metadata(doc: FragmentoRecuperado) -> dict[str, Any]:
     """Flatten Docling's native chunk metadata into the citation-facing keys.
 
     Surfaces only what Docling produced — heading hierarchy (``title`` /
@@ -122,7 +123,7 @@ def docling_chunk_metadata(doc: Document) -> dict[str, Any]:
     (``page_no``). The grounding gate marks a chunk citable when it carries a
     ``title`` and a locator, so those are guaranteed non-empty.
     """
-    metadata = dict(doc.metadata or {})
+    metadata = dict(doc.metadatos or {})
     dl_meta = _as_dl_meta(metadata.get("dl_meta"))
 
     source = _clean_text(metadata.get("source")) or _origin_filename(dl_meta)
@@ -277,8 +278,10 @@ def _docling_converter() -> Any:
     return DocumentConverter()
 
 
-def iter_docling_chunks(file_paths: list[str], chunker: Any, converter: Any | None = None) -> Iterator[Document]:
-    """Convert each file with Docling and chunk it, one ``Document`` per chunk.
+def iter_docling_chunks(
+    file_paths: list[str], chunker: Any, converter: Any | None = None
+) -> Iterator[FragmentoRecuperado]:
+    """Convert each file with Docling and chunk it, one ``FragmentoRecuperado`` per chunk.
 
     Same output the ``langchain-docling`` loader produced in ``DOC_CHUNKS`` mode, so the chunk ids, the metadata
     and the indexed text of an existing index stay valid: the text is ``chunker.contextualize(chunk)`` (headings
@@ -288,13 +291,13 @@ def iter_docling_chunks(file_paths: list[str], chunker: Any, converter: Any | No
     for file_path in file_paths:
         dl_doc = converter.convert(source=file_path).document
         for chunk in chunker.chunk(dl_doc):
-            yield Document(
-                page_content=chunker.contextualize(chunk=chunk),
-                metadata={"source": file_path, "dl_meta": chunk.meta.export_json_dict()},
+            yield FragmentoRecuperado(
+                texto=chunker.contextualize(chunk=chunk),
+                metadatos={"source": file_path, "dl_meta": chunk.meta.export_json_dict()},
             )
 
 
-def _docling_parse_paths(file_paths: list[str]) -> list[Document]:
+def _docling_parse_paths(file_paths: list[str]) -> list[FragmentoRecuperado]:
     """Run the per-worker Docling+HybridChunker over a list of paths.
 
     Shared helper between the default ingest strategy (one parent file
@@ -314,11 +317,11 @@ def _docling_parse_paths(file_paths: list[str]) -> list[Document]:
         # surfaces a configuration bug; silently rebuilding would
         # silently drop the chunker tuning (max_tokens, etc.).
         raise RuntimeError("_WORKER_CHUNKER is not initialised — pool initialiser did not run.")
-    out: list[Document] = []
+    out: list[FragmentoRecuperado] = []
     for chunk in iter_docling_chunks(list(file_paths), _WORKER_CHUNKER):
         chunk = sin_banner_boe(chunk)
         meta = docling_chunk_metadata(chunk)
-        out.append(Document(page_content=chunk.page_content, metadata=meta))
+        out.append(FragmentoRecuperado(texto=chunk.texto, metadatos=meta))
     return out
 
 
@@ -336,23 +339,23 @@ def _es_banner_boe(heading: str) -> bool:
     return any(p.search(heading.strip()) for p in _BANNER_BOE)
 
 
-def sin_banner_boe(chunk: Document) -> Document:
+def sin_banner_boe(chunk: FragmentoRecuperado) -> FragmentoRecuperado:
     """``chunk`` without BOE banner headings, in its ``dl_meta`` and in the heading prefix of its text."""
-    metadata = dict(chunk.metadata or {})
+    metadata = dict(chunk.metadatos or {})
     dl_meta = _as_dl_meta(metadata.get("dl_meta"))
     headings = dl_meta.get("headings")
     if not isinstance(headings, list) or not any(isinstance(h, str) and _es_banner_boe(h) for h in headings):
         return chunk
-    texto = chunk.page_content
+    texto = chunk.texto
     for h in headings:
         if isinstance(h, str) and _es_banner_boe(h) and texto.startswith(h):
             texto = texto[len(h) :].lstrip("\n")
     dl_meta = {**dl_meta, "headings": [h for h in headings if not (isinstance(h, str) and _es_banner_boe(h))]}
     metadata["dl_meta"] = dl_meta
-    return Document(page_content=texto, metadata=metadata)
+    return FragmentoRecuperado(texto=texto, metadatos=metadata)
 
 
-def _docling_parse_default(file_path: str) -> list[Document]:
+def _docling_parse_default(file_path: str) -> list[FragmentoRecuperado]:
     """Default Docling strategy's concrete parse step.
 
     Surfaced here (rather than inside the strategy class) so that
@@ -361,17 +364,17 @@ def _docling_parse_default(file_path: str) -> list[Document]:
     chunks with ``source_file`` + ``chunk_id`` stamped.
     """
     chunks = _docling_parse_paths([file_path])
-    docs: list[Document] = []
+    docs: list[FragmentoRecuperado] = []
     for idx, chunk in enumerate(chunks):
-        meta = dict(chunk.metadata or {})
+        meta = dict(chunk.metadatos or {})
         meta["chunk_id"] = _stable_chunk_id(file_path, idx)
         meta["source_file"] = file_path
         meta.setdefault("_strategy_id", "default-docling-v1")
-        docs.append(Document(page_content=chunk.page_content, metadata=meta))
+        docs.append(FragmentoRecuperado(texto=chunk.texto, metadatos=meta))
     return docs
 
 
-def _process_one_file(file_path: str) -> tuple[str, list[Document]]:
+def _process_one_file(file_path: str) -> tuple[str, list[FragmentoRecuperado]]:
     """Worker entry point — pulled once per file from the pool's input
     iterable. Dispatches the file to the appropriate ingest strategy
     via the registry (specialised strategies first, default last).
@@ -395,9 +398,9 @@ def _process_one_file(file_path: str) -> tuple[str, list[Document]]:
     # strategy forgot to. The contract says strategies must set them,
     # but a fallback keeps a buggy strategy from breaking the index.
     for idx, doc in enumerate(docs):
-        doc.metadata.setdefault("chunk_id", _stable_chunk_id(file_path, idx))
-        doc.metadata.setdefault("source_file", file_path)
-        doc.metadata.setdefault("_strategy_id", strategy.strategy_id)
+        doc.metadatos.setdefault("chunk_id", _stable_chunk_id(file_path, idx))
+        doc.metadatos.setdefault("source_file", file_path)
+        doc.metadatos.setdefault("_strategy_id", strategy.strategy_id)
 
     # Merge the crawler-written JSON sidecar (source_authority, jurisdiction,
     # covered_tributos, vinculante, …) onto every chunk so the metadata the
@@ -409,7 +412,7 @@ def _process_one_file(file_path: str) -> tuple[str, list[Document]]:
     sidecar = _load_sidecar(file_path)
     if sidecar:
         for doc in docs:
-            _merge_sidecar(doc.metadata, sidecar)
+            _merge_sidecar(doc.metadatos, sidecar)
     return (file_path, docs)
 
 
@@ -418,7 +421,7 @@ class DocumentProcessor:
 
     def __init__(
         self,
-        embeddings: Embeddings,
+        embeddings: Embedder,
         content_dir: str,
         output_dir: str,
         *,
@@ -511,7 +514,7 @@ class DocumentProcessor:
         )
         return HybridChunker(tokenizer=tokenizer)
 
-    def _load_chunks_sequential(self, files: list[str]) -> list[Document]:
+    def _load_chunks_sequential(self, files: list[str]) -> list[FragmentoRecuperado]:
         """Single-process variant.
 
         Converts and chunks the whole batch with one chunker. The result
@@ -521,24 +524,24 @@ class DocumentProcessor:
         """
         raw_chunks = iter_docling_chunks(files, self._build_chunker())
         chunks_per_file: dict[str, int] = {}
-        docs: list[Document] = []
+        docs: list[FragmentoRecuperado] = []
         # Docling tags each chunk with ``dl_meta.origin.filename``
         # — see docling_chunk_metadata. We resolve that back to the absolute
         # input path via the discovered file list (name → path).
         files_by_basename = {Path(f).name: f for f in files}
         for chunk in raw_chunks:
             meta = docling_chunk_metadata(chunk)
-            dl_meta = _as_dl_meta(chunk.metadata.get("dl_meta") if isinstance(chunk.metadata, dict) else None)
+            dl_meta = _as_dl_meta(chunk.metadatos.get("dl_meta") if isinstance(chunk.metadatos, dict) else None)
             origin_name = _origin_filename(dl_meta) or ""
             source = files_by_basename.get(origin_name, origin_name)
             idx = chunks_per_file.get(source, 0)
             chunks_per_file[source] = idx + 1
             meta["chunk_id"] = _stable_chunk_id(source, idx)
             meta["source_file"] = source
-            docs.append(Document(page_content=chunk.page_content, metadata=meta))
+            docs.append(FragmentoRecuperado(texto=chunk.texto, metadatos=meta))
         return docs
 
-    def _load_chunks_parallel(self, files: list[str]) -> list[Document]:
+    def _load_chunks_parallel(self, files: list[str]) -> list[FragmentoRecuperado]:
         """Fan files out across `num_workers` processes with work-stealing.
 
         The pool's initializer loads HybridChunker once per worker process;
@@ -565,7 +568,7 @@ class DocumentProcessor:
             total,
         )
         ctx = mp.get_context("spawn")  # macOS-safe: avoids fork() + threads issues.
-        all_chunks: list[Document] = []
+        all_chunks: list[FragmentoRecuperado] = []
         processed = 0
         last_progress_logged = 0
         # Report every ~2% of files, at most every 100 files, at least every 25.
@@ -590,12 +593,12 @@ class DocumentProcessor:
                     last_progress_logged = processed
         return all_chunks
 
-    def load_chunks(self) -> list[Document]:
+    def load_chunks(self) -> list[FragmentoRecuperado]:
         """Run Docling on every file in ``content_dir`` (no incremental diff)."""
         files = self.discover_files()
         return self._run_docling_on(files)
 
-    def _run_docling_on(self, files: list[str]) -> list[Document]:
+    def _run_docling_on(self, files: list[str]) -> list[FragmentoRecuperado]:
         """Collect *all* chunks for ``files`` synchronously.
 
         Kept as a thin wrapper around the streaming primitive for callers
@@ -611,7 +614,7 @@ class DocumentProcessor:
             len(files),
             self.num_workers,
         )
-        all_chunks: list[Document] = []
+        all_chunks: list[FragmentoRecuperado] = []
         for _, chunks in self._iter_chunks_streaming(files):
             all_chunks.extend(chunks)
         return all_chunks
@@ -659,9 +662,9 @@ class DocumentProcessor:
             # reference. Remove once the strategy registry has been in
             # production for a release without regressions.
             all_chunks = self._load_chunks_sequential(files)  # pragma: no cover
-            chunks_by_file: dict[str, list[Document]] = {}
+            chunks_by_file: dict[str, list[FragmentoRecuperado]] = {}
             for chunk in all_chunks:
-                src = chunk.metadata.get("source_file", "")
+                src = chunk.metadatos.get("source_file", "")
                 chunks_by_file.setdefault(src, []).append(chunk)
             for f in files:
                 yield f, chunks_by_file.get(f, [])
@@ -704,7 +707,7 @@ class DocumentProcessor:
     # Manifest helpers
     # ----------------------------------------------------------------- #
 
-    def _build_entries(self, files_processed: list[str], chunks: list[Document]) -> dict[str, FileEntry]:
+    def _build_entries(self, files_processed: list[str], chunks: list[FragmentoRecuperado]) -> dict[str, FileEntry]:
         """Group new chunks by their source file, then mint manifest entries.
 
         ``files_processed`` is the authoritative list of files we asked the
@@ -714,7 +717,7 @@ class DocumentProcessor:
         as known.
 
         Records the ``strategy_id`` that emitted each chunk by reading
-        ``chunk.metadata["_strategy_id"]`` (stamped by ``_process_one_file``
+        ``chunk.metadatos["_strategy_id"]`` (stamped by ``_process_one_file``
         and the strategies themselves). When a file processed produced no
         chunks at all, we fall back to the registry's current claim for
         that path so the manifest still records who would have processed
@@ -724,9 +727,9 @@ class DocumentProcessor:
         chunks_by_file: dict[str, list[str]] = {}
         strategy_by_file: dict[str, str] = {}
         for chunk in chunks:
-            src = chunk.metadata.get("source_file")
-            cid = chunk.metadata.get("chunk_id")
-            sid = chunk.metadata.get("_strategy_id")
+            src = chunk.metadatos.get("source_file")
+            cid = chunk.metadatos.get("chunk_id")
+            sid = chunk.metadatos.get("_strategy_id")
             if src and cid:
                 chunks_by_file.setdefault(src, []).append(cid)
             if src and sid and src not in strategy_by_file:
@@ -866,7 +869,7 @@ class DocumentProcessor:
         import fcntl
         import os
 
-        from langchain_community.vectorstores import FAISS
+        from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
         # Acquire the processor lock for the lifetime of this run.
         # ``flock`` is automatically released by the OS when the file
@@ -903,7 +906,7 @@ class DocumentProcessor:
 
         # Set up starting state.
         # - Full rebuild (diff is None): db starts None and is lazy-initialized
-        #   on the first batch with FAISS.from_documents.
+        #   on the first batch with AlmacenFaissLegado.desde_fragmentos.
         # - Incremental: load the existing index off disk. If load fails (e.g.
         #   corrupt files), fall back to full rebuild over the whole corpus.
         db: Any | None = None
@@ -929,7 +932,7 @@ class DocumentProcessor:
                     "Set FAISS_TRUSTED_INDEX=true only for an index you built yourself, or rebuild it with --full."
                 )
             try:
-                db = FAISS.load_local(self.output_dir, self.embeddings, allow_dangerous_deserialization=True)
+                db = AlmacenFaissLegado.cargar(self.output_dir, self.embeddings, confiar=True)
                 existing_manifest = load_manifest(self.output_dir)
             except Exception as exc:  # noqa: BLE001
                 logging.error(
@@ -989,7 +992,7 @@ class DocumentProcessor:
         cumulative_chunks = 0
         checkpoint_n = 0
         files_window: list[str] = []
-        chunks_window: list[Document] = []
+        chunks_window: list[FragmentoRecuperado] = []
         completed = 0
 
         # Mutable holders so the bg thread can update them as it goes — the
@@ -1005,7 +1008,7 @@ class DocumentProcessor:
 
         def _persist_checkpoint(
             files_w: list[str],
-            chunks_w: list[Document],
+            chunks_w: list[FragmentoRecuperado],
             ckpt_n: int,
         ) -> None:
             current_db = db_holder[0]
@@ -1013,7 +1016,7 @@ class DocumentProcessor:
 
             # Contextual prefix step: enrich each chunk's text BEFORE the
             # embedder sees it. This runs INSIDE the background checkpoint
-            # thread (same one that drives FAISS.add_documents) so the
+            # thread (same one that drives the index's add_documents) so the
             # Docling workers are never blocked waiting on the contextual
             # LLM. The LLM and the embedder share the GPU sequentially,
             # but that's fine — each batch of 200 chunks is processed in
@@ -1040,9 +1043,9 @@ class DocumentProcessor:
                 )
 
             if chunks_w:
-                ids = [c.metadata["chunk_id"] for c in chunks_w]
+                ids = [c.metadatos["chunk_id"] for c in chunks_w]
                 if current_db is None:
-                    current_db = FAISS.from_documents(chunks_w, self.embeddings, ids=ids)
+                    current_db = AlmacenFaissLegado.desde_fragmentos(chunks_w, self.embeddings, ids)
                 else:
                     current_db.add_documents(chunks_w, ids=ids)
                 db_holder[0] = current_db

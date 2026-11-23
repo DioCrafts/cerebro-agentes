@@ -3,8 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.document_loader import (
     _load_sidecar,
     _merge_sidecar,
@@ -104,9 +103,9 @@ def test_process_one_file_merges_sidecar(tmp_path: Path) -> None:
         def parse(self, file_path: str):
             # No Docling: a citation-ready chunk straight from the strategy.
             return [
-                Document(
-                    page_content="c",
-                    metadata={"title": "T", "source_url": file_path, "section": "general"},
+                FragmentoRecuperado(
+                    texto="c",
+                    metadatos={"title": "T", "source_url": file_path, "section": "general"},
                 )
             ]
 
@@ -121,7 +120,7 @@ def test_process_one_file_merges_sidecar(tmp_path: Path) -> None:
 
     assert returned_path == str(doc_path)
     assert len(docs) == 1
-    md = docs[0].metadata
+    md = docs[0].metadatos
     # Sidecar metadata is now on the chunk…
     assert md["source_authority"] == "TEAC"
     assert md["is_tributario"] is True

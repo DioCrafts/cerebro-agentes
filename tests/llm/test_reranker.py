@@ -15,8 +15,9 @@ from __future__ import annotations
 import sys
 import types
 
-from langchain_core.documents import Document
 import pytest
+
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 
 @pytest.fixture
@@ -67,79 +68,67 @@ def stub_mlx(monkeypatch):
 # --------------------------------------------------------------------------- #
 
 
-def test_compress_documents_returns_top_k_and_drops_the_rest(stub_mlx) -> None:
+def test_reordenar_returns_top_k_and_drops_the_rest(stub_mlx) -> None:
     """Stub gives higher score to shorter docs → reranker must surface them."""
     docs = [
-        Document(page_content="x" * 5, metadata={"id": "short1"}),
-        Document(page_content="x" * 200, metadata={"id": "long"}),
-        Document(page_content="x" * 10, metadata={"id": "short2"}),
+        FragmentoRecuperado(texto="x" * 5, metadatos={"id": "short1"}),
+        FragmentoRecuperado(texto="x" * 200, metadatos={"id": "long"}),
+        FragmentoRecuperado(texto="x" * 10, metadatos={"id": "short2"}),
     ]
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=2)
 
-    out = reranker.compress_documents(docs, query="any query")
+    out = reranker.reordenar(docs, consulta="any query")
 
     assert len(out) == 2
-    out_ids = {d.metadata["id"] for d in out}
+    out_ids = {d.metadatos["id"] for d in out}
     assert out_ids == {"short1", "short2"}
     assert "long" not in out_ids
 
 
-def test_compress_documents_stamps_rerank_score_in_metadata(stub_mlx) -> None:
-    docs = [Document(page_content="hello", metadata={"id": "x"})]
+def test_reordenar_stamps_rerank_score_in_metadata(stub_mlx) -> None:
+    docs = [FragmentoRecuperado(texto="hello", metadatos={"id": "x"})]
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=5)
 
-    out = reranker.compress_documents(docs, query="q")
+    out = reranker.reordenar(docs, consulta="q")
 
     assert len(out) == 1
-    score = out[0].metadata.get("_rerank_score")
+    score = out[0].metadatos.get("_rerank_score")
     assert isinstance(score, float)
     assert 0.0 <= score <= 1.0
 
 
-def test_compress_documents_returns_empty_for_empty_input(stub_mlx) -> None:
+def test_reordenar_returns_empty_for_empty_input(stub_mlx) -> None:
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=5)
-    assert reranker.compress_documents([], query="q") == []
+    assert reranker.reordenar([], consulta="q") == []
 
 
-def test_compress_documents_keeps_all_when_input_smaller_than_top_k(stub_mlx) -> None:
-    docs = [Document(page_content=f"d{i}", metadata={"i": i}) for i in range(2)]
+def test_reordenar_keeps_all_when_input_smaller_than_top_k(stub_mlx) -> None:
+    docs = [FragmentoRecuperado(texto=f"d{i}", metadatos={"i": i}) for i in range(2)]
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=10)
 
-    out = reranker.compress_documents(docs, query="q")
+    out = reranker.reordenar(docs, consulta="q")
 
     assert len(out) == 2
 
 
 def test_original_documents_are_not_mutated(stub_mlx) -> None:
     """The wrapper stamps the rerank score onto a *copy* — the FAISS docstore
-    hands back the same Document instances on every retrieval, so mutating
+    hands back the same FragmentoRecuperado instances on every retrieval, so mutating
     them would leak state across requests."""
-    original = Document(page_content="hello", metadata={"id": "x"})
+    original = FragmentoRecuperado(texto="hello", metadatos={"id": "x"})
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=1)
 
-    _ = reranker.compress_documents([original], query="q")
+    _ = reranker.reordenar([original], consulta="q")
 
-    assert "_rerank_score" not in original.metadata
-
-
-def test_async_compress_documents_delegates_to_sync(stub_mlx) -> None:
-    import asyncio
-
-    docs = [Document(page_content="abc", metadata={"id": "x"})]
-    reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=1)
-
-    result = asyncio.run(reranker.acompress_documents(docs, query="q"))
-
-    assert len(result) == 1
-    assert "_rerank_score" in result[0].metadata
+    assert "_rerank_score" not in original.metadatos
 
 
 def test_model_cache_is_shared_across_instances(stub_mlx) -> None:
     r1 = stub_mlx.MLXReranker(model_path="/fake/path", top_k=1)
     r2 = stub_mlx.MLXReranker(model_path="/fake/path", top_k=1)
 
-    r1.compress_documents([Document(page_content="a")], query="q")
-    r2.compress_documents([Document(page_content="b")], query="q")
+    r1.reordenar([FragmentoRecuperado(texto="a")], consulta="q")
+    r2.reordenar([FragmentoRecuperado(texto="b")], consulta="q")
 
     # Both instances triggered ``_get_model`` which populates the cache once.
     assert "/fake/path" in stub_mlx._MODEL_CACHE
@@ -149,18 +138,18 @@ def test_model_cache_is_shared_across_instances(stub_mlx) -> None:
 def test_sort_order_is_descending_by_score(stub_mlx) -> None:
     """Even when keeping all, the order must be score-descending."""
     docs = [
-        Document(page_content="x" * 100, metadata={"id": "long"}),
-        Document(page_content="x" * 5, metadata={"id": "short"}),
-        Document(page_content="x" * 50, metadata={"id": "medium"}),
+        FragmentoRecuperado(texto="x" * 100, metadatos={"id": "long"}),
+        FragmentoRecuperado(texto="x" * 5, metadatos={"id": "short"}),
+        FragmentoRecuperado(texto="x" * 50, metadatos={"id": "medium"}),
     ]
     reranker = stub_mlx.MLXReranker(model_path="/fake/path", top_k=10)
 
-    out = reranker.compress_documents(docs, query="q")
+    out = reranker.reordenar(docs, consulta="q")
 
-    scores = [d.metadata["_rerank_score"] for d in out]
+    scores = [d.metadatos["_rerank_score"] for d in out]
     assert scores == sorted(scores, reverse=True)
     # And the order matches the stub's ranking (short > medium > long).
-    assert [d.metadata["id"] for d in out] == ["short", "medium", "long"]
+    assert [d.metadatos["id"] for d in out] == ["short", "medium", "long"]
 
 
 def test_model_cache_is_thread_safe(stub_mlx) -> None:

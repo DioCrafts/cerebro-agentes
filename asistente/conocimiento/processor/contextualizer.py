@@ -35,7 +35,7 @@ from pathlib import Path
 import threading
 from typing import Any
 
-from langchain_core.documents import Document
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 logger = logging.getLogger(__name__)
 
@@ -108,16 +108,16 @@ class MLXContextualizer:
     # Public API
     # ------------------------------------------------------------------ #
 
-    def contextualize(self, chunks: Sequence[Document]) -> list[Document]:
+    def contextualize(self, chunks: Sequence[FragmentoRecuperado]) -> list[FragmentoRecuperado]:
         """Return a NEW list of Documents, each with a contextual prefix
-        prepended to ``page_content``. The original chunk's metadata is
+        prepended to ``texto``. The original chunk's metadata is
         copied with an added ``contextual_prefix`` field for auditing.
 
         Defensive: if generation fails on any single chunk the original
         chunk is passed through unchanged (with a warning) — we never want
         a contextualisation hiccup to abort the whole ingest.
         """
-        out: list[Document] = []
+        out: list[FragmentoRecuperado] = []
         for chunk in chunks:
             try:
                 prefix = self._generate_one(chunk)
@@ -131,25 +131,25 @@ class MLXContextualizer:
             if not prefix:
                 out.append(chunk)
                 continue
-            new_text = f"[Contexto: {prefix}]\n\n{chunk.page_content}"
-            new_meta: dict[str, Any] = dict(chunk.metadata or {})
+            new_text = f"[Contexto: {prefix}]\n\n{chunk.texto}"
+            new_meta: dict[str, Any] = dict(chunk.metadatos or {})
             new_meta["contextual_prefix"] = prefix
-            out.append(Document(page_content=new_text, metadata=new_meta))
+            out.append(FragmentoRecuperado(texto=new_text, metadatos=new_meta))
         return out
 
     # ------------------------------------------------------------------ #
     # Internals
     # ------------------------------------------------------------------ #
 
-    def _build_prompt(self, chunk: Document) -> str:
-        metadata = chunk.metadata or {}
+    def _build_prompt(self, chunk: FragmentoRecuperado) -> str:
+        metadata = chunk.metadatos or {}
         return _PROMPT_TEMPLATE.format(
             title=str(metadata.get("title") or metadata.get("source_url") or "?")[:200],
             section=str(metadata.get("section") or "—")[:200],
-            content=chunk.page_content[:2000],  # cap to keep prompt budget bounded
+            content=chunk.texto[:2000],  # cap to keep prompt budget bounded
         )
 
-    def _generate_one(self, chunk: Document) -> str:
+    def _generate_one(self, chunk: FragmentoRecuperado) -> str:
         from mlx_lm import generate
 
         prompt = self._build_prompt(chunk)
