@@ -181,6 +181,7 @@ function MenuMas({ paneles, insignias, onAbrir }: { paneles: DefinicionPanel[]; 
             ref={menuRef}
             id={id}
             role="menu"
+            tabIndex={-1}
             aria-label="Más herramientas"
             onKeyDown={teclado}
             className={clsx(

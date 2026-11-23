@@ -4,6 +4,7 @@
 import type { AnswerMode, Citation, ClaimCheck, ClaimVerdict, Fact, ProgressEvent, RiskLevel } from "../api";
 import { DATOS_CONYUGE, PREFERENCIAS_OPTIMIZACION, preferencesSummary, spouseSummary } from "./expediente";
 import { OBLIGACION_FIELDS } from "./obligacion";
+import { isRecord, textoDeValor } from "./guards";
 
 export type SourceKind = "boe" | "manual" | "dgt" | "court" | "calc" | "other";
 
@@ -554,7 +555,7 @@ export function activityRows(events: ProgressEvent[]): ActivityRow[] {
       } else if (event.tool === "registrar_hechos") {
         const facts = Array.isArray(event.arguments.hechos) ? event.arguments.hechos : [];
         const names = facts
-          .map((f) => (typeof f === "object" && f !== null && "nombre" in f ? factLabel(String(f.nombre)).toLowerCase() : ""))
+          .map((f: unknown) => (isRecord(f) && "nombre" in f ? factLabel(textoDeValor(f.nombre)).toLowerCase() : ""))
           .filter(Boolean);
         rows.push({ kind: "case", text: `Expediente: anotado${names.length ? ` ${names.join(", ")}` : " un dato nuevo"}` });
       } else if (event.tool === "consultar_expediente") {

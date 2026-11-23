@@ -22,11 +22,11 @@ import {
   listarSesiones,
   rechazarSesion,
   usd,
-  useSesionConsejo,
   type Deteccion,
   type ResumenSesion,
   type SesionConsejo,
 } from "../apiConsejo";
+import { useSesionConsejo } from "../shell/useSesionConsejo";
 import { errorMessage } from "../lib/memoria";
 import { DictamenConsejo, ProgresoConsejo } from "./DictamenConsejo";
 

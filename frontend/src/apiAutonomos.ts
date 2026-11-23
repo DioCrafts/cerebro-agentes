@@ -7,6 +7,7 @@
 
 import type { CalcLine } from "./api";
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 /** Fields every calculator result carries. Amounts are decimals as strings. */
 interface ResultadoBase {
@@ -124,10 +125,6 @@ export interface ActividadPerfil {
   reduccion_rendimientos_trabajo: string | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
 function isResultado(value: unknown, ...amounts: string[]): boolean {
   return (
     isRecord(value) &&
@@ -190,7 +187,7 @@ export async function calcularActividadDelExpediente(opts: {
 }): Promise<ActividadPerfil | null> {
   const body = { case_id: opts.caseId, ejercicio: opts.ejercicio, datos: {}, escenarios: [{ nombre: "Actividad", cambios: opts.cambios }] };
   const data = await request("/simulate", body, isSimulacionConActividad, { signal: opts.signal });
-  return data.escenarios[0].actividad ?? null;
+  return data.escenarios[0]?.actividad ?? null;
 }
 
 /** Quarterly IRPF payment on account (modelo 130), from cumulative figures. */

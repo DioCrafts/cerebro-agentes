@@ -179,7 +179,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
         <div className="flex-1 overflow-y-auto px-3 py-5 sm:px-8 sm:py-6">
           <Hilo
             active={active}
-            pending={consulta.pending}
+            turno={consulta.turno}
             busy={consulta.busy}
             highlightedId={consulta.highlightedId}
             onSubmit={(text, replaceTurnId) => void consulta.submit(text, replaceTurnId)}
@@ -209,7 +209,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
               key={`${activeId}-${consulta.composerSeed.id}`}
               initialValue={consulta.composerSeed.text}
               onSubmit={(text) => void consulta.submit(text)}
-              onStop={consulta.stop}
+              onStop={() => consulta.stop()}
               busy={consulta.busy}
             />
           </div>

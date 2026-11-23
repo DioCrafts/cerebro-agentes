@@ -5,6 +5,7 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type TipoHecho = "string" | "number" | "boolean" | "json";
 export type Efecto = "lectura" | "prepara" | "actua";
@@ -91,10 +92,6 @@ export interface DocumentoModuloResponse {
   modulo: string;
   herramienta_destino: string | null;
   propuesta: { campos?: CampoPropuesto[]; avisos?: string[]; descartados?: string[] } & Record<string, unknown>;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isModulos(value: unknown): value is ModulosResponse {

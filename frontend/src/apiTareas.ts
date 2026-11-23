@@ -107,7 +107,7 @@ export interface Plantilla {
 const esObjeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
 
 function esDetalle(v: unknown): v is TareaDetalle {
-  return esObjeto(v) && esObjeto(v.tarea) && Array.isArray((v.tarea as Record<string, unknown>).pasos) && esObjeto(v.resumen);
+  return esObjeto(v) && esObjeto(v.tarea) && Array.isArray((v.tarea).pasos) && esObjeto(v.resumen);
 }
 
 function esListado(v: unknown): v is { case_id: string; tareas: ResumenTarea[] } {

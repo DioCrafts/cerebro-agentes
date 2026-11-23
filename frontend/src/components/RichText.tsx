@@ -41,7 +41,7 @@ function parseBlocks(text: string): Block[] {
     const heading = HEADING_RE.exec(line);
     if (heading) {
       flush();
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2] });
+      blocks.push({ kind: "heading", level: heading[1]?.length ?? 1, text: heading[2] ?? "" });
       continue;
     }
     const bullet = BULLET_RE.exec(line);
@@ -49,7 +49,7 @@ function parseBlocks(text: string): Block[] {
     if (bullet || ordered) {
       flush();
       const isOrdered = !bullet;
-      const item = (bullet ?? ordered)![1];
+      const item = (bullet ?? ordered)?.[1] ?? "";
       const last = blocks[blocks.length - 1];
       if (last?.kind === "list" && last.ordered === isOrdered) last.items.push(item);
       else blocks.push({ kind: "list", ordered: isOrdered, items: [item] });

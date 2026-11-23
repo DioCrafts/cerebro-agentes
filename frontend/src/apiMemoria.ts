@@ -4,6 +4,7 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type TipoDecision = "rechazo" | "aceptacion" | "preferencia" | "restriccion";
 export type EstadoDecision = "vigente" | "reabrible" | "caducada" | "reabierta" | "sustituida";
@@ -79,10 +80,6 @@ export const ESTADO_LABEL: Record<EstadoDecision, string> = {
   reabierta: "Ya se volvió a proponer",
   sustituida: "Sustituida por otra",
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isDecisiones(value: unknown): value is DecisionesResponse {
   return isRecord(value) && Array.isArray(value.decisiones) && Array.isArray(value.catalogo);

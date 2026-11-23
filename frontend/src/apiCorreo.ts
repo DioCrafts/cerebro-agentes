@@ -5,6 +5,7 @@
 // `?correo=conectado|cancelado|error`. No Google credential ever passes through this code.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export interface EstadoCorreo {
   case_id: string;
@@ -89,10 +90,6 @@ export interface SincronizacionCorreo {
   categorias: Record<string, number>;
   propuestas: number;
   purgados: number;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 const isEstado = (v: unknown): v is EstadoCorreo => isRecord(v) && typeof v.conectado === "boolean" && typeof v.configurado === "boolean";

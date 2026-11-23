@@ -8,6 +8,7 @@ import { defineConfig, type Plugin } from "vite";
 const PUBLICOS = [
   "manifest.webmanifest",
   "favicon.svg",
+  "tema.js",
   "icons/icono.svg",
   "icons/icono-192.png",
   "icons/icono-512.png",

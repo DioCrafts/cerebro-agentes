@@ -20,12 +20,17 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "m130", label: "Pago trimestral (130)" },
   { id: "m303", label: "IVA trimestral (303)" },
 ];
-const TRIMESTRES: Array<{ value: Trimestre; label: string; meses: string; hasta: string }> = [
-  { value: 1, label: "1.º", meses: "enero a marzo", hasta: "31 de marzo" },
-  { value: 2, label: "2.º", meses: "abril a junio", hasta: "30 de junio" },
-  { value: 3, label: "3.º", meses: "julio a septiembre", hasta: "30 de septiembre" },
-  { value: 4, label: "4.º", meses: "octubre a diciembre", hasta: "31 de diciembre" },
-];
+const TRIMESTRES: Record<Trimestre, { value: Trimestre; label: string; meses: string; hasta: string }> = {
+  1: { value: 1, label: "1.º", meses: "enero a marzo", hasta: "31 de marzo" },
+  2: { value: 2, label: "2.º", meses: "abril a junio", hasta: "30 de junio" },
+  3: { value: 3, label: "3.º", meses: "julio a septiembre", hasta: "30 de septiembre" },
+  4: { value: 4, label: "4.º", meses: "octubre a diciembre", hasta: "31 de diciembre" },
+};
+
+/** «1.º»…«4.º» for a quarter sent by the server (empty if it is out of range). */
+function etiquetaTrimestre(n: number): string {
+  return n === 1 || n === 2 || n === 3 || n === 4 ? TRIMESTRES[n].label : "";
+}
 
 interface FieldDef {
   name: string;
@@ -190,12 +195,12 @@ function Optional({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function QuarterPicker({ value, onChange, cumulative }: { value: Trimestre; onChange: (value: Trimestre) => void; cumulative: boolean }) {
-  const current = TRIMESTRES[value - 1];
+  const current = TRIMESTRES[value];
   return (
     <div>
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Trimestre</p>
       <div role="radiogroup" aria-label="Trimestre" className="grid grid-cols-4 gap-2">
-        {TRIMESTRES.map((t) => (
+        {Object.values(TRIMESTRES).map((t) => (
           <button
             key={t.value}
             type="button"
@@ -612,7 +617,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
     return (
       <>
         {r && (
-          <ResultCard title={`Pago del ${TRIMESTRES[r.trimestre - 1]?.label ?? ""} trimestre (modelo 130)`} amount={r.a_ingresar} suffix={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"} good={Number(r.a_ingresar) === 0}>
+          <ResultCard title={`Pago del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 130)`} amount={r.a_ingresar} suffix={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"} good={Number(r.a_ingresar) === 0}>
             <p className="mt-2 text-[13px] text-ink-soft">
               Beneficio acumulado {formatMoney(r.rendimiento_neto_acumulado)} · pago a cuenta sobre ese beneficio {formatMoney(r.pago_sobre_rendimiento)}
             </p>
@@ -711,7 +716,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
       <>
         {r && (
           <ResultCard
-            title={`IVA del ${TRIMESTRES[r.trimestre - 1]?.label ?? ""} trimestre (modelo 303)`}
+            title={`IVA del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 303)`}
             amount={Math.abs(resultado)}
             suffix={r.tipo_resultado === "a_ingresar" ? "a ingresar" : r.tipo_resultado === "a_compensar" ? "a tu favor" : "sin nada que pagar"}
             good={r.tipo_resultado !== "a_ingresar"}

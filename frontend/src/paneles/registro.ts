@@ -197,10 +197,6 @@ export function panelesVisibles(v: Visibilidad, registro: DefinicionPanel[] = RE
   return registro.filter((p) => esVisible(p, v)).sort((a, b) => a.orden - b.orden);
 }
 
-export function panelPorId(id: string | null, registro: DefinicionPanel[] = REGISTRO): DefinicionPanel | undefined {
-  return id === null ? undefined : registro.find((p) => p.id === id);
-}
-
 /**
  * The modules switched on according to GET /modulos, or null when unknown. A module the backend does not list
  * is not "off": an older backend without it keeps every panel as before.

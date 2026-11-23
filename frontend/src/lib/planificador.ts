@@ -2,7 +2,7 @@
 // error wording. No React here, so the component file only exports components.
 
 import type { Componente, PalancaId, PalancaNoUsada, PlanificarRequest, VistaPensiones } from "../apiPlanificador";
-import { parseAmount } from "./optimizador";
+import { parseAmount } from "./formulario";
 
 export const PALANCAS: Array<{ id: PalancaId; label: string }> = [
   { id: "amortizar_hipoteca", label: "Amortizar la hipoteca" },

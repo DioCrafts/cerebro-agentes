@@ -16,7 +16,7 @@ import { flushSync } from "react-dom";
 import { ApiError } from "../api";
 import type { PalancaId, PlanHogar } from "../apiPlanificador";
 import { planificar } from "../apiPlanificador";
-import { boeUrl, eur, splitQuotes } from "../lib/optimizador";
+import { boeUrl, eur, splitQuotes } from "../lib/optimizador/textos";
 import {
   CAUSA_NO_USADA,
   ESTADO_AYUDA,

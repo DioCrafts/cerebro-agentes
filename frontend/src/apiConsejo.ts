@@ -3,10 +3,8 @@
 //
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
-import { useEffect, useState } from "react";
-
 import { request } from "./api";
-import { errorMessage } from "./lib/memoria";
+import { isRecord } from "./lib/guards";
 
 export type EstadoSesion =
   | "pendiente_confirmacion"
@@ -220,10 +218,6 @@ export const ESTADO_LABEL: Record<EstadoSesion, string> = {
   rechazada: "Descartada",
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
 function isSesion(value: unknown): value is SesionConsejo {
   return isRecord(value) && typeof value.id === "string" && typeof value.estado === "string" && Array.isArray(value.progreso);
 }
@@ -296,33 +290,3 @@ export const CONSENSO_LABEL: Record<Consenso, string> = {
   dividido: "Consejo dividido",
   insuficiente: "Sin base suficiente",
 };
-
-/** A session loaded by id, polled while the council works. */
-export function useSesionConsejo(caseId: string | null, sesionId: string | null): { sesion: SesionConsejo | null; error: string | null; recargar: () => void } {
-  const [sesion, setSesion] = useState<SesionConsejo | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    if (!caseId || !sesionId) return;
-    const controller = new AbortController();
-    let temporizador: ReturnType<typeof setTimeout> | undefined;
-    const cargar = () => {
-      obtenerSesion(caseId, sesionId, controller.signal).then(
-        (s) => {
-          setSesion(s);
-          setError(null);
-          if (EN_MARCHA.has(s.estado)) temporizador = setTimeout(cargar, 4000);
-        },
-        (err: unknown) => {
-          if (!controller.signal.aborted) setError(errorMessage(err));
-        },
-      );
-    };
-    cargar();
-    return () => {
-      controller.abort();
-      if (temporizador) clearTimeout(temporizador);
-    };
-  }, [caseId, sesionId, tick]);
-  return { sesion, error, recargar: () => setTick((n) => n + 1) };
-}

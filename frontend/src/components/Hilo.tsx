@@ -1,11 +1,11 @@
 // The conversation on screen: each question with its verified answer (sources, claim-by-claim check,
-// obligations, activity, feedback), and the turn still running. Moved out of App.tsx unchanged.
+// obligations, activity, feedback), and the turn still running (its live bubble subscribes on its own).
 
 import { Check, Copy, RotateCcw, TriangleAlert } from "lucide-react";
 import type { RefObject } from "react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import type { PendingTurn } from "../shell/useConsulta";
+import { type AlmacenTurno, useTurnoEnCurso } from "../shell/turnoEnCurso";
 import type { ChatTurn, Conversation } from "../lib/storage";
 import { verificationSummary } from "../lib/presentation";
 import { ActivitySummary, LiveActivity } from "./ActivityPanel";
@@ -24,6 +24,12 @@ import { VerificationPanel } from "./VerificationPanel";
 // Warnings the backend derives from individual claims; those are shown in the
 // claim-by-claim panel, so they are not repeated as loose banners.
 const CLAIM_WARNING_PREFIXES = ["Sin respaldo en la fuente citada", "Solo respaldada en parte"];
+
+/** The last question that got an answer (to offer it to the council), if any. */
+function ultimaPregunta(turns: ChatTurn[]): string | undefined {
+  const ultimo = turns.at(-1);
+  return ultimo && !ultimo.errored ? ultimo.userText : undefined;
+}
 
 function obligationKey(turn: ChatTurn | undefined): string {
   return (turn?.obligations ?? []).map((o) => o.obligation_id).sort().join("|");
@@ -53,7 +59,8 @@ function CopyButton({ text }: { text: string }) {
 
 interface HiloProps {
   active: Conversation;
-  pending: PendingTurn | null;
+  /** The turn still running (only its live bubble subscribes to it). */
+  turno: AlmacenTurno;
   busy: boolean;
   highlightedId: string | null;
   onSubmit: (text: string, replaceTurnId?: string) => void;
@@ -62,10 +69,10 @@ interface HiloProps {
   bottomRef: RefObject<HTMLDivElement | null>;
 }
 
-export function Hilo({ active, pending, busy, highlightedId, onSubmit, onCite, lastTurnRef, bottomRef }: HiloProps) {
+export function Hilo({ active, turno, busy, highlightedId, onSubmit, onCite, lastTurnRef, bottomRef }: HiloProps) {
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-7">
-      {active.turns.length === 0 && !pending && <EmptyState onPick={(prompt) => onSubmit(prompt)} />}
+      {active.turns.length === 0 && !busy && <EmptyState onPick={(prompt) => onSubmit(prompt)} />}
 
       {active.turns.map((t, index) => {
         const claimsSummary = verificationSummary(t.claims);
@@ -134,20 +141,34 @@ export function Hilo({ active, pending, busy, highlightedId, onSubmit, onCite, l
       <ConsejoEnHilo
         caseId={active.caseId}
         turnos={active.turns.length}
-        ultimaPregunta={active.turns.length > 0 && !active.turns[active.turns.length - 1].errored ? active.turns[active.turns.length - 1].userText : undefined}
+        ultimaPregunta={ultimaPregunta(active.turns)}
         ocupado={busy}
       />
 
-      {pending && (
-        <section className="flex flex-col gap-4">
-          <UserBubble text={pending.text} />
-          <AssistantBubble>
-            <PlanEnVivo eventos={pending.cerebro ?? []} />
-            <LiveActivity events={pending.events} startedAt={pending.startedAt} draft={pending.draft} />
-          </AssistantBubble>
-        </section>
-      )}
+      <TurnoPendiente turno={turno} bottomRef={bottomRef} />
       <div ref={bottomRef} />
     </div>
+  );
+}
+
+/** The turn still running. The only part of the thread that re-renders as the answer streams in. */
+function TurnoPendiente({ turno, bottomRef }: { turno: AlmacenTurno; bottomRef: RefObject<HTMLDivElement | null> }) {
+  const pending = useTurnoEnCurso(turno);
+  // Follow the progress at the bottom. The draft grows token by token: re-scroll only every ~120 characters.
+  const activo = pending !== null;
+  const eventos = pending?.events.length ?? 0;
+  const tramo = Math.floor((pending?.draft.length ?? 0) / 120);
+  useEffect(() => {
+    if (activo) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
+  }, [activo, eventos, tramo, bottomRef]);
+  if (!pending) return null;
+  return (
+    <section className="flex flex-col gap-4">
+      <UserBubble text={pending.text} />
+      <AssistantBubble>
+        <PlanEnVivo eventos={pending.cerebro ?? []} />
+        <LiveActivity events={pending.events} startedAt={pending.startedAt} draft={pending.draft} />
+      </AssistantBubble>
+    </section>
   );
 }

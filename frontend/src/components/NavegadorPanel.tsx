@@ -386,16 +386,29 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
 
   useEffect(() => {
     if (!activa) return;
+    // One request at a time: the next one is scheduled when the previous answers (a slow server
+    // never piles up requests, as a fixed interval would).
     const ctrl = new AbortController();
-    const id = window.setInterval(() => {
+    let id: number | undefined;
+    const consultar = () => {
       getTarea(tarea.id, ctrl.signal).then(
-        (t) => avisar.current(t),
-        (err) => !ctrl.signal.aborted && setError(mensaje(err)),
+        (t) => {
+          if (ctrl.signal.aborted) return;
+          setError(null);
+          avisar.current(t);
+          id = window.setTimeout(consultar, 1000);
+        },
+        (err: unknown) => {
+          if (ctrl.signal.aborted) return;
+          setError(mensaje(err));
+          id = window.setTimeout(consultar, 3000);
+        },
       );
-    }, 1000);
+    };
+    id = window.setTimeout(consultar, 1000);
     return () => {
       ctrl.abort();
-      window.clearInterval(id);
+      window.clearTimeout(id);
     };
   }, [activa, tarea.id]);
 

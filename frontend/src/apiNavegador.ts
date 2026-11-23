@@ -5,6 +5,7 @@
 // hands over a session for one run (mode "sesion", an advanced option sent once and never stored).
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type ModoNavegador = "ventana" | "sesion";
 
@@ -73,19 +74,6 @@ export interface TareaInfo {
 }
 
 export const ESTADOS_ACTIVOS = new Set(["en_curso", "esperando_login", "trabajando"]);
-export const ESTADOS_TERMINADOS = new Set([
-  "descargado",
-  "importado",
-  "detenido_antes_de_enviar",
-  "fallida",
-  "cancelada",
-  "login_no_completado",
-  "cerrada",
-]);
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isEstado(value: unknown): value is EstadoNavegador {
   return isRecord(value) && typeof value.activo === "boolean" && Array.isArray(value.tareas);

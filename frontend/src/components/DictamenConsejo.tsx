@@ -37,13 +37,13 @@ import {
   confianzaEnPalabras,
   listarSesiones,
   usd,
-  useSesionConsejo,
   type CifraConsejo,
   type Dictamen,
   type PasoProgreso,
   type PropuestaConsejo,
   type SesionConsejo,
 } from "../apiConsejo";
+import { useSesionConsejo } from "../shell/useSesionConsejo";
 import { errorMessage } from "../lib/memoria";
 import { relativeTime } from "../lib/presentation";
 import { ProcedenciaRespuesta } from "./ProcedenciaRespuesta";
@@ -64,7 +64,7 @@ const FIN = new Set(["fin", "done", "terminada"]);
 
 /** The state of each phase from the session's progress events. */
 function estadoDeFases(progreso: PasoProgreso[], estado: SesionConsejo["estado"]): Record<string, EstadoFase> {
-  const salida: Record<string, EstadoFase> = Object.fromEntries(FASES.map((f) => [f.id, "pendiente" as EstadoFase]));
+  const salida: Record<string, EstadoFase> = Object.fromEntries(FASES.map((f) => [f.id, "pendiente"]));
   for (const paso of progreso) {
     if (paso.tipo !== "fase" || !paso.fase || !(paso.fase in salida)) continue;
     if (INICIO.has(paso.estado)) salida[paso.fase] = "en_curso";
@@ -84,7 +84,7 @@ export function ProgresoConsejo({ sesion }: { sesion: SesionConsejo }) {
   return (
     <ol className="mt-2 space-y-1.5" aria-label="Fases del consejo" aria-live={trabajando ? "polite" : undefined}>
       {FASES.map((fase) => {
-        const estado = fases[fase.id];
+        const estado = fases[fase.id] ?? "pendiente";
         const Icono = ICONO_FASE[estado];
         return (
           <li key={fase.id} className="flex items-start gap-2 text-[13px]">

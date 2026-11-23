@@ -4,6 +4,10 @@
 #   cp docs/despliegue/entorno.ejemplo docs/despliegue/.env    # y rellénalo (secretos: nunca al repositorio)
 #   docker compose -f docs/despliegue/docker-compose.yml --env-file docs/despliegue/.env up -d --build
 #
+# El fichero .env es obligatorio (sin él no hay claves): compose se niega a arrancar si falta.
+#
+# Todos los contenedores corren sin root, sin capacidades (cap_drop: ALL) y con no-new-privileges.
+#
 # api y worker comparten el volumen «datos»: la base de datos SQLite (modo WAL) necesita que los dos
 # procesos estén en la MISMA máquina y en un disco local (nunca NFS/SMB).
 name: haciendagpt
@@ -16,7 +20,11 @@ x-backend: &backend
   restart: unless-stopped
   env_file:
     - path: .env
-      required: false
+      required: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
   environment:
     TZ: Europe/Madrid
     AUTH_MODE: ${AUTH_MODE:-required}
@@ -62,6 +70,20 @@ services:
     restart: unless-stopped
     environment:
       DOMINIO: ${DOMINIO:-localhost}
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    # Caddy corre sin root (Dockerfile.web): así puede abrir 80 y 443 sin la capacidad NET_BIND_SERVICE.
+    sysctls:
+      net.ipv4.ip_unprivileged_port_start: 80
+    healthcheck:
+      # Puerto interno 8081 del Caddyfile (sin publicar): responde aunque falte el certificado o la API.
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8081/salud-web"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
     ports:
       - "80:80"
       - "443:443"
@@ -70,7 +92,8 @@ services:
       - caddy_datos:/data
       - caddy_config:/config
     depends_on:
-      - api
+      api:
+        condition: service_healthy
 
 volumes:
   datos:

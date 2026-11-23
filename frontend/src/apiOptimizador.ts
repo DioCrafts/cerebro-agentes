@@ -7,6 +7,7 @@
 
 import type { CalcLine } from "./api";
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type Naturaleza = "ahorro_definitivo" | "diferimiento" | "requiere_gastar";
 export type CausaNoDisponible = "fecha" | "restricciones" | "faltan_datos" | "sin_margen" | "no_calculable";
@@ -164,10 +165,6 @@ export interface PlanOptimo {
   datos_que_faltan: string[];
   busqueda: Busqueda;
   explicacion: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 const isStrings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
