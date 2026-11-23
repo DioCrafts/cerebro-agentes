@@ -8,10 +8,10 @@ deterministically before they reach the report.
 
 from __future__ import annotations
 
-import json
 from collections.abc import Callable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
+import json
 from typing import Any, Literal
 
 from asistente.investigador import seguridad
@@ -26,6 +26,7 @@ from asistente.investigador.modelo import (
     Informe,
     Presupuesto,
     Subpregunta,
+    Veredicto,
 )
 from asistente.investigador.presupuesto import Contador, PresupuestoAgotadoError
 from asistente.investigador.web import HerramientaWeb
@@ -117,7 +118,7 @@ class Ejercito:
             crudas = []
         if not crudas:
             crudas = [{"texto": t, "consultas": [t]} for t in (lagunas or [pregunta])]
-        nuevas = []
+        nuevas: list[Subpregunta] = []
         for c in crudas[: self.presupuesto.max_subpreguntas]:
             if not isinstance(c, dict) or not str(c.get("texto", "")).strip():
                 continue
@@ -205,7 +206,7 @@ class Ejercito:
         for c in datos.get("criticas") or []:
             if not isinstance(c, dict) or c.get("hallazgo") not in self.hallazgos:
                 continue
-            veredicto = c.get("veredicto") if c.get("veredicto") in ("sostenido", "dudoso", "refutado") else "dudoso"
+            veredicto: Veredicto = c["veredicto"] if c.get("veredicto") in ("sostenido", "dudoso", "refutado") else "dudoso"
             critica = Critica(c["hallazgo"], veredicto, str(c.get("motivo", ""))[:400])
             self.criticas.append(critica)
             self._emitir("critica", f"{critica.hallazgo}: {veredicto} — {critica.motivo}",

@@ -21,6 +21,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 EstadoAccion = Literal["pendiente", "ejecutando", "ejecutada", "fallida", "rechazada"]
 
@@ -65,9 +66,7 @@ class AccionStore:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             with conn:
                 asegurar_esquema(conn, "acciones")  # migrations (asistente/plataforma)
                 conn.execute("""

@@ -88,6 +88,7 @@ from asistente.nucleo.evaluacion.redaccion import (
 )
 from asistente.nucleo.evaluacion.reproduccion import guion_de_captura
 from asistente.nucleo.evaluacion.senales import SENALES_DEBILES, Senal, es_repregunta, respuestas, senales_de_turno
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -235,9 +236,7 @@ class CandidatoStore:
 
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
                 preparar(conn)

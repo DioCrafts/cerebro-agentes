@@ -135,7 +135,7 @@ def fixture_server() -> tuple[str, threading.Thread, http.server.HTTPServer]:
 
 
 def _run_crawl(crawler_cls, settings: dict, crawl_kwargs: dict) -> None:
-    """Run a Scrapy crawl to completion. Executed in a forked subprocess: Scrapy
+    """Run a Scrapy crawl to completion. Executed in a spawned subprocess: Scrapy
     starts the global Twisted reactor, which cannot restart within a process, so
     each crawl needs its own process to stay independent of test order."""
     from scrapy.crawler import CrawlerProcess
@@ -172,7 +172,7 @@ def test_crawler_persists_only_existing_criteria(
         "snapshot_date": snapshot_date,
         "base_url": base_url,
     }
-    proc = multiprocessing.get_context("fork").Process(target=_run_crawl, args=(TEACCrawler, settings, crawl_kwargs))
+    proc = multiprocessing.get_context("spawn").Process(target=_run_crawl, args=(TEACCrawler, settings, crawl_kwargs))
     proc.start()
     proc.join(120)
     if proc.is_alive():

@@ -411,7 +411,9 @@ def _revisar_fuentes_de_modulos(fetch_metadata: Any, *, marcar_revisadas: bool) 
         return None
     fechas: dict[str, date] = {}
     errores: list[str] = []
-    for boe_id in sorted({f.boe_id for f in vigiladas if f.boe_id}):
+    # Daily texts have no consolidated version to ask about (the BOE answers 404): listed, not queried.
+    sin_consolidar = sorted({f.boe_id for f in vigiladas if f.boe_id and not f.consolidada})
+    for boe_id in sorted({f.boe_id for f in vigiladas if f.boe_id and f.consolidada}):
         try:
             fecha = parse_fecha_actualizacion(fetch_metadata(boe_id).get("fecha_actualizacion"))
         except Exception as exc:  # network or malformed payload: report and carry on
@@ -428,6 +430,7 @@ def _revisar_fuentes_de_modulos(fetch_metadata: Any, *, marcar_revisadas: bool) 
         "comprobadas": len(fechas),
         "a_revisar": pendientes,
         "errores": errores,
+        "sin_consolidar": sin_consolidar,
         # Not in the BOE: each module's adapter watches its own format.
         "fuera_del_boe": [f"{f.modulo}: {f.identificador} ({f.url})" for f in vigiladas if not f.boe_id],
     }

@@ -9,7 +9,10 @@ from cryptography.fernet import Fernet
 import pytest
 
 from asistente.capacidades.correo import http, oauth
+from asistente.nucleo.agent import especialistas
 from asistente.plataforma import settings
+from asistente.plataforma.api.routers import correo as router_correo
+from tests.modulos.correo.corpus import HOY
 from tests.modulos.correo.falso import GoogleFalso
 
 CLAVE = Fernet.generate_key().decode()
@@ -31,6 +34,9 @@ def _aislado(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[None]:
         "CORREO_GMAIL_API_URL",
     ):
         monkeypatch.delenv(var, raising=False)
+    # The corpus is dated; "today" is pinned to it so the mail window does not drift with the calendar.
+    for modulo in (especialistas, router_correo):
+        monkeypatch.setattr(modulo, "hoy_en_espana", lambda: HOY.date())
 
     def sin_red(*args: object, **kwargs: object) -> None:
         raise AssertionError("los tests no deben acceder a la red")

@@ -12,7 +12,16 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from asistente.investigador.ejercito import AlProgresar, Ejercito, Rol
-from asistente.investigador.modelo import Afirmacion, Critica, Evento, Fuente, Hallazgo, Informe, Presupuesto, Subpregunta
+from asistente.investigador.modelo import (
+    Afirmacion,
+    Critica,
+    Evento,
+    Fuente,
+    Hallazgo,
+    Informe,
+    Presupuesto,
+    Subpregunta,
+)
 from asistente.investigador.presupuesto import PresupuestoAgotadoError
 from asistente.investigador.web import Documento, HerramientaWeb, WebDeCapacidad
 

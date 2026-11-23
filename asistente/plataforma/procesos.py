@@ -42,6 +42,7 @@ from zoneinfo import ZoneInfo
 
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import BASE_CASOS, asegurar_esquema, estado, migrar
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -276,9 +277,7 @@ def reiniciar_registro(nuevo: Registro | None = None) -> None:
 
 
 def _conectar(db_path: str) -> sqlite3.Connection:
-    conn = sqlite3.connect(db_path, timeout=30.0, isolation_level=None, check_same_thread=False)
-    conn.row_factory = sqlite3.Row
-    conn.execute("PRAGMA journal_mode=WAL;")
+    conn = abrir_sqlite(db_path, timeout=30.0, isolation_level=None, check_same_thread=False, filas=True)
     asegurar_esquema(conn, "plataforma")
     return conn
 

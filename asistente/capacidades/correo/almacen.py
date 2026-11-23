@@ -34,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -171,20 +172,14 @@ class Conexion(_M):
 
 
 _lock = threading.RLock()
-_wal: set[str] = set()
 
 
 @contextmanager
 def conectar(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
     ruta = db_path or ruta_db()
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(ruta, timeout=30.0)
-    conn.row_factory = sqlite3.Row
+    conn = abrir_sqlite(ruta, timeout=30.0, filas=True)
     try:
-        if ruta not in _wal:
-            conn.execute("PRAGMA journal_mode=WAL;")
-            with _lock:
-                _wal.add(ruta)
         asegurar_esquema(conn, "correo")  # migrations (asistente/plataforma)
         conn.executescript(_ESQUEMA)  # idempotent and cheap: a recreated file always gets its tables
         with conn:

@@ -34,6 +34,7 @@ from asistente.plataforma.auth.passwords import (
     verify_password,
 )
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 ConsentType = Literal["tratamiento_datos", "envio_documentos_a_proveedor_llm", "avisos_por_correo"]
 CONSENT_TYPES: tuple[ConsentType, ...] = get_args(ConsentType)
@@ -115,9 +116,7 @@ class AuthStore:
         """Open the connection and create the tables on first use. Callers hold ``self._lock``."""
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             with conn:
                 asegurar_esquema(conn, "auth")  # migrations (asistente/plataforma)
                 conn.execute("""

@@ -30,6 +30,7 @@ from asistente.nucleo.repaso.puerta import Redaccion, Violacion
 from asistente.nucleo.repaso.senales import Marca
 from asistente.plataforma.migraciones import asegurar_esquema
 from asistente.plataforma.migraciones.catalogo.repaso import DISPARADOR, INDICE_LOTES, PASADAS
+from asistente.plataforma.sqlite import abrir_sqlite
 
 EstadoPasada = Literal["pendiente_lote", "aplicando", "aplicada", "descartada"]
 OrigenPasada = Literal["modelo", "mixto", "determinista"]
@@ -85,10 +86,8 @@ class RepasoStore:
     @contextmanager
     def _conectar(self) -> Iterator[sqlite3.Connection]:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30.0)
-        conn.row_factory = sqlite3.Row
+        conn = abrir_sqlite(self.db_path, timeout=30.0, filas=True)
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
                 asegurar_esquema(conn, "repaso")  # migrations (asistente/plataforma)

@@ -13,7 +13,6 @@ import pytest
 from asistente.nucleo.agent import team
 from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError, ToolCall, ToolSpec
 from asistente.nucleo.agent.tools import ToolOutcome
-
 from .fakes import ScriptedProvider, text_turn, tool_turn
 
 SPEC = ToolSpec(

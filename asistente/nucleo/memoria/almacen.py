@@ -25,6 +25,7 @@ from typing import Any
 
 from asistente.nucleo.memoria.modelo import Decision, ahora
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 REDACTADO = "[borrado]"
 # ``list`` is also a method of the store below, so the builtin needs another name inside the class.
@@ -101,9 +102,7 @@ class DecisionStore:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             # Deleted words are overwritten in the file, not just unlinked (see :meth:`delete`).
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:

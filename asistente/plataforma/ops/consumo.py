@@ -56,6 +56,7 @@ from asistente.nucleo.agent.providers.base import (
 )
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -309,10 +310,8 @@ class ConsumoStore:
         self._precios = precios
         self._lock = RLock()
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
         with self._lock, self._conn:
-            self._conn.execute("PRAGMA journal_mode=WAL;")
             asegurar_esquema(self._conn, "consumo")  # migrations (asistente/plataforma)
             # Token columns are NULL when the API reported no usage; cost_usd is
             # NULL whenever the cost is unknown. cost_usd is an operational
