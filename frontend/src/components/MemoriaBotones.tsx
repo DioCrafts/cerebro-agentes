@@ -120,7 +120,7 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
                   </Select.Option>
                 ))}
               </Select>
-              <FormControl.Caption>Hasta entonces no te lo volveré a proponer. Puedes cambiarlo en «Lo que sé de tus preferencias».</FormControl.Caption>
+              <FormControl.Caption>Hasta entonces no te lo volveré a proponer. Puedes cambiarlo en «Mis preferencias».</FormControl.Caption>
             </FormControl>
           ) : (
             <FormControl>
@@ -137,7 +137,7 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
                 {abierto === "no_me_interesa"
                   ? "No te lo volveré a proponer durante un año, salvo que cambie algo importante (y entonces solo una vez, diciéndote qué ha cambiado)."
                   : "Lo tendré en cuenta y no te lo volveré a proponer en los próximos meses."}{" "}
-                Puedes cambiarlo en «Lo que sé de tus preferencias».
+                Puedes cambiarlo en «Mis preferencias».
               </FormControl.Caption>
             </FormControl>
           )}

@@ -42,8 +42,24 @@ import {
   PaginaPanel,
 } from "../ui";
 
+// Everything Tab can land on. `summary` matters: a panel ending in a <details> («Más datos (opcional)», in
+// Autónomos) let the focus escape the dialog, because the trap took the last input for the last stop.
 const ENFOCABLES =
-  'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
+  'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), summary, [contenteditable]:not([contenteditable="false"]), [tabindex]:not([tabindex="-1"])';
+
+/** Whether Tab can reach it now: rendered, not inert, and not inside a closed <details> (its summary is). */
+function alcanzable(el: HTMLElement): boolean {
+  if (el.closest("[hidden], [inert]")) return false;
+  for (let d = el.closest("details:not([open])"); d; d = d.parentElement?.closest("details:not([open])") ?? null) {
+    const resumen = el.closest("summary");
+    if (!resumen || resumen.parentElement !== d) return false;
+  }
+  if (getComputedStyle(el).visibility === "hidden") return false;
+  for (let n: HTMLElement | null = el; n; n = n.parentElement) {
+    if (getComputedStyle(n).display === "none") return false;
+  }
+  return true;
+}
 
 const perezosos = new Map<
   string,
@@ -80,7 +96,7 @@ function FocoEnDialogo({
     if (!open) return;
     const dialogo = dialogoActivo(contenedor.current);
     if (dialogo && !dialogo.contains(document.activeElement)) {
-      const primero = dialogo.querySelector<HTMLElement>(ENFOCABLES);
+      const primero = Array.from(dialogo.querySelectorAll<HTMLElement>(ENFOCABLES)).find(alcanzable);
       if (primero) primero.focus();
       else {
         dialogo.tabIndex = -1;
@@ -93,7 +109,7 @@ function FocoEnDialogo({
       if (!actual) return;
       const enfocables = Array.from(
         actual.querySelectorAll<HTMLElement>(ENFOCABLES),
-      ).filter((el) => el.offsetParent !== null);
+      ).filter(alcanzable);
       if (enfocables.length === 0) return;
       const primero = enfocables[0];
       const ultimo = enfocables.at(-1);
@@ -175,8 +191,11 @@ function Contenido({ panel, open, ctx, onClose }: RanuraProps) {
   return createElement(componenteDe(panel), props);
 }
 
+// `data-cargando-codigo`: the panel's code is still downloading (the measurement harness waits for it).
 const cargando = (panel: DefinicionPanel) => (
-  <CargandoTexto lineas={4} etiqueta={`Cargando ${panel.etiqueta}…`} />
+  <div data-cargando-codigo>
+    <CargandoTexto lineas={4} etiqueta={`Cargando ${panel.etiqueta}…`} />
+  </div>
 );
 
 function RanuraPagina(props: RanuraProps) {

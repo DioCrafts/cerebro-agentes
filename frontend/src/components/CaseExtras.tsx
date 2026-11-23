@@ -6,7 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import type { Deadline, DocumentAnalysis } from "../api";
 import { ApiError, analyzeDocument, getCalendar } from "../api";
 import { factLabel, factValue, fileToBase64, formatDate } from "../lib/presentation";
-import { Button, Caja, CargandoLista, Checkbox, CounterLabel, Details, Flash, FormControl, Label } from "../ui";
+import { AvisoError, Button, Caja, CargandoLista, Checkbox, CounterLabel, Details, Flash, FormControl, Label } from "../ui";
 import { CalendarIcon, UploadIcon } from "../ui/iconos";
 
 function message(err: unknown, fallback: string): string {
@@ -19,6 +19,8 @@ function cuando(dias: number): string {
 
 export function DeadlinesSection({ caseId, refreshKey }: { caseId: string | null; refreshKey: string }) {
   const [state, setState] = useState<{ key: string; items: Deadline[]; aviso: string; error: string | null } | null>(null);
+  // Bumped by «Reintentar».
+  const [intento, setIntento] = useState(0);
 
   useEffect(() => {
     if (!caseId) return;
@@ -27,11 +29,11 @@ export function DeadlinesSection({ caseId, refreshKey }: { caseId: string | null
     getCalendar({ caseId, dias: 270, signal: controller.signal }).then(
       (calendar) => setState({ key, items: calendar.vencimientos, aviso: calendar.aviso, error: null }),
       (err: unknown) => {
-        if (!controller.signal.aborted) setState({ key, items: [], aviso: "", error: message(err, "No se pudieron cargar los plazos.") });
+        if (!controller.signal.aborted) setState({ key, items: [], aviso: "", error: message(err, "") });
       },
     );
     return () => controller.abort();
-  }, [caseId, refreshKey]);
+  }, [caseId, refreshKey, intento]);
 
   if (!caseId) return null;
   return (
@@ -43,20 +45,27 @@ export function DeadlinesSection({ caseId, refreshKey }: { caseId: string | null
             Próximos plazos
           </span>
         }
-        acciones={state && !state.error ? <CounterLabel>{state.items.length}</CounterLabel> : undefined}
+        acciones={state && state.error === null ? <CounterLabel>{state.items.length}</CounterLabel> : undefined}
       />
       {!state && (
         <Caja.Cuerpo>
           <CargandoLista filas={2} etiqueta="Cargando los plazos" />
         </Caja.Cuerpo>
       )}
-      {state?.error && (
+      {state?.error != null && (
         <Caja.Cuerpo>
-          <Flash variant="danger">{state.error}</Flash>
+          <AvisoError
+            frase="No he podido cargar tus próximos plazos."
+            detalle={state.error}
+            onReintentar={() => {
+              setState(null);
+              setIntento((n) => n + 1);
+            }}
+          />
         </Caja.Cuerpo>
       )}
-      {state && !state.error && state.items.length === 0 && <Caja.Cuerpo className="text-fg-muted">No hay plazos en los próximos nueve meses.</Caja.Cuerpo>}
-      {state && !state.error && state.items.length > 0 && (
+      {state && state.error === null && state.items.length === 0 && <Caja.Cuerpo className="text-fg-muted">No hay plazos en los próximos nueve meses.</Caja.Cuerpo>}
+      {state && state.error === null && state.items.length > 0 && (
         <Caja.Lista>
           {state.items.map((d) => {
             const urgent = d.dias_restantes <= 30;
@@ -84,7 +93,7 @@ export function DeadlinesSection({ caseId, refreshKey }: { caseId: string | null
           })}
         </Caja.Lista>
       )}
-      {state && !state.error && (
+      {state && state.error === null && (
         <Caja.Pie className="text-xs text-fg-muted">Solo aparecen las obligaciones que constan en tus datos. No se tienen en cuenta los festivos.</Caja.Pie>
       )}
     </Caja>

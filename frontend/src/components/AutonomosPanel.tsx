@@ -13,7 +13,7 @@ import { ApiError } from "../api";
 import type { ActividadPerfil, ResultadoActividad, ResultadoModelo130, ResultadoModelo303, Trimestre } from "../apiAutonomos";
 import { calcularActividad, calcularActividadDelExpediente, calcularModelo130, calcularModelo303, getEjerciciosAutonomos } from "../apiAutonomos";
 import { formatMoney } from "../lib/presentation";
-import { Button, Flash, Select, SegmentedControl } from "../ui";
+import { AvisoError, Button, CargandoBloque, CargandoTexto, Flash, Select, SegmentedControl } from "../ui";
 import { ArrowRightIcon, HistoryIcon } from "../ui/iconos";
 import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
 import { Pestanas } from "./calculos/Pestanas";
@@ -116,6 +116,10 @@ function numbers(values: Values, names: string[]): Record<string, number> {
 function useCalculo<T>(active: boolean, bodyKey: string | null, run: (body: unknown, signal: AbortSignal) => Promise<T>) {
   const [result, setResult] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The request («body|attempt») last answered, right or wrong: while it differs, a result is on its way.
+  const [resueltoPara, setResueltoPara] = useState<string | null>(null);
+  // Bumped by «Reintentar»: the same calculation is asked for again.
+  const [intento, setIntento] = useState(0);
   const seq = useRef(0);
   const runRef = useRef(run);
   useEffect(() => {
@@ -131,10 +135,12 @@ function useCalculo<T>(active: boolean, bodyKey: string | null, run: (body: unkn
           if (mine !== seq.current) return;
           setResult(value);
           setError(null);
+          setResueltoPara(`${bodyKey}|${intento}`);
         },
         (err: unknown) => {
           if (controller.signal.aborted || mine !== seq.current) return;
-          setError(err instanceof ApiError ? err.message : "No se pudo hacer el cálculo.");
+          setError(err instanceof ApiError ? err.message : "");
+          setResueltoPara(`${bodyKey}|${intento}`);
         },
       );
     }, 300);
@@ -142,8 +148,9 @@ function useCalculo<T>(active: boolean, bodyKey: string | null, run: (body: unkn
       clearTimeout(timer);
       controller.abort();
     };
-  }, [active, bodyKey]);
-  return { result, error };
+  }, [active, bodyKey, intento]);
+  const pendiente = active && bodyKey !== null && resueltoPara !== `${bodyKey}|${intento}`;
+  return { result, error, pendiente, reintentar: () => setIntento((n) => n + 1) };
 }
 
 function MoneyField({ field, values, onChange }: { field: FieldDef; values: Values; onChange: (name: string, value: string) => void }) {
@@ -254,6 +261,8 @@ export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, f
   const [ejercicios, setEjercicios] = useState<number[] | null>(null);
   const [ejercicioEdit, setEjercicioEdit] = useState<number | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Bumped by «Reintentar» when the years could not be loaded.
+  const [intentoCarga, setIntentoCarga] = useState(0);
   // One set of typed figures per tab, kept while the panel stays mounted.
   const [actividad, setActividad] = useState<Values>({});
   const [actividadFlags, setActividadFlags] = useState<Flags>({});
@@ -277,11 +286,11 @@ export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, f
       },
       (err: unknown) => {
         if (controller.signal.aborted) return;
-        setLoadError(err instanceof ApiError ? err.message : "No se pudo conectar con el servicio de cálculo.");
+        setLoadError(err instanceof ApiError ? err.message : "");
       },
     );
     return () => controller.abort();
-  }, [open, ejercicios]);
+  }, [open, ejercicios, intentoCarga]);
 
   // What the case already holds about the activity: typed figures are edits over it.
   const saved = useMemo(() => {
@@ -668,23 +677,28 @@ export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, f
 
       <div role="tabpanel" id="autonomos-tabpanel" aria-labelledby={`autonomos-tab-${tab}`} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <aside aria-label="Resultado" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:order-2">
-          {loadError && (
-            <Flash variant="danger" role="alert">
-              {loadError}
-            </Flash>
+          {loadError !== null && (
+            <AvisoError
+              frase="No he podido preparar los cálculos de autónomos."
+              detalle={loadError}
+              onReintentar={() => {
+                setLoadError(null);
+                setEjercicios(null);
+                setIntentoCarga((n) => n + 1);
+              }}
+            />
           )}
-          {current.error && (
-            <Flash variant="danger" role="alert">
-              {current.error}
-            </Flash>
-          )}
+          {ejercicios === null && loadError === null && <CargandoTexto lineas={2} etiqueta="Preparando los cálculos…" />}
+          {current.error !== null && <AvisoError frase="No he podido hacer el cálculo." detalle={current.error} onReintentar={current.reintentar} />}
           {vista.resultado}
+          {/* Until the first result: its place, at its height, so the form does not jump when it arrives. */}
+          {!vista.resultado && current.pendiente && current.error === null && <CargandoBloque alto="8.25rem" etiqueta="Calculando…" />}
         </aside>
         {/* Keyed by tab so React does not reuse one tab's DOM (open <details>, focus) for another. */}
         <div key={tab} className="flex min-w-0 flex-col gap-6">
           {vista.formulario}
           <p className="m-0 text-xs text-fg-muted">
-            Cálculo determinista{ejercicio ? ` (ejercicio ${ejercicio})` : ""} con las cifras que indicas; no valora si un gasto es deducible ni sustituye a la Agencia Tributaria.
+            Calculado con fórmulas fijas{ejercicio ? ` (ejercicio ${ejercicio})` : ""} a partir de las cifras que indicas, sin inteligencia artificial; no valora si un gasto es deducible ni sustituye a la Agencia Tributaria.
             {fuente && <span className="block">{fuente}.</span>}
           </p>
         </div>

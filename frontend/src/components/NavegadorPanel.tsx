@@ -27,27 +27,7 @@ import {
   rutaEventosTarea,
 } from "../apiNavegador";
 import { useFlujoSse } from "../shell/useFlujoSse";
-import {
-  Blankslate,
-  Button,
-  Caja,
-  CargandoLista,
-  Checkbox,
-  CounterLabel,
-  Flash,
-  FormControl,
-  Label,
-  Link,
-  Radio,
-  RadioGroup,
-  Select,
-  Spinner,
-  StateLabel,
-  TextInput,
-  Textarea,
-  Timeline,
-  VisuallyHidden,
-} from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, Checkbox, CounterLabel, Flash, FormControl, Label, Link, Radio, RadioGroup, Select, Spinner, StateLabel, Textarea, TextInput, Timeline, VisuallyHidden } from "../ui";
 import {
   AlertIcon,
   CheckCircleFillIcon,
@@ -110,7 +90,8 @@ interface NavegadorPanelProps {
 
 export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps) {
   const [estado, setEstado] = useState<EstadoNavegador | null>(null);
-  const [error, setError] = useState<string | null>(null);
+  // Loading the agent's state failed: it can be retried.
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [tareas, setTareas] = useState<TareaInfo[]>([]);
   const [elegida, setElegida] = useState<string | null>(null);
   const [actual, setActual] = useState<string | null>(null);
@@ -118,18 +99,18 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
   const aplicar = useCallback((r: { estado: EstadoNavegador; tareas: TareaInfo[] }) => {
     setEstado(r.estado);
     setTareas(r.tareas);
-    setError(null);
+    setErrorCarga(null);
   }, []);
 
   const recargar = useCallback(() => {
-    cargar(caseId).then(aplicar, (err: unknown) => setError(mensaje(err)));
+    cargar(caseId).then(aplicar, (err: unknown) => setErrorCarga(mensaje(err)));
   }, [caseId, aplicar]);
 
   useEffect(() => {
     if (!open) return;
     const ctrl = new AbortController();
     cargar(caseId, ctrl.signal).then(aplicar, (err: unknown) => {
-      if (!ctrl.signal.aborted) setError(mensaje(err));
+      if (!ctrl.signal.aborted) setErrorCarga(mensaje(err));
     });
     return () => ctrl.abort();
   }, [open, caseId, aplicar]);
@@ -141,12 +122,8 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
 
   return (
     <div className="flex flex-col gap-4">
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
-      )}
-      {!estado && !error && <CargandoLista filas={2} etiqueta="Cargando el agente con navegador" />}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar el agente con navegador." detalle={errorCarga} onReintentar={recargar} />}
+      {!estado && errorCarga === null && <CargandoLista filas={2} etiqueta="Cargando el agente con navegador" />}
       {estado && !estado.activo && (
         <Blankslate>
           <Blankslate.Visual>
@@ -270,7 +247,7 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
       <p className="m-0 flex gap-2 text-xs text-fg-muted">
         <ShieldCheckIcon className="shrink-0" />
         <span>
-          Tu contraseña la escribes tú en la ventana del navegador: HaciendaGPT no la ve ni la guarda. El agente solo visita los sitios de
+          Tu contraseña la escribes tú en la ventana del navegador: Cerebro no la ve ni la guarda. El agente solo visita los sitios de
           la tarea, no envía formularios, no firma y no paga.
         </span>
       </p>
@@ -531,7 +508,7 @@ export function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaIn
                 ))}
               </dl>
               <p className="m-0 mt-2 text-xs text-fg-muted">
-                HaciendaGPT no firma ni presenta. Queda una acción pendiente en Módulos con este resumen; para presentarlo, hazlo tú en la sede.
+                Cerebro no firma ni presenta. Queda una acción pendiente en Módulos con este resumen; para presentarlo, hazlo tú en la sede.
               </p>
             </div>
           )}

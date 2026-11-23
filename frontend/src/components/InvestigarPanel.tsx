@@ -28,20 +28,7 @@ import {
 } from "../apiInvestigacion";
 import { formatDate } from "../lib/presentation";
 import { enlaceWeb } from "../lib/urls";
-import {
-  Button,
-  Caja,
-  Checkbox,
-  CheckboxGroup,
-  CounterLabel,
-  Flash,
-  FormControl,
-  Heading,
-  Label,
-  Link,
-  SegmentedControl,
-  Textarea,
-} from "../ui";
+import { AvisoError, Button, Caja, Checkbox, CheckboxGroup, CounterLabel, Flash, FormControl, Heading, Label, Link, SegmentedControl, Textarea } from "../ui";
 import { AlertIcon, LinkExternalIcon, ShieldIcon, TelescopeIcon } from "../ui/iconos";
 
 interface InvestigarPanelProps {
@@ -225,16 +212,25 @@ export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
   const [informe, setInforme] = useState<Informe | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Loading what the service offers failed: it can be retried (bumps `intentoCarga`).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
+  const [intentoCarga, setIntentoCarga] = useState(0);
   const control = useRef<AbortController | null>(null);
 
   useEffect(() => {
     if (!open) return;
     const c = new AbortController();
-    getEstadoInvestigacion(c.signal).then(setEstado, (err: unknown) => {
-      if (!c.signal.aborted) setError(mensaje(err));
-    });
+    getEstadoInvestigacion(c.signal).then(
+      (e) => {
+        setEstado(e);
+        setErrorCarga(null);
+      },
+      (err: unknown) => {
+        if (!c.signal.aborted) setErrorCarga(mensaje(err));
+      },
+    );
     return () => c.abort();
-  }, [open]);
+  }, [open, intentoCarga]);
 
   // A research in progress is aborted when the panel goes away (another conversation, or the app closes).
   useEffect(() => () => control.current?.abort(), []);
@@ -277,11 +273,10 @@ export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
+      {errorCarga !== null && (
+        <AvisoError frase="No he podido comprobar qué fuentes puedo usar." detalle={errorCarga} onReintentar={() => setIntentoCarga((n) => n + 1)} />
       )}
+      {error && <AvisoError frase="No he podido hacer la investigación." detalle={error} />}
 
       <Caja as="section" aria-label="Nueva investigación">
         <Caja.Cuerpo>

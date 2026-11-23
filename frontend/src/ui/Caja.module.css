@@ -60,6 +60,14 @@
   background: var(--bgColor-danger-muted);
   border-color: var(--borderColor-danger-emphasis);
 }
+/* Something waiting for the user (an action to confirm): attention, not danger. */
+.atencion {
+  border-color: var(--borderColor-attention-emphasis);
+}
+.atencion .cabecera {
+  background: var(--bgColor-attention-muted);
+  border-color: var(--borderColor-attention-emphasis);
+}
 .acento {
   border-color: var(--borderColor-accent-emphasis);
 }

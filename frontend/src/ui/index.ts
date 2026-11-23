@@ -65,6 +65,7 @@ import { CajaCabecera, CajaCuerpo, CajaFila, CajaLista, CajaPie, CajaRaiz } from
 /** GitHub's Box: `<Caja>` with `Caja.Cabecera`, `Caja.Cuerpo`, `Caja.Lista` › `Caja.Fila`, `Caja.Pie`. */
 export const Caja = Object.assign(CajaRaiz, { Cabecera: CajaCabecera, Cuerpo: CajaCuerpo, Lista: CajaLista, Fila: CajaFila, Pie: CajaPie });
 export { BotonCabecera, BotonComandos, CabeceraApp, Migas, SeparadorCabecera } from "./CabeceraApp";
+export { AvisoError, AvisoFallo, type AvisoErrorProps, type Fallo } from "./AvisoError";
 export { CargandoBloque, CargandoLista, CargandoTexto } from "./Cargando";
 export { Comentario, Conversacion, EventoConversacion } from "./Conversacion";
 export { HojaLateral, type HojaLateralProps } from "./HojaLateral";

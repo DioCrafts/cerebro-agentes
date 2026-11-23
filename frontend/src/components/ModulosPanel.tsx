@@ -16,6 +16,7 @@ import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos"
 import { textoDeValor } from "../lib/guards";
 import { fileToBase64, relativeTime } from "../lib/presentation";
 import {
+  AvisoError,
   Blankslate,
   Button,
   Caja,
@@ -58,6 +59,8 @@ interface ModulosPanelProps {
   acciones: AccionPendiente[];
   onDecide: (id: string, confirmar: boolean) => Promise<void>;
   disabled: boolean;
+  /** Read the modules and the actions again (the «Reintentar» of an error). */
+  onRetry?: () => void;
 }
 
 const ESTADO: Record<string, string> = {
@@ -158,7 +161,7 @@ export function ModulosPanel(props: ModulosPanelProps) {
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-6">
-        {error && <Flash variant="danger">{error}</Flash>}
+        {error && <AvisoError frase={error} onReintentar={props.onRetry} />}
         {loading && !modulos && <CargandoLista filas={3} etiqueta="Cargando los módulos" />}
 
         {actual === "general" && (
@@ -230,11 +233,11 @@ function SeccionGeneral(
       <Subcabecera id="modulos-general" titulo="General" descripcion="Activa los módulos que quieras que tu asistente lleve por ti." />
 
       {pendientes.length > 0 && (
-        <Caja as="section" variante="peligro" aria-label="Pendiente de tu confirmación">
+        <Caja as="section" variante="atencion" aria-label="Pendiente de tu confirmación">
           <Caja.Cabecera
             titulo={
               <span className="inline-flex items-center gap-2">
-                <ShieldIcon />
+                <ShieldIcon className="text-fg-attention" />
                 Pendiente de tu confirmación
               </span>
             }

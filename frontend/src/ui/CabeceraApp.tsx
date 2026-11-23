@@ -6,7 +6,7 @@
 //     saltarA="contenido"
 //     inicio={<IconButton icon={ThreeBarsIcon} aria-label="Abrir las consultas" variant="invisible" />}
 //     marca={<Monogram size={32} />}
-//     contexto={<Migas raiz="HaciendaGPT" actual="Venta de vivienda" />}
+//     contexto={<Migas raiz="Cerebro" actual="Venta de vivienda" />}
 //     busqueda={<BotonComandos onClick={…} />}
 //     acciones={…}
 //   >

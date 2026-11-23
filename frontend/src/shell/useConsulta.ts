@@ -9,7 +9,15 @@ import type { TurnoConCerebro } from "../components/ProcedenciaRespuesta";
 import { conversacionDeVuelta } from "../lib/correo";
 import { newId } from "../lib/id";
 import { activityRows, sourceAnchorId } from "../lib/presentation";
-import { type ChatTurn, type Conversation, emptyConversation, loadConversations, saveConversations } from "../lib/storage";
+import {
+  type ChatTurn,
+  type Conversation,
+  conversacionActivaGuardada,
+  emptyConversation,
+  guardarConversacionActiva,
+  loadConversations,
+  saveConversations,
+} from "../lib/storage";
 import { errorMessage } from "./errores";
 import { crearAlmacenTurno } from "./turnoEnCurso";
 
@@ -35,7 +43,10 @@ export function useConsulta({
 }) {
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   // Back from Google's consent screen (mail module): reopen the conversation whose case was connecting.
-  const [activeId, setActiveId] = useState<string>(() => conversacionDeVuelta(conversations) ?? newId());
+  // Otherwise (a reload, back to the PWA, a `/?panel=…` link) reopen the one that was on screen.
+  const [activeId, setActiveId] = useState<string>(
+    () => conversacionDeVuelta(conversations) ?? conversacionActivaGuardada(conversations) ?? newId(),
+  );
   // The running turn lives outside React state (see turnoEnCurso.ts); only `busy` re-renders the shell.
   const [turno] = useState(crearAlmacenTurno);
   const setPending = turno.set;
@@ -75,6 +86,7 @@ export function useConsulta({
   });
 
   useEffect(() => saveConversations(conversations), [conversations]);
+  useEffect(() => guardarConversacionActiva(activeId), [activeId]);
 
   // When the answer lands, bring its START into view: a long answer must be read from the top, not
   // from its last source card. (While it runs, Hilo's live bubble follows it at the bottom.)

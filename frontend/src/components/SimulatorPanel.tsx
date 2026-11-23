@@ -13,7 +13,7 @@ import { parseAmount } from "../lib/formulario";
 import type { ObligacionDeclarar } from "../lib/obligacion";
 import { COMUNIDADES, formatMoney } from "../lib/presentation";
 import { FIELDS, type FieldDef, LEVER_PRESET, TRIBUTACION, gruposDeComunidad } from "../lib/simulador/campos";
-import { Button, Caja, Flash, Label } from "../ui";
+import { AvisoError, Button, Caja, CargandoBloque, Flash, Label } from "../ui";
 import { HistoryIcon, LightBulbIcon } from "../ui/iconos";
 import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
 import { ObligacionDeclararCard } from "./ObligacionDeclararCard";
@@ -170,11 +170,10 @@ export function SimulatorPanel({ open, caseId, facts, taxPeriod, onSaveFact, bus
   return (
     <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
       <aside aria-label="Resultado y formas de pagar menos" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:order-2">
-        {error && !invalid && (
-          <Flash variant="danger" role="alert">
-            {error}
-            {simulation && <span className="block text-xs">El resultado es el del último cálculo válido.</span>}
-          </Flash>
+        {error !== null && !invalid && (
+          <AvisoError frase="No he podido calcular la simulación." detalle={error} onReintentar={acciones.reintentar}>
+            {simulation && <p className="m-0 text-xs">El resultado es el del último cálculo válido.</p>}
+          </AvisoError>
         )}
         {seed?.note && changed && (
           <Flash role="status" variant="default">
@@ -182,6 +181,8 @@ export function SimulatorPanel({ open, caseId, facts, taxPeriod, onSaveFact, bus
           </Flash>
         )}
         {resultadoCaja}
+        {/* Until the first result: its place, at its height, so the form does not jump when it arrives. */}
+        {!sim && error === null && <CargandoBloque alto="8.25rem" etiqueta="Calculando tu declaración…" />}
         {levers.length > 0 && (
           <Caja as="section" aria-labelledby="sim-palancas">
             <Caja.Cabecera>
@@ -274,7 +275,7 @@ export function SimulatorPanel({ open, caseId, facts, taxPeriod, onSaveFact, bus
         )}
 
         <p className="m-0 text-xs text-fg-muted">
-          Cálculo determinista con los parámetros estatales del ejercicio. No sustituye al borrador de la Agencia Tributaria.
+          Calculado con fórmulas fijas y las reglas del año, sin inteligencia artificial. No sustituye al borrador de la Agencia Tributaria.
           {sim && <span className="block">{sim.resultado.fuente}.</span>}
         </p>
       </div>

@@ -107,8 +107,13 @@ export function Asesor({ account }: { account?: AccountControls }) {
 
   const abrirDesde = useCallback(
     (id: string) => {
-      if (panelEnUrl() === null)
-        disparador.current = document.activeElement as HTMLElement | null;
+      if (panelEnUrl() === null) {
+        const activo = document.activeElement as HTMLElement | null;
+        // Chosen in a menu («Más» of the tabs): the item goes away with the menu, so the focus will return
+        // to the button that opened the menu.
+        const menu = activo?.closest('[role="menu"]') ? document.querySelector<HTMLElement>('[aria-haspopup="true"][aria-expanded="true"]') : null;
+        disparador.current = menu ?? activo;
+      }
       abrir(id);
     },
     [abrir],
@@ -171,6 +176,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
       error: modulos.error,
       cambiar: modulos.cambiar,
       nombres: modulos.nombres,
+      recargar: modulos.recargar,
     },
     acciones: {
       items: modulos.acciones,

@@ -70,7 +70,8 @@ export function HojaLateral({ open, onClose, titulo, subtitulo, icono: Icono, ac
           aria-describedby={subtitulo ? idSubtitulo : undefined}
           className={clsx(estilos.hoja, estilos[ancho])}
         >
-          <header className={estilos.cabecera}>
+          {/* A div, not <header>: inside role="dialog" a header would be a second page banner. */}
+          <div className={estilos.cabecera}>
             <div className={estilos.titulos}>
               <h2 id={idTitulo} ref={tituloRef} tabIndex={-1} className={estilos.titulo}>
                 {Icono && <Icono size={16} />}
@@ -86,7 +87,7 @@ export function HojaLateral({ open, onClose, titulo, subtitulo, icono: Icono, ac
               {acciones}
               <IconButton icon={XIcon} aria-label={etiquetaCerrar} variant="invisible" onClick={onClose} />
             </div>
-          </header>
+          </div>
           <div className={estilos.cuerpo}>{children}</div>
           {pie && <footer className={estilos.pie}>{pie}</footer>}
         </section>

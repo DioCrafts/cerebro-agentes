@@ -1,5 +1,5 @@
-// Brand mark: the "H" monogram on a soft circular plate, plus the
-// HaciendaGPT serif logotype. Rendered inline as SVG so it stays crisp
+// Brand mark: the "C" monogram (Cerebro) on a rounded plate, plus the
+// serif logotype. Rendered inline as SVG so it stays crisp
 // at any size and never costs a network round-trip.
 
 interface MonogramProps {
@@ -14,7 +14,7 @@ export function Monogram({ size = 40, className = "" }: MonogramProps) {
       height={size}
       viewBox="0 0 64 64"
       role="img"
-      aria-label="HaciendaGPT"
+      aria-label="Cerebro"
       className={className}
     >
       <rect width="64" height="64" rx="14" fill="#0f4f4a" />
@@ -27,7 +27,7 @@ export function Monogram({ size = 40, className = "" }: MonogramProps) {
         fontSize="36"
         fill="#e4efed"
       >
-        H
+        C
       </text>
     </svg>
   );
@@ -39,8 +39,8 @@ interface BrandHeaderProps {
 }
 
 export function BrandHeader({
-  title = "HaciendaGPT",
-  subtitle = "ASESOR FISCAL",
+  title = "Cerebro",
+  subtitle = "ASISTENTE DEL HOGAR",
 }: BrandHeaderProps) {
   return (
     <div className="flex items-center gap-3 px-1 py-2">

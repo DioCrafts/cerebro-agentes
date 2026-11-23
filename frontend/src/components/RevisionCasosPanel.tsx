@@ -26,25 +26,7 @@ import {
   type EstadoAprendizaje,
   type EstadoCandidato,
 } from "../apiEvaluacion";
-import {
-  Blankslate,
-  Button,
-  Caja,
-  CargandoLista,
-  Checkbox,
-  CounterLabel,
-  Flash,
-  FormControl,
-  Heading,
-  Label,
-  Link,
-  SegmentedControl,
-  Select,
-  TextInput,
-  Textarea,
-  ToggleSwitch,
-  useConfirm,
-} from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, Checkbox, CounterLabel, Flash, FormControl, Heading, Label, Link, SegmentedControl, Select, Textarea, TextInput, ToggleSwitch, useConfirm } from "../ui";
 import { ArrowLeftIcon, ChecklistIcon, TrashIcon } from "../ui/iconos";
 
 interface Props {
@@ -437,6 +419,8 @@ export function RevisionCasosPanel({ open, caseId }: Props) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // The last load failed: its error can be retried (an error deciding on a case cannot).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const confirmar = useConfirm();
   const idAprendizaje = useId();
 
@@ -446,12 +430,18 @@ export function RevisionCasosPanel({ open, caseId }: Props) {
     if (!open) return;
     const controller = new AbortController();
     const fallo = (err: unknown) => {
-      if (!controller.signal.aborted) setError(`No se ha podido cargar la revisión. ${mensaje(err)}`);
+      if (!controller.signal.aborted) setErrorCarga(mensaje(err));
     };
     if (pestana === "aceptados") {
-      getAceptados(controller.signal).then((r) => setAceptados(r.casos), fallo);
+      getAceptados(controller.signal).then((r) => {
+        setAceptados(r.casos);
+        setErrorCarga(null);
+      }, fallo);
     } else {
-      getColaRevision(pestana, controller.signal).then(setCola, fallo);
+      getColaRevision(pestana, controller.signal).then((r) => {
+        setCola(r);
+        setErrorCarga(null);
+      }, fallo);
     }
     if (caseId) getAprendizaje(caseId, controller.signal).then(setAprendizaje, () => setAprendizaje(null));
     return () => controller.abort();
@@ -517,11 +507,8 @@ export function RevisionCasosPanel({ open, caseId }: Props) {
           {aviso}
         </Flash>
       )}
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
-      )}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar la revisión." detalle={errorCarga} onReintentar={recargar} />}
+      {error && <AvisoError frase={error} />}
       {detalle ? (
         <div className="flex flex-col gap-3">
           <div>
@@ -550,7 +537,7 @@ export function RevisionCasosPanel({ open, caseId }: Props) {
           </SegmentedControl>
           {pestana === "aceptados" ? (
             aceptados === null ? (
-              !error && <CargandoLista filas={2} etiqueta="Cargando los casos aceptados" />
+              errorCarga === null && <CargandoLista filas={2} etiqueta="Cargando los casos aceptados" />
             ) : aceptados.length === 0 ? (
               <Vacio titulo="Aún no hay casos aceptados" />
             ) : (
@@ -581,7 +568,7 @@ export function RevisionCasosPanel({ open, caseId }: Props) {
               </Caja>
             )
           ) : cola === null ? (
-            !error && <CargandoLista filas={2} etiqueta="Cargando los casos" />
+            errorCarga === null && <CargandoLista filas={2} etiqueta="Cargando los casos" />
           ) : grupos.length === 0 ? (
             pestana === "pendiente" ? (
               <Vacio

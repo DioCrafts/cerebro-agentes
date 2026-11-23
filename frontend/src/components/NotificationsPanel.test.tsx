@@ -37,9 +37,27 @@ describe("NotificationsPanel", () => {
     expect(screen.getByRole("heading", { name: "Aún no hay avisos" })).toBeInTheDocument();
   });
 
-  it("shows an error as a Flash", () => {
-    render(<NotificationsPanel {...base} error="No se pudieron cargar" notifications={[]} />);
-    expect(screen.getByText("No se pudieron cargar")).toBeInTheDocument();
+  it("shows an error as an alert that can be retried", async () => {
+    const user = userEvent.setup();
+    const onRefresh = vi.fn();
+    render(<NotificationsPanel {...base} error="No se pudieron cargar" notifications={[]} onRefresh={onRefresh} />);
+    expect(screen.getByRole("alert")).toHaveTextContent("No se pudieron cargar");
+    await user.click(screen.getByRole("button", { name: "Reintentar" }));
+    expect(onRefresh).toHaveBeenCalled();
+  });
+
+  it("keeps the focus on the notice once it is marked as read", async () => {
+    const user = userEvent.setup();
+    const onMarkRead = vi.fn();
+    const { rerender } = render(<NotificationsPanel {...base} notifications={[aviso({})]} onMarkRead={onMarkRead} />);
+    await user.click(screen.getByRole("button", { name: "Marcar como leído" }));
+    expect(onMarkRead).toHaveBeenCalledWith("n1");
+    // The shell marks it read at once (useAvisos): the button goes, and the focus is not lost with it.
+    rerender(<NotificationsPanel {...base} notifications={[aviso({ read_at: new Date().toISOString() })]} onMarkRead={onMarkRead} />);
+    const articulo = screen.getByRole("article", { name: "Presenta el modelo 130" });
+    expect(screen.queryByRole("button", { name: "Marcar como leído" })).not.toBeInTheDocument();
+    expect(articulo).not.toHaveTextContent("Nuevo");
+    expect(articulo).toHaveFocus();
   });
 
   it("groups the notices, marks the unread one and lets the user act on it", async () => {

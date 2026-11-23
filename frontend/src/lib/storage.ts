@@ -36,6 +36,8 @@ export interface Conversation {
 
 const KEY = "haciendagpt_conversations_v1";
 const MAX_CONVERSATIONS = 40;
+// The conversation on screen, so a reload (or coming back to the PWA) reopens it instead of a blank one.
+const ACTIVE_KEY = "haciendagpt_active_conversation_v1";
 
 function isConversation(value: unknown): value is Conversation {
   if (typeof value !== "object" || value === null) return false;
@@ -75,8 +77,32 @@ export function saveConversations(conversations: Conversation[]): void {
 export function borrarConversaciones(): void {
   try {
     localStorage.removeItem(KEY);
+    localStorage.removeItem(ACTIVE_KEY);
   } catch {
     // Storage disabled: there was nothing persisted to erase.
+  }
+}
+
+/** Remember which conversation is on screen. */
+export function guardarConversacionActiva(id: string): void {
+  try {
+    localStorage.setItem(ACTIVE_KEY, id);
+  } catch {
+    // Storage full or disabled: a reload just opens a new conversation.
+  }
+}
+
+/**
+ * The conversation that was on screen, if it is still in `conversations` (the history this browser
+ * keeps for its current owner). A remembered id whose conversation was discarded — another account's,
+ * erased on sign-out, or an empty draft never saved — is not reopened.
+ */
+export function conversacionActivaGuardada(conversations: readonly Conversation[]): string | null {
+  try {
+    const id = localStorage.getItem(ACTIVE_KEY);
+    return id !== null && conversations.some((c) => c.id === id) ? id : null;
+  } catch {
+    return null;
   }
 }
 

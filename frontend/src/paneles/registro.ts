@@ -34,6 +34,7 @@ import type { DefinicionPanel, Visibilidad } from "./tipos";
 export const REGISTRO: DefinicionPanel[] = [
   {
     id: "avisos",
+    grupo: "hogar",
     etiqueta: "Avisos",
     titulo: "Avisos de tu asesor",
     icono: BellIcon,
@@ -42,11 +43,12 @@ export const REGISTRO: DefinicionPanel[] = [
     orden: 10,
     destacado: true,
     insignia: (i) =>
-      i.avisosSinLeer > 0 ? { valor: i.avisosSinLeer, etiqueta: `Avisos: ${i.avisosSinLeer} sin leer` } : null,
+      i.avisosSinLeer > 0 ? { valor: i.avisosSinLeer, etiqueta: `${i.avisosSinLeer} sin leer` } : null,
     cargar: () => import("./avisos"),
   },
   {
     id: "modulos",
+    grupo: "hogar",
     etiqueta: "Módulos",
     titulo: "Módulos del hogar",
     icono: HomeIcon,
@@ -58,15 +60,16 @@ export const REGISTRO: DefinicionPanel[] = [
       i.accionesPendientes > 0
         ? {
             valor: i.accionesPendientes,
-            etiqueta: `Módulos: ${i.accionesPendientes} acciones pendientes de tu confirmación`,
+            etiqueta: `${i.accionesPendientes} pendientes de tu confirmación`,
           }
         : null,
     cargar: () => import("./modulos"),
   },
   {
     id: "simulador",
+    grupo: "impuestos",
     etiqueta: "Simulador",
-    titulo: "Abrir el simulador de IRPF",
+    titulo: "Simulador de IRPF",
     icono: NumberIcon,
     presentacion: "pagina",
     descripcion: "Cambia una cifra y mira cómo cambia tu declaración",
@@ -76,8 +79,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "autonomos",
+    grupo: "impuestos",
     etiqueta: "Autónomos",
-    titulo: "Abrir los cálculos para autónomos",
+    titulo: "Autónomos: tu beneficio y tus pagos",
     icono: BriefcaseIcon,
     presentacion: "pagina",
     descripcion: "Tu beneficio del año y lo que toca pagar cada trimestre (modelos 130 y 303)",
@@ -87,8 +91,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "optimizador",
+    grupo: "impuestos",
     etiqueta: "Optimizar",
-    titulo: "Optimizar mis impuestos",
+    titulo: "Optimizar tus impuestos",
     icono: GraphIcon,
     presentacion: "pagina",
     descripcion: "La mejor combinación de lo que la ley te deja elegir antes de fin de año",
@@ -98,6 +103,7 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "planificar",
+    grupo: "hogar",
     etiqueta: "Planificar",
     titulo: "Planificar el dinero del hogar",
     icono: ProjectRoadmapIcon,
@@ -108,8 +114,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "tareas",
+    grupo: "hogar",
     etiqueta: "Tareas",
-    titulo: "Tareas de varios pasos: renovar documentos, preparar la renta, cambiar de tarifa…",
+    titulo: "Tareas de varios pasos",
     icono: TasklistIcon,
     presentacion: "pagina",
     descripcion: "Objetivos de varios pasos y días; nada se hace fuera de la app sin tu confirmación.",
@@ -118,6 +125,7 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "consejo",
+    grupo: "agentes",
     etiqueta: "Consejo",
     titulo: "Consejo del hogar",
     icono: PeopleIcon,
@@ -128,8 +136,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "investigar",
+    grupo: "agentes",
     etiqueta: "Investigar",
-    titulo: "Investigar una pregunta con fuentes (corpus legal, BOE y, si lo permites, la web)",
+    titulo: "Investigar con fuentes",
     icono: TelescopeIcon,
     presentacion: "pagina",
     descripcion: "Respuestas con fuentes: cada afirmación lleva su cita literal comprobada.",
@@ -138,8 +147,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "navegador",
+    grupo: "agentes",
     etiqueta: "Navegador",
-    titulo: "Agente con navegador: actúa por ti en webs oficiales",
+    titulo: "Navegador: actúa por ti en webs oficiales",
     icono: GlobeIcon,
     presentacion: "pagina",
     descripcion: "Actúa por ti en webs oficiales, con tu sesión y bajo tu control.",
@@ -149,8 +159,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "preferencias",
-    etiqueta: "Preferencias",
-    titulo: "Lo que sé de tus preferencias",
+    grupo: "datos",
+    etiqueta: "Mis preferencias",
+    titulo: "Mis preferencias",
     icono: SlidersIcon,
     presentacion: "dialogo",
     descripcion: "Lo que me has dicho que no quieres, no puedes, prefieres o ya hiciste",
@@ -160,8 +171,9 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "revision",
+    grupo: "agentes",
     etiqueta: "Revisión",
-    titulo: "Revisión de casos: lo que el asistente hizo mal, para que no vuelva a pasar",
+    titulo: "Revisión de errores",
     icono: ChecklistIcon,
     presentacion: "pagina",
     descripcion: "Lo que el asistente hizo mal, para que no vuelva a pasar.",
@@ -170,17 +182,19 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "recuerdos",
-    etiqueta: "Lo que sé de ti",
-    titulo: "Lo que sé de ti",
+    grupo: "datos",
+    etiqueta: "Recuerdos",
+    titulo: "Recuerdos de nuestras conversaciones",
     icono: BookmarkIcon,
     presentacion: "dialogo",
-    descripcion: "Lo que recuerdo de nuestras conversaciones, con tus palabras: puedes verlo, corregirlo o borrarlo",
+    descripcion: "Lo que recuerdo de ti, con tus palabras: puedes verlo, corregirlo o borrarlo",
     ancho: "large",
     orden: 85,
     cargar: () => import("./recuerdos"),
   },
   {
     id: "movil",
+    grupo: "datos",
     etiqueta: "Avisos en el móvil",
     titulo: "Avisos en el móvil",
     icono: DeviceMobileIcon,
@@ -192,15 +206,16 @@ export const REGISTRO: DefinicionPanel[] = [
   },
   {
     id: "expediente",
+    grupo: "datos",
     etiqueta: "Tu expediente",
     titulo: "Tu expediente",
     icono: FileDirectoryIcon,
     presentacion: "pagina",
-    descripcion: "Lo que sé de ti en esta consulta. Corrige o borra cualquier dato: las respuestas dependen de ellos",
+    descripcion: "Los datos de esta consulta. Corrige o borra cualquier dato: las respuestas dependen de ellos",
     orden: 100,
     destacado: true,
     insignia: (i) =>
-      i.datosEnExpediente > 0 ? { valor: i.datosEnExpediente, etiqueta: `${i.datosEnExpediente} datos` } : null,
+      i.datosEnExpediente > 0 ? { valor: i.datosEnExpediente, etiqueta: `${i.datosEnExpediente} datos guardados` } : null,
     cargar: () => import("./expediente"),
   },
 ];

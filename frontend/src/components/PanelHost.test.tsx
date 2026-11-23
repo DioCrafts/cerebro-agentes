@@ -23,12 +23,33 @@ function Legado({ open, onClose }: PropsPanel) {
   );
 }
 
+// Like the old Autónomos panel: figures, then optional data folded in a <details> as the last stop.
+function LegadoConDetalles({ open }: PropsPanel) {
+  if (!open) return null;
+  return (
+    <div role="dialog" aria-label="Autónomos antiguo">
+      <label>
+        Ingresos
+        <input />
+      </label>
+      <details>
+        <summary>Más datos (opcional)</summary>
+        <label>
+          Gastos
+          <input />
+        </label>
+      </details>
+    </div>
+  );
+}
+
 const panel = (id: string, extra: Partial<DefinicionPanel>, componente: (p: PropsPanel) => React.ReactNode): DefinicionPanel => ({
   id,
   etiqueta: id,
   titulo: `Título de ${id}`,
   icono: BellIcon,
   orden: 1,
+  grupo: "hogar",
   cargar: () => Promise.resolve({ default: componente }),
   ...extra,
 });
@@ -37,6 +58,7 @@ const PANELES = [
   panel("hoja", { presentacion: "dialogo", descripcion: "Una hoja lateral" }, () => <Escribible />),
   panel("pagina", { presentacion: "pagina", icono: FileIcon }, () => <p>Contenido de la página</p>),
   panel("antiguo", { icono: GearIcon }, Legado),
+  panel("detalles", { icono: GearIcon }, LegadoConDetalles),
 ];
 
 const ctx = {} as ContextoPanel;
@@ -76,5 +98,28 @@ describe("PanelHost", () => {
     await act(() => Promise.resolve());
     expect(await screen.findByRole("dialog", { name: "Panel antiguo" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Cerrar antiguo" })).toHaveFocus();
+  });
+
+  it("keeps Tab inside a legacy dialog whose last stop is a <summary>", async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <PanelHost zona="superpuesto" paneles={PANELES} abierto="detalles" ctx={ctx} onClose={() => undefined} />
+        <button type="button">Fuera del panel</button>
+      </>,
+    );
+    await act(() => Promise.resolve());
+    const ingresos = await screen.findByRole("textbox", { name: "Ingresos" });
+    expect(ingresos).toHaveFocus();
+    const resumen = screen.getByText("Más datos (opcional)");
+
+    // From the summary (the last stop: «Gastos» is folded away), Tab goes back to the first field…
+    resumen.focus();
+    await user.tab();
+    expect(ingresos).toHaveFocus();
+    // …and Shift+Tab from the first field goes to the summary, never to the page behind.
+    await user.tab({ shift: true });
+    expect(resumen).toHaveFocus();
+    expect(screen.getByRole("button", { name: "Fuera del panel" })).not.toHaveFocus();
   });
 });

@@ -1,4 +1,4 @@
-// The shell's global header (ui/CabeceraApp): menu (phone), mark, "HaciendaGPT / conversation", the
+// The shell's global header (ui/CabeceraApp): menu (phone), mark, "Cerebro / conversation", the
 // command palette (/ or Ctrl+K), theme, notices and account; under it, the section tabs (PestanasNavegacion,
 // GitHub's UnderlineNav): «Conversación» and every panel of the registry. A page panel's tab is the current
 // one while it is shown; a sheet opens over the conversation and leaves the tab where it was. The tabs that
@@ -8,6 +8,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Theme } from "../lib/theme";
 import type { DefinicionPanel, Insignias } from "../paneles/tipos";
+import { GRUPOS } from "../paneles/tipos";
 import type { Comando, Pestana } from "../ui";
 import {
   ActionList,
@@ -21,6 +22,7 @@ import {
   PaletaComandos,
   SeparadorCabecera,
   PestanasNavegacion,
+  VisuallyHidden,
 } from "../ui";
 import {
   BellIcon,
@@ -119,6 +121,9 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
       href: enlace(p.id),
       icono: p.icono,
       contador: p.insignia?.(insignias)?.valor,
+      contadorEtiqueta: p.insignia?.(insignias)?.etiqueta,
+      grupo: GRUPOS.find((g) => g.id === p.grupo)?.nombre,
+      destacada: p.destacado === true,
       actual: pagina?.id === p.id,
       alElegir: () => onAbrir(p.id),
     })),
@@ -134,7 +139,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
           </span>
         }
         marca={<Monogram size={32} />}
-        contexto={<Migas raiz="HaciendaGPT" actual={conTitulo ? title : undefined} />}
+        contexto={<Migas raiz="Cerebro" actual={conTitulo ? title : undefined} />}
         busqueda={
           <BotonComandos
             onClick={() => {
@@ -163,7 +168,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
           </>
         }
       >
-        <PestanasNavegacion aria-label="Secciones" pestanas={pestanas} />
+        <PestanasNavegacion aria-label="Secciones" pestanas={pestanas} grupos={GRUPOS.map((g) => g.nombre)} />
       </CabeceraApp>
       <PaletaComandos open={paleta} onClose={() => setPaleta(false)} comandos={comandos} returnFocusRef={disparadorPaleta} />
     </>
@@ -174,12 +179,10 @@ function MenuCuenta({ account }: { account: AccountControls }) {
   return (
     <ActionMenu>
       <ActionMenu.Anchor>
-        <button
-          type="button"
-          aria-label={`Tu cuenta (${account.email})`}
-          className="flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2"
-        >
+        {/* Named by its (hidden) text, not aria-label: the initials it shows are decoration (WCAG 2.5.3). */}
+        <button type="button" className="flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2">
           <Iniciales texto={account.email} tamano={32} />
+          <VisuallyHidden>{`Tu cuenta (${account.email})`}</VisuallyHidden>
         </button>
       </ActionMenu.Anchor>
       <ActionMenu.Overlay width="medium">
