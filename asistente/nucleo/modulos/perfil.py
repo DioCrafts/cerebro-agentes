@@ -109,7 +109,7 @@ def normalizar_valor(hecho: HechoModulo, crudo: Any) -> str | float | bool:
         raise HechoInvalidoError(f"«{hecho.etiqueta}»: la validación del módulo devolvió un valor de otro tipo.")
     if isinstance(valor, str) and not valor.strip():
         raise HechoInvalidoError(f"«{hecho.etiqueta}» no puede quedar vacío.")
-    if not isinstance(valor, str | float | bool):  # ya descartado arriba; lo repite para que mypy estreche el tipo
+    if not isinstance(valor, str | float | bool):  # ya descartado arriba; lo repite para estrechar el tipo
         raise HechoInvalidoError(f"«{hecho.etiqueta}»: la validación del módulo devolvió un valor de otro tipo.")
     return valor
 
