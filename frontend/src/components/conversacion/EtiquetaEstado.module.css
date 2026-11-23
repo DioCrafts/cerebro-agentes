@@ -1,0 +1,23 @@
+/* StateLabel in the colours Primer only offers through issue/PR statuses. The doubled class outweighs
+   StateLabel's own `[data-status]` rule (same specificity otherwise, and load order is not guaranteed). */
+.atencion.atencion {
+  background-color: var(--bgColor-attention-emphasis);
+  box-shadow: var(--boxShadow-thin, inset 0 0 0 1px) var(--borderColor-attention-emphasis);
+}
+.peligro.peligro {
+  background-color: var(--bgColor-danger-emphasis);
+  box-shadow: var(--boxShadow-thin, inset 0 0 0 1px) var(--borderColor-danger-emphasis);
+}
+.acento.acento {
+  background-color: var(--bgColor-accent-emphasis);
+  box-shadow: var(--boxShadow-thin, inset 0 0 0 1px) var(--borderColor-accent-emphasis);
+}
+.neutro.neutro {
+  background-color: var(--bgColor-neutral-emphasis);
+  box-shadow: var(--boxShadow-thin, inset 0 0 0 1px) var(--borderColor-neutral-emphasis);
+}
+.visual {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-right: var(--base-size-4);
+}

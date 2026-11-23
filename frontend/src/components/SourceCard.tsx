@@ -1,28 +1,26 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// Source card: one per fragment the answer cites. Shows who issued it, when,
-// whether it binds the Administration, and the literal passage — and is the
-// jump target of the [F#] chips in the answer.
-
-import { Book, Calculator, ExternalLink, Gavel, Landmark, Library, ScrollText } from "lucide-react";
-import clsx from "clsx";
+// Source card: one per fragment the answer cites. Shows who issued it, when, whether it binds the Administration,
+// and the literal passage — and is the jump target of the [F#] chips in the answer. A Box with its header (fragment
+// id, title, labels) and the quoted passage in the body.
 
 import type { Citation } from "../api";
 import { authorityLabel, classifySource, formatDate, hostLabel, isHttpUrl, sourceAnchorId } from "../lib/presentation";
+import { Caja, CounterLabel, Label, Link } from "../ui";
+import { BookIcon, BookmarkIcon, FileIcon, LawIcon, LinkExternalIcon, NumberIcon, QuoteIcon } from "../ui/iconos";
 
 const SOURCE_ICON = {
-  boe: Landmark, // legislation
-  manual: Book, // AEAT handbook / informative page
-  dgt: ScrollText, // DGT binding consulta
-  court: Gavel, // TEAC / TS / TC
-  calc: Calculator, // deterministic IRPF computation
-  other: Library,
+  boe: FileIcon, // legislation
+  manual: BookIcon, // AEAT handbook / informative page
+  dgt: QuoteIcon, // DGT binding consulta
+  court: LawIcon, // TEAC / TS / TC
+  calc: NumberIcon, // deterministic IRPF computation
+  other: BookmarkIcon,
 } as const;
 
-// Only statuses that should make the reader cautious get a badge.
-const VIGENCIA_BADGE: Record<string, { label: string; cls: string }> = {
-  superada: { label: "Superada", cls: "bg-risk-high-bg text-risk-high-fg" },
-  discutida: { label: "Criterio discutido", cls: "bg-grounding-uncited-bg text-grounding-uncited-fg" },
-  matizada: { label: "Matizada", cls: "bg-grounding-uncited-bg text-grounding-uncited-fg" },
+// Only statuses that should make the reader cautious get a label.
+const VIGENCIA_LABEL: Record<string, { label: string; variant: "danger" | "attention" }> = {
+  superada: { label: "Superada", variant: "danger" },
+  discutida: { label: "Criterio discutido", variant: "attention" },
+  matizada: { label: "Matizada", variant: "attention" },
 };
 
 interface SourceCardProps {
@@ -32,7 +30,7 @@ interface SourceCardProps {
 }
 
 function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
-  const vigencia = citation.vigencia ? VIGENCIA_BADGE[citation.vigencia] : undefined;
+  const vigencia = citation.vigencia ? VIGENCIA_LABEL[citation.vigencia] : undefined;
   const Icon = SOURCE_ICON[classifySource(citation)];
   const issuer = authorityLabel(citation.authority);
   const date = formatDate(citation.date);
@@ -40,65 +38,45 @@ function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
   const section = citation.section && citation.section !== "general" && citation.section !== citation.title;
 
   return (
-    <article
+    <Caja
+      as="article"
+      aria-label={citation.fragment_id ? `${citation.fragment_id}: ${citation.title}` : citation.title}
       id={citation.fragment_id ? sourceAnchorId(scope, citation.fragment_id) : undefined}
-      className={clsx(
-        "flex scroll-mt-24 gap-3 rounded-xl border bg-surface p-4 shadow-card transition-colors sm:gap-4",
-        highlighted ? "animate-flash border-primary" : "border-line",
-      )}
+      className={highlighted ? "scroll-mt-24 animate-flash border-border-accent!" : "scroll-mt-24"}
     >
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
-        <Icon size={20} aria-hidden />
-      </div>
-      <div className="min-w-0 flex-1">
-        <h4 className="font-semibold leading-snug text-ink">
-          {citation.fragment_id && (
-            <span className="mr-2 rounded-sm bg-primary-soft px-1.5 py-0.5 font-mono text-[12px] text-primary-dark">
-              {citation.fragment_id}
-            </span>
-          )}
+      <Caja.Cabecera className="flex-wrap py-2!">
+        <Icon className="shrink-0 text-fg-muted" />
+        {citation.fragment_id && <Label variant="accent" className="font-mono">{citation.fragment_id}</Label>}
+        <h5 className="m-0 min-w-0 flex-1 text-sm font-semibold">
           {citation.title}
-          {section && <span className="font-normal text-ink-soft"> · {citation.section}</span>}
-        </h4>
-        <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12.5px] text-muted">
-          {meta && <span>{meta}</span>}
-          {citation.binding === true && (
-            <span className="rounded-pill bg-grounding-cited-bg px-2 py-px text-[11px] font-semibold text-grounding-cited-fg">
-              Vinculante
-            </span>
-          )}
-          {vigencia && (
-            <span title={citation.vigencia_resumen ?? undefined} className={clsx("rounded-pill px-2 py-px text-[11px] font-semibold", vigencia.cls)}>
-              {vigencia.label}
-            </span>
-          )}
-          {citation.binding === false && (
-            <span className="rounded-pill bg-grounding-abstain-bg px-2 py-px text-[11px] font-semibold text-grounding-abstain-fg">
-              No vinculante
-            </span>
-          )}
-        </p>
-        {vigencia && citation.vigencia_resumen && (
-          <p className="mt-1 text-[12.5px] text-ink-soft">{citation.vigencia_resumen}</p>
+          {section && <span className="font-normal text-fg-muted"> · {citation.section}</span>}
+        </h5>
+      </Caja.Cabecera>
+      <Caja.Cuerpo className="flex flex-col gap-2">
+        {(meta || citation.binding != null || vigencia) && (
+          <p className="m-0 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+            {meta && <span>{meta}</span>}
+            {citation.binding === true && <Label variant="success">Vinculante</Label>}
+            {vigencia && (
+              <Label variant={vigencia.variant} title={citation.vigencia_resumen ?? undefined}>
+                {vigencia.label}
+              </Label>
+            )}
+            {citation.binding === false && <Label variant="secondary">No vinculante</Label>}
+          </p>
         )}
+        {vigencia && citation.vigencia_resumen && <p className="m-0 text-xs text-fg-default">{citation.vigencia_resumen}</p>}
         {citation.snippet && (
-          <blockquote className="mt-2 border-l-2 border-line pl-3 text-[13px] italic leading-relaxed text-ink-soft">
-            {citation.snippet}
-          </blockquote>
+          <blockquote className="m-0 border-l-4 border-border-default pl-3 text-fg-muted">{citation.snippet}</blockquote>
         )}
         {isHttpUrl(citation.locator) && (
-          <a
-            href={citation.locator}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1 text-[12.5px] font-semibold text-primary-dark hover:underline"
-          >
+          <Link href={citation.locator} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 self-start text-xs">
             Abrir en {hostLabel(citation.locator)}
-            <ExternalLink size={13} aria-hidden />
-          </a>
+            <LinkExternalIcon size={12} />
+          </Link>
         )}
-      </div>
-    </article>
+      </Caja.Cuerpo>
+    </Caja>
   );
 }
 
@@ -111,20 +89,18 @@ interface SourceCardListProps {
 export function SourceCardList({ citations, scope, highlightedId }: SourceCardListProps) {
   if (citations.length === 0) return null;
   return (
-    <section className="mt-5" aria-label="Fuentes citadas">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-        Fuentes citadas · {citations.length}
-      </h3>
-      <div className="flex flex-col gap-2.5">
-        {citations.map((c, i) => (
-          <SourceCard
-            key={c.fragment_id ?? `${c.locator}-${i}`}
-            citation={c}
-            scope={scope}
-            highlighted={!!c.fragment_id && highlightedId === sourceAnchorId(scope, c.fragment_id)}
-          />
-        ))}
-      </div>
+    <section className="mt-5 flex flex-col gap-2" aria-label="Fuentes citadas">
+      <h4 className="m-0 flex items-center gap-2 text-sm font-semibold text-fg-default">
+        Fuentes citadas <CounterLabel>{citations.length}</CounterLabel>
+      </h4>
+      {citations.map((c, i) => (
+        <SourceCard
+          key={c.fragment_id ?? `${c.locator}-${i}`}
+          citation={c}
+          scope={scope}
+          highlighted={!!c.fragment_id && highlightedId === sourceAnchorId(scope, c.fragment_id)}
+        />
+      ))}
     </section>
   );
 }

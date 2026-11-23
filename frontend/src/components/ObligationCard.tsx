@@ -1,24 +1,13 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// Obligation card: a tax obligation the rules engine thinks may apply to the
-// user, with the thing people actually need first — the deadline.
-
-import { CalendarClock } from "lucide-react";
-import clsx from "clsx";
+// Obligation card: a tax obligation the rules engine thinks may apply to the user, with the thing people actually
+// need first — the deadline. A Box: title and risk Label in the header, deadline and legal basis in the body, the
+// certainty in the footer.
 
 import type { ObligationCandidate } from "../api";
 import { RISK_LABEL, daysUntil, formatDate, missingFactsSentence, riskBucket } from "../lib/presentation";
+import { Caja, CounterLabel, Label } from "../ui";
+import { CalendarIcon } from "../ui/iconos";
 
-const BORDER_BY_RISK = {
-  high: "border-l-risk-high-fg",
-  medium: "border-l-risk-medium-fg",
-  low: "border-l-risk-low-fg",
-} as const;
-
-const BADGE_BY_RISK = {
-  high: "bg-risk-high-bg text-risk-high-fg",
-  medium: "bg-risk-medium-bg text-risk-medium-fg",
-  low: "bg-risk-low-bg text-risk-low-fg",
-} as const;
+const VARIANTE_RIESGO = { high: "danger", medium: "attention", low: "secondary" } as const;
 
 function deadlineCopy(iso: string): { text: string; urgent: boolean } {
   const days = daysUntil(iso);
@@ -37,45 +26,43 @@ export function ObligationCard({ obligation }: { obligation: ObligationCandidate
   const deadline = obligation.due_date ? deadlineCopy(obligation.due_date) : null;
 
   return (
-    <article className={clsx("rounded-xl border border-l-[5px] border-line bg-surface px-4 py-4 shadow-card sm:px-5", BORDER_BY_RISK[risk])}>
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <h4 className="text-[16px] font-bold text-ink">{obligation.title}</h4>
-        <span className={clsx("shrink-0 rounded-pill px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.06em]", BADGE_BY_RISK[risk])}>
-          {RISK_LABEL[risk]}
-        </span>
-      </div>
-      <p className="mt-1 text-[13.5px] leading-snug text-ink-soft">{obligation.description}</p>
-
-      {deadline && (
-        <div className="mt-3">
-          <p className={clsx("flex items-center gap-2 text-[13.5px] font-semibold", deadline.urgent ? "text-risk-high-fg" : "text-ink")}>
-            <CalendarClock size={16} aria-hidden />
-            Fecha límite: {deadline.text}
-          </p>
-          {obligation.due_date_note && <p className="mt-1 pl-6 text-[12.5px] leading-snug text-muted">{obligation.due_date_note}</p>}
-        </div>
-      )}
-
-      {(missing || sources.length > 0) && (
-        <dl className="mt-3 space-y-1.5 border-t border-line pt-3 text-[13px]">
-          {missing && (
-            <div>
-              <dt className="sr-only">Datos pendientes</dt>
-              <dd className="text-ink-soft">{missing}</dd>
-            </div>
-          )}
-          {sources.length > 0 && (
-            <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
-              <dt className="shrink-0 text-muted">Base normativa</dt>
-              <dd className="text-ink-soft">{sources.join(" · ")}</dd>
-            </div>
-          )}
-        </dl>
-      )}
-      <p className="mt-3 text-[12px] text-muted">
+    <Caja as="article" aria-label={obligation.title}>
+      <Caja.Cabecera className="flex-wrap py-2!">
+        <h5 className="m-0 min-w-0 flex-1 text-sm font-semibold">{obligation.title}</h5>
+        <Label variant={VARIANTE_RIESGO[risk]}>{RISK_LABEL[risk]}</Label>
+      </Caja.Cabecera>
+      <Caja.Cuerpo className="flex flex-col gap-3">
+        <p className="m-0 text-fg-default">{obligation.description}</p>
+        {deadline && (
+          <div>
+            <p className={`m-0 flex items-center gap-2 font-semibold ${deadline.urgent ? "text-fg-danger" : "text-fg-default"}`}>
+              <CalendarIcon />
+              Fecha límite: {deadline.text}
+            </p>
+            {obligation.due_date_note && <p className="m-0 mt-1 pl-6 text-xs text-fg-muted">{obligation.due_date_note}</p>}
+          </div>
+        )}
+        {(missing || sources.length > 0) && (
+          <dl className="m-0 flex flex-col gap-1 border-t border-border-muted pt-3">
+            {missing && (
+              <div>
+                <dt className="sr-only">Datos pendientes</dt>
+                <dd className="m-0 text-fg-default">{missing}</dd>
+              </div>
+            )}
+            {sources.length > 0 && (
+              <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
+                <dt className="shrink-0 text-fg-muted">Base normativa</dt>
+                <dd className="m-0 text-fg-default">{sources.join(" · ")}</dd>
+              </div>
+            )}
+          </dl>
+        )}
+      </Caja.Cuerpo>
+      <Caja.Pie className="py-2! text-xs text-fg-muted">
         Indicio detectado a partir de tus datos (certeza estimada {Math.round(obligation.confidence * 100)} %). Confírmalo antes de actuar.
-      </p>
-    </article>
+      </Caja.Pie>
+    </Caja>
   );
 }
 
@@ -86,15 +73,14 @@ interface ObligationCardListProps {
 export function ObligationCardList({ obligations }: ObligationCardListProps) {
   if (obligations.length === 0) return null;
   return (
-    <section className="mt-6" aria-label="Obligaciones detectadas">
-      <h3 className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-        {obligations.length === 1 ? "Posible obligación" : `Posibles obligaciones · ${obligations.length}`}
-      </h3>
-      <div className="flex flex-col gap-2.5">
-        {obligations.map((o) => (
-          <ObligationCard key={o.obligation_id} obligation={o} />
-        ))}
-      </div>
+    <section className="mt-6 flex flex-col gap-2" aria-label="Obligaciones detectadas">
+      <h4 className="m-0 flex items-center gap-2 text-sm font-semibold text-fg-default">
+        {obligations.length === 1 ? "Posible obligación" : "Posibles obligaciones"}
+        {obligations.length > 1 && <CounterLabel>{obligations.length}</CounterLabel>}
+      </h4>
+      {obligations.map((o) => (
+        <ObligationCard key={o.obligation_id} obligation={o} />
+      ))}
     </section>
   );
 }

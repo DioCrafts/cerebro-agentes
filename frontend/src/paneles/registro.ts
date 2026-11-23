@@ -107,8 +107,10 @@ export const REGISTRO: DefinicionPanel[] = [
   {
     id: "consejo",
     etiqueta: "Consejo",
-    titulo: "Consejo del hogar: decisiones difíciles estudiadas por varias IA, por separado y de forma anónima",
+    titulo: "Consejo del hogar",
     icono: PeopleIcon,
+    presentacion: "pagina",
+    descripcion: "Decisiones difíciles estudiadas por varias IA, por separado y de forma anónima",
     orden: 66,
     cargar: () => import("./consejo"),
   },

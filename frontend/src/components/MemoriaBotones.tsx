@@ -1,13 +1,17 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
-// «No me interesa» / «Ya lo hice» / «Recuérdamelo más tarde» on a notice or on a lever of the
-// optimiser's plan. The answer is remembered (asistente/nucleo/memoria): the assistant will not propose it
-// again unless something important changes, and then only once, saying what changed.
+// «No me interesa» / «Ya lo hice» / «Recuérdamelo más tarde» on a notice or on a lever of the optimiser's plan. The
+// answer is remembered (asistente/nucleo/memoria): the assistant will not propose it again unless something
+// important changes, and then only once, saying what changed.
+//
+// An ActionMenu «Tu respuesta» (GitHub's menu on a comment); the chosen answer opens a small form below it to add a
+// reason or pick when to be reminded, and nothing is saved until «Guardar».
 
-import { AlarmClock, CheckCheck, ThumbsDown } from "lucide-react";
 import { useState } from "react";
 
-import { errorMessage, isoEnDias } from "../lib/memoria";
 import { crearDecision, responderAviso, type BotonAviso, type DecisionResponse } from "../apiMemoria";
+import { errorMessage, isoEnDias } from "../lib/memoria";
+import { ActionList, ActionMenu, Button, Flash, FormControl, Select, TextInput } from "../ui";
+import type { Icon } from "../ui/iconos";
+import { CheckIcon, ClockIcon, ReplyIcon, ThumbsdownIcon } from "../ui/iconos";
 
 interface Palanca {
   id: string;
@@ -25,10 +29,10 @@ interface MemoriaBotonesProps {
   onDone: (resp: DecisionResponse) => void;
 }
 
-const BOTONES: Array<{ boton: BotonAviso; label: string; icon: typeof ThumbsDown }> = [
-  { boton: "no_me_interesa", label: "No me interesa", icon: ThumbsDown },
-  { boton: "ya_lo_hice", label: "Ya lo hice", icon: CheckCheck },
-  { boton: "recuerdamelo", label: "Recuérdamelo más tarde", icon: AlarmClock },
+const BOTONES: Array<{ boton: BotonAviso; label: string; icon: Icon }> = [
+  { boton: "no_me_interesa", label: "No me interesa", icon: ThumbsdownIcon },
+  { boton: "ya_lo_hice", label: "Ya lo hice", icon: CheckIcon },
+  { boton: "recuerdamelo", label: "Recuérdamelo más tarde", icon: ClockIcon },
 ];
 
 const PLAZOS: Array<{ dias: number; label: string }> = [
@@ -45,6 +49,7 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
   const [error, setError] = useState<string | null>(null);
 
   const botones = palanca ? BOTONES.filter((b) => b.boton !== "recuerdamelo") : BOTONES;
+  const elegido = BOTONES.find((b) => b.boton === abierto);
 
   async function guardar() {
     if (!abierto) return;
@@ -76,69 +81,80 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
   }
 
   return (
-    <div className="mt-2">
-      <div className="flex flex-wrap gap-1.5" role="group" aria-label="Tu respuesta a esta propuesta">
-        {botones.map(({ boton, label, icon: Icon }) => (
-          <button
-            key={boton}
-            type="button"
-            onClick={() => setAbierto(abierto === boton ? null : boton)}
-            aria-pressed={abierto === boton}
-            className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft transition hover:border-primary hover:text-primary-dark aria-pressed:border-primary aria-pressed:text-primary-dark"
-          >
-            <Icon size={13} aria-hidden />
-            {label}
-          </button>
-        ))}
+    <div className="flex flex-col gap-2">
+      <div>
+        <ActionMenu>
+          <ActionMenu.Button size="small" leadingVisual={elegido?.icon ?? ReplyIcon}>
+            {elegido ? elegido.label : "Tu respuesta"}
+          </ActionMenu.Button>
+          <ActionMenu.Overlay width="medium">
+            <ActionList selectionVariant="single" aria-label="Tu respuesta a esta propuesta">
+              {botones.map(({ boton, label, icon: Icono }) => (
+                <ActionList.Item key={boton} selected={abierto === boton} onSelect={() => setAbierto(boton)}>
+                  <ActionList.LeadingVisual>
+                    <Icono />
+                  </ActionList.LeadingVisual>
+                  {label}
+                </ActionList.Item>
+              ))}
+            </ActionList>
+          </ActionMenu.Overlay>
+        </ActionMenu>
       </div>
       {abierto && (
-        <div className="mt-2 space-y-2 rounded-lg border border-line bg-paper px-3 py-2.5">
+        <form
+          aria-label={elegido?.label}
+          className="flex flex-col gap-2 rounded-medium border border-border-default bg-canvas-muted p-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void guardar();
+          }}
+        >
           {abierto === "recuerdamelo" ? (
-            <label className="block text-[12.5px] text-ink-soft">
-              Vuelve a avisarme{" "}
-              <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="rounded-sm border border-line bg-surface px-1.5 py-0.5 text-[12.5px] text-ink">
+            <FormControl>
+              <FormControl.Label>Vuelve a avisarme</FormControl.Label>
+              <Select size="small" value={String(dias)} onChange={(e) => setDias(Number(e.target.value))}>
                 {PLAZOS.map((p) => (
-                  <option key={p.dias} value={p.dias}>
+                  <Select.Option key={p.dias} value={String(p.dias)}>
                     {p.label}
-                  </option>
+                  </Select.Option>
                 ))}
-              </select>
-            </label>
+              </Select>
+              <FormControl.Caption>Hasta entonces no te lo volveré a proponer. Puedes cambiarlo en «Lo que sé de tus preferencias».</FormControl.Caption>
+            </FormControl>
           ) : (
-            <label className="block text-[12.5px] text-ink-soft">
-              {abierto === "no_me_interesa" ? "¿Por qué? (opcional, con tus palabras)" : "¿Algo que deba saber? (opcional)"}
-              <input
-                type="text"
+            <FormControl>
+              <FormControl.Label>{abierto === "no_me_interesa" ? "¿Por qué? (opcional, con tus palabras)" : "¿Algo que deba saber? (opcional)"}</FormControl.Label>
+              <TextInput
+                block
+                size="small"
                 value={razon}
                 maxLength={300}
                 onChange={(e) => setRazon(e.target.value)}
                 placeholder={abierto === "no_me_interesa" ? "p. ej. tengo permanencia hasta marzo" : ""}
-                className="mt-1 block w-full rounded-sm border border-line bg-surface px-2 py-1 text-[13px] text-ink"
               />
-            </label>
+              <FormControl.Caption>
+                {abierto === "no_me_interesa"
+                  ? "No te lo volveré a proponer durante un año, salvo que cambie algo importante (y entonces solo una vez, diciéndote qué ha cambiado)."
+                  : "Lo tendré en cuenta y no te lo volveré a proponer en los próximos meses."}{" "}
+                Puedes cambiarlo en «Lo que sé de tus preferencias».
+              </FormControl.Caption>
+            </FormControl>
           )}
-          <p className="text-[11.5px] leading-snug text-muted">
-            {abierto === "recuerdamelo"
-              ? "Hasta entonces no te lo volveré a proponer."
-              : abierto === "no_me_interesa"
-                ? "No te lo volveré a proponer durante un año, salvo que cambie algo importante (y entonces solo una vez, diciéndote qué ha cambiado)."
-                : "Lo tendré en cuenta y no te lo volveré a proponer en los próximos meses."}{" "}
-            Puedes cambiarlo en «Lo que sé de tus preferencias».
-          </p>
           <div className="flex gap-2">
-            <button type="button" onClick={() => void guardar()} disabled={enviando} className="rounded-lg bg-primary px-2.5 py-1 text-[12.5px] font-semibold text-white disabled:opacity-50">
-              {enviando ? "Guardando…" : "Guardar"}
-            </button>
-            <button type="button" onClick={() => setAbierto(null)} className="rounded-lg px-2.5 py-1 text-[12.5px] font-semibold text-ink-soft hover:bg-line/60">
+            <Button type="submit" size="small" variant="primary" disabled={enviando} loading={enviando}>
+              Guardar
+            </Button>
+            <Button size="small" onClick={() => setAbierto(null)}>
               Cancelar
-            </button>
+            </Button>
           </div>
-        </div>
+        </form>
       )}
       {error && (
-        <p role="alert" className="mt-1.5 text-[12px] text-risk-high-fg">
+        <Flash variant="danger" role="alert">
           {error}
-        </p>
+        </Flash>
       )}
     </div>
   );
