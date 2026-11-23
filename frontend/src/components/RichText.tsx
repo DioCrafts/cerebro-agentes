@@ -72,7 +72,7 @@ function parseBlocks(text: string): Block[] {
 const INLINE_RE = /\[\s*(F\d+(?:\s*[,;y]\s*F\d+)*)\s*\]|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|`([^`]+)`/gi;
 
 export function RichText({ text, citations = [], onCite, draft = false }: RichTextProps) {
-  const byId = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id as string, c]));
+  const byId = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id, c]));
 
   function citeChip(rawId: string, key: string): ReactNode {
     const id = rawId.toUpperCase();

@@ -5,203 +5,29 @@
 
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-export type EstadoSesion =
-  | "pendiente_confirmacion"
-  | "en_cola"
-  | "instruyendo"
-  | "deliberando"
-  | "sintetizando"
-  | "terminada"
-  | "fallida"
-  | "cancelada"
-  | "rechazada";
-
-export type Consenso = "unanime" | "mayoria" | "dividido" | "insuficiente";
-
-export interface PasoProgreso {
-  tipo: "fase" | "miembro" | "aviso";
-  fase: string | null;
-  estado: string;
-  miembro_id: string | null;
-  en: string;
-}
-
-export interface CifraConsejo {
-  id: string;
-  especialista: string;
-  concepto: string;
-  valor: string;
-  unidad?: string | null;
-  fragment_id?: string | null;
-  herramienta?: string | null;
-  ejercicio?: number | null;
-  literal: string;
-}
-
-export interface OpcionConsejo {
-  id: string;
-  descripcion: string;
-}
-
-export interface HechoExpediente {
-  clave: string;
-  texto: string;
-  origen: "expediente" | "especialista" | "memoria" | "decision_usuario" | "usuario";
-  referencia?: string | null;
-}
-
-export interface ExpedienteConsejo {
-  id: string;
-  pregunta: string;
-  opciones: OpcionConsejo[];
-  hechos: HechoExpediente[];
-  cifras: CifraConsejo[];
-  fragment_ids: string[];
-  perfil_minimo: Record<string, string>;
-  restricciones: string[];
-  incertidumbres: string[];
-  preferencia_usuario?: string | null;
-  anonimizado: string[];
-}
-
-export interface PropuestaConsejo {
-  miembro_id: string;
-  ronda: 1 | 2;
-  recomendacion: string;
-  condicion?: string | null;
-  confianza: number;
-  razonamiento: string;
-  supuestos: string[];
-  riesgos: string[];
-  que_me_haria_cambiar: string[];
-  cifras_usadas: string[];
-  cambios?: string | null;
-}
-
-export interface CriticaConsejo {
-  evaluador_id: string;
-  etiqueta: string;
-  fortalezas: string[];
-  debilidades: string[];
-  errores: { tipo: string; texto: string }[];
-  puntuacion: { rigor: number; completitud: number; prudencia: number; claridad: number; ajuste_al_caso: number };
-}
-
-export interface RankingConsejo {
-  evaluador_id: string;
-  orden: string[];
-}
-
-export interface RolConsejo {
-  id: string;
-  nombre: string;
-  mandato: string;
-  proposito: string;
-  familia_preferida?: string | null;
-}
-
-export interface MiembroConsejo {
-  rol: RolConsejo;
-  proveedor: string;
-  modelo: string;
-}
-
-export interface PosturaOpcion {
-  opcion_id: string;
-  a_favor: string[];
-  en_contra: string[];
-  miembros: string[];
-}
-
-export interface AtribucionCifraConsejo {
-  literal: string;
-  valor: string;
-  cifra_id?: string | null;
-  especialista?: string | null;
-  fragment_id?: string | null;
-  del_usuario: boolean;
-}
-
-export interface Dictamen {
-  sesion_id: string;
-  recomendacion: string;
-  condicion?: string | null;
-  confianza: number;
-  consenso: Consenso;
-  acuerdo?: number | null;
-  resumen: string;
-  posturas: PosturaOpcion[];
-  disenso?: string | null;
-  supuestos_decisivos: string[];
-  sensibilidad: string[];
-  datos_que_resolverian: string[];
-  puerta?: { violaciones: { tipo: string; literal: string; detalle: string }[]; atribuciones: AtribucionCifraConsejo[] } | null;
-  miembros: MiembroConsejo[];
-  autoria: Record<string, string>;
-  avisos: string[];
-}
-
-export interface CosteSesion {
-  llamadas: number;
-  usd: string;
-  tokens_entrada: number;
-  tokens_salida: number;
-}
-
-export interface ResumenSesion {
-  id: string;
-  estado: EstadoSesion;
-  fase: string | null;
-  pregunta_usuario: string;
-  creada: string;
-  actualizada: string;
-  estimacion_usd: string;
-  tope_usd: string;
-  coste_usd: string;
-  minutos_estimados: number;
-  origen: string;
-  recomendacion: string | null;
-  consenso: string | null;
-  confianza: number | null;
-  /** Why the ruling is partial (the session stopped early: the cost cap, the budget); null when complete. */
-  parcial: string | null;
-  notificacion_id: string | null;
-  error: string | null;
-}
-
-export interface SesionConsejo extends ResumenSesion {
-  miembros: string[];
-  motivo: string;
-  opciones_sugeridas: string[];
-  precios_conocidos: boolean;
-  llamadas_estimadas: number;
-  desglose_usd: Record<string, string>;
-  progreso: PasoProgreso[];
-  coste: CosteSesion;
-  expediente: ExpedienteConsejo | null;
-  propuestas: PropuestaConsejo[];
-  criticas: CriticaConsejo[];
-  rankings: RankingConsejo[];
-  dictamen: Dictamen | null;
-  autoria_revelada: boolean;
-  confirmada_ahora?: boolean | null;
-}
-
-export interface ListaSesiones {
-  case_id: string;
-  disponible: boolean;
-  sesiones: ResumenSesion[];
-}
-
-export interface Deteccion {
-  dificil: boolean;
-  motivos: string[];
-  opciones_detectadas: string[];
-  puntuacion: number;
-  pedido_por_usuario: boolean;
-  factual: boolean;
-}
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts).
+export type SesionConsejo = Respuesta<"/cases/{case_id}/consejo/{sesion_id}", "get">;
+export type ListaSesiones = Respuesta<"/cases/{case_id}/consejo", "get">;
+export type ResumenSesion = ListaSesiones["sesiones"][number];
+export type Deteccion = Respuesta<"/cases/{case_id}/consejo/detectar", "post">;
+export type EstadoSesion = SesionConsejo["estado"];
+export type PasoProgreso = Esquemas["PasoProgreso"];
+export type CosteSesion = Esquemas["CosteSesion"];
+export type ExpedienteConsejo = Esquemas["ExpedienteConsejo"];
+export type CifraConsejo = ExpedienteConsejo["cifras"][number];
+export type OpcionConsejo = ExpedienteConsejo["opciones"][number];
+export type HechoExpediente = ExpedienteConsejo["hechos"][number];
+export type PropuestaConsejo = SesionConsejo["propuestas"][number];
+export type CriticaConsejo = Esquemas["Critica"];
+export type RankingConsejo = Esquemas["Ranking"];
+export type Dictamen = Esquemas["Dictamen"];
+export type Consenso = Dictamen["consenso"];
+export type MiembroConsejo = Dictamen["miembros"][number];
+export type RolConsejo = MiembroConsejo["rol"];
+export type PosturaOpcion = Dictamen["posturas"][number];
+export type AtribucionCifraConsejo = NonNullable<Dictamen["puerta"]>["atribuciones"][number];
 
 /** States in which the council is still working (the UI polls them). */
 export const EN_MARCHA: ReadonlySet<EstadoSesion> = new Set(["en_cola", "instruyendo", "deliberando", "sintetizando"]);

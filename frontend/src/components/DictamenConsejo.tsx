@@ -154,13 +154,14 @@ function comoInformeCerebro(sesion: SesionConsejo, dictamen: Dictamen): InformeC
     porEspecialista.set(cifra.especialista, [...(porEspecialista.get(cifra.especialista) ?? []), cifra]);
   }
   return {
-    intencion: { tipo: "cruzada", encargos: [], necesita_memoria: false, confianza: 1, origen: "reglas", resumen: "" },
+    intencion: { tipo: "cruzada", encargos: [], necesita_memoria: false, confianza: 1, origen: "reglas", resumen: "", aclaracion: null },
     ruta: "sintesis",
     informes: [...porEspecialista.entries()].map(([especialista, cifras], i) => ({
       encargo_id: `e${i + 1}`,
       especialista,
       nombre: especialista.charAt(0).toUpperCase() + especialista.slice(1),
       estado: "ok" as const,
+      modo: null,
       cifras,
       fragment_ids: [],
       duracion_ms: 0,
@@ -168,6 +169,7 @@ function comoInformeCerebro(sesion: SesionConsejo, dictamen: Dictamen): InformeC
     peticiones: [],
     puerta: { violaciones: [], atribuciones, ignorados: [] },
     recuerdos_usados: [],
+    conversacion_id: null,
     revisiones_sintesis: 0,
     duracion_ms: 0,
   };

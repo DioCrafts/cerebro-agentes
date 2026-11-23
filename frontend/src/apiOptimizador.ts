@@ -1,171 +1,37 @@
 // Client for the deterministic tax optimiser (POST /optimize): the best
 // combination of the choices the law leaves to a household. No model call.
 //
-// Shapes mirror asistente/ambitos/fiscal/calculo/optimizador.py (PlanOptimo, Restricciones,
-// PosicionLatente). Amounts are decimals sent as strings ("1082.46").
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts). Amounts are decimals sent as strings ("1082.46").
 // Everything goes through api.ts's `request`: session token, timeout, errors.
 
-import type { CalcLine } from "./api";
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Esquemas, Peticion, Respuesta } from "./api/tipos";
 
-export type Naturaleza = "ahorro_definitivo" | "diferimiento" | "requiere_gastar";
-export type CausaNoDisponible = "fecha" | "restricciones" | "faltan_datos" | "sin_margen" | "no_calculable";
-export type TipoActivo = "valores_cotizados" | "valores_no_cotizados" | "otro_elemento";
-export type Titular = "contribuyente" | "conyuge";
-export type Tributacion = "individual" | "conjunta_biparental" | "conjunta_monoparental";
-
-export interface PosicionLatente {
-  /** The screen's row id; kept with the stored preferences, ignored by the optimiser. */
-  id?: string;
-  descripcion?: string;
-  importe: number;
-  tipo?: TipoActivo;
-  titular?: Titular;
-}
-
-/**
- * With a case, every field NOT sent is taken from the preferences the case keeps
- * (`preferencias_optimizacion`); `null` says «not stated» and overrides a stored value.
- */
-export interface Restricciones {
-  aportacion_maxima_pensiones?: number | null;
-  aportacion_maxima_pensiones_conyuge?: number | null;
-  acepta_iliquidez?: boolean | null;
-  donativo_previsto?: number;
-  presupuesto_donativos?: number | null;
-  donativo_recurrente_importe_anterior?: number | null;
-  perdidas_latentes?: PosicionLatente[];
-  ganancias_latentes?: PosicionLatente[];
-  // Filing modes the user will not use (never compared nor proposed).
-  modalidades_excluidas?: ("conjunta" | "individual")[];
-}
-
-export interface OptimizeRequest {
-  case_id?: string;
-  ejercicio?: number;
-  datos: Record<string, unknown>;
-  /**
-   * The spouse's figures. With a case they replace the stored ones (`datos_conyuge`) field by field
-   * (`null` removes one); omitted, a married user's stored figures are used; `null`, no spouse in this run.
-   */
-  conyuge?: Record<string, unknown> | null;
-  restricciones: Restricciones;
-  fecha?: string;
-}
-
-/** The calculator's result for one return (only the fields this screen reads). */
-export interface ResultadoDeclaracion {
-  ejercicio: number;
-  tributacion: string;
-  resultado: string;
-  cuota_liquida: string;
-  base_liquidable_general: string;
-  base_liquidable_ahorro: string;
-  lineas: CalcLine[];
-  avisos: string[];
-  parametros_no_verificados: string[];
-  fuente: string;
-}
-
-export interface Declaracion {
-  titular: "contribuyente" | "conyuge" | "conjunta";
-  resultado: ResultadoDeclaracion;
-}
-
-export interface ResultadoHogar {
-  tributacion: Tributacion;
-  declaraciones: Declaracion[];
-  /** Positive: to pay; negative: refund. */
-  resultado_total: string;
-  cuota_liquida_total: string;
-}
-
-export interface PalancaElegida {
-  id: string;
-  nombre: string;
-  titular: "contribuyente" | "conyuge" | "hogar";
-  accion: string;
-  importe: string | null;
-  opcion: string | null;
-  naturaleza: Naturaleza;
-  /** Euros the lever locks, spends or realises (0 for a filing option). */
-  compromiso: string;
-  /** Tax the plan would pay more without this lever. */
-  ahorro_marginal: string;
-  /** Saving of the lever alone, at its own best value (can be negative). */
-  ahorro_aislado: string;
-  accion_aislada: string;
-  ahorro_por_euro: string | null;
-  coste_neto: string | null;
-  plazo: string | null;
-  referencia: string;
-  verificado: boolean;
-  requisitos: string[];
-  explicacion: string;
-}
-
-export interface PalancaNoDisponible {
-  id: string;
-  nombre: string;
-  causa: CausaNoDisponible;
-  detalle: string;
-  datos_que_faltan: string[];
-}
-
-export interface PalancaDescartada {
-  id: string;
-  nombre: string;
-  motivo: string;
-  referencia: string;
-}
-
-export interface CambioLinea {
-  concepto: string;
-  antes: string;
-  despues: string;
-  referencia: string | null;
-}
-
-export interface TextoLegal {
-  referencia: string;
-  boe_id: string;
-  texto: string;
-}
-
-export interface Busqueda {
-  metodo: "exhaustiva" | "heuristica";
-  evaluaciones: number;
-  limite_evaluaciones: number;
-  combinaciones: number;
-  candidatos: Record<string, number>;
-  nota: string;
-}
-
-export interface PlanOptimo {
-  ejercicio: number;
-  fecha: string;
-  fase: "antes_del_cierre" | "solo_opciones_de_declaracion";
-  con_conyuge: boolean;
-  base: ResultadoHogar;
-  optimo: ResultadoHogar;
-  ahorro_total: string;
-  suma_ahorros_aislados: string;
-  interaccion: string;
-  explicacion_interaccion: string[];
-  palancas: PalancaElegida[];
-  no_disponibles: PalancaNoDisponible[];
-  descartadas: PalancaDescartada[];
-  oportunidades: string[];
-  cambios_traza: CambioLinea[];
-  citas: string[];
-  textos_legales: TextoLegal[];
-  avisos: string[];
-  supuestos: string[];
-  datos_que_faltan: string[];
-  busqueda: Busqueda;
-  explicacion: string;
-}
+export type OptimizeRequest = Peticion<"/optimize", "post">;
+// With a case, every field NOT sent is taken from the preferences the case keeps (`preferencias_optimizacion`);
+// `null` says «not stated» and overrides a stored value.
+export type Restricciones = Esquemas["Restricciones"];
+// `id` is the screen's row id; kept with the stored preferences, ignored by the optimiser.
+export type PosicionLatente = Esquemas["PosicionLatente"];
+export type TipoActivo = NonNullable<PosicionLatente["tipo"]>;
+export type Titular = NonNullable<PosicionLatente["titular"]>;
+export type PlanOptimo = Respuesta<"/optimize", "post">;
+// `resultado_total`: positive, to pay; negative, refund.
+export type ResultadoHogar = PlanOptimo["base"];
+export type Tributacion = ResultadoHogar["tributacion"];
+export type Declaracion = ResultadoHogar["declaraciones"][number];
+export type ResultadoDeclaracion = Declaracion["resultado"];
+// `compromiso`: euros the lever locks, spends or realises (0 for a filing option); `ahorro_marginal`: tax the plan
+// would pay more without it; `ahorro_aislado`: saving of the lever alone, at its own best value (can be negative).
+export type PalancaElegida = PlanOptimo["palancas"][number];
+export type Naturaleza = PalancaElegida["naturaleza"];
+export type PalancaNoDisponible = PlanOptimo["no_disponibles"][number];
+export type CausaNoDisponible = PalancaNoDisponible["causa"];
+export type PalancaDescartada = PlanOptimo["descartadas"][number];
+export type CambioLinea = PlanOptimo["cambios_traza"][number];
+export type TextoLegal = PlanOptimo["textos_legales"][number];
+export type Busqueda = PlanOptimo["busqueda"];
 
 const isStrings = (value: unknown): value is string[] => Array.isArray(value) && value.every((item) => typeof item === "string");
 

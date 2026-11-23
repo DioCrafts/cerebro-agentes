@@ -66,7 +66,7 @@ function filas(cerebro: InformeCerebro, citations: Citation[]): FilaProcedencia[
   const atribuciones: AtribucionCifraCerebro[] = cerebro.puerta?.atribuciones ?? [];
   const porClave = new Map(cerebro.informes.map((i) => [i.especialista, i.nombre]));
   const cifras = new Map(cerebro.informes.flatMap((i) => i.cifras.map((c) => [c.id, c] as const)));
-  const titulos = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id as string, c.title]));
+  const titulos = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id, c.title]));
   const vistos = new Set<string>();
   const salida: FilaProcedencia[] = [];
   for (const a of atribuciones) {

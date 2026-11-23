@@ -1,46 +1,29 @@
-// Client + types for the HaciendaGPT FastAPI backend.
+// Client for the HaciendaGPT FastAPI backend.
 //
-// These shapes mirror the Pydantic models in
-//   asistente/conocimiento/llm/grounding.py        -> AnswerEnvelope, Citation
-//   asistente/nucleo/decision/schemas.py     -> ObligationCandidate, RiskLevel
-//   asistente/plataforma/api/api.py              -> AgentResponse (streamed by /agent/stream)
-// so if the backend grows a new field, only this file changes.
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts, `npm run tipos`); this file only
+// gives them readable names. What the schema cannot describe (the SSE progress events) is typed here by hand.
 
 import { trimHistory } from "./lib/historial";
 import { type AuthMode } from "./lib/session";
 import { leerCuerpoSse } from "./lib/sse";
 import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-// "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
-// the /agent verdicts (asistente/nucleo/agent/agent.py -> AgentMode).
-export type AnswerMode =
-  | "cited"
-  | "uncited"
-  | "abstained"
-  | "verified"
-  | "partially_verified"
-  | "unverified"
-  | "clarification";
-export type RiskLevel = "low" | "medium" | "high" | "critical";
+// The /agent verdicts, plus "cited" / "uncited" from the legacy /qa grounding gate (older chats kept in
+// localStorage still carry them).
+export type AnswerMode = Esquemas["AgentMode"] | "cited" | "uncited";
+export type RiskLevel = Esquemas["RiskLevel"];
 
-export interface Citation {
-  title: string;
-  locator: string;
-  document_type?: string | null;
-  section?: string | null;
-  snippet?: string | null;
-  // /agent only: the id the answer cites inline ("F2") and source provenance.
-  fragment_id?: string | null;
-  authority?: string | null;
-  source_type?: string | null;
-  binding?: boolean | null;
-  date?: string | null;
-  reference?: string | null;
-  // Validity per the doctrine graph: vigente | matizada | superada | discutida.
-  vigencia?: string | null;
-  vigencia_resumen?: string | null;
-}
+// A source the answer cites (/agent): the id it cites inline ("F2"), its provenance and its validity per the
+// doctrine graph (vigente | matizada | superada | discutida).
+export type Citation = Esquemas["AgentCitation"];
+export type ClaimCheck = Esquemas["ClaimCheck"];
+export type ClaimVerdict = ClaimCheck["verdict"];
+export type ToolTraceEntry = Esquemas["ToolTraceEntry"];
+export type AgentResponse = Respuesta<"/agent", "post">;
 
+// What a chat turn keeps of the answer (lib/storage.ts): built by the client from an AgentResponse, so it has no
+// schema of its own.
 export interface AnswerEnvelope {
   answer: string;
   mode: AnswerMode;
@@ -48,7 +31,7 @@ export interface AnswerEnvelope {
   raw_answer?: string | null;
   reason?: string | null;
   min_citations_required?: number;
-  // /agent only: claims the verifier could not back with the cited fragment.
+  // Claims the verifier could not back with the cited fragment.
   warnings?: string[];
   // Cited sources whose validity is in question, and whether the answer itself
   // tells the user that the question has no settled criterion.
@@ -56,115 +39,14 @@ export interface AnswerEnvelope {
   sinCriterioFirme?: boolean;
 }
 
-export type ClaimVerdict = "respaldada" | "parcial" | "no_respaldada";
-
-export interface ClaimCheck {
-  text: string;
-  fragment_ids: string[];
-  verdict: ClaimVerdict;
-  reason: string;
-}
-
-export interface ToolTraceEntry {
-  step: number;
-  tool: string;
-  arguments: Record<string, unknown>;
-  summary: string;
-  is_error: boolean;
-}
-
-// Mirrors asistente/plataforma/api/api.py -> AgentResponse.
-export interface AgentResponse {
-  answer: string;
-  mode: AnswerMode;
-  citations: Citation[];
-  claims: ClaimCheck[];
-  warnings: string[];
-  conflicts?: string[];
-  sin_criterio_firme?: boolean;
-  raw_answer?: string | null;
-  tool_trace: ToolTraceEntry[];
-  obligations: ObligationCandidate[];
-  facts: Fact[];
-  tax_period?: string | null;
-  case_id?: string | null;
-  case_updated: boolean;
-  provider: string;
-  model: string;
-  // Actions a module specialist prepared in this turn; they wait for the user's confirmation.
-  pending_actions?: Array<{ id: string; modulo: string; herramienta: string; resumen: string; estado: string }>;
-  // What the household brain did on this turn (null from the legacy single advisor).
-  cerebro?: InformeCerebro | null;
-}
-
 // ---- The household brain's report (asistente/nucleo/cerebro/contrato.py -> InformeCerebro) ----
-export interface EncargoCerebro {
-  id: string;
-  especialista: string;
-  pregunta: string;
-  depende_de: string[];
-  motivo: string;
-}
-
-export interface IntencionCerebro {
-  tipo: "charla" | "memoria" | "ambito" | "cruzada" | "accion" | "fuera_de_ambito";
-  encargos: EncargoCerebro[];
-  necesita_memoria: boolean;
-  confianza: number;
-  origen: "reglas" | "modelo" | "mixto" | "respaldo";
-  resumen: string;
-  aclaracion?: string | null;
-}
-
-export interface CifraCerebro {
-  id: string;
-  especialista: string;
-  concepto: string;
-  valor: string; // Decimal, as JSON text
-  unidad?: string | null;
-  fragment_id?: string | null;
-  herramienta?: string | null;
-  ejercicio?: number | null;
-  literal: string;
-}
-
-export interface ResumenInformeCerebro {
-  encargo_id: string;
-  especialista: string;
-  nombre: string;
-  estado: "ok" | "sin_respuesta" | "error" | "denegado" | "presupuesto";
-  modo?: string | null;
-  cifras: CifraCerebro[];
-  fragment_ids: string[];
-  duracion_ms: number;
-}
-
-export interface AtribucionCifraCerebro {
-  literal: string;
-  valor: string;
-  cifra_id?: string | null;
-  especialista?: string | null;
-  fragment_id?: string | null;
-  del_usuario: boolean;
-}
-
-export interface PuertaCerebro {
-  violaciones: Array<{ tipo: string; literal: string; detalle: string; cifras: string[] }>;
-  atribuciones: AtribucionCifraCerebro[];
-  ignorados: string[];
-}
-
-export interface InformeCerebro {
-  intencion: IntencionCerebro;
-  ruta: "directa" | "paso_directo" | "sintesis";
-  informes: ResumenInformeCerebro[];
-  peticiones: Array<{ id: string; solicitante: string; destinatario: string; dato: string; motivo: string; profundidad: number }>;
-  puerta?: PuertaCerebro | null;
-  recuerdos_usados: string[];
-  conversacion_id?: string | null;
-  revisiones_sintesis: number;
-  duracion_ms: number;
-}
+export type EncargoCerebro = Esquemas["Encargo"];
+export type IntencionCerebro = Esquemas["Intencion"];
+export type CifraCerebro = Esquemas["Cifra"];
+export type ResumenInformeCerebro = Esquemas["ResumenInforme"];
+export type AtribucionCifraCerebro = Esquemas["AtribucionCifra"];
+export type PuertaCerebro = Esquemas["ResultadoPuerta"];
+export type InformeCerebro = Esquemas["InformeCerebro"];
 
 // Live progress of a running agent turn (asistente/nucleo/agent/agent.py -> emit).
 export type ProgressEvent =
@@ -195,51 +77,11 @@ export class ApiError extends Error {
   }
 }
 
-export interface ObligationCandidate {
-  obligation_id: string;
-  title: string;
-  description: string;
-  risk_level: RiskLevel;
-  confidence: number;
-  blocking_missing_facts: string[];
-  trigger_facts: string[];
-  evidence_refs: Array<{ title?: string; locator?: string }>;
-  // Filing deadline declared by the rule (ISO date) and its caveat, if any.
-  due_date?: string | null;
-  due_date_note?: string | null;
-}
-
-// Decision-engine shapes. These mirror asistente/nucleo/decision/schemas.py
-// (Fact, MissingFact, CaseState). We only declare the fields the web UI reads;
-// the backend may send more (extra keys are ignored).
-export type CaseStatus = "open" | "in_review" | "closed";
-
-export interface Fact {
-  fact_id: string;
-  name: string;
-  value: string | number | boolean | Record<string, unknown> | unknown[];
-  value_type: string;
-  source: string;
-  confidence: number;
-  updated_at: string;
-}
-
-export interface MissingFact {
-  fact_name: string;
-  reason: string;
-  priority: RiskLevel;
-}
-
-export interface CaseState {
-  case_id: string;
-  user_id: string;
-  status: CaseStatus;
-  jurisdiction: string;
-  tax_period: string;
-  facts: Fact[];
-  missing_facts: MissingFact[];
-  obligation_candidates: ObligationCandidate[];
-}
+export type ObligationCandidate = Esquemas["ObligationCandidate"];
+export type CaseStatus = Esquemas["CaseStatus"];
+export type Fact = Esquemas["Fact"];
+export type MissingFact = Esquemas["MissingFact"];
+export type CaseState = Respuesta<"/cases/{case_id}", "get">;
 
 // The FastAPI default is http://127.0.0.1:8000; Vite proxies /api/* to
 // avoid CORS in dev. In production both should be served under the same
@@ -543,44 +385,11 @@ export function updateCaseFact(opts: {
 
 // ---- Step 4: simulator, calendar, documents --------------------------------
 
-export interface CalcLine {
-  concepto: string;
-  importe: string; // decimal as string, e.g. "-1500.00"
-  referencia?: string | null;
-}
-
-export interface IRPFResult {
-  ejercicio: number;
-  tributacion: string;
-  cuota_liquida: string;
-  retenciones: string;
-  resultado: string; // positive: to pay; negative: refund
-  tipo_medio_efectivo: string;
-  lineas: CalcLine[];
-  avisos: string[];
-  fuente: string;
-}
-
-export type BenefitState = "aplicado" | "disponible" | "por_confirmar" | "no_aplica";
-
-export interface Benefit {
-  id: string;
-  nombre: string;
-  estado: BenefitState;
-  detalle: string;
-  requisitos: string[];
-  referencia: string;
-  verificado: boolean;
-  ahorro_estimado?: string | null;
-  datos_que_faltan: string[];
-}
-
-export interface Simulation {
-  ejercicio: number;
-  escenarios: Array<{ nombre: string; resultado: IRPFResult; ahorro_frente_a_base: string }>;
-  beneficios: Benefit[];
-  datos_no_aportados: string[];
-}
+export type CalcLine = Esquemas["Linea"];
+export type IRPFResult = Esquemas["IRPFResult"];
+export type Benefit = Esquemas["Beneficio"];
+export type BenefitState = Benefit["estado"];
+export type Simulation = Respuesta<"/simulate", "post">;
 
 function isSimulation(value: unknown): value is Simulation {
   return (
@@ -610,26 +419,8 @@ export function simulate(opts: {
   return request("/simulate", body, isSimulation, { signal: opts.signal });
 }
 
-export interface Deadline {
-  id: string;
-  modelo?: string | null;
-  titulo: string;
-  periodo: string;
-  fecha: string; // ISO date
-  ajustada: boolean;
-  dias_restantes: number;
-  detalle: string;
-  referencia: string;
-  verificado: boolean;
-  nota?: string | null;
-}
-
-export interface CalendarResponse {
-  case_id: string;
-  hoy: string;
-  vencimientos: Deadline[];
-  aviso: string;
-}
+export type Deadline = Esquemas["Vencimiento"];
+export type CalendarResponse = Respuesta<"/cases/{case_id}/calendar", "get">;
 
 function isCalendar(value: unknown): value is CalendarResponse {
   return isRecord(value) && Array.isArray(value.vencimientos) && typeof value.aviso === "string";
@@ -644,23 +435,9 @@ export function getCalendar(opts: { caseId: string; dias?: number; signal?: Abor
   );
 }
 
-export interface ProposedFact {
-  name: string;
-  value: string | number | boolean;
-  evidencia: string;
-  // "imagen": read from a scan or photo (two readings agreed); it cannot be checked against text.
-  origen?: "texto" | "imagen";
-}
-
-export interface DocumentAnalysis {
-  filename: string;
-  tipo_documento: string;
-  paginas: number;
-  caracteres: number;
-  lectura?: "texto" | "imagen";
-  hechos_propuestos: ProposedFact[];
-  avisos: string[];
-}
+// `origen: "imagen"`: read from a scan or photo (two readings agreed); it cannot be checked against text.
+export type ProposedFact = Esquemas["HechoPropuesto"];
+export type DocumentAnalysis = Respuesta<"/cases/{case_id}/documents", "post">;
 
 function isDocumentAnalysis(value: unknown): value is DocumentAnalysis {
   return isRecord(value) && Array.isArray(value.hechos_propuestos) && Array.isArray(value.avisos);
@@ -686,31 +463,12 @@ export function analyzeDocument(opts: {
 
 // ---- Proactive notifications -------------------------------------------------
 
-// The tax kinds, the weekly digest, and one kind per household module ("modulo:<clave>").
-export type NotificationKind = "plazo" | "fin_de_ejercicio" | "cambio_normativo" | "resumen_semanal" | `modulo:${string}`;
-export type NotificationSeverity = "info" | "aviso" | "urgente";
-
-// Mirrors asistente/nucleo/proactive/store.py -> Notification.
-export interface AdvisorNotification {
-  id: string;
-  case_id: string;
-  kind: NotificationKind;
-  title: string;
-  body: string;
-  severity: NotificationSeverity;
-  actions: string[];
-  sources: string[];
-  amount?: string | null; // estimated saving in euros, as a decimal string
-  due_date?: string | null;
-  created_at: string;
-  read_at?: string | null;
-}
-
-export interface NotificationsResponse {
-  case_id: string;
-  unread: number;
-  notifications: AdvisorNotification[];
-}
+// `kind`: the tax kinds (plazo, fin_de_ejercicio, cambio_normativo), the weekly digest (resumen_semanal) and one
+// kind per household module ("modulo:<clave>").
+export type AdvisorNotification = Esquemas["Notification"];
+export type NotificationKind = AdvisorNotification["kind"];
+export type NotificationSeverity = AdvisorNotification["severity"];
+export type NotificationsResponse = Respuesta<"/cases/{case_id}/notifications", "get">;
 
 function isNotifications(value: unknown): value is NotificationsResponse {
   return isRecord(value) && typeof value.unread === "number" && Array.isArray(value.notifications);
@@ -740,61 +498,16 @@ export function runProactive(opts: { caseId: string; signal?: AbortSignal }): Pr
 // The structured weekly/daily digest behind a `resumen_semanal` notification. Its proposals are answered through
 // their own endpoints (acciones, tareas, correo); this endpoint never acts.
 
-export type TipoPropuestaRepaso = "accion" | "tarea" | "paso" | "correo" | "plantilla";
+export type Repaso = Respuesta<"/cases/{case_id}/repaso", "get">["repaso"];
+export type PuntoRepaso = Repaso["puntos"][number];
+export type FuenteRepaso = PuntoRepaso["fuentes"][number];
+export type PropuestaRepaso = PuntoRepaso["propuestas"][number];
+// accion | tarea | paso | correo | plantilla
+export type TipoPropuestaRepaso = PropuestaRepaso["tipo"];
 // Read now from the layer that owns the proposal: decided elsewhere since → no buttons.
-export type EstadoPropuestaRepaso = "pendiente" | "decidida" | "desconocido";
+export type EstadoPropuestaRepaso = PropuestaRepaso["estado"];
 
-export interface PropuestaRepaso {
-  id: string;
-  tipo: TipoPropuestaRepaso;
-  ref: string; // the id its own endpoint takes (acc_…, tar_…, prop_…, or a template id)
-  paso?: string | null;
-  parametros: Record<string, string | number | boolean | null>;
-  objetivo?: string | null;
-  etiqueta: string;
-  resumen: string;
-  estado: EstadoPropuestaRepaso;
-}
-
-export interface FuenteRepaso {
-  tipo: string;
-  id: string;
-  modulo?: string | null;
-  nombre_modulo?: string | null;
-  titulo: string;
-  fecha?: string | null;
-  notification_id?: string | null;
-}
-
-export interface PuntoRepaso {
-  id: string;
-  rango: number;
-  titulo: string;
-  texto: string;
-  por_que: string;
-  motivos: string[]; // the reasons code computed (the deterministic priority)
-  urgente: boolean;
-  gravedad: NotificationSeverity;
-  vence?: string | null;
-  ambitos: Array<{ clave: string; nombre: string }>;
-  fuentes: FuenteRepaso[];
-  propuestas: PropuestaRepaso[];
-  origen: "modelo" | "determinista";
-}
-
-export interface Repaso {
-  case_id: string;
-  notification_id: string | null;
-  periodo: string;
-  frecuencia: "semanal" | "diaria";
-  origen: "modelo" | "mixto" | "determinista" | null;
-  titular: string;
-  puntos: PuntoRepaso[];
-  restantes: number;
-  actualizado: string;
-}
-
-function isRepaso(value: unknown): value is { repaso: Repaso } {
+function isRepaso(value: unknown): value is Respuesta<"/cases/{case_id}/repaso", "get"> {
   return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso).puntos);
 }
 
@@ -809,40 +522,15 @@ export function getRepaso(opts: { caseId: string; notificationId?: string; signa
 
 // ---- Accounts and privacy (asistente/plataforma/api/routers/auth.py) -----------------
 
-export interface AuthConfig {
-  auth_mode: AuthMode;
-  password_min_length: number;
-  consent_text_version: string;
-  // Empty when the operator has not published a privacy notice.
-  privacy_notice_url: string;
-}
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  created_at: string;
-}
-
-export interface SessionResponse {
-  // Only for a client without a browser; the web client gets the HttpOnly cookie and null here.
-  token: string | null;
-  expires_at: string;
-  user: SessionUser;
-}
-
-export type ConsentType = "tratamiento_datos" | "envio_documentos_a_proveedor_llm" | "avisos_por_correo";
-
-export interface ConsentState {
-  type: ConsentType;
-  granted: boolean;
-  timestamp: string | null;
-  text_version: string | null;
-}
-
-export interface ConsentsResponse {
-  text_version: string;
-  consents: ConsentState[];
-}
+// `privacy_notice_url` is empty when the operator has not published a privacy notice. The schema says
+// `auth_mode: string`; isAuthConfig only lets the two modes this client knows through.
+export type AuthConfig = Omit<Respuesta<"/auth/config", "get">, "auth_mode"> & { auth_mode: AuthMode };
+export type SessionUser = Respuesta<"/auth/me", "get">;
+// `token` is only for a client without a browser; the web client gets the HttpOnly cookie and null here.
+export type SessionResponse = Respuesta<"/auth/login", "post">;
+export type ConsentState = Esquemas["ConsentState"];
+export type ConsentType = ConsentState["type"];
+export type ConsentsResponse = Respuesta<"/me/consents", "get">;
 
 function isAuthConfig(value: unknown): value is AuthConfig {
   return isRecord(value) && (value.auth_mode === "off" || value.auth_mode === "required");

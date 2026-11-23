@@ -6,76 +6,26 @@
 
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Peticion, Respuesta } from "./api/tipos";
 
-export type ModoNavegador = "ventana" | "sesion";
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts).
+type EstadoNavegadorEsquema = Respuesta<"/navegador/estado", "get">;
+export type GuionInfo = EstadoNavegadorEsquema["tareas"][number];
+export type ParametroTarea = GuionInfo["parametros"][number];
+export type TareaInfo = Respuesta<"/navegador/tareas/{tarea_id}", "get">;
+export type EventoTarea = TareaInfo["eventos"][number];
+// `sesion`: Playwright storage_state, only for mode "sesion".
+export type InicioTarea = Peticion<"/navegador/tareas/{tarea_id}/iniciar", "post">;
+export type ModoNavegador = NonNullable<InicioTarea["modo"]>;
+// The schema sends `modos` as plain strings; getEstadoNavegador keeps the ones this client can start.
+export type EstadoNavegador = Omit<EstadoNavegadorEsquema, "modos"> & { modos: ModoNavegador[] };
 
-export interface ParametroTarea {
-  nombre: string;
-  tipo: "fecha" | "texto" | "cups" | "opcion";
-  etiqueta: string;
-  obligatorio: boolean;
-  opciones: string[];
-  personal: boolean;
-}
-
-export interface GuionInfo {
-  clave: string;
-  version: number;
-  titulo: string;
-  descripcion: string;
-  verificado_contra_sitio_real: boolean;
-  nota_verificacion: string;
-  demostracion: boolean;
-  sitios: string[];
-  parametros: ParametroTarea[];
-  final: "descarga" | "detener";
-  modulo_destino?: string | null;
-}
-
-export interface EstadoNavegador {
-  activo: boolean;
-  modos: ModoNavegador[];
-  consentimiento: boolean;
-  texto_consentimiento: string;
-  texto_version: string;
-  tareas: GuionInfo[];
-  max_tareas_dia: number;
-  usadas_hoy: number;
-}
-
-export interface EventoTarea {
-  momento: string;
-  tipo: string;
-  texto: string;
-  paso?: string | null;
-}
-
-export interface TareaInfo {
-  id: string;
-  case_id: string;
-  guion: string;
-  version: number;
-  titulo: string;
-  modo: ModoNavegador | null;
-  estado: string;
-  creada: string;
-  actualizada: string;
-  terminada?: string | null;
-  parametros: Record<string, string>;
-  eventos: EventoTarea[];
-  pasos: Array<{ id: string; descripcion: string; estado: string }>;
-  tiene_captura: boolean;
-  resumen_envio: Array<{ etiqueta: string; valor: string }>;
-  mensaje?: string | null;
-  importacion?: string | null;
-  importacion_error: boolean;
-  accion_id?: string | null;
-  origenes_bloqueados: string[];
-}
+const MODOS: readonly string[] = ["ventana", "sesion"] satisfies ModoNavegador[];
+const esModo = (modo: unknown): modo is ModoNavegador => typeof modo === "string" && MODOS.includes(modo);
 
 export const ESTADOS_ACTIVOS = new Set(["en_curso", "esperando_login", "trabajando"]);
 
-function isEstado(value: unknown): value is EstadoNavegador {
+function isEstado(value: unknown): value is EstadoNavegadorEsquema {
   return isRecord(value) && typeof value.activo === "boolean" && Array.isArray(value.tareas);
 }
 
@@ -83,24 +33,19 @@ export function isTarea(value: unknown): value is TareaInfo {
   return isRecord(value) && typeof value.id === "string" && typeof value.estado === "string" && Array.isArray(value.eventos);
 }
 
-function isTareas(value: unknown): value is { case_id: string; tareas: TareaInfo[] } {
+function isTareas(value: unknown): value is Respuesta<"/navegador/tareas", "get"> {
   return isRecord(value) && Array.isArray(value.tareas);
 }
 
-function isCaptura(value: unknown): value is { png_base64: string; momento: string | null } {
+function isCaptura(value: unknown): value is Respuesta<"/navegador/tareas/{tarea_id}/captura", "get"> {
   return isRecord(value) && typeof value.png_base64 === "string";
 }
 
 export function getEstadoNavegador(signal?: AbortSignal): Promise<EstadoNavegador> {
-  return request("/navegador/estado", undefined, isEstado, { method: "GET", signal });
-}
-
-export interface InicioTarea {
-  modo: ModoNavegador;
-  acepto: boolean;
-  texto_version: string;
-  // Playwright storage_state, only for mode "sesion".
-  sesion?: Record<string, unknown> | null;
+  return request("/navegador/estado", undefined, isEstado, { method: "GET", signal }).then((e) => ({
+    ...e,
+    modos: Array.isArray(e.modos) ? e.modos.filter(esModo) : [],
+  }));
 }
 
 export function crearTarea(

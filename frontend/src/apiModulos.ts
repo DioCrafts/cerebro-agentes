@@ -6,80 +6,19 @@
 
 import { request } from "./api";
 import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-export type TipoHecho = "string" | "number" | "boolean" | "json";
-export type Efecto = "lectura" | "prepara" | "actua";
-
-export interface HechoInfo {
-  nombre: string;
-  tipo: TipoHecho;
-  etiqueta: string;
-  descripcion: string;
-  sensible: boolean;
-}
-
-export interface HerramientaInfo {
-  nombre: string;
-  efecto: Efecto;
-  descripcion: string;
-  // Takes a whole file (`contenido` / `contenido_base64`), uploaded straight to the tool.
-  acepta_fichero?: boolean;
-}
-
-export interface FuenteInfo {
-  identificador: string;
-  descripcion: string;
-  url: string;
-}
-
-export interface ModuloInfo {
-  clave: string;
-  nombre: string;
-  descripcion: string;
-  activo: boolean;
-  obligatorio: boolean;
-  elegido: boolean;
-  elegido_el?: string | null;
-  hechos: HechoInfo[];
-  herramientas: HerramientaInfo[];
-  fuentes: FuenteInfo[];
-  lee_documentos?: boolean;
-  herramienta_de_documento?: string | null;
-}
-
-export interface ModulosResponse {
-  configurable: boolean;
-  modulos: ModuloInfo[];
-}
-
-export type EstadoAccion = "pendiente" | "ejecutando" | "ejecutada" | "fallida" | "rechazada";
-
-export interface AccionPendiente {
-  id: string;
-  case_id: string;
-  modulo: string;
-  herramienta: string;
-  argumentos: Record<string, unknown>;
-  resumen: string;
-  estado: EstadoAccion;
-  created_at: string;
-  decided_at?: string | null;
-  resultado?: string | null;
-  es_error: boolean;
-}
-
-export interface ResultadoHerramienta {
-  contenido: string;
-  resumen: string;
-  es_error: boolean;
-  citas: string[];
-}
-
-export interface EjecucionResponse {
-  resultado: ResultadoHerramienta | null;
-  accion: AccionPendiente | null;
-  case_updated: boolean;
-}
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts), except a document reading's
+// `propuesta`, which the backend sends as a plain dict: its fields are typed here by hand (CampoPropuesto).
+export type ModulosResponse = Respuesta<"/modulos", "get">;
+export type ModuloInfo = ModulosResponse["modulos"][number];
+export type HechoInfo = ModuloInfo["hechos"][number];
+export type HerramientaInfo = ModuloInfo["herramientas"][number];
+export type FuenteInfo = ModuloInfo["fuentes"][number];
+export type AccionPendiente = Esquemas["AccionPendiente"];
+export type EstadoAccion = AccionPendiente["estado"];
+export type EjecucionResponse = Respuesta<"/modulos/{clave}/herramientas/{nombre}", "post">;
+export type ResultadoHerramienta = NonNullable<EjecucionResponse["resultado"]>;
 
 export interface CampoPropuesto {
   campo: string;
@@ -88,11 +27,9 @@ export interface CampoPropuesto {
   origen?: string;
 }
 
-export interface DocumentoModuloResponse {
-  modulo: string;
-  herramienta_destino: string | null;
+export type DocumentoModuloResponse = Omit<Respuesta<"/modulos/{clave}/documento", "post">, "propuesta"> & {
   propuesta: { campos?: CampoPropuesto[]; avisos?: string[]; descartados?: string[] } & Record<string, unknown>;
-}
+};
 
 function isModulos(value: unknown): value is ModulosResponse {
   return isRecord(value) && typeof value.configurable === "boolean" && Array.isArray(value.modulos);
@@ -102,7 +39,7 @@ function isAccion(value: unknown): value is AccionPendiente {
   return isRecord(value) && typeof value.id === "string" && typeof value.estado === "string";
 }
 
-function isAcciones(value: unknown): value is { case_id: string; acciones: AccionPendiente[] } {
+function isAcciones(value: unknown): value is Respuesta<"/acciones", "get"> {
   return isRecord(value) && Array.isArray(value.acciones);
 }
 
@@ -174,16 +111,9 @@ export function moduloDeKind(kind: string): string | null {
 }
 
 /** A tax fact a module can fill in; nothing is written until the user accepts it. */
-export interface PropuestaHecho {
-  nombre: string;
-  valor: number;
-  titulo: string;
-  explicacion: string;
-  modulo: string;
-  desglose: Record<string, string>;
-}
+export type PropuestaHecho = Respuesta<"/propuestas", "get">["propuestas"][number];
 
-function isPropuestas(value: unknown): value is { case_id: string; propuestas: PropuestaHecho[] } {
+function isPropuestas(value: unknown): value is Respuesta<"/propuestas", "get"> {
   return isRecord(value) && Array.isArray(value.propuestas);
 }
 
@@ -196,33 +126,11 @@ export function getPropuestas(caseId: string, signal?: AbortSignal): Promise<Pro
 // Capabilities (asistente/plataforma/api/routers/capacidades.py): means any module can use (mail, browser, documents,
 // research), shown apart from the modules with the user's consent.
 
-export interface OperacionCapacidadInfo {
-  clave: string;
-  descripcion: string;
-  efecto: Efecto;
-  proposito?: string | null;
-  datos_de_terceros: boolean;
-  requiere_consentimiento: boolean;
-}
-
-export interface CapacidadInfo {
-  clave: string;
-  nombre: string;
-  descripcion: string;
-  requiere_consentimiento: boolean;
-  activa: boolean;
-  elegida: boolean;
-  elegida_el?: string | null;
-  // A module with the same key is its chat front: its switch is the module's (in «Módulos»).
-  modulo?: string | null;
-  usada_por: string[];
-  operaciones: OperacionCapacidadInfo[];
-}
-
-export interface CapacidadesResponse {
-  configurable: boolean;
-  capacidades: CapacidadInfo[];
-}
+export type CapacidadesResponse = Respuesta<"/capacidades", "get">;
+// `modulo`: a module with the same key is its chat front; its switch is the module's (in «Módulos»).
+export type CapacidadInfo = CapacidadesResponse["capacidades"][number];
+export type OperacionCapacidadInfo = CapacidadInfo["operaciones"][number];
+export type Efecto = OperacionCapacidadInfo["efecto"];
 
 function isCapacidades(value: unknown): value is CapacidadesResponse {
   return isRecord(value) && typeof value.configurable === "boolean" && Array.isArray(value.capacidades);
