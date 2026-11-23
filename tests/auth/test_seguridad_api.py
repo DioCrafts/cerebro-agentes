@@ -8,6 +8,7 @@ import base64
 import sqlite3
 from typing import Any
 
+from fastapi.routing import iter_route_contexts
 import pytest
 
 from asistente.nucleo.agent.providers.base import ProviderError
@@ -43,7 +44,7 @@ DISABLED = {"/openapi.json", "/docs", "/redoc"}
 
 def _routes() -> list[tuple[str, str]]:
     out = []
-    for route in app.routes:
+    for route in iter_route_contexts(app.routes):  # FastAPI ≥0.16x agrupa los routers incluidos
         methods = getattr(route, "methods", None) or set()
         for method in sorted(methods - {"HEAD"}):
             out.append((method, route.path))

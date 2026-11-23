@@ -329,6 +329,7 @@ class DocumentProcessor:
 ```python
 def process_documents(self) -> None:
     from langchain_community.vectorstores import FAISS
+
     new_chunks, ids_to_remove, diff = self.load_chunks_and_diff()
 
     if diff is None:
@@ -338,9 +339,7 @@ def process_documents(self) -> None:
         db = FAISS.from_documents(new_chunks, self.embeddings)
     else:
         try:
-            db = FAISS.load_local(
-                self.output_dir, self.embeddings, allow_dangerous_deserialization=True
-            )
+            db = FAISS.load_local(self.output_dir, self.embeddings, allow_dangerous_deserialization=True)
         except Exception as exc:
             logging.error("Failed to load existing FAISS index (%s); falling back to full rebuild.", exc)
             db = FAISS.from_documents(self.discover_and_process_all(), self.embeddings)
@@ -535,6 +534,7 @@ Antes de tocar código, validar:
 ```python
 # ¿FAISS.delete(ids=[...]) está disponible en langchain-community 0.4.1?
 from langchain_community.vectorstores import FAISS
+
 help(FAISS.delete)  # debe aceptar `ids: list[str]`
 
 # ¿FAISS.add_documents(docs, ids=[...]) acepta ids?

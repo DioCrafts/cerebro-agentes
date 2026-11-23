@@ -162,18 +162,33 @@ they can be read against authorship; during the deliberation each reviewer saw i
 ```python
 from asistente.nucleo.consejo.deliberacion import Deliberacion, construir_motor
 
-motor = construir_motor()                       # CONSEJO_MIEMBROS, CONSEJO_FAMILIAS, CONSEJO_MAX_PARALELO, CONSEJO_SEMILLA
-motor = Deliberacion(miembros=None, proveedor_para=fn, presidente=None, max_paralelo=None, semilla=None,
-                     diseno_equilibrado=True, dictamen_parcial=True, precios=None, reloj=None)
+motor = construir_motor()  # CONSEJO_MIEMBROS, CONSEJO_FAMILIAS, CONSEJO_MAX_PARALELO, CONSEJO_SEMILLA
+motor = Deliberacion(
+    miembros=None,
+    proveedor_para=fn,
+    presidente=None,
+    max_paralelo=None,
+    semilla=None,
+    diseno_equilibrado=True,
+    dictamen_parcial=True,
+    precios=None,
+    reloj=None,
+)
 sesion = motor.deliberar(expediente, sesion_id="cons_<32 hex>", emit=None, tope_usd=None, base=None)
-motor.registro                                  # audit trail of the last session (RegistroDeliberacion)
-motor.autoria_criticas(sesion)                  # {(reviewer, public label): (seat, position shown)}
+motor.registro  # audit trail of the last session (RegistroDeliberacion)
+motor.autoria_criticas(sesion)  # {(reviewer, public label): (seat, position shown)}
 
 from asistente.nucleo.consejo import anonimato, agregacion
-anonimato.anonimizar_para(evaluador_id, propuestas, semilla, sesion_id="", orden=None)  # -> (anónimas, etiqueta→asiento)
-anonimato.diseno_equilibrado(asientos, semilla, sesion_id)                              # reader -> order
-agregacion.agregar(rankings) ; agregacion.agregar_detallado(rankings) ; agregacion.acuerdo_kendall(rankings)
-agregacion.consenso_de(recomendaciones) ; agregacion.confianza_del_consejo(confianzas, cuota, acuerdo)
+
+anonimato.anonimizar_para(
+    evaluador_id, propuestas, semilla, sesion_id="", orden=None
+)  # -> (anónimas, etiqueta→asiento)
+anonimato.diseno_equilibrado(asientos, semilla, sesion_id)  # reader -> order
+agregacion.agregar(rankings)
+agregacion.agregar_detallado(rankings)
+agregacion.acuerdo_kendall(rankings)
+agregacion.consenso_de(recomendaciones)
+agregacion.confianza_del_consejo(confianzas, cuota, acuerdo)
 ```
 
 `deliberar` never raises for a model's or provider's failure (`fallida` with `error`); it raises `ValueError` only for

@@ -230,9 +230,10 @@ Para vigilar una función en lugar de un comando:
 ```python
 from asistente.plataforma.ops.vigia import vigilado
 
+
 @vigilado("mi-tarea")
-def mi_tarea() -> None:
-    ...
+def mi_tarea() -> None: ...
+
 
 # o bien
 with vigilado("mi-tarea"):
