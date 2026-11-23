@@ -789,9 +789,8 @@ sitio real» y la sede es una demostración (`*.ejemplo.invalid`, solo se ofrece
 la apunta a sitios locales). La primera ejecución real que no encuentre un elemento fallará sin hacer nada y lo
 avisará la vigilancia de formatos. Para probarlo a mano: `python -m tests.navegador.simulacion` (imprime el valor
 de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las pruebas con navegador necesitan Chromium
-(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose. En CI se
-instala antes de las pruebas y `NAVEGADOR_EXIGIR_CHROMIUM=1` convierte la falta de Chromium en un fallo (nunca se
-omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
+(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose. Con
+`NAVEGADOR_EXIGIR_CHROMIUM=1`, la falta de Chromium es un fallo y no se omiten en silencio. `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
 
 ### Tareas de larga duración
 
@@ -1568,9 +1567,9 @@ prueba que se puede repetir (todo sin LLM; cron y detalles en
 Un parámetro que existe solo por un decreto-ley pendiente de convalidación lo
 declara en `fuente.condicionada_a`. `python -m asistente.plataforma.cli.ops` entrega los
 avisos por correo o webhook (`deliver`), ejecuta cada tarea bajo vigilancia
-(`run`) y avisa si alguna falló o no llegó a ejecutarse (`doctor`). El flujo
-`.github/workflows/vigilancia.yml` repite `params-check` y `params-verify` cada
-semana.
+(`run`) y avisa si alguna falló o no llegó a ejecutarse (`doctor`). El worker
+ejecuta `params-check`, `params-verify` y `normas-check` cada lunes
+(`docs/operacion.md`, apartado 4).
 
 Límites: una comprobación que pasa no demuestra que el parámetro sea correcto,
 sino que el texto del que se leyó sigue ahí; las cifras redondas se comprueban
@@ -1737,12 +1736,10 @@ anterior queda sin releer contra el texto de hoy (ni es de los que el bucle no
 relee, como unos importes calculados) y no hay nada abierto sobre
 ella (propuesta pendiente o sin converger, norma en curso, grupo marcado como
 no verificado sin comprobación). Nunca toca una cifra ni una fuente fijada a
-una redacción con fecha; con `--snapshot-dir` solo lo simula. En la vigilancia
-semanal de GitHub Actions, esas lecturas llegan al repositorio como un **pull
-request** (rama `vigilancia/lecturas-boe`) que abre un trabajo aparte, el único
-con permiso de escritura, después de comprobar con `params-lecturas` que en los
-ficheros solo han cambiado fechas, huellas y el registro: si cambia una cifra,
-una cita o una regla, la ejecución sale en rojo y no se abre nada
+una redacción con fecha; con `--snapshot-dir` solo lo simula. Esas lecturas no
+llegan solas al repositorio. Se comprueba a mano con `params-lecturas` que en los
+ficheros solo han cambiado fechas, huellas y el registro (si cambia una cifra,
+una cita o una regla, termina con error) y se suben con un commit
 (`docs/operacion.md`, apartado 4).
 
 Es idempotente (no paga dos veces por el mismo grupo y el mismo texto, ni
@@ -1792,10 +1789,10 @@ ficheros de parámetros, con una sola biblioteca:
   un adaptador a su formato, sin cambiar sus datos. Con eso, sin más cableado, `params-verify` los comprueba
   cada semana contra el BOE (apartado `modulos` del informe), `params-check` compara la fecha de
   actualización de cada ley con **la fecha de lectura que guarda el propio fichero del módulo** —igual que
-  los ficheros fiscales; ya no hace falta un estado entre ejecuciones, que GitHub Actions no conserva—,
+  los ficheros fiscales, sin un estado aparte entre ejecuciones—,
   `params-verify`/`params-autopilot` anotan la nueva lectura cuando todo sigue coincidiendo y ningún grupo
-  está en un artículo modificado (sin reformatear el fichero), y el PR automático de lecturas
-  (`params-lecturas`, `vigilancia.yml`) las incluye.
+  está en un artículo modificado (sin reformatear el fichero), y `params-lecturas` las
+  revisa antes de subirlas.
 - **Recodificación**: las reglas de `caducidades` recorren el bucle de punta a punta (un adaptador por
   modelo, `caducidades:<Modelo>`; los casos del revisor pasan por la calculadora del módulo —DNI,
   pasaporte, permiso, ITV, seguro, compra— y comparan fechas como AAAAMMDD), y **una propuesta sobre datos
@@ -2051,10 +2048,9 @@ aplica si **no la empeora** (`asistente/nucleo/evaluacion/`,
   (*bootstrap* pareado) de la diferencia media no baja de 0 y McNemar no
   muestra más regresiones que mejoras, y coste y latencia dentro de presupuesto.
   La decisión y su evidencia quedan en un informe (JSON y resumen).
-- **CI** (`.github/workflows/evaluacion.yml`): la parte sin modelo en cada PR;
-  la suite con modelo solo si existe el secreto `ANTHROPIC_API_KEY`; y, a
-  demanda, la reproducción de casos reales sobre casos **sintéticos** (nunca
-  datos de usuarios).
+- No hay CI ni tarea programada para la evaluación. La parte sin
+  modelo, la suite con modelo y la reproducción de casos reales sobre casos
+  sintéticos se lanzan con las órdenes de `docs/operacion.md`.
 
 **Nada de la parte con modelo se ha ejecutado contra un modelo real**: las
 pruebas usan proveedores guionizados. Detalle y procedimiento en

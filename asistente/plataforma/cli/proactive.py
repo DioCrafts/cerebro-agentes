@@ -396,6 +396,10 @@ def params_check(fail_on_stale: bool, marcar_modulos_revisados: bool) -> None:
     click.echo(json.dumps(informe, ensure_ascii=False, indent=2))
     if fail_on_stale and (pendientes or (de_modulos or {}).get("a_revisar")):
         raise SystemExit(1)
+    # A law that could not be queried (BOE down, format change) is not "up to date": with --fail-on-stale it
+    # fails too, so the worker's run is marked failed and ``ops doctor`` tells the operator.
+    if fail_on_stale and (errores or (de_modulos or {}).get("errores") or not fechas):
+        raise SystemExit(1)
 
 
 def _revisar_fuentes_de_modulos(fetch_metadata: Any, *, marcar_revisadas: bool) -> dict[str, Any] | None:

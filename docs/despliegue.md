@@ -62,8 +62,12 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
 | `boe-novedades` | 06:50 | `asistente.plataforma.cli.proactive boe-novedades` | sí |
 | `params-autopilot` | 06:55 | `asistente.plataforma.cli.proactive params-autopilot --no-detect` | **no** (escribe en `asistente/ambitos/fiscal/data`) |
 | `run-daily` | 07:00 | `asistente.plataforma.cli.proactive run-daily` | sí |
+| `params-check` | 07:05 los lunes | `asistente.plataforma.cli.proactive params-check --fail-on-stale` | sí |
 | `deliver` | 07:15 | `asistente.plataforma.cli.ops deliver` (se registra sola) | sí |
+| `params-verify` | 07:15 los lunes | `asistente.plataforma.cli.proactive params-verify --fail-on-mismatch --no-anotar-lecturas` | sí (solo comprueba; las lecturas se anotan a mano, ver docs/operacion.md) |
+| `normas-check` | 07:25 los lunes | `asistente.plataforma.cli.proactive normas-check` | sí |
 | `run-weekly` | 07:30 los lunes | `asistente.plataforma.cli.proactive run-weekly` | sí |
+| `formatos-probe` | 07:45 de lunes a viernes | `asistente.plataforma.cli.ops formatos probe --fail-on-problem` | sí |
 | `doctor` | 09:00 | `asistente.plataforma.cli.ops doctor` | sí |
 | `correo-sincronizar` | cada 30 min | `asistente.capacidades.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
 | `indice-corpus` | 03:40 | `asistente.plataforma.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
@@ -487,7 +491,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `NAVEGADOR_MAX_SIMULTANEAS` | `2` | Tareas a la vez en todo el servicio. |
 | `NAVEGADOR_REPARAR_SELECTORES` | `false` | Reparación de selectores con LLM. |
 | `NAVEGADOR_ORIGENES_SUSTITUTOS` | vacío | Solo pruebas y demostraciones. |
-| `NAVEGADOR_EXIGIR_CHROMIUM` | vacío | Solo CI: fallar si no hay Chromium. |
+| `NAVEGADOR_EXIGIR_CHROMIUM` | vacío | Solo pruebas: fallar si no hay Chromium. |
 
 ### 3.12 Recolección y mantenimiento del corpus
 
@@ -642,9 +646,10 @@ docker compose -f docs/despliegue/docker-compose.yml exec worker python -m asist
   SQLite.
 - Las copias: `docker compose … exec worker python -m asistente.plataforma.cli.plataforma copia --destino
   /srv/hacienda-asesor/data/copias` y sácalas del volumen; o monta un volumen de copias.
-- Los datos legales del repositorio que actualizan `hipoteca-indices` y `params-autopilot` se escriben
-  dentro del contenedor y se pierden al reconstruir la imagen: en un despliegue con Docker esas
-  actualizaciones se suben al repositorio por los *workflows* de GitHub (ver [operacion.md](operacion.md)).
+- Los datos legales del repositorio que actualizan `hipoteca-indices` y `params-autopilot` (el trabajo
+  `params-verify` del worker solo comprueba) se escriben dentro del contenedor y se pierden al reconstruir la imagen. Nada los sube al repositorio:
+  ejecuta esas órdenes en una copia de trabajo, revisa el cambio (`params-lecturas` para las lecturas) y
+  súbelo a mano (ver [operacion.md](operacion.md), apartado 4).
 - El agente con navegador necesita Chromium en la imagen de la API (`playwright install --with-deps
   chromium`) y, en modo `ventana`, una pantalla: en un servidor, usa solo el modo `sesion`.
 

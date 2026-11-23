@@ -50,12 +50,18 @@ SHELL=/bin/bash
 # Índices de referencia de los préstamos hipotecarios (módulo hipoteca): resoluciones del Banco de España
 # publicadas en el BOE, los días 4 y 19 de cada mes. Escribe en asistente/ambitos/hipoteca/data/
 # (revísalo y súbelo al repositorio). Para que doctor lo vigile: «--max-horas hipoteca-indices=400».
-# En GitHub lo hace el workflow .github/workflows/modulos-indices.yml (deja la serie como artefacto).
 20 6 4,19 * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run hipoteca-indices -- uv run python -m asistente.ambitos.hipoteca.indices actualizar >> logs/proactive.log 2>&1
 
 # Resumen semanal de cada caso (lo que vence, importes, acciones por decidir), los lunes.
 # Para que doctor lo vigile: «ops doctor --max-horas run-weekly=192».
 30 7 * * 1  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run run-weekly -- uv run python -m asistente.plataforma.cli.proactive run-weekly >> logs/proactive.log 2>&1
+
+# Vigilancia de los datos legales (apartado 4), los lunes; formatos-probe, de lunes a viernes (apartado 6).
+# params-check, params-verify y formatos-probe terminan con error si encuentran algo que revisar, y doctor lo avisa.
+5 7 * * 1   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run params-check -- uv run python -m asistente.plataforma.cli.proactive params-check --fail-on-stale >> logs/proactive.log 2>&1
+15 7 * * 1  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run params-verify -- uv run python -m asistente.plataforma.cli.proactive params-verify --fail-on-mismatch --no-anotar-lecturas >> logs/proactive.log 2>&1
+25 7 * * 1  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run normas-check -- uv run python -m asistente.plataforma.cli.proactive normas-check >> logs/proactive.log 2>&1
+45 7 * * 1-5  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.ops run formatos-probe -- uv run python -m asistente.plataforma.cli.ops formatos probe --fail-on-problem >> logs/ops.log 2>&1
 
 # Bus de eventos, solo si NO tienes el trabajador en marcha continua (ver «Bus de eventos»):
 # una pasada cada 5 minutos (temporizadores, reparto y entregas pendientes).
@@ -242,18 +248,24 @@ with vigilado("mi-tarea"):
 
 Apunta el resultado, avisa al healthcheck y deja pasar la excepción sin tocarla.
 
-## 4. Vigilancia en GitHub Actions
+## 4. Vigilancia semanal de los datos legales
 
-`.github/workflows/vigilancia.yml` ejecuta cada lunes
-`uv run python -m asistente.plataforma.cli.proactive params-check --fail-on-stale`. Una ejecución en
-rojo significa que el BOE ha actualizado alguna de las normas de las que salen los parámetros
-de la calculadora (hay que releerla; no implica que las cifras hayan cambiado), o que no se
-pudo consultar el BOE. Solo necesita acceso a `www.boe.es`.
+El worker ejecuta cada lunes tres órdenes que solo necesitan acceso a `www.boe.es` (con cron, son
+las líneas del apartado 1):
 
-Después ejecuta `params-verify --fail-on-mismatch` (todos los ficheros de parámetros: IRPF,
-autónomos, sociedades, patrimonio e ISD; y los datos legales de **todos los módulos del hogar**,
-bajo `modulos`) y, siempre, `params-autopilot` (apartado 5): sin el secreto `ANTHROPIC_API_KEY`
-solo hace su parte determinista y dice qué grupos esperan.
+| Hora | Tarea | Orden (`proactive …`) | Termina con error si… |
+|---|---|---|---|
+| 07:05 | `params-check` | `params-check --fail-on-stale` | el BOE ha actualizado una norma de la que salen los parámetros o los datos de un módulo (hay que releerla; no implica que las cifras hayan cambiado), o no ha podido consultar alguna ley. |
+| 07:15 | `params-verify` | `params-verify --fail-on-mismatch --no-anotar-lecturas` | una cita o una cifra de los ficheros ya no aparece en el texto vigente de su ley. Solo comprueba: no escribe en los ficheros de datos. |
+| 07:25 | `normas-check` | `normas-check` | nunca. Informa de si cada real decreto-ley del que dependen parámetros está pendiente, convalidado o derogado. |
+
+Una tarea que termina con error queda apuntada en el fichero de estado, y `ops doctor` la avisa al
+operador (apartado 3). Si `params-check` no puede consultar alguna ley, la pone en `errores` de su
+informe JSON y, con `--fail-on-stale`, también termina con error.
+
+`params-verify` cubre todos los ficheros de parámetros (IRPF, autónomos, sociedades, patrimonio e
+ISD) y los datos legales de todos los módulos del hogar, bajo `modulos`. `params-autopilot`
+(apartado 5) es otra tarea del worker y está desactivada por defecto.
 
 **Los módulos del hogar, en el mismo ciclo.** Cada módulo declara sus datos legales en la
 biblioteca común `asistente/conocimiento/` (`FICHEROS_LEGALES` en su fichero de comprobación):
@@ -272,38 +284,31 @@ cablear:
   `--marcar-modulos-revisados` solo mueve esas;
 - `params-verify` / `params-autopilot` anotan la nueva lectura en el fichero del módulo con las
   mismas condiciones que en los fiscales (abajo), cambiando solo `consolidado_a`, `consultado_el`
-  y `sha256_html` en su sitio, sin reformatear el fichero; y el PR automático los incluye
-  (`asistente/ambitos/*/data/*.json`).
+  y `sha256_html` en su sitio, sin reformatear el fichero; y `params-lecturas` los revisa junto a
+  los fiscales (`asistente/ambitos/*/data/*.json`).
 
 `params-check` compara la fecha en que el BOE actualizó cada ley con `consultado_el`, la fecha en
 que los ficheros la leyeron. Esa fecha ya no hay que editarla a mano: `params-verify` y
 `params-autopilot` la anotan solos, sin modelo, cuando la ley está al día (apartado 5, «La fecha
-de lectura de cada ley»). En Actions eso ocurre en la copia de trabajo del runner, y el
-flujo lo convierte en un **pull request**:
+de lectura de cada ley»). La anotan en la copia de trabajo donde corren. No hay un PR automático:
+las lecturas se suben al repositorio a mano.
 
-1. `params-lecturas` compara los ficheros de parámetros con el commit revisado: lista cada ley
-   cuya lectura se anotó y **falla si un fichero cambió en algo más** que sus fuentes y su
-   registro `revisiones` (una cifra, una cita, una regla). Ese caso pone la ejecución en rojo y
-   no abre nada.
-2. Si solo hay lecturas, un segundo trabajo —el único con permiso de escritura, que no ejecuta
-   ningún modelo ni descarga nada del BOE— recibe esos ficheros, repite la comprobación y abre
-   (o actualiza) un PR desde la rama `vigilancia/lecturas-boe`, con la etiqueta `vigilancia` y
-   una tabla de leyes, fecha de consolidación anterior y nueva y ficheros tocados.
-3. Al fusionarlo, `params-check --fail-on-stale` deja de señalar esas leyes.
+1. En una copia de trabajo del repositorio, ejecuta
+   `uv run python -m asistente.plataforma.cli.proactive params-verify`. También vale la copia del
+   servidor después de la tarea del lunes.
+2. Ejecuta `uv run python -m asistente.plataforma.cli.proactive params-lecturas --body lecturas.md`.
+   Compara los ficheros de parámetros y de los módulos con `HEAD` (`--base` para otra versión),
+   lista cada ley cuya lectura se anotó y termina con error si un fichero cambió en algo más que sus
+   fuentes y su registro `revisiones` (una cifra, una cita, una regla). Si falla, no subas nada y
+   mira qué cambió. Si no, `lecturas.md` queda con una tabla de leyes, fecha de consolidación
+   anterior y nueva y ficheros tocados.
+3. Haz commit de `asistente/ambitos/fiscal/data/` y `asistente/ambitos/*/data/` y abre un PR con
+   `lecturas.md` como descripción.
+4. Al fusionarlo, `params-check --fail-on-stale` deja de señalar esas leyes.
 
-Dos ajustes del repositorio:
-
-- **Settings → Actions → General → Workflow permissions**: marca «Allow GitHub Actions to
-  create and approve pull requests»; sin eso el paso que abre el PR falla.
-- Un PR abierto con el token por defecto **no lanza otros flujos** (la CI no correría sobre
-  él). Si quieres CI en esos PR, crea un secreto `VIGILANCIA_PR_TOKEN` con un token de grano
-  fino (o de una GitHub App) con permiso de escritura en contenidos y pull requests; el flujo
-  lo usa si existe.
-
-Las propuestas abiertas de semanas anteriores se restauran de la caché antes de
-`params-verify`, así que una ley con una propuesta pendiente no se anota. Una fuente fijada a una redacción con fecha (el fichero de
-autónomos de un ejercicio cerrado lee la ley «a 31-12-2025») ya no retiene la alarma: su texto
-no cambia.
+`params-verify` no anota una ley que tenga una propuesta abierta en `RECODE_PROPOSALS_PATH`. Una
+fuente fijada a una redacción con fecha (el fichero de autónomos de un ejercicio cerrado lee la ley
+«a 31-12-2025») ya no retiene la alarma: su texto no cambia.
 
 ## 5. Recodificación automática de parámetros
 
@@ -640,21 +645,13 @@ y compara. No escribe en los parámetros ni guarda propuestas. Qué mirar:
 
 Cuenta contra el presupuesto diario como cualquier otra ejecución.
 
-### En GitHub Actions
+### Dónde corre
 
-`vigilancia.yml` ejecuta `params-autopilot` después de `params-verify`, siempre:
-sin el secreto `ANTHROPIC_API_KEY` hace solo su parte determinista. Lo único que
-llega al repositorio es el PR de lecturas del apartado 4; ninguna propuesta se
-escribe sola (`RECODE_AUTO_APPLY` va a `false`): sube las propuestas, el
-registro de novedades y el estado del piloto como artefacto
-(`recode-proposals`, que además se conserva en caché de una semana a otra) y,
-si existe el secreto `NOTIFY_WEBHOOK_URL`, envía el parte por ese canal. Para
-aplicar una propuesta, descarga el artefacto en la carpeta de
-`RECODE_PROPOSALS_PATH` de tu copia de trabajo y usa `params-apply`. El gasto
-de cada ejecución está acotado por la variable de repositorio
-`RECODE_BUDGET_USD` (10 por defecto) y por `RECODE_MAX_PER_RUN`. Al ser
-semanal, una norma puede tardar hasta siete días en verse ahí: el cron diario
-del servidor es el camino normal.
+En el servidor: la línea de cron del apartado 1 o la tarea `params-autopilot` del worker (06:55,
+desactivada por defecto; se activa con `PLATAFORMA_TRABAJOS`, ver `docs/despliegue.md`). No hay una
+ejecución semanal en GitHub ni un artefacto `recode-proposals`: las propuestas quedan en
+`RECODE_PROPOSALS_PATH` y se aplican con `params-apply`. Las lecturas que anota se suben a mano,
+como en el apartado 4.
 
 ### Límites
 
@@ -729,10 +726,10 @@ de fuentes, supuestos y síntomas está en [`docs/formatos_inventario.md`](forma
    estado determinista se informa igual.
 3. `ops doctor` ya incluye las fuentes degradadas o rotas entre sus problemas: si lo tienes
    programado, te llegará por el mismo canal sin más cambios.
-4. En GitHub Actions, `.github/workflows/formatos.yml` ejecuta `ops formatos probe
-   --fail-on-problem` de lunes a viernes: una ejecución en rojo significa que un formato del BOE
-   ya no se entiende, que un artículo que fija un plazo del calendario ha cambiado o que no se pudo
-   leer; las muestras quedan como artefacto. Las fuentes que no son del BOE (CENDOJ, AEAT, DGT,
+4. El worker ejecuta `ops formatos probe --fail-on-problem` de lunes a viernes a las 07:45 (tarea
+   `formatos-probe`; con cron, la línea del apartado 1). Termina con error si un formato del BOE ya
+   no se entiende, si un artículo que fija un plazo del calendario ha cambiado o si no se pudo leer,
+   y `ops doctor` lo avisa. Las fuentes que no son del BOE (CENDOJ, AEAT, DGT,
    TEAC, boletines) solo se vigilan donde corren sus rastreadores.
 
 ### Ajustes
@@ -1179,12 +1176,25 @@ Código en `asistente/nucleo/evaluacion/`, órdenes en `python -m asistente.plat
 «Evaluación continua»). El diseño completo —candidatos, revisión, base privada, estadística de la puerta— está en
 [`docs/cerebro/aprendizaje.md`](cerebro/aprendizaje.md).
 
-### Sin modelo (cada PR)
+### Sin modelo
+
+No las ejecuta ninguna tarea programada ni `make quality`. Lánzalas a mano antes de fusionar un cambio en
+*prompts*, casos, calculadoras o el consejo:
 
 ```bash
 uv run python -m asistente.plataforma.cli.evaluacion validar          # esquema, cifras esperadas, registro de prompts
 uv run python -m asistente.plataforma.cli.evaluacion run --reproduccion   # guiones de referencia por el agente real
+uv run python -m asistente.nucleo.evaluacion.consejo_eval validar-sesgos   # el arnés del consejo detecta cada sesgo
+uv run python -m asistente.nucleo.evaluacion.consejo_eval guiones --consumo-dir reports/evaluacion/consejo
+uv run python -m asistente.plataforma.cli.check_critical_regressions \
+    --dataset eval_data/critical_cases/tramite_year_critical_cases.jsonl \
+    --min-intent-accuracy 0.80 --min-fact-f1 0.75 --max-unsafe-rate 0.05   # casos críticos, flujo determinista
+uv run python -m asistente.plataforma.cli.drift_check --rules-dir rules --snapshot-root ./data \
+    --output reports/drift.json                                              # deriva de las fuentes de las reglas
 ```
+
+`consejo_eval guiones` reproduce cada caso `decision` y `sesgo` con su dictamen de referencia
+([`docs/consejo/evaluacion.md`](consejo/evaluacion.md)).
 
 `validar` vuelve a ejecutar cada calculadora que nombra un caso. Si una cifra ya no coincide con la que tenía al
 escribirse el caso («Deriva»), no es un fallo: la expectativa siempre es la cifra de hoy de la calculadora (puede
@@ -1309,10 +1319,11 @@ uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --c
   memoria, solo los identificadores), la variante y el modelo de cada propósito: quien opera la revisión lee datos que
   el usuario aceptó compartir para esto; hazlo solo con ese fin. Las filas de revisión y los candidatos están en la
   misma base que los expedientes y se borran con el expediente.
-- En CI no hay datos de usuarios: el trabajo opcional `casos-reales` de `.github/workflows/evaluacion.yml`
-  (*workflow_dispatch*) ejecuta `casos-reales comprobar` (y, si se pide y hay clave, `reproducir` con tope) sobre casos
-  sintéticos (`tests/evaluacion/datos/casos_reales_sinteticos.json`). Los reales se reproducen aquí, en el servidor,
-  con las mismas órdenes.
+- Para probar la reproducción sin datos de usuarios hay casos sintéticos con la misma forma:
+  `casos-reales comprobar --desde tests/evaluacion/datos/casos_reales_sinteticos.json` (sin modelo) y, con clave,
+  `casos-reales reproducir --desde tests/evaluacion/datos/casos_reales_sinteticos.json --modelo-real
+  --presupuesto-usd 2 --sin-corpus --yes`. Los reales se reproducen en el servidor con las mismas órdenes, sin
+  `--desde`.
 
 ### Variables de entorno
 
@@ -1328,4 +1339,3 @@ uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --c
 | `EVALUACION_CONSEJO_COSTE_RELATIVO_POR_PUNTO` | `0.5` | Veces adicionales por cada punto porcentual de mejora demostrada (cota inferior del IC 95 %). |
 | `EVALUACION_CONSEJO_COSTE_RELATIVO_MAX` | `12.0` | Tope del coste relativo del consejo, mejore lo que mejore. |
 | `EVALUACION_CONSEJO_LATENCIA_MAX_RELATIVA` | `40.0` | Latencia p95 máxima del consejo respecto al cerebro solo (trabaja en segundo plano). |
-| `EVALUACION_PRESUPUESTO_USD` (variable del repositorio en GitHub) | `5` | Tope de gasto de la suite con modelo en CI. |

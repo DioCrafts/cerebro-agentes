@@ -309,7 +309,7 @@ def probe(fail_on_problem: bool) -> None:
 
     Comprueba además el calendario fiscal: su coherencia y que los artículos del
     BOE que fijan sus plazos siguen diciendo lo mismo. Para ejecutarlo donde no
-    corren las tareas diarias (GitHub Actions) o para comprobar un cambio de
+    corren las tareas diarias (el worker: `formatos-probe`) o para comprobar un cambio de
     spec. Solo necesita acceso a www.boe.es.
     """
     from asistente.conocimiento.formatos_calendario import sondear_calendario

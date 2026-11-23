@@ -84,6 +84,33 @@ TRABAJOS: tuple[Trabajo, ...] = (
         Programacion(hora=time(7, 30), dias_semana=frozenset({LUNES})),
         orden=("asistente.plataforma.cli.proactive", "run-weekly"),
     ),
+    # The legal-data watch that ran in GitHub Actions until November 2026: a failed run is what tells the
+    # operator (``ops doctor`` reports it), so each one fails on what it finds.
+    Trabajo(
+        "params-check",
+        "¿Ha cambiado en el BOE alguna norma de la que salen los parámetros? Falla si hay que releer alguna.",
+        Programacion(hora=time(7, 5), dias_semana=frozenset({LUNES})),
+        orden=("asistente.plataforma.cli.proactive", "params-check", "--fail-on-stale"),
+    ),
+    Trabajo(
+        "params-verify",
+        "Las cifras de los ficheros de parámetros siguen apareciendo en el texto del BOE. Falla si alguna no cuadra. "
+        "Solo comprueba: las lecturas se anotan a mano (docs/operacion.md, apartado 4).",
+        Programacion(hora=time(7, 15), dias_semana=frozenset({LUNES})),
+        orden=("asistente.plataforma.cli.proactive", "params-verify", "--fail-on-mismatch", "--no-anotar-lecturas"),
+    ),
+    Trabajo(
+        "normas-check",
+        "Vigencia de las normas que usan los cálculos (derogaciones y modificaciones).",
+        Programacion(hora=time(7, 25), dias_semana=frozenset({LUNES})),
+        orden=("asistente.plataforma.cli.proactive", "normas-check"),
+    ),
+    Trabajo(
+        "formatos-probe",
+        "¿Se siguen entendiendo los formatos del BOE y del calendario? Falla si alguno ha cambiado.",
+        Programacion(hora=time(7, 45), dias_semana=frozenset({0, 1, 2, 3, 4})),
+        orden=("asistente.plataforma.cli.ops", "formatos", "probe", "--fail-on-problem"),
+    ),
     Trabajo(
         "doctor",
         "Revisión: ¿ha corrido todo? Avisa al operador si algo falta o falló.",

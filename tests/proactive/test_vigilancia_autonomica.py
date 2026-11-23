@@ -88,3 +88,22 @@ def test_params_check_reports_and_can_fail(monkeypatch) -> None:
     assert pendiente["actualizada_en_boe_el"] == "2099-01-01"
 
     assert CliRunner().invoke(cli_module.cli, ["params-check", "--fail-on-stale"]).exit_code == 1
+
+
+def test_params_check_fails_when_a_law_could_not_be_queried(monkeypatch) -> None:
+    """With --fail-on-stale an unreachable BOE fails the run too: the worker marks it failed and ops doctor warns."""
+    from asistente.plataforma.cli import boe_watch
+
+    def fake_metadata(boe_id: str, **_kw):
+        if boe_id == "BOE-A-2015-945":
+            raise RuntimeError("sin conexión")
+        return {"fecha_actualizacion": "20200101T000000Z"}
+
+    monkeypatch.setattr(boe_watch, "_fetch_metadata", fake_metadata)
+    monkeypatch.setattr(cli_module.time, "sleep", lambda _s: None)
+
+    result = CliRunner().invoke(cli_module.cli, ["params-check", "--fail-on-stale"])
+    informe = json.loads(result.output)
+    assert informe["a_revisar"] == [] and len(informe["errores"]) == 1
+    assert result.exit_code == 1
+    assert CliRunner().invoke(cli_module.cli, ["params-check"]).exit_code == 0

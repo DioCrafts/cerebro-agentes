@@ -84,7 +84,7 @@ usuarios se sostiene en todas las rutas probadas.
 | S-10 | media | **abierto** (producto) | El consentimiento «avisos por correo» envía los avisos del usuario al buzón o *webhook* **del operador** | `asistente/plataforma/cli/ops.py:85`, `proactive/entrega.py` |
 | S-11 | baja | corregido | Mensajes de error con el texto de la excepción | `api.py`, `routers/modulos.py`, `routers/consumo.py` |
 | S-12 | baja | corregido | `llm_usage` conservaba usuario y expediente tras borrar la cuenta y no estaba documentada | `asistente/plataforma/ops/consumo.py`, `routers/auth.py` |
-| S-13 | baja | corregido | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA | `.github/workflows/*.yml` |
+| S-13 | baja | corregido; ya no aplica | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA. Los *workflows* se eliminaron en noviembre de 2026 | `.github/workflows/*.yml` (eliminado) |
 | S-14 | media | corregido | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py`, `decision/fact_extractor.py` |
 | S-15 | media | corregido | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api/security.py`, `api.py`, `frontend/src/lib/historial.ts` |
 | S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `asistente/nucleo/agent/procedencia.py`, `agent/tools.py` |
@@ -242,7 +242,7 @@ anonimizaba con la cuenta y no figuraba en `docs/privacidad.md`. **Corrección**
 `anonimizar_consumo` deja las filas (los totales del operador) sin usuario ni expediente al
 eliminar la cuenta; tabla documentada. **Prueba**: `test_deleting_the_account_detaches_the_usage_log`.
 
-### S-13 (baja, corregido): *workflows* de GitHub
+### S-13 (baja, corregido; ya no aplica): *workflows* de GitHub
 
 `ci.yml`, `critical-regression.yml`, `evaluacion.yml` y `nightly-eval.yml` no declaraban
 `permissions:`, así que el `GITHUB_TOKEN` tenía los permisos por defecto del repositorio (de escritura
@@ -257,6 +257,11 @@ SHA se leyeron con `git ls-remote https://github.com/<dueño>/<acción>` (etique
 exacta con el mismo *commit*), no de memoria. Actualizarlas es ahora un cambio explícito (p. ej.
 con Dependabot para `github-actions`). **Prueba**: `tests/test_workflows_fijados.py` falla si una
 acción no está fijada por SHA con su versión.
+
+Ya no aplica. En noviembre de 2026 se eliminó `.github/workflows/` entero y, con él,
+`tests/test_workflows_fijados.py`. Las comprobaciones corren en local (`make quality`) y la vigilancia
+del BOE, en el worker (`docs/operacion.md`, apartado 4). Si vuelve un *workflow*, rigen las mismas
+reglas: `permissions:` explícitos y acciones fijadas por SHA.
 
 ### S-14 (media, corregido): llamadas al modelo sin medir
 
@@ -442,10 +447,10 @@ inventario de rutas.
     identificador del expediente): retención corta y acceso restringido.
 11. **Dependencias**: las versiones están fijadas en `pyproject.toml`/`uv.lock` y `package-lock.json`.
     Esta revisión no ha podido consultar bases de vulnerabilidades (sin red); hay que pasar
-    `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y en
-    CI de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
-12. **CI**: las acciones ya van fijadas por SHA (S-13); actualizarlas con revisión (Dependabot) y
-    restringir quién puede lanzar `workflow_dispatch`.
+    `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y
+    repetirlo de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
+12. No hay *workflows* de GitHub desde noviembre de 2026 (S-13). Si se añaden, fijar las acciones por
+    SHA y restringir quién puede lanzar `workflow_dispatch`.
 
 ## Lo que no se ha podido comprobar
 

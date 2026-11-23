@@ -15,7 +15,6 @@ from datetime import date
 from decimal import Decimal
 import json
 from pathlib import Path
-import re
 from typing import Any
 
 from click.testing import CliRunner
@@ -1465,13 +1464,3 @@ def test_a_summary_that_is_not_json_reaches_the_format_watch(monkeypatch: pytest
     assert cli_module._sumario(date(2026, 11, 10)) == {"data": {}} and len(vistos) == 1
     monkeypatch.setattr(boe_cliente, "descargar", lambda url, *a, **kw: None)
     assert cli_module._sumario(date(2026, 11, 8)) is None
-
-
-def test_the_weekly_workflow_runs_the_autopilot_after_the_verification() -> None:
-    workflow = (Path(__file__).resolve().parents[2] / ".github" / "workflows" / "vigilancia.yml").read_text("utf-8")
-    verify, autopilot = workflow.index("params-verify --fail-on-mismatch"), workflow.index("proactive params-autopilot")
-    assert verify < autopilot
-    paso = workflow[workflow.rindex("- name:", 0, autopilot) : autopilot]
-    # Always runs (its deterministic part needs no secret) and never writes parameters on the runner.
-    assert "if: always()" in paso and 'RECODE_AUTO_APPLY: "false"' in paso and "secrets.ANTHROPIC_API_KEY" in paso
-    assert re.search(r"path: recode-proposals\n\s+key: recode-proposals-", workflow)  # its memory survives the week

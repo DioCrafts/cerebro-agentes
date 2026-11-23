@@ -3,7 +3,7 @@
 A module's law is stale when the BOE has updated it after the reading its data file records; ``params-verify``
 records a new reading when every group quoting it still matches and no group sits in an article changed since
 (the change may be outside the quoted passage); ``params-lecturas`` accepts a file where only that changed. Nothing
-depends on state kept between runs (the GitHub Actions runner keeps none).
+depends on state kept between runs (a fresh checkout keeps none).
 """
 
 from __future__ import annotations
