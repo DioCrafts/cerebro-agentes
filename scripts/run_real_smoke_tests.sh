@@ -31,5 +31,3 @@ for u in urls:
     with urllib.request.urlopen(u, timeout=20) as r:
         print(f'{u} -> {r.status} {r.getheader("content-type")}')
 PY
-run_step "Evaluator smoke test" python -m asistente.plataforma.cli.eval --output /tmp/eval_results.json
-[ -f /tmp/eval_results.json ] && cat /tmp/eval_results.json

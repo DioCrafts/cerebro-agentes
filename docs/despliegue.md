@@ -319,8 +319,6 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `API_MAX_HISTORY_CHARS` | `60000` | Historial que se reenvía al modelo (caracteres). |
 | `API_MAX_HISTORY_MESSAGES` | `40` | Historial que se reenvía al modelo (mensajes). |
 | `API_DOCS_PUBLICAS` | vacío (= solo sin cuentas) | Servir `/docs`, `/redoc`, `/openapi.json`. |
-| `UI_USE_API` | `false` | La interfaz Streamlit antigua usa la API. |
-| `API_BASE_URL` | `http://127.0.0.1:8000` | Dirección de la API para esa interfaz. |
 | `VITE_API_BASE` | `/api` | (Compilación de la interfaz React) prefijo de la API. |
 | `VITE_API_PROXY` | `http://127.0.0.1:8000` | (Solo desarrollo con Vite) destino del proxy `/api`. |
 | `MEMORIA_CONVERSACIONES` | `true` | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): guardar las conversaciones, su resumen y «lo que sé de ti». Con `false` no se guarda ni se usa nada nuevo (lo guardado se puede seguir viendo, exportando y borrando). |
@@ -359,9 +357,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `ANTHROPIC_EFFORT` | `high` | Esfuerzo de razonamiento. |
 | `ANTHROPIC_REFUSAL_FALLBACK` | `true` | Reintento en otro modelo si un clasificador rechaza la petición. |
 | `OPENAI_API_KEY` | vacío | **Secreto.** Credencial de OpenAI. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo de OpenAI (y del extractor de hechos si no hay otro). |
-| `OPENAI_TEMPERATURE` | `0` | Temperatura de la cadena clásica. |
-| `OPENAI_AGENT_MODEL` | = `OPENAI_MODEL` | Modelo del agente con OpenAI. |
+| `OPENAI_AGENT_MODEL` | `gpt-4o-mini` | Modelo de OpenAI (agente y extractor de hechos si no hay otro). |
 | `LOCAL_LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | Servidor local compatible con OpenAI. |
 | `LOCAL_LLM_MODEL` | vacío | Modelo local. |
 | `LOCAL_LLM_API_KEY` | `local` | Clave del servidor local. |
@@ -412,20 +408,9 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `RERANKER_MODEL` | `data/models/qwen3-reranker-mlx-bf16` | Modelo de reordenación. |
 | `RERANKER_TOP_K` | `8` | Documentos tras reordenar. |
 | `RERANKER_FIRST_STAGE_K` | `30` | Candidatos de la primera fase. |
-| `BM25_ENABLED` | `false` | Búsqueda híbrida con BM25. |
-| `BM25_DENSE_WEIGHT` / `BM25_BM25_WEIGHT` | `0.6` / `0.4` | Pesos de la fusión. |
-| `BM25_K` | `20` | Candidatos de BM25. |
 | `CONTEXTUAL_EMBEDDINGS_ENABLED` | `false` | Prefijo contextual al indexar (invalida el índice). |
 | `CONTEXTUAL_MODEL_PATH` | `data/models/qwen3-1.7b-instruct-mlx-bf16` | Modelo del prefijo. |
 | `CONTEXTUAL_MAX_TOKENS` | `80` | Tokens del prefijo. |
-| `RAGAS_JUDGE_MODEL_PATH` | `data/models/qwen3-4b-instruct-2507-mlx-bf16` | Juez de la evaluación RAGAS. |
-| `RAGAS_JUDGE_MAX_TOKENS` | `1024` | Tokens del juez. |
-| `TOP_K` | `3` | Resultados de la cadena clásica. |
-| `MEMORY_KEY` | `chat_history` | Clave del historial en la cadena clásica. |
-| `RETRIEVAL_DECISION_THRESHOLD` | `0.55` | Umbral de similitud (decisión). |
-| `RETRIEVAL_EXPLAIN_THRESHOLD` | `0.525` | Umbral de similitud (explicación; el del módulo fiscal). Calibrado en `docs/cerebro/benchmark-recuperacion.md`. |
-| `GROUNDING_MIN_CITATIONS` | `1` | Citas mínimas para responder. |
-| `GROUNDING_SNIPPET_CHARS` | `240` | Longitud de los fragmentos citados. |
 
 ### 3.7 Avisos fuera de la aplicación
 

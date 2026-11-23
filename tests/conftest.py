@@ -38,9 +38,7 @@ def _real_dependencies_available() -> bool:
     """
     try:
         import click  # noqa: F401
-        import langchain_classic.chains  # noqa: F401
         import langchain_core.callbacks  # noqa: F401
-        import langchain_openai  # noqa: F401
         import pydantic  # noqa: F401
     except ImportError:
         return False
@@ -54,70 +52,11 @@ def pytest_sessionstart(session):
         return
 
     # Minimal stubs for optional heavy dependencies so imports succeed in CI-lite envs.
-    langchain = _ensure_module("langchain")
-    langchain.chains = _ensure_module("langchain.chains")
-    langchain.chains.create_history_aware_retriever = lambda *a, **k: object()
-    langchain.chains.create_retrieval_chain = lambda *a, **k: object()
-
-    combine_docs = _ensure_module("langchain.chains.combine_documents")
-    combine_docs.create_stuff_documents_chain = lambda *a, **k: object()
-
-    prompts = _ensure_module("langchain.prompts")
-
-    class ChatPromptTemplate:
-        @staticmethod
-        def from_messages(messages):
-            return messages
-
-    class MessagesPlaceholder:
-        def __init__(self, *_a, **_k):
-            pass
-
-    prompts.ChatPromptTemplate = ChatPromptTemplate
-    prompts.MessagesPlaceholder = MessagesPlaceholder
-
-    retrievers = _ensure_module("langchain.retrievers")
-    retrievers.ContextualCompressionRetriever = object
-    doc_compressors = _ensure_module("langchain.retrievers.document_compressors")
-    doc_compressors.EmbeddingsFilter = object
-    multiq = _ensure_module("langchain.retrievers.multi_query")
-
-    class MultiQueryRetriever:
-        @staticmethod
-        def from_llm(*_a, **_k):
-            return object()
-
-    multiq.MultiQueryRetriever = MultiQueryRetriever
-
-    # langchain 1.x moved the legacy chains to `langchain_classic`. The
-    # production code now imports from there, so stub the mirror modules
-    # to keep the CI-lite environment self-contained.
-    _ensure_module("langchain_classic")
-    lc_classic_chains = _ensure_module("langchain_classic.chains")
-    lc_classic_chains.create_history_aware_retriever = lambda *a, **k: object()
-    lc_classic_chains.create_retrieval_chain = lambda *a, **k: object()
-    lc_classic_combine = _ensure_module("langchain_classic.chains.combine_documents")
-    lc_classic_combine.create_stuff_documents_chain = lambda *a, **k: object()
-    lc_classic_ret = _ensure_module("langchain_classic.retrievers")
-    lc_classic_ret.ContextualCompressionRetriever = object
-    lc_classic_doc_comp = _ensure_module("langchain_classic.retrievers.document_compressors")
-    lc_classic_doc_comp.EmbeddingsFilter = object
-    lc_classic_multiq = _ensure_module("langchain_classic.retrievers.multi_query")
-    lc_classic_multiq.MultiQueryRetriever = MultiQueryRetriever
-
-    # `chain.py` now also reads ChatPromptTemplate / MessagesPlaceholder
-    # directly from langchain_core.prompts.
-    lc_core_prompts = _ensure_module("langchain_core.prompts")
-    lc_core_prompts.ChatPromptTemplate = ChatPromptTemplate
-    lc_core_prompts.MessagesPlaceholder = MessagesPlaceholder
-
     lc_core_ret = _ensure_module("langchain_core.retrievers")
 
     class _StubBaseRetriever:
         """Accepts arbitrary kwargs, matching the Pydantic constructor that
-        real `BaseRetriever` exposes. `SanitizingRetriever(inner=...)` relies
-        on this contract.
-        """
+        real `BaseRetriever` exposes."""
 
         def __init__(self, **kwargs):
             for key, value in kwargs.items():
@@ -164,14 +103,6 @@ def pytest_sessionstart(session):
 
     vc.FAISS = FAISS
 
-    lo = _ensure_module("langchain_openai")
-    lo.ChatOpenAI = object
-
-    try:
-        import streamlit as st  # noqa: F401  # use real streamlit when installed (provides session_state, etc.)
-    except ImportError:
-        st = _ensure_module("streamlit")
-    st.cache_resource = lambda fn: fn
     scrapy = _ensure_module("scrapy")
 
     class Spider:

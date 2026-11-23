@@ -179,7 +179,7 @@ class FaissCorpusSearcher:
         return cls(vectorstore, reranker=reranker, first_stage_k=settings.RERANKER_FIRST_STAGE_K)
 
     def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
-        from asistente.conocimiento.llm.chain import _sanitize_context_documents
+        from asistente.conocimiento.llm.security import sanitize_context_documents
 
         first_stage_k = max(k, self._first_stage_k) if self._reranker is not None else k
         kwargs: dict[str, Any] = {"k": first_stage_k}
@@ -193,7 +193,7 @@ class FaissCorpusSearcher:
             if self._reranker is not None and docs:
                 docs = list(self._reranker.compress_documents(docs, query))
         # Retrieved text is untrusted input to the model: redact injection bait.
-        return _sanitize_context_documents(list(docs[:k]))
+        return sanitize_context_documents(list(docs[:k]))
 
 
 _BUSCADORES: dict[tuple[Any, ...], FaissCorpusSearcher] = {}

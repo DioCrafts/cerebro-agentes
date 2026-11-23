@@ -16,13 +16,13 @@ El umbral denso decide cuánto se abstiene FAISS, sin cambiar sus aciertos: con 
 
 ```bash
 python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
-  --indice data/faiss --real --proveedor anthropic --umbral 0.45 \
+  --indice data/faiss --real --proveedor anthropic \
   --precio-entrada 3 --precio-salida 15 --salida r.json
 ```
 
 ## Por qué esta decisión
 
-FAISS acierta el artículo en primera posición tanto o más que PageIndex (62 % frente a 58 %), responde en 29 ms y no cuesta nada por consulta. PageIndex encuentra el artículo entre los tres primeros en tres consultas más (81 % frente a 73 %) y se abstiene bien en las seis que debía, pero tarda unas 130 veces más y paga cada consulta. Con 32 consultas, tres de diferencia no bastan para cambiar el defecto. Queda como opción (`FISCAL_RECUPERADOR=pageindex`) para quien prefiera recall y abstención a velocidad.
+FAISS acierta el artículo en primera posición tanto o más que PageIndex (62 % frente a 58 %), responde en 29 ms y no cuesta nada por consulta. PageIndex encuentra el artículo entre los tres primeros en tres consultas más (81 % frente a 73 %) y se abstiene bien en las seis que debía, pero tarda unas 130 veces más y paga cada consulta. Con 32 consultas, tres de diferencia no bastan para cambiar el defecto. PageIndex sigue en el benchmark como variante de comparación; no está conectado al agente.
 
 El híbrido (FAISS elige el documento, el árbol la sección) fue peor que las dos variantes puras en top-1, en top-k y en coste, así que se ha borrado del código.
 
@@ -36,10 +36,7 @@ El híbrido (FAISS elige el documento, el árbol la sección) fue peor que las d
 
 [PageIndex](https://github.com/VectifyAI/PageIndex) es un RAG sin vectores: un LLM recorre un índice en árbol del documento, parecido a una tabla de contenidos, hasta la sección que responde. No usamos la librería, porque su `PageIndexClient` mantiene su propio almacén, rehace el árbol desde el PDF y redacta la respuesta él mismo, saltándose el grounding gate. La idea está implementada en [`asistente/conocimiento/llm/arbol.py`](../../asistente/conocimiento/llm/arbol.py) sobre los fragmentos que ya indexamos: un árbol por documento con la ruta de títulos de Docling, y un selector (`SelectorLLM`) que elige `node_id` en cada nivel. En los tests y en el modo simulado lo sustituye `SelectorLexico`, que no razona; por eso los porcentajes simulados de PageIndex no sirven para decidir.
 
-```bash
-FISCAL_RECUPERADOR=faiss       # defecto
-FISCAL_RECUPERADOR=pageindex   # navegación en árbol con el LLM
-```
+Desde noviembre de 2026, la variante `faiss` del benchmark es el buscador del agente (`FaissCorpusSearcher`: vecinos densos, reranker con `--real` y saneado). Las cifras de arriba se midieron con la cadena LangChain anterior, que filtraba por umbral de similitud y podía abstenerse; el buscador del agente no se abstiene por sí solo, así que sus abstenciones salen a 0 % y hay que repetir la medición antes de comparar.
 
 ## Límites
 

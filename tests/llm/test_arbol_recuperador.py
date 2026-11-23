@@ -1,4 +1,4 @@
-"""Recuperador en árbol estilo PageIndex (FISCAL_RECUPERADOR=pageindex)."""
+"""Recuperador en árbol estilo PageIndex (variante pageindex del benchmark fiscal)."""
 
 from __future__ import annotations
 
@@ -99,7 +99,7 @@ def test_envolver_recuperador_respeta_el_flag() -> None:
     base = _Fijo(docs=[])
     assert envolver_recuperador("faiss", base, CORPUS, SelectorLexico()) is base
     assert isinstance(envolver_recuperador("PageIndex", base, CORPUS, SelectorLexico()), RecuperadorArbol)
-    with pytest.raises(ValueError, match="FISCAL_RECUPERADOR"):
+    with pytest.raises(ValueError, match="Recuperador desconocido"):
         envolver_recuperador("bm42", base, CORPUS, SelectorLexico())
 
 

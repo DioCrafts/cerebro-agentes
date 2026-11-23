@@ -23,13 +23,14 @@ Two ingest modes coexist:
   ``delete`` for chunks whose source disappeared or changed. The 12-hour
   cold-start ingest collapses to ~minutes for typical daily updates.
 
-Heavy imports (``docling`` / ``langchain_docling`` / FAISS) are deferred so
+Heavy imports (``docling`` / FAISS) are deferred so
 that importing this module never drags in the ML stack — unit tests stub the
 loader seam instead.
 """
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import UTC, datetime
 import hashlib
 import json
@@ -67,10 +68,10 @@ def _clean_text(value: Any) -> str | None:
 
 
 def _as_dl_meta(raw: Any) -> dict[str, Any]:
-    """Coerce langchain-docling's ``dl_meta`` into a plain dict.
+    """Coerce a chunk's ``dl_meta`` into a plain dict.
 
-    langchain-docling stores it as a JSON-serializable dict, but be defensive
-    about pydantic-model variants across versions.
+    :func:`iter_docling_chunks` stores it as a JSON-serializable dict, but be
+    defensive about pydantic-model variants across versions.
     """
     if isinstance(raw, dict):
         return raw
@@ -269,14 +270,38 @@ def _stable_chunk_id(file_path: str, chunk_index: int) -> str:
     return f"{file_hash}-{chunk_index}"
 
 
+def _docling_converter() -> Any:
+    """Docling's default ``DocumentConverter``. Isolated so tests can stub the seam."""
+    from docling.document_converter import DocumentConverter
+
+    return DocumentConverter()
+
+
+def iter_docling_chunks(file_paths: list[str], chunker: Any, converter: Any | None = None) -> Iterator[Document]:
+    """Convert each file with Docling and chunk it, one ``Document`` per chunk.
+
+    Same output the ``langchain-docling`` loader produced in ``DOC_CHUNKS`` mode, so the chunk ids, the metadata
+    and the indexed text of an existing index stay valid: the text is ``chunker.contextualize(chunk)`` (headings
+    prefixed) and the metadata is ``{"source": <path as given>, "dl_meta": chunk.meta.export_json_dict()}``.
+    """
+    converter = converter if converter is not None else _docling_converter()
+    for file_path in file_paths:
+        dl_doc = converter.convert(source=file_path).document
+        for chunk in chunker.chunk(dl_doc):
+            yield Document(
+                page_content=chunker.contextualize(chunk=chunk),
+                metadata={"source": file_path, "dl_meta": chunk.meta.export_json_dict()},
+            )
+
+
 def _docling_parse_paths(file_paths: list[str]) -> list[Document]:
     """Run the per-worker Docling+HybridChunker over a list of paths.
 
     Shared helper between the default ingest strategy (one parent file
     in, one batch of chunks out) and the BOE consolidado strategy
-    (parent split into N temp sub-files; this helper chunks all N in one
-    DoclingLoader call, which is faster than N separate calls because
-    Docling reuses its converter state).
+    (parent split into N temp sub-files; this helper chunks all N with one
+    converter, which is faster than N separate calls because Docling reuses
+    its converter state).
 
     Reuses ``_WORKER_CHUNKER`` from the pool initialiser — does not
     reload the tokenizer per call. Chunks are returned with Docling's
@@ -284,21 +309,13 @@ def _docling_parse_paths(file_paths: list[str]) -> list[Document]:
     ``source_url`` fields); callers are responsible for stamping
     ``chunk_id`` and ``source_file`` to match their semantics.
     """
-    from langchain_docling.loader import DoclingLoader, ExportType
-
     if _WORKER_CHUNKER is None:
         # The pool initialiser must have set this. Failing loudly here
         # surfaces a configuration bug; silently rebuilding would
         # silently drop the chunker tuning (max_tokens, etc.).
         raise RuntimeError("_WORKER_CHUNKER is not initialised — pool initialiser did not run.")
-    loader = DoclingLoader(
-        file_path=list(file_paths),
-        export_type=ExportType.DOC_CHUNKS,
-        chunker=_WORKER_CHUNKER,
-    )
-    raw_chunks = loader.load()
     out: list[Document] = []
-    for chunk in raw_chunks:
+    for chunk in iter_docling_chunks(list(file_paths), _WORKER_CHUNKER):
         chunk = sin_banner_boe(chunk)
         meta = docling_chunk_metadata(chunk)
         out.append(Document(page_content=chunk.page_content, metadata=meta))
@@ -478,11 +495,10 @@ class DocumentProcessor:
             return []
         return [str(path) for path in sorted(root.rglob("*")) if path.suffix.lower() in SUPPORTED_SUFFIXES]
 
-    def _build_loader(self, files: list[str]) -> Any:
-        """Construct the DoclingLoader. Isolated so tests can stub the seam."""
+    def _build_chunker(self) -> Any:
+        """Construct the HybridChunker. Isolated so tests can stub the seam."""
         from docling.chunking import HybridChunker
         from docling_core.transforms.chunker.tokenizer.huggingface import HuggingFaceTokenizer
-        from langchain_docling.loader import DoclingLoader, ExportType
 
         from asistente.plataforma import settings
 
@@ -493,24 +509,20 @@ class DocumentProcessor:
             model_name=settings.EMBEDDING_MODEL,
             max_tokens=self.max_tokens or 512,
         )
-        return DoclingLoader(
-            file_path=files,
-            export_type=ExportType.DOC_CHUNKS,
-            chunker=HybridChunker(tokenizer=tokenizer),
-        )
+        return HybridChunker(tokenizer=tokenizer)
 
     def _load_chunks_sequential(self, files: list[str]) -> list[Document]:
         """Single-process variant.
 
-        Builds the DoclingLoader for the whole batch at once. The result
+        Converts and chunks the whole batch with one chunker. The result
         doesn't carry per-chunk source info, so we group chunks by their
         Docling-reported origin filename to assign stable ids. That keeps
         the chunk_id contract identical to the parallel path.
         """
-        raw_chunks = self._build_loader(files).load()
+        raw_chunks = iter_docling_chunks(files, self._build_chunker())
         chunks_per_file: dict[str, int] = {}
         docs: list[Document] = []
-        # langchain-docling tags each Document with ``dl_meta.origin.filename``
+        # Docling tags each chunk with ``dl_meta.origin.filename``
         # — see docling_chunk_metadata. We resolve that back to the absolute
         # input path via the discovered file list (name → path).
         files_by_basename = {Path(f).name: f for f in files}

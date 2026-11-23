@@ -2,12 +2,11 @@ from datetime import UTC, datetime
 
 from click.testing import CliRunner
 
-from asistente.conocimiento.llm import chain
 from asistente.plataforma.cli import crawler as crawler_cli
 from asistente.plataforma.cli import processor as processor_cli
 
 
-def test_smoke_pipeline_crawler_to_index_to_question(monkeypatch) -> None:
+def test_smoke_pipeline_crawler_to_index(monkeypatch) -> None:
     calls: dict[str, object] = {}
 
     def fake_start_crawler(crawler_class, settings, folder, mode, snapshot_date, extra_kwargs=None):
@@ -23,14 +22,8 @@ def test_smoke_pipeline_crawler_to_index_to_question(monkeypatch) -> None:
     def fake_build_index(args):
         calls["processor"] = args
 
-    class DummyChain:
-        def invoke(self, payload):
-            calls["invoke"] = payload
-            return {"answer": "Calendario del contribuyente: https://sede.agenciatributaria.gob.es"}
-
     monkeypatch.setattr(crawler_cli, "start_crawler", fake_start_crawler)
     monkeypatch.setattr(processor_cli, "build_index", fake_build_index)
-    monkeypatch.setattr(chain, "create_openai_chain", lambda openai_api_key: DummyChain())
 
     runner = CliRunner()
     snapshot = datetime.now(UTC).strftime("%Y-%m-%d")
@@ -47,10 +40,5 @@ def test_smoke_pipeline_crawler_to_index_to_question(monkeypatch) -> None:
     )
     assert process_result.exit_code == 0
 
-    rag_chain = chain.create_openai_chain(openai_api_key="test-key")
-    answer = rag_chain.invoke({"input": "¿Dónde veo el calendario?", "chat_history": []})["answer"]
-
-    assert "calendario" in answer.lower()
     assert calls["crawler"]
     assert calls["processor"]
-    assert calls["invoke"]["input"] == "¿Dónde veo el calendario?"

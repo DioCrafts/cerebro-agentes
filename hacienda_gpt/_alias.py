@@ -84,7 +84,6 @@ NUEVOS: dict[str, str] = {
     "hacienda_gpt.auth": "asistente.plataforma.auth",
     "hacienda_gpt.push": "asistente.plataforma.push",
     "hacienda_gpt.cli": "asistente.plataforma.cli",
-    "hacienda_gpt.ui": "asistente.plataforma.ui",
     "hacienda_gpt.observability": "asistente.plataforma.observability",
     "hacienda_gpt.governance": "asistente.plataforma.governance",
     "hacienda_gpt.utils": "asistente.plataforma.utils",

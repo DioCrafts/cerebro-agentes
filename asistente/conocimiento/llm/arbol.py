@@ -330,7 +330,7 @@ def navegar(
 
 
 class RecuperadorArbol(BaseRetriever):
-    """``FISCAL_RECUPERADOR=pageindex``: solo navegación en árbol, sin vectores."""
+    """Variante ``pageindex`` del benchmark fiscal: solo navegación en árbol, sin vectores."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -357,10 +357,10 @@ def envolver_recuperador(
     *,
     k: int = 3,
 ) -> BaseRetriever:
-    """Aplica el flag ``FISCAL_RECUPERADOR`` sobre el recuperador FAISS ya construido."""
+    """Devuelve la variante ``nombre`` del benchmark: el recuperador base (``faiss``) o el árbol (``pageindex``)."""
     nombre = (nombre or "faiss").strip().lower()
     if nombre not in RECUPERADORES:
-        raise ValueError(f"FISCAL_RECUPERADOR desconocido: {nombre!r} (usa {', '.join(RECUPERADORES)})")
+        raise ValueError(f"Recuperador desconocido: {nombre!r} (usa {', '.join(RECUPERADORES)})")
     if nombre == "faiss":
         return base
     raices = construir_arboles(corpus)

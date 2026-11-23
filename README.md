@@ -77,10 +77,10 @@ AEAT, índice FAISS, reglas, calculadoras), que fue el origen del proyecto y sig
 
 - 📚 **RAG sobre contenido fiscal** (HTML/PDF) con FAISS.
 - 🧠 **Motor de reglas** para evaluación de obligaciones y casos.
-- 🛡️ **Grounding gate**: abstención forzada cuando no hay citas normativas suficientes (modos `cited` / `uncited` / `abstained`).
+- 🛡️ **Grounding gate**: el agente se abstiene cuando no hay fuentes que sostengan la respuesta (modos `verified` / `partially_verified` / `abstained`, entre otros).
 - 🧭 **Detector de drift normativo**: cada regla declara las fuentes BOE/AEAT que la sustentan; un CLI compara los hashes contra el último snapshot.
 - 🔐 **Hardening de seguridad** frente a prompt injection en contexto recuperado.
-- 🖥️ **Interfaz Streamlit** para uso interactivo.
+- 🖥️ **PWA React** (`frontend/`) para uso interactivo.
 - ⚡ **API FastAPI** para integración en servicios.
 - 🧪 **Suite de tests** para validar comportamiento funcional y documental.
 
@@ -130,7 +130,7 @@ sus especialistas, con su rigor intacto (citas del BOE y verificador). `CEREBRO_
 | `asistente/capacidades/` | Medios que cualquier ámbito pide con `pedir`: `correo`, `navegador`, `documentos`, `investigacion` (y su contrato, registro y consentimiento). |
 | `asistente/ambitos/` | Los dominios: `fiscal` (con `calculo/` y sus datos legales en `data/`), `luz`, `hipoteca`, `ayudas`, `caducidades`, `suscripciones`. Solo paquetes de ámbito: el registro los descubre aquí. |
 | `asistente/conocimiento/` | Datos legales con cita literal, su comprobación y recodificación (`recodificacion/`), fuentes y vigencia de las normas, vigilancia del BOE y de formatos (`formatos*.py`, `data/formatos/`), y el corpus: `crawler/`, `processor/`, `llm/`, `doctrine/`. |
-| `asistente/plataforma/` | API (`api/`), cuentas (`auth/`), almacenamiento con migraciones y procesos (`migraciones/`, `procesos.py`, `trabajos.py`), operación (`ops/`), avisos push (`push/`), `settings.py`, la línea de órdenes (`cli/`), la UI Streamlit (`ui/`), observabilidad, gobernanza y utilidades. |
+| `asistente/plataforma/` | API (`api/`), cuentas (`auth/`), almacenamiento con migraciones y procesos (`migraciones/`, `procesos.py`, `trabajos.py`), operación (`ops/`), avisos push (`push/`), `settings.py`, la línea de órdenes (`cli/`), observabilidad, gobernanza y utilidades. |
 
 Las órdenes son `python -m asistente.plataforma.cli.<orden>` y la API `uvicorn asistente.plataforma.api.api:app`.
 **Compatibilidad (una versión):** el paquete `hacienda_gpt` sigue existiendo solo como alias de las rutas antiguas
@@ -157,19 +157,7 @@ uv sync                  # crea .venv e instala deps (main + dev) desde uv.lock
 Variables de entorno recomendadas:
 
 ```bash
-export OPENAI_API_KEY="sk-..."          # solo para el LLM de chat (ChatOpenAI)
-export OPENAI_MODEL="gpt-4o-mini"
-export OPENAI_TEMPERATURE="0"
-export TOP_K="3"
-
-# Umbrales de similitud (coseno) del EmbeddingsFilter. Defaults pensados para
-# Qwen3 (coseno normalizado); calíbralos con benchmark_retrieval. Subirlos =
-# más precisión/menos recall (riesgo de abstención); bajarlos = lo contrario.
-export RETRIEVAL_DECISION_THRESHOLD="0.55"   # perfil "decision" (más estricto)
-export RETRIEVAL_EXPLAIN_THRESHOLD="0.525"   # perfil "explain" (más recall)
-# La cadena de Q&A (`/qa` y el chat de la UI) usa el perfil "explain" por
-# defecto, ya que son consultas explicativas. El perfil "decision" (más
-# estricto) queda para el motor de decisión y el benchmark de retrieval.
+export OPENAI_API_KEY="sk-..."          # solo con LLM_PROVIDER=openai
 
 # Embedder local MLX (Apple Silicon, mismo modelo para indexar y consultar):
 export EMBEDDING_MODEL="data/models/qwen3-emb-mlx-bf16"
@@ -213,14 +201,9 @@ defecto. Para cambiar de modelo, convierte uno nuevo con
 >
 > ⚠️ Si cambias de modelo de embedding **reconstruye el índice FAISS** (los
 > espacios vectoriales no son intercambiables — el sistema incremental detecta
-> el cambio vía pipeline fingerprint y fuerza un rebuild automático). Los
-> umbrales de similitud viven en `settings.py` y se configuran vía
-> `RETRIEVAL_DECISION_THRESHOLD` / `RETRIEVAL_EXPLAIN_THRESHOLD`. Defaults
-> actuales: 0.45 / 0.35. **Calíbralos** para tu corpus con
-> `uv run python -m asistente.plataforma.cli.benchmark_retrieval`.
+> el cambio vía pipeline fingerprint y fuerza un rebuild automático).
 
-> 🍎 **macOS**: si al primer request a `/qa` (uvicorn) o a la UI
-> (Streamlit) el proceso muere con
+> 🍎 **macOS**: si al primer request a `/agent` (uvicorn) el proceso muere con
 > `OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib
 > already initialized`, exporta `KMP_DUPLICATE_LIB_OK=TRUE` antes de
 > lanzar el servicio. La causa es que `faiss-cpu` y `docling` enlazan dos
@@ -432,42 +415,15 @@ Detalles, casos límite y rationale: [`docs/incremental_indexing_plan.md`](docs/
 
 ---
 
-## 💬 3) Ejecutar UI (Streamlit)
-
-```bash
-uv run streamlit run asistente/plataforma/ui/app.py
-```
-
----
-
 ## 🔌 4) Ejecutar API (FastAPI)
 
 ```bash
 uv run uvicorn asistente.plataforma.api.api:app --reload --host 127.0.0.1 --port 8000
 ```
 
-### Endpoints: `/qa` vs `/cases`
+### Endpoints: `/agent` y `/cases`
 
-La API expone **dos pipelines distintos** con capacidades muy diferentes.
-
-#### `/qa` — Q&A retrieval-augmented (madura)
-
-RAG completo: FAISS + LLM + grounding gate.
-
-- Query libre en español.
-- Recupera top-K chunks del índice FAISS y compone la respuesta citando
-  documentos AEAT (`mode: cited`).
-- Abstención automática (`mode: abstained`) si no hay citas suficientes o
-  el modelo expresa duda.
-- Resistente a prompt injection y preguntas fuera de dominio.
-
-Úsalo para **consultas explicativas** sobre normativa tributaria.
-
-```bash
-curl -X POST http://127.0.0.1:8000/qa \
-  -H 'Content-Type: application/json' \
-  -d '{"query": "¿Tengo que declarar IRPF si soy residente?"}'
-```
+Las preguntas libres van a `/agent` (sección «Agente con herramientas»). `/cases` es el motor de decisión con estado.
 
 #### `/cases` + `/cases/{id}/turn` — Decision engine (en desarrollo)
 
@@ -497,10 +453,9 @@ curl -X POST "http://127.0.0.1:8000/cases/$CASE/turn" \
   -d '{"user_input":"Soy autónomo en Madrid, facturo 45000€"}'
 ```
 
-> ⚠️ **Capacidad actual**: el motor de decisión es más reciente que `/qa`
-> y aún no cubre todas las obligaciones tributarias — las reglas en
-> `rules/` cubren IRPF residencia, IVA básico y autónomos. Para preguntas
-> fuera de ese alcance, `/qa` es hoy la opción más sólida.
+> ⚠️ **Capacidad actual**: el motor de decisión aún no cubre todas las
+> obligaciones tributarias: las reglas en `rules/` cubren IRPF residencia,
+> IVA básico y autónomos. Para preguntas fuera de ese alcance, usa `/agent`.
 
 ---
 
@@ -866,8 +821,7 @@ las plantillas usan módulos falsos con los nombres de las herramientas reales (
 
 ## 🤖 Agente con herramientas (`/agent`)
 
-`/agent` es el asesor agéntico: en lugar de la cadena fija de `/qa`
-(recuperar una vez → responder), el modelo decide **qué buscar y cuántas
+`/agent` es el asesor agéntico y la única vía de preguntas libres: el modelo decide **qué buscar y cuántas
 veces**, cita cada afirmación normativa con el identificador del fragmento
 que la respalda y un **verificador independiente** comprueba afirmación por
 afirmación antes de etiquetar la respuesta.
@@ -929,7 +883,7 @@ export ANTHROPIC_EFFORT="high"             # low | medium | high | xhigh | max
 # OpenAI
 export LLM_PROVIDER="openai"
 export OPENAI_API_KEY="sk-..."
-export OPENAI_AGENT_MODEL="gpt-4o"         # por defecto: OPENAI_MODEL
+export OPENAI_AGENT_MODEL="gpt-4o"         # por defecto: gpt-4o-mini
 
 # Modelo local: cualquier servidor compatible con la API de OpenAI
 # (Ollama, LM Studio, mlx_lm.server, vLLM, llama.cpp…)
@@ -949,9 +903,8 @@ Claude. Otros ajustes: `AGENT_MAX_STEPS` (8), `AGENT_MAX_REVISIONS` (1),
 
 El frontend React usa `/agent` (una llamada por turno, con el expediente
 adjunto) y el extractor de hechos de `/cases` sigue a `LLM_PROVIDER`
-(`DECISION_EXTRACTOR=regex|openai|provider` para forzarlo). Solo la cadena
-legacy `/qa` y la UI de Streamlit siguen dependiendo de OpenAI; `/qa` no se mide
-y por eso responde 404 con `AUTH_MODE=required` (`docs/seguridad.md`, S-14).
+(`DECISION_EXTRACTOR=regex|openai|provider` para forzarlo). La cadena LangChain
+de `/qa` y la UI de Streamlit se retiraron en noviembre de 2026.
 
 ---
 
@@ -1959,11 +1912,9 @@ uv run python -m asistente.plataforma.cli.eval_agent build \
   --dgt-dir data/html/<snapshot>/dgt-vinculantes --out eval_data/dgt_golden.jsonl \
   --sample 200 --since-year 2022
 
-# 2) Evaluar el agente y, para comparar, la cadena /qa
+# 2) Evaluar el agente
 uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
   --system agent --out reports/eval_agent.json
-uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
-  --system qa --out reports/eval_qa.json
 ```
 
 Al evaluar el agente, la consulta de origen de cada caso **se oculta del
@@ -2057,42 +2008,8 @@ pruebas usan proveedores guionizados. Detalle y procedimiento en
 
 ## 🛡️ Grounding gate (abstención por defecto)
 
-La cadena de respuesta envuelve la salida del LLM en un `AnswerEnvelope` con
-modo `cited`, `uncited` o `abstained`. El gate decide en función del contexto
-recuperado:
-
-- **`cited`**: al menos `GROUNDING_MIN_CITATIONS` documentos exponen `title` +
-  `source_url` citables. Se muestran las fuentes.
-- **`uncited`**: hay contexto pero sin metadata válida. Se marca como
-  orientativo.
-- **`abstained`**: no hay contexto, o el modelo emitió expresiones de duda
-  ("no estoy seguro", "no tengo información…"). Se sustituye por un mensaje
-  de abstención.
-
-Variables de entorno:
-
-```bash
-export GROUNDING_MIN_CITATIONS="1"
-export GROUNDING_SNIPPET_CHARS="240"
-```
-
-Uso programático:
-
-```python
-from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
-
-chain = create_openai_chain(openai_api_key=...)
-envelope = answer_with_grounding(chain, query="¿Tengo que declarar IRPF?")
-print(envelope.mode, envelope.citations)
-```
-
-Endpoint API equivalente:
-
-```bash
-curl -X POST http://127.0.0.1:8000/qa \
-  -H 'Content-Type: application/json' \
-  -d '{"query": "¿Tengo que declarar IRPF si soy residente?"}'
-```
+El agente (`/agent`) marca cada respuesta como `verified`, `partially_verified` o `abstained`: cada afirmación
+normativa se comprueba contra el fragmento que cita y, si no hay fuente que la sostenga, se abstiene.
 
 ---
 
@@ -2212,51 +2129,9 @@ fi
 
 ## 📏 5) Evaluación
 
-```bash
-uv run python -m asistente.plataforma.cli.eval --output ./eval_results.json
-```
-
-La evaluación genera:
-
-- score global promedio
-- métricas por dimensión (`keyword_score`, `citation_score`, `grounding_score`)
-- detalle por pregunta
-
-### 🤖 Evaluación automatizada con RAGAS (juez LLM local)
-
-Para comparar dos configuraciones de retrieval (p. ej. reranker on/off, BM25 on/off, contextual embeddings on/off) usamos RAGAS con **juez local MLX** — no llama a OpenAI ni cuesta dinero por evaluación.
-
-```bash
-# 1) baseline (config actual)
-FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
-    uv run python scripts/ragas_eval.py \
-    --out /tmp/hacienda-run/ragas_baseline.json --label baseline
-
-# 2) variante (ej. desactivando reranker)
-RERANKER_ENABLED=false FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
-    uv run python scripts/ragas_eval.py \
-    --out /tmp/hacienda-run/ragas_no_reranker.json --label no-reranker
-
-# 3) comparar agregados (faith / answer_relevancy / context_precision)
-jq '.ragas.aggregate' /tmp/hacienda-run/ragas_baseline.json
-jq '.ragas.aggregate' /tmp/hacienda-run/ragas_no_reranker.json
-```
-
-Métricas reportadas (sin ground-truth, todas judge-LLM):
-
-| Métrica | Pregunta que responde |
-|---|---|
-| `faithfulness` | ¿La respuesta se apoya en los contextos recuperados? |
-| `answer_relevancy` | ¿La respuesta aborda la pregunta del usuario? |
-| `context_precision` | ¿Los chunks recuperados eran realmente útiles para responder? |
-
-Notas operativas:
-
-- El juez es **Qwen3-1.7B MLX bf16** (~3 GB). Más lento y menos preciso que `gpt-4o-mini` pero **gratis y consistente entre runs**.
-- Latencia: ~15–25 s por escenario (15 escenarios → ~5 min). Tras el primer escenario el modelo queda cacheado en RAM.
-- A esta escala (15 muestras) los scores son **ruidosos en términos absolutos**; úsalos como señal de **regresión** entre dos configs, no como número de referencia.
-- `--samples-only` salta el paso de juez — útil para iterar el chain sin re-juzgar cada vez.
-- Para ejecutar contra el corpus completo: `FAISS_INDEX_PATH=./data/faiss` (asegúrate de que el índice esté construido).
+La batería fija del investigador y el cerebro está en `docs/cerebro/bateria.md`
+(`python -m asistente.plataforma.cli.bateria run`). Las respuestas de la DGT se evalúan con
+`python -m asistente.plataforma.cli.eval_agent` (sección anterior).
 
 ---
 
