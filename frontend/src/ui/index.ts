@@ -68,6 +68,7 @@ export { BotonCabecera, BotonComandos, CabeceraApp, Migas, SeparadorCabecera } f
 export { CargandoBloque, CargandoLista, CargandoTexto } from "./Cargando";
 export { Comentario, Conversacion, EventoConversacion } from "./Conversacion";
 export { HojaLateral, type HojaLateralProps } from "./HojaLateral";
+export { Dialogo, NivelTitulo, TituloSeccion } from "./Dialogo";
 export { Iniciales } from "./Iniciales";
 export { PaginaPanel, type PaginaPanelProps } from "./PaginaPanel";
 export { PaletaComandos } from "./PaletaComandos";

@@ -1,28 +1,58 @@
 // Mounts the registry's panels (src/paneles/registro.ts) on demand, each in the frame its definition asks for:
 //
 //   presentacion "pagina"  → in the main column under its tab (PaginaPanel), instead of the conversation;
-//   presentacion "dialogo" → a side sheet over the conversation (HojaLateral);
+//   presentacion "dialogo" → a side sheet over the conversation (Dialogo);
 //   no presentacion        → a panel not yet migrated, which draws its own overlay (as before).
 //
 // The shell renders two hosts: `zona="pagina"` inside the main column and `zona="superpuesto"` at the root.
 //
 // A panel's code is downloaded the first time it opens (React.lazy: one chunk per panel). Once opened it
 // stays mounted while closed, so what the user typed in it survives closing and reopening. Focus: sheets
-// trap it themselves (HojaLateral); pages take it when they open (PaginaPanel); for the legacy overlays it
+// trap it themselves (Dialogo); pages take it when they open (PaginaPanel); for the legacy overlays it
 // is moved into the dialog and Tab is kept inside it here.
 
-import type { ComponentType, ErrorInfo, LazyExoticComponent, ReactNode, RefObject } from "react";
-import { Component, Suspense, createElement, lazy, useEffect, useRef, useState } from "react";
+import type {
+  ComponentType,
+  ErrorInfo,
+  LazyExoticComponent,
+  ReactNode,
+  RefObject,
+} from "react";
+import {
+  Component,
+  Suspense,
+  createElement,
+  lazy,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 
-import type { ContextoPanel, DefinicionPanel, PropsPanel } from "../paneles/tipos";
-import { Button, CargandoTexto, Flash, HojaLateral, PaginaPanel } from "../ui";
+import type {
+  ContextoPanel,
+  DefinicionPanel,
+  PropsPanel,
+} from "../paneles/tipos";
+import {
+  Button,
+  CargandoTexto,
+  Dialogo,
+  Flash,
+  NivelTitulo,
+  PaginaPanel,
+} from "../ui";
 
 const ENFOCABLES =
   'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])';
 
-const perezosos = new Map<string, LazyExoticComponent<ComponentType<PropsPanel>>>();
+const perezosos = new Map<
+  string,
+  LazyExoticComponent<ComponentType<PropsPanel>>
+>();
 
-function componenteDe(panel: DefinicionPanel): LazyExoticComponent<ComponentType<PropsPanel>> {
+function componenteDe(
+  panel: DefinicionPanel,
+): LazyExoticComponent<ComponentType<PropsPanel>> {
   let componente = perezosos.get(panel.id);
   if (!componente) {
     componente = lazy(panel.cargar);
@@ -33,11 +63,19 @@ function componenteDe(panel: DefinicionPanel): LazyExoticComponent<ComponentType
 
 function dialogoActivo(contenedor: HTMLElement | null): HTMLElement | null {
   const dialogos = contenedor?.querySelectorAll<HTMLElement>('[role="dialog"]');
-  return dialogos && dialogos.length > 0 ? (dialogos[dialogos.length - 1] ?? null) : null;
+  return dialogos && dialogos.length > 0
+    ? (dialogos[dialogos.length - 1] ?? null)
+    : null;
 }
 
 /** Legacy panels only: focus into their dialog, and Tab kept inside it. */
-function FocoEnDialogo({ open, contenedor }: { open: boolean; contenedor: RefObject<HTMLDivElement | null> }) {
+function FocoEnDialogo({
+  open,
+  contenedor,
+}: {
+  open: boolean;
+  contenedor: RefObject<HTMLDivElement | null>;
+}) {
   useEffect(() => {
     if (!open) return;
     const dialogo = dialogoActivo(contenedor.current);
@@ -53,7 +91,9 @@ function FocoEnDialogo({ open, contenedor }: { open: boolean; contenedor: RefObj
       if (e.key !== "Tab") return;
       const actual = dialogoActivo(contenedor.current);
       if (!actual) return;
-      const enfocables = Array.from(actual.querySelectorAll<HTMLElement>(ENFOCABLES)).filter((el) => el.offsetParent !== null);
+      const enfocables = Array.from(
+        actual.querySelectorAll<HTMLElement>(ENFOCABLES),
+      ).filter((el) => el.offsetParent !== null);
       if (enfocables.length === 0) return;
       const primero = enfocables[0];
       const ultimo = enfocables.at(-1);
@@ -111,9 +151,13 @@ class FalloDeCarga extends Component<FalloProps, { fallo: boolean }> {
     if (!this.state.fallo) return this.props.children;
     if (!this.props.enHoja) return <AvisoFallo />;
     return (
-      <HojaLateral open={this.props.open} onClose={this.props.onClose} titulo="No se pudo abrir">
+      <Dialogo
+        open={this.props.open}
+        onClose={this.props.onClose}
+        titulo="No se pudo abrir"
+      >
         <AvisoFallo />
-      </HojaLateral>
+      </Dialogo>
     );
   }
 }
@@ -131,18 +175,27 @@ function Contenido({ panel, open, ctx, onClose }: RanuraProps) {
   return createElement(componenteDe(panel), props);
 }
 
-const cargando = (panel: DefinicionPanel) => <CargandoTexto lineas={4} etiqueta={`Cargando ${panel.etiqueta}…`} />;
+const cargando = (panel: DefinicionPanel) => (
+  <CargandoTexto lineas={4} etiqueta={`Cargando ${panel.etiqueta}…`} />
+);
 
 function RanuraPagina(props: RanuraProps) {
   const { panel, open, onClose } = props;
   return (
     <div hidden={!open} data-ranura={panel.id}>
-      <PaginaPanel titulo={panel.titulo} descripcion={panel.descripcion} icono={panel.icono} activa={open}>
-        <FalloDeCarga open={open} onClose={onClose} enHoja={false}>
-          <Suspense fallback={cargando(panel)}>
-            <Contenido {...props} />
-          </Suspense>
-        </FalloDeCarga>
+      <PaginaPanel
+        titulo={panel.titulo}
+        descripcion={panel.descripcion}
+        icono={panel.icono}
+        activa={open}
+      >
+        <NivelTitulo nivel={2}>
+          <FalloDeCarga open={open} onClose={onClose} enHoja={false}>
+            <Suspense fallback={cargando(panel)}>
+              <Contenido {...props} />
+            </Suspense>
+          </FalloDeCarga>
+        </NivelTitulo>
       </PaginaPanel>
     </div>
   );
@@ -151,7 +204,14 @@ function RanuraPagina(props: RanuraProps) {
 function RanuraDialogo(props: RanuraProps) {
   const { panel, open, onClose } = props;
   return (
-    <HojaLateral open={open} onClose={onClose} titulo={panel.titulo} subtitulo={panel.descripcion} icono={panel.icono} ancho={panel.ancho}>
+    <Dialogo
+      open={open}
+      onClose={onClose}
+      titulo={panel.titulo}
+      subtitulo={panel.descripcion}
+      icono={panel.icono}
+      ancho={panel.ancho}
+    >
       <div data-ranura={panel.id}>
         <FalloDeCarga open={open} onClose={onClose} enHoja={false}>
           <Suspense fallback={cargando(panel)}>
@@ -159,7 +219,7 @@ function RanuraDialogo(props: RanuraProps) {
           </Suspense>
         </FalloDeCarga>
       </div>
-    </HojaLateral>
+    </Dialogo>
   );
 }
 
@@ -172,9 +232,14 @@ function RanuraLegado(props: RanuraProps) {
         <Suspense
           fallback={
             open ? (
-              <HojaLateral open onClose={onClose} titulo={panel.titulo} icono={panel.icono}>
+              <Dialogo
+                open
+                onClose={onClose}
+                titulo={panel.titulo}
+                icono={panel.icono}
+              >
                 {cargando(panel)}
-              </HojaLateral>
+              </Dialogo>
             ) : null
           }
         >
@@ -197,14 +262,26 @@ interface PanelHostProps {
 }
 
 function enZona(panel: DefinicionPanel, zona: PanelHostProps["zona"]): boolean {
-  return zona === "pagina" ? panel.presentacion === "pagina" : panel.presentacion !== "pagina";
+  return zona === "pagina"
+    ? panel.presentacion === "pagina"
+    : panel.presentacion !== "pagina";
 }
 
-export function PanelHost({ paneles, abierto, ctx, onClose, zona }: PanelHostProps) {
+export function PanelHost({
+  paneles,
+  abierto,
+  ctx,
+  onClose,
+  zona,
+}: PanelHostProps) {
   // The panels of this zone opened at least once (in order of first opening).
   const [montados, setMontados] = useState<string[]>([]);
   const deLaZona = paneles.filter((p) => enZona(p, zona));
-  if (abierto !== null && !montados.includes(abierto) && deLaZona.some((p) => p.id === abierto)) {
+  if (
+    abierto !== null &&
+    !montados.includes(abierto) &&
+    deLaZona.some((p) => p.id === abierto)
+  ) {
     setMontados([...montados, abierto]);
   }
   return (
@@ -213,8 +290,10 @@ export function PanelHost({ paneles, abierto, ctx, onClose, zona }: PanelHostPro
         const panel = deLaZona.find((p) => p.id === id);
         if (!panel) return null;
         const props = { panel, open: abierto === id, ctx, onClose };
-        if (panel.presentacion === "pagina") return <RanuraPagina key={id} {...props} />;
-        if (panel.presentacion === "dialogo") return <RanuraDialogo key={id} {...props} />;
+        if (panel.presentacion === "pagina")
+          return <RanuraPagina key={id} {...props} />;
+        if (panel.presentacion === "dialogo")
+          return <RanuraDialogo key={id} {...props} />;
         return <RanuraLegado key={id} {...props} />;
       })}
     </>
