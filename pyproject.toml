@@ -14,8 +14,8 @@ dependencies = [
     # asistente/investigador/web.py until that module moves to it.
     "httpx==0.28.1",
     "openai==3.57.0",
-    # The FAISS index on disk is LangChain's pickle format: langchain-community loads it and langchain-core
-    # provides the Document type it stores. Both go when the index moves to sqlite-vec.
+    # The FAISS index on disk is LangChain's pickle format: only conocimiento/indice/faiss_legado.py loads it.
+    # Goes with faiss-cpu when INDICE_BACKEND=sqlite becomes the default.
     "langchain-community==0.4.2",
     # Ingestion + chunking: Docling (PDF/HTML layout- and table-aware parsing,
     # tokenization-aware HybridChunker) is the single ingestion backend, called
