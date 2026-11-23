@@ -1,0 +1,55 @@
+/* GitHub's UnderlineNav look for in-page tabs (the ARIA tab pattern), on Primer's tokens. */
+.lista {
+  display: flex;
+  gap: var(--base-size-8);
+  margin: 0;
+  padding: 0 0 0 var(--base-size-4);
+  overflow-x: auto;
+  box-shadow: inset 0 calc(var(--borderWidth-thin) * -1) 0 var(--borderColor-muted);
+}
+.pestana {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--base-size-6);
+  height: var(--base-size-32);
+  margin-block: var(--base-size-8);
+  padding-inline: var(--base-size-8);
+  color: var(--fgColor-default);
+  font: inherit;
+  font-size: var(--text-body-size-medium);
+  white-space: nowrap;
+  background: transparent;
+  border: 0;
+  border-radius: var(--borderRadius-medium);
+  cursor: pointer;
+}
+@media (hover: hover) {
+  .pestana:hover {
+    background-color: var(--bgColor-neutral-muted);
+  }
+}
+.pestana:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--fgColor-accent);
+  outline: 2px solid transparent;
+}
+.pestana::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0;
+  height: 2px;
+  margin-bottom: calc(var(--base-size-8) * -1);
+  background-color: transparent;
+  pointer-events: none;
+}
+.pestana[aria-selected="true"] {
+  font-weight: var(--base-text-weight-semibold);
+}
+.pestana[aria-selected="true"]::after {
+  background-color: var(--underlineNav-borderColor-active);
+}
+@media (forced-colors: active) {
+  .pestana[aria-selected="true"]::after {
+    background-color: LinkText;
+  }
+}

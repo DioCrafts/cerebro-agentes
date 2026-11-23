@@ -1,19 +1,22 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Self-employed panel: annual net income of the activity, the quarterly IRPF
 // payment (modelo 130) and the quarterly VAT return (modelo 303). Everything
 // is the deterministic calculators behind POST /autonomos/* — no model call,
-// so it recomputes as the user types. Same visual language as SimulatorPanel.
+// so it recomputes as the user types. Same layout as the simulator: the form, and
+// the result in a sidebar that follows it on wide screens.
+//
+// Shown as a page (registro.ts: presentacion "pagina"): the shell puts the title and the frame.
 
-import { ArrowRight, BriefcaseBusiness, ChevronDown, RotateCcw, Save, TriangleAlert, X } from "lucide-react";
-import clsx from "clsx";
-import { useEffect, useMemo, useRef, useState } from "react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 
 import type { CalcLine, Fact } from "../api";
 import { ApiError } from "../api";
 import type { ActividadPerfil, ResultadoActividad, ResultadoModelo130, ResultadoModelo303, Trimestre } from "../apiAutonomos";
 import { calcularActividad, calcularActividadDelExpediente, calcularModelo130, calcularModelo303, getEjerciciosAutonomos } from "../apiAutonomos";
 import { formatMoney } from "../lib/presentation";
+import { Button, Flash, Select, SegmentedControl } from "../ui";
+import { ArrowRightIcon, HistoryIcon } from "../ui/iconos";
+import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
+import { Pestanas } from "./calculos/Pestanas";
 
 type Tab = "actividad" | "m130" | "m303";
 const TABS: Array<{ id: Tab; label: string }> = [
@@ -144,80 +147,37 @@ function useCalculo<T>(active: boolean, bodyKey: string | null, run: (body: unkn
 }
 
 function MoneyField({ field, values, onChange }: { field: FieldDef; values: Values; onChange: (name: string, value: string) => void }) {
-  return (
-    <label className="block">
-      <span className="text-[12.5px] text-ink-soft">{field.label}</span>
-      <span className="relative mt-1 block">
-        <input
-          value={values[field.name] ?? ""}
-          onChange={(e) => onChange(field.name, e.target.value)}
-          inputMode="decimal"
-          placeholder="0"
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-7 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
-        />
-        <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted">€</span>
-      </span>
-      {field.hint && <span className="mt-1 block text-[11.5px] leading-snug text-muted">{field.hint}</span>}
-    </label>
-  );
+  return <CampoCifra etiqueta={field.label} ayuda={field.hint} valor={values[field.name] ?? ""} onCambio={(v) => onChange(field.name, v)} placeholder="0" />;
 }
 
 function Flag({ name, label, hint, flags, onChange }: { name: string; label: string; hint?: string; flags: Flags; onChange: (name: string, value: boolean) => void }) {
-  return (
-    <label className="flex items-start gap-2.5 sm:col-span-2">
-      <input type="checkbox" checked={flags[name] ?? false} onChange={(e) => onChange(name, e.target.checked)} className="mt-0.5 h-4 w-4 accent-[rgb(var(--primary))]" />
-      <span>
-        <span className="text-[13.5px] text-ink">{label}</span>
-        {hint && <span className="block text-[11.5px] leading-snug text-muted">{hint}</span>}
-      </span>
-    </label>
-  );
-}
-
-function Group({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <fieldset>
-      <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{title}</legend>
-      <div className="grid gap-3 sm:grid-cols-2">{children}</div>
-    </fieldset>
-  );
+  return <CampoCasilla etiqueta={label} ayuda={hint} marcada={flags[name] ?? false} onCambio={(v) => onChange(name, v)} />;
 }
 
 function Optional({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <details className="group rounded-xl border border-line bg-surface">
-      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
-        {title}
-        <ChevronDown size={16} aria-hidden className="text-muted transition group-open:rotate-180" />
-      </summary>
-      <div className="grid gap-3 border-t border-line px-4 py-3 sm:grid-cols-2">{children}</div>
-    </details>
+    <Plegable titulo={title}>
+      <div className="grid gap-4 sm:grid-cols-2">{children}</div>
+    </Plegable>
   );
 }
 
 function QuarterPicker({ value, onChange, cumulative }: { value: Trimestre; onChange: (value: Trimestre) => void; cumulative: boolean }) {
   const current = TRIMESTRES[value];
+  const trimestres = Object.values(TRIMESTRES);
   return (
-    <div>
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Trimestre</p>
-      <div role="radiogroup" aria-label="Trimestre" className="grid grid-cols-4 gap-2">
-        {Object.values(TRIMESTRES).map((t) => (
-          <button
-            key={t.value}
-            type="button"
-            role="radio"
-            aria-checked={t.value === value}
-            onClick={() => onChange(t.value)}
-            className={clsx(
-              "rounded-lg border px-2 py-2 text-[13.5px] font-semibold transition",
-              t.value === value ? "border-primary bg-primary text-white" : "border-line bg-surface text-ink-soft hover:border-primary hover:text-primary-dark",
-            )}
-          >
+    <div className="flex flex-col gap-2">
+      <p id="trimestre-titulo" className="m-0 text-sm font-semibold">
+        Trimestre
+      </p>
+      <SegmentedControl aria-labelledby="trimestre-titulo" fullWidth onChange={(i) => onChange(trimestres[i]?.value ?? 1)}>
+        {trimestres.map((t) => (
+          <SegmentedControl.Button key={t.value} selected={t.value === value} aria-label={`${t.label} trimestre (${t.meses})`}>
             {t.label}
-          </button>
+          </SegmentedControl.Button>
         ))}
-      </div>
-      <p className="mt-1.5 text-[11.5px] leading-snug text-muted">
+      </SegmentedControl>
+      <p className="m-0 text-xs text-fg-muted">
         {cumulative
           ? `Pon las cifras acumuladas desde el 1 de enero hasta el ${current.hasta}, no solo las del trimestre.`
           : `Pon solo las cifras del trimestre (${current.meses}).`}
@@ -230,88 +190,51 @@ function Detail({ lineas, avisos }: { lineas: CalcLine[]; avisos: string[] }) {
   return (
     <>
       {lineas.length > 0 && (
-      <details className="group rounded-xl border border-line bg-surface">
-        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
-          Desglose del cálculo
-          <ChevronDown size={16} aria-hidden className="text-muted transition group-open:rotate-180" />
-        </summary>
-        <table className="w-full border-t border-line text-[12.5px]">
-          <tbody>
-            {lineas.map((line, i) => (
-              <tr key={i} className="border-b border-line last:border-0">
-                <td className="px-4 py-1.5 text-ink-soft">
-                  {line.concepto}
-                  {line.referencia && <span className="block text-[11px] text-muted">{line.referencia}</span>}
-                </td>
-                <td className="whitespace-nowrap px-4 py-1.5 text-right font-mono tabular-nums text-ink">{formatMoney(line.importe)}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </details>
+        <Plegable titulo="Desglose del cálculo" sinRelleno>
+          <TablaCifras titulo="Desglose del cálculo" filas={lineas.map((line) => ({ concepto: line.concepto, referencia: line.referencia, cifras: [formatMoney(line.importe)] }))} />
+        </Plegable>
       )}
       {avisos.length > 0 && (
-        <details open className="group rounded-xl border border-grounding-uncited-bd bg-grounding-uncited-bg">
-          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-grounding-uncited-fg [&::-webkit-details-marker]:hidden">
-            Qué debes saber de este cálculo ({avisos.length})
-            <ChevronDown size={16} aria-hidden className="transition group-open:rotate-180" />
-          </summary>
-          <ul className="list-disc space-y-1.5 px-4 pb-3 pl-8 text-[12.5px] leading-snug text-ink-soft">
+        <Plegable tono="aviso" abiertoAlInicio titulo={`Qué debes saber de este cálculo (${avisos.length})`}>
+          <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
             {avisos.map((aviso, i) => (
               <li key={i}>{aviso}</li>
             ))}
           </ul>
-        </details>
+        </Plegable>
       )}
     </>
   );
 }
 
-function ResultCard({ title, amount, suffix, good, children }: { title: string; amount: string | number; suffix?: string; good?: boolean; children?: ReactNode }) {
-  return (
-    <section aria-live="polite" className="z-10 rounded-xl sm:sticky sm:top-0 border border-line bg-surface px-4 py-4 shadow-pop">
-      <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">{title}</p>
-      <p className={clsx("mt-1 font-serif text-[30px] font-bold leading-none", good ? "text-grounding-cited-fg" : "text-ink")}>
-        {formatMoney(amount)}
-        {suffix && <span className="ml-2 text-[14px] font-semibold text-ink-soft">{suffix}</span>}
-      </p>
-      {children}
-    </section>
-  );
-}
+const OPCIONES_CEUTA = [
+  { value: "", label: "No" },
+  { value: "ceuta", label: "Sí, en Ceuta" },
+  { value: "melilla", label: "Sí, en Melilla" },
+];
 
-function ErrorNote({ message }: { message: string }) {
-  return (
-    <p role="alert" className="flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-      <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
-      {message}
-    </p>
-  );
-}
+const OPCIONES_DISCAPACIDAD = [
+  { value: "no", label: "No" },
+  { value: "si", label: "Sí" },
+  { value: "ampliada", label: "Sí, del 65 % o más, con movilidad reducida o ayuda de terceras personas" },
+];
 
 function CeutaSelect({ value, onChange }: { value: string; onChange: (value: string) => void }) {
   return (
-    <label className="block sm:col-span-2">
-      <span className="text-[12.5px] text-ink-soft">¿Desarrollas la actividad en Ceuta o Melilla?</span>
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
-      >
-        <option value="">No</option>
-        <option value="ceuta">Sí, en Ceuta</option>
-        <option value="melilla">Sí, en Melilla</option>
-      </select>
-      <span className="mt-1 block text-[11.5px] leading-snug text-muted">
-        Solo si sus rendimientos tienen derecho a la deducción por rentas obtenidas en Ceuta o Melilla. Cambia los pagos trimestrales y, según el año, los gastos de difícil justificación.
-      </span>
-    </label>
+    <CampoSelector
+      etiqueta="¿Desarrollas la actividad en Ceuta o Melilla?"
+      valor={value}
+      onCambio={onChange}
+      opciones={OPCIONES_CEUTA}
+      ayuda="Solo si sus rendimientos tienen derecho a la deducción por rentas obtenidas en Ceuta o Melilla. Cambia los pagos trimestrales y, según el año, los gastos de difícil justificación."
+      className="sm:col-span-2"
+    />
   );
 }
 
 interface AutonomosPanelProps {
+  /** The page is on screen: the calculators only run while it is. */
   open: boolean;
-  onClose: () => void;
   /** "Usar en mi simulación": hands over the annual net income of the activity, in euros. */
   onUse: (net: number) => void;
   /** Fiscal year of the conversation ("2026"); used when the calculators have parameters for it. */
@@ -326,7 +249,7 @@ interface AutonomosPanelProps {
 
 const NO_FACTS: Fact[] = [];
 
-export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId = null, facts = NO_FACTS, onSaveFact, busy = false }: AutonomosPanelProps) {
+export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, facts = NO_FACTS, onSaveFact, busy = false }: AutonomosPanelProps) {
   const [tab, setTab] = useState<Tab>("actividad");
   const [ejercicios, setEjercicios] = useState<number[] | null>(null);
   const [ejercicioEdit, setEjercicioEdit] = useState<number | null>(null);
@@ -343,13 +266,6 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
   const [trimestre130, setTrimestre130] = useState<Trimestre>(1);
   const [m303, setM303] = useState<Values>({});
   const [trimestre303, setTrimestre303] = useState<Trimestre>(1);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   useEffect(() => {
     if (!open || ejercicios !== null) return;
@@ -466,8 +382,6 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
   const calc130 = useCalculo<ResultadoModelo130>(open && tab === "m130", m130Body, (body, signal) => calcularModelo130(body as Parameters<typeof calcularModelo130>[0], signal));
   const calc303 = useCalculo<ResultadoModelo303>(open && tab === "m303", m303Body, (body, signal) => calcularModelo303(body as Parameters<typeof calcularModelo303>[0], signal));
 
-  if (!open) return null;
-
   const setIn = (setter: (update: (prev: Values) => Values) => void) => (name: string, value: string) => setter((prev) => ({ ...prev, [name]: value }));
   const setFlagIn = (setter: (update: (prev: Flags) => Flags) => void) => (name: string, value: boolean) => setter((prev) => ({ ...prev, [name]: value }));
   const fields = (defs: FieldDef[], values: Values, setter: (update: (prev: Values) => Values) => void) =>
@@ -497,83 +411,76 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
     }
   }
 
-  function actividadTab() {
+
+  function deshacerActividad() {
+    setActividad({});
+    setActividadFlags({});
+    setCeutaEdit(null);
+  }
+
+  /** «Mi actividad»: the result (for the sidebar) and the form. */
+  function actividadTab(): { resultado: ReactNode; formulario: ReactNode } {
     const r = resultadoActividad;
     const neto = r ? Number(r.rendimiento_actividad_neto) : 0;
     const hasIncome = parseNumber(actividadValues.ingresos_integros) !== null;
     const canSave = conExpediente && onSaveFact !== undefined;
     const reducciones = r ? Number(r.reduccion_art_32_1) + Number(r.reduccion_art_32_2) + Number(r.reduccion_art_32_3) : 0;
-    return (
-      <>
-        {r && (
-          <ResultCard title="Rendimiento neto de tu actividad" amount={r.rendimiento_actividad_neto} suffix={neto < 0 ? "de pérdida" : "al año"}>
-            <p className="mt-2 text-[13px] text-ink-soft">
-              Ingresos {formatMoney(r.ingresos_integros)} · gastos {formatMoney(r.gastos_deducibles)}
-              {Number(r.gastos_dificil_justificacion) > 0 && <> · gastos de difícil justificación {formatMoney(r.gastos_dificil_justificacion)}</>}
-              {reducciones > 0 && <> · reducciones {formatMoney(reducciones)}</>}
-            </p>
-            <p className="mt-1 text-[12.5px] text-muted">Es la cifra por la que tu actividad tributa en el IRPF, antes de sumar tus otros ingresos.</p>
-            {perfil?.otras_rentas_no_exentas != null && (
-              <p className="mt-1 text-[12.5px] text-muted">
-                Se han tenido en cuenta los otros ingresos de tu expediente ({formatMoney(perfil.otras_rentas_no_exentas)}) para ver qué reducciones te corresponden.
-              </p>
-            )}
-            {hasIncome ? (
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={saving || busy}
-                  onClick={() => {
-                    // With a case the breakdown itself is saved, so the simulator recomputes it with the rest of the case.
-                    if (!canSave) onUse(neto);
-                    else void saveActividad().then((ok) => ok && onUse(neto));
-                  }}
-                  className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Usar en mi simulación
-                  <ArrowRight size={14} aria-hidden />
-                </button>
-                {canSave && pendientes.length > 0 && (
-                  <>
-                    <button
-                      type="button"
-                      disabled={saving || busy}
-                      onClick={() => void saveActividad()}
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-2 text-[13px] font-semibold text-primary-dark transition hover:border-primary disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <Save size={14} aria-hidden />
-                      {saving ? "Guardando…" : "Guardar en mi expediente"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActividad({});
-                        setActividadFlags({});
-                        setCeutaEdit(null);
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-ink-soft hover:bg-line/60"
-                    >
-                      <RotateCcw size={14} aria-hidden />
-                      Deshacer cambios
-                    </button>
-                  </>
-                )}
-              </div>
-            ) : (
-              <p className="mt-2 text-[12.5px] text-muted">Introduce al menos tus ingresos del año para obtener el cálculo.</p>
-            )}
-            {canSave && pendientes.length > 0 && hasIncome && (
-              <p className="mt-2 text-[12px] leading-snug text-muted">Tienes cambios sin guardar: al guardarlos, el simulador y el asesor calcularán tu actividad con estas cifras.</p>
-            )}
-          </ResultCard>
+    const resultado = r ? (
+      <Resultado titulo="Rendimiento neto de tu actividad" cifra={formatMoney(r.rendimiento_actividad_neto)} sufijo={neto < 0 ? "de pérdida" : "al año"}>
+        <p className="m-0 text-sm">
+          Ingresos {formatMoney(r.ingresos_integros)} · gastos {formatMoney(r.gastos_deducibles)}
+          {Number(r.gastos_dificil_justificacion) > 0 && <> · gastos de difícil justificación {formatMoney(r.gastos_dificil_justificacion)}</>}
+          {reducciones > 0 && <> · reducciones {formatMoney(reducciones)}</>}
+        </p>
+        <p className="m-0 text-xs text-fg-muted">Es la cifra por la que tu actividad tributa en el IRPF, antes de sumar tus otros ingresos.</p>
+        {perfil?.otras_rentas_no_exentas != null && (
+          <p className="m-0 text-xs text-fg-muted">
+            Se han tenido en cuenta los otros ingresos de tu expediente ({formatMoney(perfil.otras_rentas_no_exentas)}) para ver qué reducciones te corresponden.
+          </p>
         )}
-        {!r && conExpediente && !current.error && <p className="text-[13px] text-muted">Introduce tus ingresos del año para calcular el beneficio de tu actividad.</p>}
-        <Group title="Ingresos">{fields(ACTIVIDAD_INGRESOS, actividadValues, setActividad)}</Group>
-        <Group title="Gastos del año (sin IVA)">{fields(ACTIVIDAD_GASTOS, actividadValues, setActividad)}</Group>
+        {hasIncome ? (
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="primary"
+              trailingVisual={ArrowRightIcon}
+              disabled={saving || busy}
+              onClick={() => {
+                // With a case the breakdown itself is saved, so the simulator recomputes it with the rest of the case.
+                if (!canSave) onUse(neto);
+                else void saveActividad().then((ok) => ok && onUse(neto));
+              }}
+            >
+              Usar en mi simulación
+            </Button>
+            {canSave && pendientes.length > 0 && (
+              <>
+                <Button disabled={saving || busy} loading={saving} onClick={() => void saveActividad()}>
+                  Guardar en mi expediente
+                </Button>
+                <Button variant="invisible" leadingVisual={HistoryIcon} onClick={deshacerActividad}>
+                  Deshacer cambios
+                </Button>
+              </>
+            )}
+          </div>
+        ) : (
+          <p className="m-0 text-sm text-fg-muted">Introduce al menos tus ingresos del año para obtener el cálculo.</p>
+        )}
+        {canSave && pendientes.length > 0 && hasIncome && (
+          <p className="m-0 text-xs text-fg-muted">Tienes cambios sin guardar: al guardarlos, el simulador y el asesor calcularán tu actividad con estas cifras.</p>
+        )}
+      </Resultado>
+    ) : conExpediente && !current.error ? (
+      <p className="m-0 text-sm text-fg-muted">Introduce tus ingresos del año para calcular el beneficio de tu actividad.</p>
+    ) : null;
+    const formulario = (
+      <>
+        <SeccionFormulario titulo="Ingresos">{fields(ACTIVIDAD_INGRESOS, actividadValues, setActividad)}</SeccionFormulario>
+        <SeccionFormulario titulo="Gastos del año (sin IVA)">{fields(ACTIVIDAD_GASTOS, actividadValues, setActividad)}</SeccionFormulario>
         <Optional title="Más datos (opcional)">
           {!conExpediente && fields(ACTIVIDAD_MAS, actividadValues, setActividad)}
           {conExpediente && (
-            <p className="text-[12px] leading-snug text-muted sm:col-span-2">
+            <p className="m-0 text-xs text-fg-muted sm:col-span-2">
               Tus otros ingresos (sueldo, intereses, alquileres…) y tu grado de discapacidad se toman de tu expediente: cámbialos en «Tu expediente» o en el simulador.
             </p>
           )}
@@ -592,58 +499,54 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
           />
           <CeutaSelect value={ceuta} onChange={setCeutaEdit} />
           {!conExpediente && (
-          <label className="block sm:col-span-2">
-            <span className="text-[12.5px] text-ink-soft">Discapacidad reconocida</span>
-            <select
-              value={discapacidad}
-              onChange={(e) => setDiscapacidad(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
-            >
-              <option value="no">No</option>
-              <option value="si">Sí</option>
-              <option value="ampliada">Sí, del 65 % o más, con movilidad reducida o ayuda de terceras personas</option>
-            </select>
-            <span className="mt-1 block text-[11.5px] leading-snug text-muted">Solo cuenta junto con la reducción de cliente único.</span>
-          </label>
+            <CampoSelector
+              etiqueta="Discapacidad reconocida"
+              valor={discapacidad}
+              onCambio={setDiscapacidad}
+              opciones={OPCIONES_DISCAPACIDAD}
+              ayuda="Solo cuenta junto con la reducción de cliente único."
+              className="sm:col-span-2"
+            />
           )}
         </Optional>
         {r && <Detail lineas={r.lineas} avisos={perfil ? [perfil.aviso, ...r.avisos] : r.avisos} />}
         {!r && perfil && <Detail lineas={[]} avisos={[perfil.aviso]} />}
       </>
     );
+    return { resultado, formulario };
   }
 
-  function m130Tab() {
+  /** «Pago trimestral (130)». */
+  function m130Tab(): { resultado: ReactNode; formulario: ReactNode } {
     const r = calc130.result;
-    return (
-      <>
-        {r && (
-          <ResultCard title={`Pago del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 130)`} amount={r.a_ingresar} suffix={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"} good={Number(r.a_ingresar) === 0}>
-            <p className="mt-2 text-[13px] text-ink-soft">
-              Beneficio acumulado {formatMoney(r.rendimiento_neto_acumulado)} · pago a cuenta sobre ese beneficio {formatMoney(r.pago_sobre_rendimiento)}
-            </p>
-            <p
-              className={clsx(
-                "mt-2 rounded-lg px-3 py-1.5 text-[13px]",
-                r.obligado_a_pago_fraccionado === false ? "bg-grounding-cited-bg text-grounding-cited-fg" : r.obligado_a_pago_fraccionado === null ? "bg-grounding-abstain-bg text-grounding-abstain-fg" : "bg-grounding-uncited-bg text-grounding-uncited-fg",
-              )}
-            >
-              <span className="font-semibold">
-                {r.obligado_a_pago_fraccionado === false ? "No tienes que hacer este pago. " : r.obligado_a_pago_fraccionado === null ? "No sabemos si tienes que presentarlo. " : "Tienes que presentarlo. "}
-              </span>
-              {r.motivo_obligacion}
-              {r.obligado_a_pago_fraccionado === false && Number(r.resultado) > 0 && <> Si tuvieras que presentarlo, saldrían {formatMoney(r.resultado)}.</>}
-            </p>
-            {r.trimestre < 4 && (
-              <p className="mt-2 text-[12.5px] leading-snug text-muted">
-                Para el trimestre siguiente, apunta: pago antes de la minoración {formatMoney(r.pago_previo_a_minoracion)}
-                {Number(r.minoracion_pendiente) > 0 && <> y minoración pendiente {formatMoney(r.minoracion_pendiente)}</>}.
-              </p>
-            )}
-          </ResultCard>
+    const obligado = r?.obligado_a_pago_fraccionado;
+    const resultado = r && (
+      <Resultado
+        titulo={`Pago del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 130)`}
+        cifra={formatMoney(r.a_ingresar)}
+        sufijo={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"}
+        favorable={Number(r.a_ingresar) === 0}
+      >
+        <p className="m-0 text-sm">
+          Beneficio acumulado {formatMoney(r.rendimiento_neto_acumulado)} · pago a cuenta sobre ese beneficio {formatMoney(r.pago_sobre_rendimiento)}
+        </p>
+        <Flash variant={obligado === false ? "success" : obligado === null ? "default" : "warning"}>
+          <strong>{obligado === false ? "No tienes que hacer este pago. " : obligado === null ? "No sabemos si tienes que presentarlo. " : "Tienes que presentarlo. "}</strong>
+          {r.motivo_obligacion}
+          {obligado === false && Number(r.resultado) > 0 && <> Si tuvieras que presentarlo, saldrían {formatMoney(r.resultado)}.</>}
+        </Flash>
+        {r.trimestre < 4 && (
+          <p className="m-0 text-xs text-fg-muted">
+            Para el trimestre siguiente, apunta: pago antes de la minoración {formatMoney(r.pago_previo_a_minoracion)}
+            {Number(r.minoracion_pendiente) > 0 && <> y minoración pendiente {formatMoney(r.minoracion_pendiente)}</>}.
+          </p>
         )}
+      </Resultado>
+    );
+    const formulario = (
+      <>
         <QuarterPicker value={trimestre130} onChange={setTrimestre130} cumulative />
-        <Group title="Desde el 1 de enero">
+        <SeccionFormulario titulo="Desde el 1 de enero">
           {fields(M130_FIELDS, m130, setM130)}
           {!primero130 && (
             <MoneyField
@@ -666,7 +569,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
             flags={m130Flags}
             onChange={setFlagIn(setM130Flags)}
           />
-        </Group>
+        </SeccionFormulario>
         <Optional title="Rebaja por ingresos bajos el año pasado (opcional)">
           <MoneyField
             field={{ name: "rendimiento_neto_ejercicio_anterior", label: "Beneficio neto de la actividad el año pasado", hint: "Si fue bajo, el pago se rebaja una cantidad fija cada trimestre; el resultado te dirá cuánto" }}
@@ -708,109 +611,84 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
         {r && <Detail lineas={r.lineas} avisos={r.avisos} />}
       </>
     );
+    return { resultado, formulario };
   }
 
-  function m303Tab() {
+  /** «IVA trimestral (303)». */
+  function m303Tab(): { resultado: ReactNode; formulario: ReactNode } {
     const r = calc303.result;
-    const resultado = r ? Number(r.resultado) : 0;
-    return (
-      <>
-        {r && (
-          <ResultCard
-            title={`IVA del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 303)`}
-            amount={Math.abs(resultado)}
-            suffix={r.tipo_resultado === "a_ingresar" ? "a ingresar" : r.tipo_resultado === "a_compensar" ? "a tu favor" : "sin nada que pagar"}
-            good={r.tipo_resultado !== "a_ingresar"}
-          >
-            <p className="mt-2 text-[13px] text-ink-soft">
-              IVA cobrado {formatMoney(r.iva_devengado)} · IVA pagado {formatMoney(r.iva_deducible)}
-              {Number(r.compensacion_aplicada) > 0 && <> · compensado de antes {formatMoney(r.compensacion_aplicada)}</>}
-            </p>
-            {r.tipo_resultado === "a_compensar" && (
-              <p className="mt-2 rounded-lg bg-grounding-cited-bg px-3 py-1.5 text-[13px] text-grounding-cited-fg">
-                {r.puede_solicitar_devolucion
-                  ? "Es el último trimestre del año: puedes pedir la devolución o dejarlo a compensar."
-                  : "Se resta en tus próximas declaraciones; la devolución solo se puede pedir en la del cuarto trimestre."}
-              </p>
-            )}
-          </ResultCard>
+    const resultado303 = r ? Number(r.resultado) : 0;
+    const resultado = r && (
+      <Resultado
+        titulo={`IVA del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 303)`}
+        cifra={formatMoney(Math.abs(resultado303))}
+        sufijo={r.tipo_resultado === "a_ingresar" ? "a ingresar" : r.tipo_resultado === "a_compensar" ? "a tu favor" : "sin nada que pagar"}
+        favorable={r.tipo_resultado !== "a_ingresar"}
+      >
+        <p className="m-0 text-sm">
+          IVA cobrado {formatMoney(r.iva_devengado)} · IVA pagado {formatMoney(r.iva_deducible)}
+          {Number(r.compensacion_aplicada) > 0 && <> · compensado de antes {formatMoney(r.compensacion_aplicada)}</>}
+        </p>
+        {r.tipo_resultado === "a_compensar" && (
+          <Flash variant="success">
+            {r.puede_solicitar_devolucion
+              ? "Es el último trimestre del año: puedes pedir la devolución o dejarlo a compensar."
+              : "Se resta en tus próximas declaraciones; la devolución solo se puede pedir en la del cuarto trimestre."}
+          </Flash>
         )}
+      </Resultado>
+    );
+    const formulario = (
+      <>
         <QuarterPicker value={trimestre303} onChange={setTrimestre303} cumulative={false} />
-        <Group title="Lo que has facturado en el trimestre">{fields(M303_VENTAS, m303, setM303)}</Group>
-        <Group title="Lo que puedes restar">{fields(M303_COMPRAS, m303, setM303)}</Group>
+        <SeccionFormulario titulo="Lo que has facturado en el trimestre">{fields(M303_VENTAS, m303, setM303)}</SeccionFormulario>
+        <SeccionFormulario titulo="Lo que puedes restar">{fields(M303_COMPRAS, m303, setM303)}</SeccionFormulario>
         {r && <Detail lineas={r.lineas} avisos={r.avisos} />}
       </>
     );
+    return { resultado, formulario };
   }
 
+  const vista = tab === "actividad" ? actividadTab() : tab === "m130" ? m130Tab() : m303Tab();
+
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar el panel de autónomos" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label="Autónomos" className="relative flex h-full w-full max-w-[520px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="border-b border-line px-5 pt-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-                <BriefcaseBusiness size={18} aria-hidden className="text-primary-dark" />
-                Autónomos{ejercicio ? ` ${ejercicio}` : ""}
-              </h2>
-              <p className="text-[12.5px] text-muted">Tu beneficio del año y lo que toca pagar cada trimestre</p>
-            </div>
-            <div className="flex items-center gap-1">
-              {ejercicios && ejercicios.length > 1 && ejercicio !== null && (
-                <select
-                  aria-label="Ejercicio"
-                  value={ejercicio}
-                  onChange={(e) => setEjercicioEdit(Number(e.target.value))}
-                  className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-primary focus:outline-hidden"
-                >
-                  {ejercicios.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
-                    </option>
-                  ))}
-                </select>
-              )}
-              <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-                <X size={18} />
-              </button>
-            </div>
-          </div>
-          <div role="tablist" aria-label="Cálculos para autónomos" className="mt-3 flex gap-1 overflow-x-auto">
-            {TABS.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                id={`autonomos-tab-${t.id}`}
-                aria-selected={tab === t.id}
-                aria-controls="autonomos-tabpanel"
-                onClick={() => setTab(t.id)}
-                className={clsx(
-                  "-mb-px whitespace-nowrap border-b-2 px-3 py-2 text-[13px] font-semibold transition",
-                  tab === t.id ? "border-primary text-primary-dark" : "border-transparent text-ink-soft hover:text-ink",
-                )}
-              >
-                {t.label}
-              </button>
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <Pestanas etiqueta="Cálculos para autónomos" idBase="autonomos" actual={tab} onCambiar={setTab} pestanas={TABS.map((t) => ({ id: t.id, etiqueta: t.label }))} />
+        {ejercicios && ejercicios.length > 1 && ejercicio !== null && (
+          <Select aria-label="Ejercicio" size="small" value={String(ejercicio)} onChange={(e) => setEjercicioEdit(Number(e.target.value))}>
+            {ejercicios.map((year) => (
+              <Select.Option key={year} value={String(year)}>
+                {year}
+              </Select.Option>
             ))}
-          </div>
-        </header>
+          </Select>
+        )}
+      </div>
 
-        <div role="tabpanel" id="autonomos-tabpanel" aria-labelledby={`autonomos-tab-${tab}`} className="flex-1 space-y-5 overflow-y-auto px-5 pb-5 pt-3">
-          {loadError && <ErrorNote message={loadError} />}
-          {current.error && <ErrorNote message={current.error} />}
-          {/* Keyed by tab so React does not reuse one tab's DOM (open <details>, focus) for another. */}
-          <div key={tab} className="space-y-5">
-            {tab === "actividad" ? actividadTab() : tab === "m130" ? m130Tab() : m303Tab()}
-          </div>
+      <div role="tabpanel" id="autonomos-tabpanel" aria-labelledby={`autonomos-tab-${tab}`} className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <aside aria-label="Resultado" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:order-2">
+          {loadError && (
+            <Flash variant="danger" role="alert">
+              {loadError}
+            </Flash>
+          )}
+          {current.error && (
+            <Flash variant="danger" role="alert">
+              {current.error}
+            </Flash>
+          )}
+          {vista.resultado}
+        </aside>
+        {/* Keyed by tab so React does not reuse one tab's DOM (open <details>, focus) for another. */}
+        <div key={tab} className="flex min-w-0 flex-col gap-6">
+          {vista.formulario}
+          <p className="m-0 text-xs text-fg-muted">
+            Cálculo determinista{ejercicio ? ` (ejercicio ${ejercicio})` : ""} con las cifras que indicas; no valora si un gasto es deducible ni sustituye a la Agencia Tributaria.
+            {fuente && <span className="block">{fuente}.</span>}
+          </p>
         </div>
-
-        <footer className="border-t border-line px-5 py-3 text-[11.5px] leading-relaxed text-muted">
-          Cálculo determinista con las cifras que indicas; no valora si un gasto es deducible ni sustituye a la Agencia Tributaria.
-          {fuente && <span className="block">{fuente}.</span>}
-        </footer>
-      </aside>
+      </div>
     </div>
   );
 }

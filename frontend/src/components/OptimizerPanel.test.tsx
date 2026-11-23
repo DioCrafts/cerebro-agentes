@@ -3,15 +3,16 @@ import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
 import type { Fact } from "../api";
+import { simularMatchMedia } from "./calculos/entornoPruebas";
 import { OptimizerPanel } from "./OptimizerPanel";
+
+simularMatchMedia();
 
 const fact = (name: string, value: Fact["value"]): Fact => ({ fact_id: name, name, value, value_type: "number", source: "user", confidence: 1, updated_at: "" });
 
 function renderPanel(onSaveFact = vi.fn().mockResolvedValue(true)) {
   render(
     <OptimizerPanel
-      open
-      onClose={() => undefined}
       caseId="c1"
       facts={[fact("rendimiento_trabajo_bruto", 30000)]}
       taxPeriod="2026"

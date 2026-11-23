@@ -1,4 +1,3 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Pure helpers of the «Optimizar mis impuestos» screen: labels, error wording,
 // and how a plan maps onto the simulator's figures. No React here, so the
 // component file only exports components.
@@ -31,10 +30,13 @@ export function todayInSpain(): string {
   }
 }
 
-export const NATURALEZA: Record<Naturaleza, { label: string; cls: string }> = {
-  ahorro_definitivo: { label: "Ahorro definitivo", cls: "border-grounding-cited-bd bg-grounding-cited-bg text-grounding-cited-fg" },
-  diferimiento: { label: "Diferimiento", cls: "border-grounding-uncited-bd bg-grounding-uncited-bg text-grounding-uncited-fg" },
-  requiere_gastar: { label: "Requiere gastar", cls: "border-grounding-abstain-bd bg-grounding-abstain-bg text-grounding-abstain-fg" },
+/** A Primer `Label` variant (src/ui): the colour is the design system's, never a class written here. */
+export type VarianteEtiqueta = "success" | "attention" | "danger" | "secondary" | "accent" | "done";
+
+export const NATURALEZA: Record<Naturaleza, { label: string; variante: VarianteEtiqueta }> = {
+  ahorro_definitivo: { label: "Ahorro definitivo", variante: "success" },
+  diferimiento: { label: "Diferimiento", variante: "attention" },
+  requiere_gastar: { label: "Requiere gastar", variante: "secondary" },
 };
 
 /** What the nature of a lever means for the user, in words (no figures: those come from the plan). */
