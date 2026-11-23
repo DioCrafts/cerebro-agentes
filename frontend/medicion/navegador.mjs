@@ -186,6 +186,7 @@ export function descriptorFoco() {
     y: Math.round(r.top + window.scrollY),
     ancho: Math.round(r.width),
     alto: Math.round(r.height),
+    scrollY: Math.round(window.scrollY),
     enPantalla: r.bottom > 0 && r.top < window.innerHeight && r.right > 0 && r.left < window.innerWidth && r.width > 0,
     indicador: Boolean(indicador),
     fueraDelDialogo: Boolean(dialogo && !dialogo.contains(el)),

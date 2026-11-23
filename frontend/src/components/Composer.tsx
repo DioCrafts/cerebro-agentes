@@ -13,11 +13,13 @@ interface ComposerProps {
   // Text to start with (e.g. the question restored after the user pressed stop).
   // The parent remounts the composer (via `key`) to apply a new one.
   initialValue?: string;
+  /** Called on every keystroke: the shell starts downloading the conversation's turns (Hilo) then. */
+  alEscribir?: () => void;
 }
 
 const MAX_HEIGHT_PX = 220;
 
-export function Composer({ onSubmit, onStop, busy, initialValue = "" }: ComposerProps) {
+export function Composer({ onSubmit, onStop, busy, initialValue = "", alEscribir }: ComposerProps) {
   const [value, setValue] = useState(initialValue);
   const ref = useRef<HTMLTextAreaElement | null>(null);
 
@@ -56,7 +58,10 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
           rows={2}
           resize="none"
           value={value}
-          onChange={(e) => setValue(e.target.value)}
+          onChange={(e) => {
+            setValue(e.target.value);
+            alEscribir?.();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
               e.preventDefault();

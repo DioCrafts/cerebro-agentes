@@ -4,12 +4,12 @@
 // (src/paneles/registro.ts) open from the tabs, the palette or a link (`/?panel=<id>`): pages in the content,
 // sheets and legacy overlays above it (PanelHost).
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCase } from "../api";
 import { AvisoInstalar } from "../components/AvisoInstalar";
 import { Composer } from "../components/Composer";
-import { Hilo } from "../components/Hilo";
+import { EmptyState } from "../components/EmptyState";
 import { PanelHost } from "../components/PanelHost";
 import type { SimulatorSeed } from "../components/SimulatorPanel";
 import { newId } from "../lib/id";
@@ -26,13 +26,25 @@ import { useTheme } from "../lib/theme";
 import { modulosActivos, panelesVisibles } from "../paneles/registro";
 import type { ContextoPanel, Insignias } from "../paneles/tipos";
 import type { Comando } from "../ui";
-import { Button, Dialog, Flash, PageLayout } from "../ui";
+import { Button, CargandoTexto, Flash, PageLayout } from "../ui";
 import { CommentDiscussionIcon } from "../ui/iconos";
 import { CabeceraGlobal } from "./CabeceraGlobal";
 import { ListaConsultas } from "./ListaConsultas";
 import { useAvisos } from "./useAvisos";
 import { useConsulta } from "./useConsulta";
 import { useModulos } from "./useModulos";
+import { cargarHilo } from "./precargas";
+
+// The conversation's turns (answers, sources, checks, the council…) are out of the first load: an empty
+// conversation shows EmptyState, which is light. The chunk downloads with the first keystroke in the
+// question box (the answer takes longer than the chunk), or straight away when a conversation with turns
+// is on screen (main.tsx asks for it even earlier, see precargas.ts). Not when the browser is idle: on a
+// deep-linked panel the browser is idle while the panel's chunk arrives, and the turns then competed with
+// it (Lighthouse's LCP on a phone went from 2.7 to 4.1 s on those pages).
+const Hilo = lazy(() => cargarHilo().then((m) => ({ default: m.Hilo })));
+const precargarHilo = () => void cargarHilo().catch(() => undefined);
+// The phone menu (the consultations) is a Primer Dialog, out of the first load until it opens.
+const Dialog = lazy(() => import("../ui/DialogoMenu"));
 
 // The signed-in account, when the backend has accounts.
 export interface AccountControls {
@@ -303,6 +315,10 @@ export function Asesor({ account }: { account?: AccountControls }) {
           <div hidden={paginaAbierta} className="flex flex-col gap-4">
             {/* The level between the page's h1 (the breadcrumb) and each comment's h3. */}
             <h2 className="sr-only">Conversación</h2>
+            {active.turns.length === 0 && !consulta.busy ? (
+              <EmptyState onPick={(prompt) => void consulta.submit(prompt)} />
+            ) : (
+              <Suspense fallback={<CargandoTexto lineas={3} etiqueta="Cargando la conversación" />}>
             <Hilo
               active={active}
               turno={consulta.turno}
@@ -315,6 +331,8 @@ export function Asesor({ account }: { account?: AccountControls }) {
               lastTurnRef={consulta.lastTurnRef}
               bottomRef={consulta.bottomRef}
             />
+              </Suspense>
+            )}
             <div
               className={`sticky bottom-0 z-[1] -mx-2 flex flex-col gap-2 bg-canvas-default px-2 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 ${active.turns.length > 0 || consulta.busy ? "md:ml-14" : ""}`}
             >
@@ -339,6 +357,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
                 initialValue={consulta.composerSeed.text}
                 onSubmit={(text) => void consulta.submit(text)}
                 onStop={() => consulta.stop()}
+                alEscribir={precargarHilo}
                 busy={consulta.busy}
               />
             </div>
@@ -346,6 +365,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
         </PageLayout.Content>
       </PageLayout>
       {menuOpen && (
+        <Suspense fallback={null}>
         <Dialog
           title="Menú"
           position="left"
@@ -354,6 +374,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
         >
           {lista(() => setMenuOpen(false))}
         </Dialog>
+        </Suspense>
       )}
       <PanelHost
         zona="superpuesto"

@@ -72,7 +72,6 @@ export { HojaLateral, type HojaLateralProps } from "./HojaLateral";
 export { Dialogo, NivelTitulo, TituloSeccion } from "./Dialogo";
 export { Iniciales } from "./Iniciales";
 export { PaginaPanel, type PaginaPanelProps } from "./PaginaPanel";
-export { PaletaComandos } from "./PaletaComandos";
 export { PestanasNavegacion, type Pestana } from "./PestanasNavegacion";
 export { filtrarComandos, type Comando } from "./comandos";
 export { ProveedorUI } from "./ProveedorUI";

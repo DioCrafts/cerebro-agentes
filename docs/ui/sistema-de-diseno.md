@@ -93,6 +93,20 @@ Para maquetar sirven las utilidades de Tailwind de diseño (`flex`, `grid`, `gap
 
 La escala de espaciado es la de Primer: 4, 8, 12, 16, 24, 32 px, que en Tailwind son `1`, `2`, `3`, `4`, `6`, `8`. Dentro de una caja, 16 px (`p-4`); entre cajas, 16 px; entre secciones de una página, 24 px.
 
+## Lo que entra en la carga inicial
+
+La carga inicial (lo que `index.html` enlaza o precarga) es React, el shell (cabecera, pestañas, `PageLayout`, lista de consultas, estado vacío y caja de la consulta) y lo que Primer necesita para eso. En noviembre de 2026 eran 217 KiB con gzip. Todo lo demás llega con un `import()` dinámico:
+
+- cada panel del registro (`cargar` en `paneles/registro.ts`), que las pestañas precargan al pasar el ratón o al recibir el foco (`precargarPanel`);
+- los turnos de la conversación (`Hilo`), que se piden en reposo tras el primer pintado o al arrancar si se reabre una conversación con turnos (`shell/precargas.ts`);
+- la paleta de comandos, el menú de consultas del móvil, la pantalla de entrada y «Privacidad y datos».
+
+Si un componente nuevo solo se ve tras un clic, impórtalo con `React.lazy` desde quien lo abre, no desde `src/ui/index.ts`: lo que exporta ese barril y usa el shell acaba en la carga inicial. Los Octicons se reexportan uno a uno en `src/ui/iconos.ts`; un icono nuevo es un nombre más en esa lista.
+
+El build poda las variables de los dos temas de `@primer/primitives` que nadie lee (`frontend/plugins-vite/podarVariables.ts`): de unas 1.900 por tema quedan las que nombran `src/` o `@primer/react`. Si una variable de Primer deja de funcionar en la app, mira primero si aparece escrita en algún sitio de `src/`; una variable que se construye en tiempo de ejecución con un prefijo que no está en esos fuentes se podaría.
+
+Lo que aparece después del primer pintado no debe empujar el contenido: reserva su sitio con un esqueleto de la altura real (`CargandoBloque`) o ponlo donde no desplace nada, como el botón «Instalar la aplicación» de la cabecera.
+
 ## Prohibido
 
 La regla de ESLint `ui/solo-tokens` (`frontend/eslint/solo-tokens.js`) falla en todo fichero de `src/` que no esté marcado como legado si encuentra:

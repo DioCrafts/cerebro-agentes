@@ -4,10 +4,12 @@
 // one while it is shown; a sheet opens over the conversation and leaves the tab where it was. The tabs that
 // do not fit go into «Más».
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 
+import { enModoApp, instalar, usePwa } from "../lib/pwa";
 import type { Theme } from "../lib/theme";
 import type { DefinicionPanel, Insignias } from "../paneles/tipos";
+import { precargarPanel } from "../paneles/registro";
 import { GRUPOS } from "../paneles/tipos";
 import type { Comando, Pestana } from "../ui";
 import {
@@ -19,7 +21,6 @@ import {
   IconButton,
   Iniciales,
   Migas,
-  PaletaComandos,
   SeparadorCabecera,
   PestanasNavegacion,
   VisuallyHidden,
@@ -27,6 +28,7 @@ import {
 import {
   BellIcon,
   CommentDiscussionIcon,
+  DesktopDownloadIcon,
   MoonIcon,
   PlusIcon,
   ShieldLockIcon,
@@ -36,6 +38,9 @@ import {
 } from "../ui/iconos";
 import { Monogram } from "../components/Brand";
 import type { AccountControls } from "./Asesor";
+
+// The palette (/ or Ctrl+K) is out of the first load: it downloads the first time it opens.
+const PaletaComandos = lazy(() => import("../ui/PaletaComandos").then((m) => ({ default: m.PaletaComandos })));
 
 interface CabeceraGlobalProps {
   title: string;
@@ -71,6 +76,7 @@ function escribiendo(objetivo: EventTarget | null): boolean {
 export function CabeceraGlobal(props: CabeceraGlobalProps) {
   const { title, conTitulo, theme, onToggleTheme, paneles, insignias, abierto, onAbrir, onCerrar, onAbrirConsultas, onNuevaConsulta, comandosExtra, account } = props;
   const [paleta, setPaleta] = useState(false);
+  const { instalable } = usePwa();
   const disparadorPaleta = useRef<HTMLElement | null>(null);
 
   // «/» (outside a text box) and Ctrl/⌘+K open the palette, as on GitHub.
@@ -126,6 +132,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
       destacada: p.destacado === true,
       actual: pagina?.id === p.id,
       alElegir: () => onAbrir(p.id),
+      alPrecargar: () => precargarPanel(p),
     })),
   ];
 
@@ -151,6 +158,11 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
         acciones={
           <>
             <SeparadorCabecera />
+            {/* The browser's install prompt arrives after the first paint: a button here appears without
+                moving the page (a banner above the content would). */}
+            {instalable && !enModoApp() && (
+              <BotonCabecera icono={DesktopDownloadIcon} etiqueta="Instalar la aplicación" onClick={() => void instalar()} />
+            )}
             <BotonCabecera
               icono={theme === "dark" ? SunIcon : MoonIcon}
               etiqueta={theme === "dark" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
@@ -170,7 +182,11 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
       >
         <PestanasNavegacion aria-label="Secciones" pestanas={pestanas} grupos={GRUPOS.map((g) => g.nombre)} />
       </CabeceraApp>
-      <PaletaComandos open={paleta} onClose={() => setPaleta(false)} comandos={comandos} returnFocusRef={disparadorPaleta} />
+      {paleta && (
+        <Suspense fallback={null}>
+          <PaletaComandos open onClose={() => setPaleta(false)} comandos={comandos} returnFocusRef={disparadorPaleta} />
+        </Suspense>
+      )}
     </>
   );
 }
