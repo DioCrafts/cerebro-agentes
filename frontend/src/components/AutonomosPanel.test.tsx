@@ -69,6 +69,15 @@ describe("AutonomosPanel", () => {
   it("says so when the calculators cannot be reached", async () => {
     vi.mocked(api.getEjerciciosAutonomos).mockRejectedValue(new Error("red"));
     render(<AutonomosPanel open onUse={() => undefined} />);
-    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("No se pudo conectar con el servicio de cálculo."));
+    await waitFor(() => expect(screen.getByRole("alert")).toHaveTextContent("No he podido preparar los cálculos de autónomos."));
+  });
+
+  it("tries again with «Reintentar» after a failed load", async () => {
+    const user = userEvent.setup();
+    vi.mocked(api.getEjerciciosAutonomos).mockRejectedValueOnce(new Error("red")).mockResolvedValue([2026]);
+    render(<AutonomosPanel open onUse={() => undefined} />);
+    await user.click(await screen.findByRole("button", { name: "Reintentar" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).not.toBeInTheDocument());
+    expect(api.getEjerciciosAutonomos).toHaveBeenCalledTimes(2);
   });
 });

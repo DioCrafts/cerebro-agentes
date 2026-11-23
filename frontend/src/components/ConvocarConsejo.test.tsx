@@ -48,7 +48,8 @@ describe("ConvocarConsejo", () => {
     render(<ConvocarConsejo caseId="c1" sesionId="s1" />);
     expect(screen.queryByRole("region", { name: "Recomendación del consejo" })).not.toBeInTheDocument();
     await user.click(screen.getByRole("button", { name: "Ver el dictamen" }));
-    expect(screen.getByRole("region", { name: "Recomendación del consejo" })).toBeInTheDocument();
+    // The ruling is loaded on demand (React.lazy): it appears once its code has arrived.
+    expect(await screen.findByRole("region", { name: "Recomendación del consejo" })).toBeInTheDocument();
   });
 });
 

@@ -6,10 +6,12 @@
 // Migrated to the design system (docs/ui/sistema-de-diseno.md): the reference example. It renders only its
 // content; the shell shows it in a side sheet (registro.ts: presentacion "dialogo") with the title and icon.
 
+import { useRef } from "react";
+
 import type { AdvisorNotification } from "../api";
 import { moduloDeKind } from "../apiModulos";
 import { formatDate, formatMoney, relativeTime } from "../lib/presentation";
-import { Blankslate, Button, Caja, CargandoLista, CounterLabel, Flash, Label } from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, CounterLabel, Label } from "../ui";
 import type { Icon } from "../ui/iconos";
 import { BellIcon, CalendarIcon, CheckIcon, CommentDiscussionIcon, GraphIcon, HomeIcon, LawIcon, SlidersIcon, SyncIcon, TasklistIcon } from "../ui/iconos";
 import { AvisoConsejo } from "./DictamenConsejo";
@@ -77,7 +79,7 @@ export function NotificationsPanel({ notifications, hasCase, loading, error, onM
         <div className="flex flex-wrap justify-end gap-2">
           {caseId && (
             <Button size="small" leadingVisual={SlidersIcon} onClick={onOpenPreferences}>
-              Tus preferencias
+              Mis preferencias
             </Button>
           )}
           {hasCase && (
@@ -88,7 +90,7 @@ export function NotificationsPanel({ notifications, hasCase, loading, error, onM
         </div>
       )}
 
-      {error && <Flash variant="danger">{error}</Flash>}
+      {error && <AvisoError frase={error} onReintentar={hasCase && !loading ? onRefresh : undefined} />}
 
       {!hasCase && (
         <Blankslate narrow>
@@ -154,14 +156,23 @@ function Aviso({ n, caseId, moduleNames, onMarkRead, onRefresh, onAsk }: AvisoPr
   if (n.kind === "modulo:consejo" && caseId) {
     return <AvisoConsejo notification={n} caseId={caseId} onMarkRead={onMarkRead} />;
   }
-  const kind = kindInfo(n.kind, moduleNames);
+  return <AvisoNormal n={n} caseId={caseId} kind={kindInfo(n.kind, moduleNames)} onMarkRead={onMarkRead} onRefresh={onRefresh} onAsk={onAsk} />;
+}
+
+function AvisoNormal({ n, caseId, kind, onMarkRead, onRefresh, onAsk }: Omit<AvisoProps, "moduleNames"> & { kind: { icon: Icon; label: string } }) {
   const Icono = kind.icon;
   const unread = !n.read_at;
   const urgente = n.severity === "urgente";
   const fiscal = moduloDeKind(n.kind) === "fiscal";
   const importe = n.amount && Number(n.amount) > 0 ? n.amount : null;
+  // «Marcar como leído» disappears once used: the focus goes to the notice instead of being lost.
+  const articulo = useRef<HTMLElement | null>(null);
+  const marcar = () => {
+    onMarkRead(n.id);
+    articulo.current?.focus();
+  };
   return (
-    <article aria-label={n.title} className="flex flex-col gap-2">
+    <article ref={articulo} tabIndex={-1} aria-label={n.title} className="flex flex-col gap-2 outline-none">
       <div className="flex flex-wrap items-center gap-2 text-xs text-fg-muted">
         <Icono className={urgente ? "text-fg-danger" : "text-fg-muted"} />
         <span>{kind.label}</span>
@@ -191,7 +202,7 @@ function Aviso({ n, caseId, moduleNames, onMarkRead, onRefresh, onAsk }: AvisoPr
           Preguntar al asesor
         </Button>
         {unread && (
-          <Button size="small" variant="invisible" leadingVisual={CheckIcon} onClick={() => onMarkRead(n.id)}>
+          <Button size="small" variant="invisible" leadingVisual={CheckIcon} onClick={marcar}>
             Marcar como leído
           </Button>
         )}

@@ -1,0 +1,5 @@
+# Resultados a medio escribir si Lighthouse falla antes de terminar.
+resultados/*.parcial.json
+# Mediciones de prueba (las que no sirven de referencia).
+capturas/prueba/
+resultados/prueba.*

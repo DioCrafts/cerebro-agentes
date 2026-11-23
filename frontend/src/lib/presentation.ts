@@ -35,7 +35,7 @@ const AUTHORITY_LABEL: Record<string, string> = {
   TS: "Tribunal Supremo",
   TS_SALA_TERCERA: "Tribunal Supremo · Sala Tercera",
   AEAT: "Agencia Tributaria",
-  CALCULADORA: "Calculadora de HaciendaGPT · parámetros de la Ley del IRPF",
+  CALCULADORA: "Calculadora de Cerebro · parámetros de la Ley del IRPF",
 };
 
 export function authorityLabel(authority: string | null | undefined): string | null {

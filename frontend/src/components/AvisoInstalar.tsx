@@ -52,7 +52,7 @@ export function AvisoInstalar() {
       <Flash className="flex items-start gap-3">
         <DesktopDownloadIcon className="mt-0.5 shrink-0" />
         <p className="m-0 min-w-0 flex-1">
-          <strong>Instala HaciendaGPT en este dispositivo.</strong>{" "}
+          <strong>Instala Cerebro en este dispositivo.</strong>{" "}
           {ios ? <InstruccionesIOS /> : "Se abre como una aplicación y puede avisarte de lo que vence."}
         </p>
         {!ios && (

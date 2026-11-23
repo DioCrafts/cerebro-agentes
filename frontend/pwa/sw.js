@@ -91,7 +91,7 @@ self.addEventListener("push", (event) => {
   } catch (e) {
     datos = {};
   }
-  const titulo = typeof datos.titulo === "string" ? datos.titulo.slice(0, 80) : "HaciendaGPT";
+  const titulo = typeof datos.titulo === "string" ? datos.titulo.slice(0, 80) : "Cerebro";
   const cuerpo = typeof datos.cuerpo === "string" ? datos.cuerpo.slice(0, 160) : "Tienes un aviso nuevo: abre la app";
   const destino = (typeof datos.url === "string" && mismoOrigen(datos.url)) || new URL("?panel=avisos", BASE).href;
   event.waitUntil(

@@ -50,12 +50,24 @@ export function useAvisos(caseId: string | null, facts: Fact[]): Avisos {
 
   const items = notifications && notifications.caseId === caseId ? notifications.items : [];
 
+  // Optimistic: the notice is read on screen at once (badge and «Nuevo» go), and comes back unread if the
+  // server could not record it.
   const marcarLeido = useCallback(
     (notificationId: string) => {
       if (!caseId) return;
+      const cambiar = (leidoEl: string | null) =>
+        setNotifications((prev) =>
+          prev && prev.caseId === caseId
+            ? { caseId, items: prev.items.map((n) => (n.id === notificationId ? { ...n, read_at: leidoEl } : n)) }
+            : prev,
+        );
+      cambiar(new Date().toISOString());
       markNotificationRead({ caseId, notificationId }).then(
         (resp) => setNotifications({ caseId, items: resp.notifications }),
-        (err: unknown) => setError(`No se pudo marcar como leído. ${errorMessage(err)}`),
+        (err: unknown) => {
+          cambiar(null);
+          setError(`No se pudo marcar como leído. ${errorMessage(err)}`);
+        },
       );
     },
     [caseId],

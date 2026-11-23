@@ -13,6 +13,7 @@ import type { AuthConfig, SessionResponse, SessionUser } from "./api";
 import { ApiError, getAuthConfig, getMe, logout, onSessionExpired, revocarTokenAntiguo } from "./api";
 import { AuthScreen } from "./components/AuthScreen";
 import { AvisoActualizacion } from "./components/AvisoActualizacion";
+import { Monogram } from "./components/Brand";
 import { PrivacyPanel } from "./components/PrivacyPanel";
 import { abrirPanel, cerrarPanel, usePanelUrl } from "./lib/panelUrl";
 import { olvidarDispositivo } from "./lib/push";
@@ -24,7 +25,9 @@ import { Spinner } from "./ui";
 
 function Splash({ message }: { message?: string }) {
   return (
-    <div role="status" className="flex h-dvh w-full flex-col items-center justify-center gap-3 px-6 text-center text-fg-muted">
+    <div role="status" className="flex h-dvh w-full flex-col items-center justify-center gap-4 px-6 text-center text-fg-muted">
+      {/* The mark, not an empty screen, while the session is checked. */}
+      <Monogram size={48} />
       <Spinner size="medium" srText={message ? null : "Cargando"} />
       {message}
     </div>
@@ -145,17 +148,36 @@ function Puerta() {
     return () => onSessionExpired(null);
   }, [required, privacyOpen]);
 
+  // When accounts were on last time, ask for the session while /auth/config is still on its way: both
+  // requests go out together instead of one after the other (one round trip less before the shell).
+  const [mePrevio] = useState<Promise<SessionUser> | null>(() => {
+    if (lastKnownMode !== "required") return null;
+    const pendiente = getMe();
+    pendiente.catch(() => undefined); // read by the effect below, or never if accounts turned out to be off
+    return pendiente;
+  });
+  const mePrevioUsado = useRef(false);
+
   useEffect(() => {
     if (!required || sessionChecked) return;
     const controller = new AbortController();
-    getMe(controller.signal).then(
+    // The early request is used once: a later check (after a sign-out or an expiry) asks again.
+    const adelantada = mePrevio !== null && !mePrevioUsado.current;
+    const pendiente = adelantada ? mePrevio : getMe(controller.signal);
+    const usada = () => {
+      if (adelantada) mePrevioUsado.current = true;
+    };
+    pendiente.then(
       (me) => {
+        if (controller.signal.aborted) return;
+        usada();
         adoptLocalHistory(me.id);
         setUser(me);
         setSessionChecked(true);
       },
       (err: unknown) => {
         if (controller.signal.aborted) return;
+        usada();
         if (err instanceof ApiError && err.status === 401) {
           // No live session (never signed in, or it expired while the app was closed): a history left by
           // a past session must not outlive it.
@@ -167,7 +189,7 @@ function Puerta() {
       },
     );
     return () => controller.abort();
-  }, [required, sessionChecked]);
+  }, [required, sessionChecked, mePrevio]);
 
   // Runs once the shell is unmounted, so nothing it still held can be written back.
   useEffect(() => {

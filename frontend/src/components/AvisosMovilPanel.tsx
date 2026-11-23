@@ -12,7 +12,7 @@ import { ApiError } from "../api";
 import { getPushConfig, pruebaPush, type PushConfig } from "../apiPush";
 import { activarPush, desactivarPush, PushNoDisponibleError, retirarPush, suscripcionActual } from "../lib/push";
 import { admitePush, enModoApp, esIOS, instalar, usePwa } from "../lib/pwa";
-import { Button, Caja, CargandoTexto, Checkbox, Flash, FormControl } from "../ui";
+import { AvisoError, Button, Caja, CargandoTexto, Checkbox, Flash, FormControl } from "../ui";
 import { BellIcon, CheckCircleIcon, DownloadIcon } from "../ui/iconos";
 import { InstruccionesIOS } from "./AvisoInstalar";
 import { FilaPeligro, ZonaPeligro } from "./ZonaPeligro";
@@ -116,7 +116,7 @@ export function AvisosMovilPanel({ open }: AvisosMovilPanelProps) {
         </Caja>
       )}
 
-      {errorConfig && <Flash variant="danger">{errorConfig}</Flash>}
+      {errorConfig && <AvisoError frase="No he podido comprobar los avisos en este dispositivo." detalle={errorConfig} onReintentar={recargar} />}
 
       {!puede ? (
         <Flash variant="warning">

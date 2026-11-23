@@ -14,7 +14,7 @@ import type { HTMLAttributes, ReactNode } from "react";
 
 import estilos from "./Caja.module.css";
 
-type Variante = "normal" | "acento" | "peligro";
+type Variante = "normal" | "acento" | "atencion" | "peligro";
 
 interface CajaProps extends HTMLAttributes<HTMLElement> {
   /** `section` with an accessible name when it groups content; `div` otherwise. */

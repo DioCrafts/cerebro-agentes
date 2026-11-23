@@ -20,7 +20,7 @@ import {
 } from "../apiMemoria";
 import { errorMessage } from "../lib/memoria";
 import { formatDate } from "../lib/presentation";
-import { Blankslate, Button, Caja, CargandoLista, Checkbox, CounterLabel, Flash, FormControl, Label, Select, TextInput } from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, Checkbox, CounterLabel, FormControl, Label, Select, TextInput } from "../ui";
 import { PencilIcon, PlusIcon, SlidersIcon, TrashIcon } from "../ui/iconos";
 import { useConfirmar } from "./useConfirmar";
 
@@ -137,6 +137,8 @@ function Formulario({
 export function PreferenciasPanel({ open, caseId, onChanged }: PreferenciasPanelProps) {
   const [datos, setDatos] = useState<DecisionesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // The last load failed: its error can be retried (an error saving a change cannot).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const confirmar = useConfirmar();
@@ -149,10 +151,10 @@ export function PreferenciasPanel({ open, caseId, onChanged }: PreferenciasPanel
     getDecisiones(caseId, controller.signal).then(
       (resp) => {
         setDatos(resp);
-        setError(null);
+        setErrorCarga(null);
       },
       (err: unknown) => {
-        if (!controller.signal.aborted) setError(`No se han podido cargar tus preferencias. ${errorMessage(err)}`);
+        if (!controller.signal.aborted) setErrorCarga(errorMessage(err));
       },
     );
     return () => controller.abort();
@@ -236,7 +238,8 @@ export function PreferenciasPanel({ open, caseId, onChanged }: PreferenciasPanel
         </div>
       )}
 
-      {error && <Flash variant="danger">{error}</Flash>}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar tus preferencias." detalle={errorCarga} onReintentar={recargar} />}
+      {error && <AvisoError frase={error} />}
 
       {!caseId && (
         <Blankslate narrow>
@@ -247,7 +250,7 @@ export function PreferenciasPanel({ open, caseId, onChanged }: PreferenciasPanel
           <Blankslate.Description>Cuando lo tengas, aquí verás lo que me hayas dicho que no te interesa o que prefieres.</Blankslate.Description>
         </Blankslate>
       )}
-      {caseId && !datos && !error && <CargandoLista filas={2} etiqueta="Cargando tus preferencias" />}
+      {caseId && !datos && errorCarga === null && <CargandoLista filas={2} etiqueta="Cargando tus preferencias" />}
 
       {caseId && datos && editando === "nueva" && (
         <Caja variante="acento">

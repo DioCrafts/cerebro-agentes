@@ -5,7 +5,7 @@
 import { relativeTime } from "../lib/presentation";
 import { TOPICS } from "../lib/mock";
 import type { Conversation } from "../lib/storage";
-import { ActionList, Button, Heading, Label, NavList } from "../ui";
+import { Button, Heading, Label, NavList, VisuallyHidden } from "../ui";
 import { CommentDiscussionIcon, InfoIcon, PlusIcon, TrashIcon } from "../ui/iconos";
 
 interface ListaConsultasProps {
@@ -42,8 +42,13 @@ export function ListaConsultas({ conversations, activeId, onSelect, onDelete, on
                 <NavList.LeadingVisual>
                   <CommentDiscussionIcon />
                 </NavList.LeadingVisual>
+                {/* The date inside the label, not as a Description: the item's accessible name must contain all
+                    its visible text (WCAG 2.5.3; Primer names it with the label only). */}
                 {c.title}
-                <ActionList.Description variant="block">{relativeTime(c.updatedAt)}</ActionList.Description>
+                <span className="block text-xs text-fg-muted">
+                  <VisuallyHidden>, </VisuallyHidden>
+                  {relativeTime(c.updatedAt)}
+                </span>
                 <NavList.TrailingAction label={`Eliminar la consulta «${c.title}»`} icon={TrashIcon} onClick={() => onDelete(c.id)} />
               </NavList.Item>
             ))}
@@ -62,15 +67,15 @@ export function ListaConsultas({ conversations, activeId, onSelect, onDelete, on
             </li>
           ))}
         </ul>
+        {/* Inside the section, so it belongs to a landmark like the rest of the page. */}
+        <p className="m-0 mt-2 flex gap-2 border-t border-border-muted pt-4 text-xs text-fg-muted">
+          <InfoIcon className="mt-0.5 shrink-0" />
+          <span>
+            <strong className="text-fg-default">Herramienta de apoyo.</strong> No sustituye el asesoramiento fiscal profesional ni el
+            criterio oficial.
+          </span>
+        </p>
       </section>
-
-      <p className="m-0 flex gap-2 border-t border-border-muted pt-4 text-xs text-fg-muted">
-        <InfoIcon className="mt-0.5 shrink-0" />
-        <span>
-          <strong className="text-fg-default">Herramienta de apoyo.</strong> No sustituye el asesoramiento fiscal profesional ni el
-          criterio oficial.
-        </span>
-      </p>
     </div>
   );
 }

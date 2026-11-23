@@ -1,7 +1,7 @@
 // The state of the simulator: figures typed over the case, the detail of each child, and the last
 // result of POST /simulate (debounced, last request wins). Pure parts live in lib/simulador.
 
-import { useEffect, useMemo, useReducer, useRef } from "react";
+import { useEffect, useMemo, useReducer, useRef, useState } from "react";
 
 import type { Fact, Simulation } from "../../api";
 import { ApiError, simulate } from "../../api";
@@ -91,6 +91,8 @@ export interface OpcionesSimulacion {
 const NO_GUARDADO = "No se pudo guardar todo en tu expediente. Lo que no se guardó sigue en el simulador.";
 
 export function useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed }: OpcionesSimulacion) {
+  // Bumped by «Reintentar»: the same simulation is asked for again.
+  const [intento, setIntento] = useState(0);
   const [state, dispatch] = useReducer(reducer, seed, (s): Estado => ({
     edits: s?.edits ?? {},
     tributacion: s?.tributacion ?? "individual",
@@ -185,7 +187,7 @@ export function useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed
         },
         (err: unknown) => {
           if (controller.signal.aborted || seq !== requestSeq.current) return;
-          dispatch({ type: "fallo", error: err instanceof ApiError ? err.message : "No se pudo calcular la simulación." });
+          dispatch({ type: "fallo", error: err instanceof ApiError ? err.message : "" });
         },
       );
     }, 300);
@@ -193,7 +195,7 @@ export function useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed
       clearTimeout(timer);
       controller.abort();
     };
-  }, [open, caseId, taxPeriod, cambiosKey, facts, invalid]);
+  }, [open, caseId, taxPeriod, cambiosKey, facts, invalid, intento]);
 
   async function saveAll() {
     dispatch({ type: "guardando" });
@@ -247,6 +249,7 @@ export function useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed
       setChildren: (rows: ChildRow[]) => dispatch({ type: "hijos", rows }),
       setDesglose: (name: string, open: boolean) => dispatch({ type: "desglose", name, open }),
       deshacer: () => dispatch({ type: "deshacer" }),
+      reintentar: () => setIntento((n) => n + 1),
     },
   };
 }

@@ -39,6 +39,8 @@ export interface ContextoPanel {
     error: string | null;
     cambiar: (clave: string, activo: boolean, borrar: boolean) => Promise<boolean>;
     nombres: Record<string, string>;
+    /** Read the modules and the actions again (after an error). */
+    recargar: () => void;
   };
   acciones: {
     items: AccionPendiente[];
@@ -84,12 +86,25 @@ export interface Visibilidad {
   conCuenta: boolean;
 }
 
+/** Sections of the «Más» menu, in this order. */
+export type GrupoPanel = "impuestos" | "hogar" | "datos" | "agentes";
+
+export const GRUPOS: { id: GrupoPanel; nombre: string }[] = [
+  { id: "impuestos", nombre: "Impuestos" },
+  { id: "hogar", nombre: "Hogar" },
+  { id: "datos", nombre: "Tú y tus datos" },
+  { id: "agentes", nombre: "Agentes" },
+];
+
 export interface DefinicionPanel {
   /** Stable id: the value of `?panel=` (lowercase, digits and hyphens). */
   id: string;
   /** Short label for the navigation. */
   etiqueta: string;
-  /** Longer description: the button's accessible name and tooltip. */
+  /**
+   * The title of its page or sheet and the tab's tooltip: short (≤ 50 characters) and starting with the
+   * label, so what a voice-control user says («Simulador») is the start of what they see (WCAG 2.5.3).
+   */
   titulo: string;
   /** An Octicon (src/ui/iconos.ts). */
   icono: Icon;
@@ -105,6 +120,8 @@ export interface DefinicionPanel {
   descripcion?: string;
   /** Width of the side sheet ("dialogo"): 480px by default. */
   ancho?: "medium" | "large" | "xlarge";
+  /** Section of the «Más» menu. */
+  grupo: GrupoPanel;
   /** Order in the navigation (lower first). */
   orden: number;
   /** Always in the top bar, at every width (the rest go to «Más» when space runs out). */
@@ -115,7 +132,7 @@ export interface DefinicionPanel {
   flag?: string;
   /** Offered only with accounts. */
   requiereCuenta?: boolean;
-  /** A counter on the button, with its accessible wording. */
+  /** A counter on the tab; `etiqueta` is what a screen reader hears after the label («3 sin leer»). */
   insignia?: (insignias: Insignias) => { valor: number; etiqueta: string } | null;
   /** The panel module (lazy: its code is downloaded the first time it opens). */
   cargar: () => Promise<{ default: ComponentType<PropsPanel> }>;

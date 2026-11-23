@@ -5,7 +5,7 @@
 //     <Comentario autor="Tú" accion="preguntó" cuando="hace 2 min" avatar={<Iniciales texto="Tú" />} variante="propio">
 //       …
 //     </Comentario>
-//     <EventoConversacion icono={SyncIcon}>HaciendaGPT está respondiendo…</EventoConversacion>
+//     <EventoConversacion icono={SyncIcon}>Cerebro está respondiendo…</EventoConversacion>
 //   </Conversacion>
 
 import type { Icon } from "@primer/octicons-react";

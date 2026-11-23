@@ -12,7 +12,7 @@ import { ConvocarConsejo } from "../components/ConvocarConsejo";
 import { EstadoSesionLabel } from "../components/conversacion/EstadoSesion";
 import { errorMessage } from "../lib/memoria";
 import { relativeTime } from "../lib/presentation";
-import { Blankslate, Button, Caja, CargandoLista, CounterLabel, Flash, FormControl, Link, Textarea, TextInput, useConfirm } from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, CounterLabel, Flash, FormControl, Link, Textarea, TextInput, useConfirm } from "../ui";
 import { ArrowLeftIcon, PeopleIcon, TrashIcon } from "../ui/iconos";
 import type { PropsPanel } from "./tipos";
 
@@ -80,6 +80,8 @@ export default function PanelConsejo({ ctx, open }: PropsPanel) {
   const [abierta, setAbierta] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const recargar = useCallback(() => setTick((n) => n + 1), []);
+  // Loading the sessions failed: it can be retried (an error deleting one cannot).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const confirmar = useConfirm();
 
   useEffect(() => {
@@ -88,10 +90,10 @@ export default function PanelConsejo({ ctx, open }: PropsPanel) {
     listarSesiones(caseId, controller.signal).then(
       (lista) => {
         setDatos(lista);
-        setError(null);
+        setErrorCarga(null);
       },
       (err: unknown) => {
-        if (!controller.signal.aborted) setError(`No he podido cargar las sesiones del consejo. ${errorMessage(err)}`);
+        if (!controller.signal.aborted) setErrorCarga(errorMessage(err));
       },
     );
     return () => controller.abort();
@@ -132,11 +134,8 @@ export default function PanelConsejo({ ctx, open }: PropsPanel) {
           </Blankslate.Description>
         </Blankslate>
       )}
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
-      )}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar las sesiones del consejo." detalle={errorCarga} onReintentar={recargar} />}
+      {error && <AvisoError frase={error} />}
       {caseId && datos && !datos.disponible && (
         <Flash variant="warning">El consejo no está disponible en este servidor. Puedes seguir viendo y borrando lo que estudió.</Flash>
       )}
@@ -168,7 +167,7 @@ export default function PanelConsejo({ ctx, open }: PropsPanel) {
               }}
             />
           )}
-          {!datos && !error && <CargandoLista filas={2} etiqueta="Cargando las sesiones del consejo" />}
+          {!datos && errorCarga === null && <CargandoLista filas={2} etiqueta="Cargando las sesiones del consejo" />}
           {datos && sesiones.length === 0 && (
             <Blankslate narrow>
               <Blankslate.Visual>

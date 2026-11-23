@@ -25,7 +25,7 @@ describe("AuthScreen", () => {
     const user = userEvent.setup();
     const login = vi.spyOn(api, "login").mockResolvedValue(sesion);
     const onSignedIn = pintar(vi.fn(), "Tu sesión ha caducado.");
-    expect(screen.getByRole("heading", { level: 1, name: "Inicia sesión en HaciendaGPT" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Inicia sesión en Cerebro" })).toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Tu sesión ha caducado.");
     expect(screen.queryByText(/github/i)).toBeNull();
 
@@ -53,7 +53,7 @@ describe("AuthScreen", () => {
     const register = vi.spyOn(api, "register").mockResolvedValue(sesion);
     pintar();
     await user.click(screen.getByRole("button", { name: "Crea una cuenta" }));
-    expect(screen.getByRole("heading", { level: 1, name: "Crea tu cuenta de HaciendaGPT" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "Crea tu cuenta de Cerebro" })).toBeInTheDocument();
 
     await user.type(screen.getByRole("textbox", { name: /Correo electrónico/ }), "ana@example.com");
     await user.type(screen.getByLabelText(/Contraseña/), "corta");

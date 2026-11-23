@@ -21,6 +21,7 @@ export default function PanelModulos({ ctx, open }: PropsPanel) {
       acciones={ctx.acciones.items}
       onDecide={ctx.acciones.decidir}
       disabled={ctx.ocupado}
+      onRetry={ctx.modulos.recargar}
     />
   );
 }

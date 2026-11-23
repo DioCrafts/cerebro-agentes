@@ -30,7 +30,7 @@ import {
   problemasDe,
 } from "../lib/planificador";
 import { formatDate } from "../lib/presentation";
-import { Blankslate, Button, Caja, Checkbox, CheckboxGroup, Flash, FormControl, Label, Link, Radio, RadioGroup, VisuallyHidden } from "../ui";
+import { AvisoError, Blankslate, Button, Caja, Checkbox, CheckboxGroup, Flash, FormControl, Label, Link, Radio, RadioGroup, VisuallyHidden } from "../ui";
 import { AlertIcon, CheckIcon, LawIcon, ProjectRoadmapIcon } from "../ui/iconos";
 import { CampoCasilla, CampoCifra, CampoSelector, CitaLegal, Plegable, SeccionFormulario, TablaCifras } from "./calculos/piezas";
 import { Pestanas } from "./calculos/Pestanas";
@@ -527,15 +527,11 @@ export function PlanificadorPanel({ caseId, taxPeriod }: PlanificadorPanelProps)
         ]}
       />
       <div role="tabpanel" id="plan-tabpanel" aria-labelledby={`plan-tab-${tab}`} className="flex flex-col gap-4">
-        {error && tab === "plan" && (
-          <Flash variant="danger" role="alert">
-            {error}
-          </Flash>
-        )}
+        {error && tab === "plan" && <AvisoError frase="No he podido calcular el reparto." detalle={error} onReintentar={() => void calcular()} />}
         {loading && <VisuallyHidden role="status">Calculando el mejor reparto…</VisuallyHidden>}
         {tab === "datos" ? datosTab() : planTab()}
       </div>
-      <p className="m-0 text-xs text-fg-muted">Cálculo determinista, sin inteligencia artificial. Nada de esta pantalla se guarda.</p>
+      <p className="m-0 text-xs text-fg-muted">Calculado con fórmulas fijas, sin inteligencia artificial. Nada de esta pantalla se guarda.</p>
     </div>
   );
 }

@@ -23,7 +23,7 @@ import {
 } from "../apiRecuerdos";
 import { errorMessage } from "../lib/memoria";
 import { formatDate } from "../lib/presentation";
-import { Blankslate, Button, Caja, CargandoLista, CounterLabel, Details, Flash, FormControl, Label, SegmentedControl, Select, Textarea, ToggleSwitch } from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, CounterLabel, Details, FormControl, Label, SegmentedControl, Select, Textarea, ToggleSwitch } from "../ui";
 import { BookmarkIcon, CommentDiscussionIcon, HistoryIcon, PencilIcon, ShieldIcon, TrashIcon } from "../ui/iconos";
 import { FilaPeligro, ZonaPeligro } from "./ZonaPeligro";
 import { useConfirmar } from "./useConfirmar";
@@ -96,6 +96,8 @@ export function RecuerdosPanel({ open, caseId }: RecuerdosPanelProps) {
   const [editando, setEditando] = useState<string | null>(null);
   const [vista, setVista] = useState<Vista>("recuerdos");
   const [ocupado, setOcupado] = useState(false);
+  // The last load failed: its error can be retried (an error changing a memory cannot).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const idMemoria = useId();
   const confirmar = useConfirmar();
@@ -109,10 +111,10 @@ export function RecuerdosPanel({ open, caseId }: RecuerdosPanelProps) {
       ([r, c]) => {
         setDatos(r);
         setConversaciones(c);
-        setError(null);
+        setErrorCarga(null);
       },
       (err: unknown) => {
-        if (!controller.signal.aborted) setError(`No he podido cargar lo que recuerdo. ${errorMessage(err)}`);
+        if (!controller.signal.aborted) setErrorCarga(errorMessage(err));
       },
     );
     return () => controller.abort();
@@ -204,8 +206,9 @@ export function RecuerdosPanel({ open, caseId }: RecuerdosPanelProps) {
 
   return (
     <div className="flex flex-col gap-4">
-      {error && <Flash variant="danger">{error}</Flash>}
-      {!datos && !error && <CargandoLista filas={3} etiqueta="Cargando lo que recuerdo" />}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar lo que recuerdo." detalle={errorCarga} onReintentar={recargar} />}
+      {error && <AvisoError frase={error} />}
+      {!datos && errorCarga === null && <CargandoLista filas={3} etiqueta="Cargando lo que recuerdo" />}
 
       {datos && sinCuenta && (
         <Blankslate narrow>

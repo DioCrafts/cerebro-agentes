@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "HaciendaGPT — Asesor fiscal y del hogar",
-  "short_name": "HaciendaGPT",
-  "description": "Asesor fiscal para España: responde con la normativa aplicable, verifica cada afirmación contra su fuente y te avisa de lo que vence.",
+  "name": "Cerebro personal fiable",
+  "short_name": "Cerebro",
+  "description": "Asistente del hogar que responde con fuentes: impuestos, luz, hipoteca, ayudas, caducidades y más. Verifica cada afirmación contra su fuente y te avisa de lo que vence.",
   "lang": "es-ES",
   "dir": "ltr",
   "start_url": "/",

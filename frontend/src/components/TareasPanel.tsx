@@ -34,22 +34,7 @@ import {
   type TareaDetalle,
 } from "../apiTareas";
 import { formatDate } from "../lib/presentation";
-import {
-  Blankslate,
-  Button,
-  Caja,
-  CargandoLista,
-  CounterLabel,
-  Flash,
-  FormControl,
-  Heading,
-  Link,
-  ProgressBar,
-  Select,
-  StateLabel,
-  TextInput,
-  Timeline,
-} from "../ui";
+import { AvisoError, Blankslate, Button, Caja, CargandoLista, CounterLabel, Flash, FormControl, Heading, Link, ProgressBar, Select, StateLabel, TextInput, Timeline } from "../ui";
 import {
   ArrowLeftIcon,
   CheckCircleFillIcon,
@@ -471,6 +456,8 @@ export function TareasPanel({ open, caseId, onAccion, onCambio }: TareasPanelPro
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [detalle, setDetalle] = useState<TareaDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
+  // Loading the tasks failed: it can be retried (an error acting on one cannot).
+  const [errorCarga, setErrorCarga] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [tick, setTick] = useState(0);
 
@@ -481,10 +468,10 @@ export function TareasPanel({ open, caseId, onAccion, onCambio }: TareasPanelPro
       ([lista, cat]) => {
         setTareas(lista.tareas);
         setPlantillas(cat.plantillas);
-        setError(null);
+        setErrorCarga(null);
       },
       (err: unknown) => {
-        if (!control.signal.aborted) setError(mensaje(err));
+        if (!control.signal.aborted) setErrorCarga(mensaje(err));
       },
     );
     return () => control.abort();
@@ -519,11 +506,8 @@ export function TareasPanel({ open, caseId, onAccion, onCambio }: TareasPanelPro
 
   return (
     <div className="flex flex-col gap-4">
-      {error && (
-        <Flash variant="danger" role="alert">
-          {error}
-        </Flash>
-      )}
+      {errorCarga !== null && <AvisoError frase="No he podido cargar tus tareas." detalle={errorCarga} onReintentar={() => setTick((t) => t + 1)} />}
+      {error && <AvisoError frase="No he podido completar lo que pediste." detalle={error} />}
       {detalle ? (
         <Detalle
           detalle={detalle}

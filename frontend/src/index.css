@@ -209,3 +209,36 @@ body,
     scroll-behavior: auto !important;
   }
 }
+
+/* Accessibility (docs/ui/medicion-base.md, incidencia 12).
+   A disabled primary button (e.g. «Preguntar» with an empty box) was white on a half-transparent blue and
+   barely readable: it now reads as a neutral, muted button, still distinct from the enabled one. */
+[data-color-mode][data-light-theme][data-dark-theme] {
+  --button-primary-bgColor-disabled: var(--bgColor-neutral-muted);
+  --button-primary-fgColor-disabled: var(--fgColor-muted);
+  --button-primary-borderColor-disabled: var(--borderColor-default);
+}
+
+/* WCAG 2.5.8: icon-only controls are at least 24 × 24 px. */
+[data-component="IconButton"],
+button:has(> svg:only-child),
+a:has(> svg:only-child) {
+  min-width: 24px;
+  min-height: 24px;
+}
+
+/* «Saltar a la consulta»: hidden until it gets the keyboard focus. */
+.saltar-enlace {
+  position: absolute;
+  left: 8px;
+  top: -100px;
+  z-index: 100;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: var(--bgColor-default);
+  color: var(--fgColor-accent);
+  border: 1px solid var(--borderColor-default);
+}
+.saltar-enlace:focus {
+  top: 8px;
+}

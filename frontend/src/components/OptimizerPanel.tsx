@@ -18,7 +18,7 @@
 import { useRef } from "react";
 
 import type { Fact } from "../api";
-import { Flash, Label, VisuallyHidden } from "../ui";
+import { AvisoError, Label, VisuallyHidden } from "../ui";
 import { CheckIcon } from "../ui/iconos";
 import { Pestanas } from "./calculos/Pestanas";
 import { OptimizadorDatos } from "./optimizador/OptimizadorDatos";
@@ -77,10 +77,11 @@ export function OptimizerPanel({ caseId, facts, taxPeriod, onSaveFact, busy = fa
 
       <div ref={scrollRef} role="tabpanel" id="opt-tabpanel" aria-labelledby={`opt-tab-${tab}`} className="flex flex-col gap-4">
         {error && tab === "plan" && (
-          <Flash id="opt-error" variant="danger" role="alert">
-            {error}
-            {computed && <span className="block text-xs">El plan de la pestaña «Tu plan» es el del último cálculo que salió bien.</span>}
-          </Flash>
+          <div id="opt-error">
+            <AvisoError frase="No he podido calcular tu plan." detalle={error} onReintentar={() => void o.acciones.calcular()}>
+              {computed && <p className="m-0 text-xs">El plan de la pestaña «Tu plan» es el del último cálculo que salió bien.</p>}
+            </AvisoError>
+          </div>
         )}
         {loading && (
           <VisuallyHidden role="status">Calculando la mejor combinación…</VisuallyHidden>
@@ -94,7 +95,7 @@ export function OptimizerPanel({ caseId, facts, taxPeriod, onSaveFact, busy = fa
         </div>
       </div>
 
-      <p className="m-0 text-xs text-fg-muted">Cálculo determinista, sin inteligencia artificial. No sustituye al borrador de la Agencia Tributaria.</p>
+      <p className="m-0 text-xs text-fg-muted">Calculado con fórmulas fijas, sin inteligencia artificial. No sustituye al borrador de la Agencia Tributaria.</p>
     </div>
   );
 }

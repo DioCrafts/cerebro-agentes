@@ -101,7 +101,7 @@ export function Hilo({ active, turno, busy, highlightedId, onSubmit, onCite, las
               <p className="m-0 whitespace-pre-wrap wrap-break-word">{t.userText}</p>
             </Comentario>
             {t.errored ? (
-              <Comentario autor="HaciendaGPT" accion="no ha podido responder" avatar={avatarAsesor} variante="error">
+              <Comentario autor="Cerebro" accion="no ha podido responder" avatar={avatarAsesor} variante="error">
                 <div role="alert">
                   <p className="m-0 flex items-center gap-2 font-semibold text-fg-danger">
                     <AlertIcon />
@@ -115,7 +115,7 @@ export function Hilo({ active, turno, busy, highlightedId, onSubmit, onCite, las
               </Comentario>
             ) : (
               <Comentario
-                autor="HaciendaGPT"
+                autor="Cerebro"
                 accion={`respondió ${segundos(t.elapsedMs)}`.trim()}
                 avatar={avatarAsesor}
                 acciones={<CopyButton text={t.envelope.answer} />}
@@ -171,9 +171,9 @@ function TurnoPendiente({ turno, bottomRef }: { turno: AlmacenTurno; bottomRef: 
         <p className="m-0 whitespace-pre-wrap wrap-break-word">{pending.text}</p>
       </Comentario>
       <EventoConversacion icono={SyncIcon} acento>
-        <span className="font-semibold text-fg-default">HaciendaGPT</span> está buscando en la normativa y comprobando la respuesta…
+        <span className="font-semibold text-fg-default">Cerebro</span> está buscando en la normativa y comprobando la respuesta…
       </EventoConversacion>
-      <Comentario autor="HaciendaGPT" accion="está respondiendo" avatar={avatarAsesor} aria-busy="true">
+      <Comentario autor="Cerebro" accion="está respondiendo" avatar={avatarAsesor} aria-busy="true">
         <PlanEnVivo eventos={pending.cerebro ?? []} />
         <LiveActivity events={pending.events} startedAt={pending.startedAt} draft={pending.draft} />
       </Comentario>

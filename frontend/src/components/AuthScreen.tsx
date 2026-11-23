@@ -82,7 +82,7 @@ export function AuthScreen({ config, notice, onSignedIn }: AuthScreenProps) {
         <div className="flex flex-col items-center gap-4">
           <Monogram size={48} />
           <Heading as="h1" variant="medium" className="text-center">
-            {registering ? "Crea tu cuenta de HaciendaGPT" : "Inicia sesión en HaciendaGPT"}
+            {registering ? "Crea tu cuenta de Cerebro" : "Inicia sesión en Cerebro"}
           </Heading>
         </div>
 

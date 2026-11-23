@@ -44,11 +44,11 @@ El tema se aplica en `<html>` con la clase `dark` y los atributos `data-color-mo
 
 `src/shell/Asesor.tsx` monta una página de GitHub:
 
-1. La cabecera global (`CabeceraGlobal` sobre `ui/CabeceraApp`) lleva el enlace «Saltar al contenido», botón de menú (solo en móvil), monograma, migas «HaciendaGPT / título de la consulta» (es el `h1`), campo de búsqueda y comandos, tema, avisos con punto de no leídos y menú de cuenta.
-2. Debajo, las pestañas de sección (`ui/PestanasNavegacion`) muestran «Conversación» y un enlace por panel del registro, con contador. Lo que no cabe va a «Más». Cada pestaña es un enlace real (`/?panel=avisos`), así que Ctrl o ⌘ más clic la abre en otra pestaña del navegador.
+1. La cabecera global (`CabeceraGlobal` sobre `ui/CabeceraApp`) lleva el enlace «Saltar al contenido», botón de menú (solo en móvil), monograma, migas «Cerebro / título de la consulta» (es el `h1`), campo de búsqueda y comandos, tema, avisos con punto de no leídos y menú de cuenta.
+2. Debajo, las pestañas de sección (`ui/PestanasNavegacion`) muestran «Conversación» y un enlace por panel del registro, con contador. Lo que no cabe va a «Más», agrupado por las secciones de `GRUPOS` (`paneles/tipos.ts`): Impuestos, Hogar, Tú y tus datos, Agentes. «Conversación», la pestaña actual y los paneles con `destacado` (avisos, módulos y expediente) nunca pasan a «Más». El nombre accesible de cada pestaña es su texto visible; el contador añade, solo para lectores de pantalla, lo que cuenta («Avisos, 3 sin leer»). Cada pestaña es un enlace real (`/?panel=avisos`), así que Ctrl o ⌘ más clic la abre en otra pestaña del navegador.
 3. La paleta de comandos (`ui/PaletaComandos`) se abre con `/` o Ctrl/⌘+K y busca secciones, consultas y acciones sin distinguir mayúsculas ni tildes.
 4. El `PageLayout` tiene a la izquierda las consultas (`shell/ListaConsultas`, un `NavList` con el botón «Nueva»); en móvil se abren en un `Dialog` lateral. En el contenido, la conversación o el panel que se muestre como página.
-5. La conversación (`components/Hilo.tsx` sobre `ui/Conversacion`) es la línea de tiempo de GitHub. Cada pregunta es un comentario del usuario con cabecera teñida de acento; cada respuesta, un comentario de HaciendaGPT con botón de copiar, cuerpo en Markdown con el estilo de GitHub (`ui/markdown.css`) y la valoración en el pie. La respuesta en curso aparece como un evento de la línea de tiempo («está buscando en la normativa…») seguido de un comentario que se rellena en directo. El formulario (`components/Composer.tsx`) es el de comentar de GitHub y queda fijo al pie mientras se desplaza la página.
+5. La conversación (`components/Hilo.tsx` sobre `ui/Conversacion`) es la línea de tiempo de GitHub. Cada pregunta es un comentario del usuario con cabecera teñida de acento; cada respuesta, un comentario de Cerebro con botón de copiar, cuerpo en Markdown con el estilo de GitHub (`ui/markdown.css`) y la valoración en el pie. La respuesta en curso aparece como un evento de la línea de tiempo («está buscando en la normativa…») seguido de un comentario que se rellena en directo. El formulario (`components/Composer.tsx`) es el de comentar de GitHub y queda fijo al pie mientras se desplaza la página.
 
 ## Página o diálogo
 
@@ -68,8 +68,9 @@ Todo se importa de `src/ui` (componentes) y de `src/ui/iconos` (Octicons).
 
 | Necesitas | Usa |
 | --- | --- |
-| Un bloque con borde, cabecera y filas (lista, tarjeta, sección de ajustes) | `Caja`, `Caja.Cabecera`, `Caja.Lista` › `Caja.Fila`, `Caja.Cuerpo`, `Caja.Pie` |
-| Un error o un aviso dentro de un panel | `Flash` (`variant="danger"`, `"warning"`, `"success"`) |
+| Un bloque con borde, cabecera y filas (lista, tarjeta, sección de ajustes) | `Caja`, `Caja.Cabecera`, `Caja.Lista` › `Caja.Fila`, `Caja.Cuerpo`, `Caja.Pie`; `variante="atencion"` para lo que espera una confirmación, `"peligro"` solo para lo que borra o falla |
+| Un error al cargar o al hacer algo | `AvisoError` (`frase` propia, `detalle` del servidor y `onReintentar` si se puede repetir), o `AvisoFallo` con un `Fallo` guardado en el estado |
+| Un aviso dentro de un panel | `Flash` (`variant="warning"`, `"success"`) |
 | Un estado vacío | `Blankslate` con `Blankslate.Visual` (Octicon de 24), `Heading` y `Description` |
 | Algo que se está cargando | `CargandoLista`, `CargandoTexto`, `CargandoBloque` (skeletons). `Spinner` solo dentro de un botón o junto a una palabra |
 | Botones | `Button` (`variant="primary"` para la acción principal, una por vista; `"danger"` para borrar; `"invisible"` para acciones secundarias), `IconButton` con `aria-label` |

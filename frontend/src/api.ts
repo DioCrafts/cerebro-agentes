@@ -1,4 +1,4 @@
-// Client for the HaciendaGPT FastAPI backend.
+// Client for the FastAPI backend.
 //
 // The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts, `npm run tipos`); this file only
 // gives them readable names. What the schema cannot describe (the SSE progress events) is typed here by hand.
