@@ -26,7 +26,7 @@ asistente.plataforma.cli.eventos worker`` (or the API's in-process dispatcher) c
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Mapping, Sequence
+from collections.abc import Callable, Generator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
@@ -48,6 +48,7 @@ from asistente.nucleo.eventos.tipos import (
     validar,
 )
 from asistente.plataforma import settings
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +65,7 @@ PREFIJO_CONSUMIDOR = "consumidor:"
 def _numero(nombre: str, defecto: float) -> float:
     try:
         return float(getattr(settings, nombre, defecto))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return defecto
 
 
@@ -201,9 +202,7 @@ class Bus:
         self.db_path = str(Path(self.db_path))
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL;")
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, isolation_level=None, check_same_thread=False, filas=True)
         self._conn.execute("PRAGMA secure_delete=ON;")
         with self._lock:
             crear_tablas(self._conn)
@@ -231,7 +230,7 @@ class Bus:
                     store.close()
 
     @contextmanager
-    def _tx(self) -> Iterator[sqlite3.Connection]:
+    def _tx(self) -> Generator[sqlite3.Connection]:
         """One write transaction (``BEGIN IMMEDIATE``: writers queue here, so claims never overlap)."""
         with self._lock:
             self._conn.execute("BEGIN IMMEDIATE")

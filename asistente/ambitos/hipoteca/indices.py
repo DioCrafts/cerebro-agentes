@@ -329,7 +329,32 @@ def serie_desde_json(raw: dict) -> SerieIndices:
             )
             for mes, v in meses.items()
         }
+    _validar_serie(datos)
     return SerieIndices(consultado_el=raw["consultado_el"], datos=datos, documentos=raw.get("documentos", {}))
+
+
+_MES_SERIE = re.compile(r"^(\d{4})-(0[1-9]|1[0-2])$")
+
+
+def _validar_serie(datos: dict[str, dict[str, Dato]]) -> None:
+    """Refuse a series that would give wrong rates: a malformed month, a non-finite or implausible value
+    (an index above 25 % or below −5 % is a typo, not a market), or a value «published» before its month
+    ended (it would be used for reviews that could not have known it)."""
+    problemas: list[str] = []
+    for indice, meses in datos.items():
+        for mes, dato in meses.items():
+            m = _MES_SERIE.match(mes)
+            if not m:
+                problemas.append(f"{indice}: mes «{mes}» no tiene la forma AAAA-MM")
+                continue
+            if not dato.valor.is_finite() or not Decimal(-5) <= dato.valor <= Decimal(25):
+                problemas.append(f"{indice} {mes}: valor {dato.valor} fuera de rango")
+            year, month = int(m.group(1)), int(m.group(2))
+            fin_de_mes = date(year + month // 12, month % 12 + 1, 1)
+            if dato.publicado < fin_de_mes:
+                problemas.append(f"{indice} {mes}: publicado el {dato.publicado} antes de acabar el mes")
+    if problemas:
+        raise ValueError("Serie de índices no válida: " + "; ".join(problemas))
 
 
 @lru_cache(maxsize=1)
@@ -484,13 +509,14 @@ def actualizar(fetch: Fetcher, desde: date, hasta: date, existentes: set[str]) -
     return {boe_id: fetch(BOE_XML_URL.format(boe_id=boe_id)) for boe_id in nuevos}
 
 
-def _fetch_urllib(url: str) -> bytes:  # pragma: no cover - network
-    import urllib.request
+def _fetch_http(url: str) -> bytes:  # pragma: no cover - network
+    """GET a www.boe.es page or XML through the shared client; a missing document is an error here."""
+    from asistente.conocimiento.boe import cliente as boe
 
-    req = urllib.request.Request(url, headers={"User-Agent": "hacienda-gpt/hipoteca"})
-    with urllib.request.urlopen(req, timeout=60) as resp:
-        data: bytes = resp.read()
-        return data
+    data = boe.descargar(url, timeout=60)
+    if data is None:
+        raise LookupError(f"El BOE no tiene {url}")
+    return data
 
 
 # --- Declaration for the shared legal-data library (asistente.conocimiento) ------------------------
@@ -545,7 +571,7 @@ def main(argv: list[str] | None = None) -> int:  # pragma: no cover - network / 
         base = json.loads(SERIE_PATH.read_text(encoding="utf-8"))
         ultimo = max(date.fromisoformat(d["publicado"]) for d in base["documentos"].values())
         desde = date.fromisoformat(args[1]) if len(args) > 1 else ultimo
-        xmls = actualizar(_fetch_urllib, desde, hoy, set(base["documentos"]))
+        xmls = actualizar(_fetch_http, desde, hoy, set(base["documentos"]))
         if not xmls:
             print("Sin resoluciones nuevas.")
             return 0

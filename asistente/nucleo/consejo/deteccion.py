@@ -398,7 +398,7 @@ def _capital_hipoteca(case: Any) -> Decimal | None:
         if isinstance(valor, dict):
             try:
                 return Decimal(str(valor.get("capital_inicial")))
-            except (InvalidOperation, TypeError, ValueError):
+            except InvalidOperation, TypeError, ValueError:
                 return None
     return None
 

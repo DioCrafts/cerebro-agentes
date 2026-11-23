@@ -1,19 +1,22 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+import asyncio
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 import json
 import logging
-import queue
 import threading
 from typing import Annotated, Any
 from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 
 
@@ -22,13 +25,13 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
 
     ``functools.lru_cache`` is documented as **not** thread-safe for
     concurrent first calls: under a request burst (e.g. uvicorn worker
-    thread pool serving the first ``/qa``) two threads can both observe a
-    cache miss and run ``factory()`` in parallel. For ``_build_qa_chain``
+    thread pool serving the first ``/agent``) two threads can both observe a
+    cache miss and run ``factory()`` in parallel. For ``_build_agent``
     that meant loading the 1.1 GB MLX embedder twice into RAM. This
     decorator wraps the factory in double-checked locking so the work
     happens exactly once.
 
-    A FAILED build is cached too: a misconfiguration (missing OPENAI_API_KEY,
+    A FAILED build is cached too: a misconfiguration (missing API key,
     absent FAISS index, a model that won't load) would otherwise re-run the
     expensive factory — reloading the multi-GB embedder — on *every* request.
     The cached exception is re-raised cheaply instead. ``cache_clear()`` resets
@@ -61,7 +64,7 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
             holder.clear()
             error_holder.clear()
 
-    wrapper.cache_clear = cache_clear  # type: ignore[attr-defined]
+    wrapper.cache_clear = cache_clear  # ty: ignore[missing-attribute]  # attribute stored on the function object, which type checkers do not model
     return wrapper
 
 
@@ -76,7 +79,6 @@ from asistente.ambitos.fiscal.documentos import (
     decode_upload,
 )
 from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES, DatosInvalidosError
-from asistente.conocimiento.llm.grounding import AnswerEnvelope
 from asistente.nucleo.agent.agent import AgentResult, TaxAgent
 from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
 from asistente.nucleo.cerebro.cerebro import Cerebro
@@ -107,6 +109,7 @@ from asistente.nucleo.modulos.preferencias import modulos_activos_para_caso
 from asistente.nucleo.proactive.bandeja import avisos_de_modulos, kind_de
 from asistente.nucleo.proactive.jobs import ejecutar_bandejas_propias, hoy_en_espana
 from asistente.nucleo.proactive.store import Notification, NotificationStore
+from asistente.plataforma.api import sse
 from asistente.plataforma.api.observability import ApiMetrics, observability_middleware
 from asistente.plataforma.api.routers import auth as auth_router
 from asistente.plataforma.api.routers import autonomos as autonomos_router
@@ -129,28 +132,52 @@ from asistente.plataforma.api.routers import tareas as tareas_router
 from asistente.plataforma.api.security import (
     BodySizeLimitMiddleware,
     RateLimiter,
+    comprobar_arranque,
     comprobar_pregunta,
+    hosts_permitidos,
     make_rate_limit_middleware,
+    make_write_guard_middleware,
     recortar_historial,
     require_api_key,
     require_docs_publicas,
-    require_qa_legado,
+    require_operator,
     security_headers_middleware,
 )
+from asistente.plataforma.api.sse import respuesta_sse
 from asistente.plataforma.auth.deps import (
     CaseAccess,
     get_case_access,
     require_case_access,
     require_document_consent,
-    require_session,
 )
-from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
-from asistente.plataforma.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
+from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, TurnoCanceladoError, contexto_consumo, medir
+from asistente.plataforma.settings import (
+    AGENT_MAX_TURNOS_SIMULTANEOS,
+    AGENT_STREAM_ESPERA_SEGUNDOS,
+    API_RATE_LIMIT_PER_MIN,
+    DECISION_STATE_DB_PATH,
+)
 
 _logger = logging.getLogger(__name__)
 
 # The documentation routes are declared below, behind ``require_docs_publicas`` (docs/seguridad.md, S-18).
-app = FastAPI(title="HaciendaGPT Decision API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@asynccontextmanager
+async def _arranque(_app: FastAPI) -> AsyncGenerator[None]:
+    """Refuses to serve with no authentication at all (see ``comprobar_arranque``)."""
+    comprobar_arranque()
+    yield
+
+
+app = FastAPI(
+    title="HaciendaGPT Decision API",
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    lifespan=_arranque,
+)
 
 
 def _no_disponible(mensaje: str, exc: BaseException) -> HTTPException:
@@ -201,7 +228,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=_ALLOWED_ORIGINS,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization", "X-Requested-With", "Last-Event-ID"],
     # Lets a cross-origin web client tell "session expired" from "API key missing".
     expose_headers=["WWW-Authenticate"],
     allow_credentials=False,
@@ -214,19 +241,22 @@ app.add_middleware(
 app.state.api_metrics = ApiMetrics()
 _rate_limiter = RateLimiter(API_RATE_LIMIT_PER_MIN)
 app.middleware("http")(make_rate_limit_middleware(_rate_limiter))
+# Cross-site writes and non-JSON bodies are refused before any handler runs.
+app.middleware("http")(make_write_guard_middleware(_ALLOWED_ORIGINS))
 app.middleware("http")(observability_middleware)
 # Security headers on every response, and the request-body cap outermost so an oversized body is refused
 # before anything reads it (docs/seguridad.md).
 app.middleware("http")(security_headers_middleware)
 app.add_middleware(BodySizeLimitMiddleware)
+# Outermost: a request whose Host is not ours (DNS rebinding against a local API) gets a 400 before anything.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts_permitidos())
 
 
 @_thread_safe_singleton
 def _build_case_store() -> SQLiteCaseStateStore:
-    # Single configurable store shared with the Streamlit UI; the path was
-    # previously hardcoded, so the API and UI never saw each other's cases.
+    # Single configurable store (DECISION_STATE_DB_PATH).
     # Cached so the schema DDL and the SQLite connection are set up once,
-    # not rebuilt on every request (mirrors _build_qa_chain).
+    # not rebuilt on every request (mirrors _build_agent).
     return SQLiteCaseStateStore(DECISION_STATE_DB_PATH)
 
 
@@ -262,7 +292,7 @@ def get_accion_store(cases: Annotated[SQLiteCaseStateStore, Depends(get_case_sto
 
 @_thread_safe_singleton
 def _build_fact_extractor() -> FactExtractor:
-    # Built once and reused, mirroring _build_qa_chain / _build_case_store. The
+    # Built once and reused, mirroring _build_agent / _build_case_store. The
     # previous per-request construction spun up a fresh OpenAI() client on every
     # turn; the extractor's backend choice is fixed by the environment at
     # process start, so there is nothing to recompute per request.
@@ -313,11 +343,11 @@ def health() -> dict[str, str]:
     return {"status": "ok", "ts": datetime.now(UTC).isoformat()}
 
 
-@app.get("/metrics")
+@app.get("/metrics", dependencies=[Depends(require_operator)])
 def metrics() -> Response:
     """Prometheus-format HTTP metrics (request counts, errors, latency).
 
-    Exempt from auth and rate limiting so scrapers always reach it.
+    Exempt from rate limiting; operator only (the API key, and the operator key with accounts on).
     """
     return Response(
         content=app.state.api_metrics.prometheus_text(),
@@ -442,68 +472,6 @@ def post_turn(
     )
 
 
-class QARequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    query: str = Field(min_length=1)
-    chat_history: list[dict] = Field(default_factory=list)
-
-
-@_thread_safe_singleton
-def _build_qa_chain():
-    """Build the retrieval chain once and reuse it across requests.
-
-    Constructing the chain loads the local embedding model (Qwen3-Embedding,
-    several GB) and the FAISS index. Doing that on every ``/qa`` request — as
-    the previous per-request dependency did — added seconds of latency and
-    re-loaded the model into memory each time. The cache makes the first
-    request pay the cost and the rest reuse the warm chain.
-    """
-    from asistente.conocimiento.llm.chain import create_openai_chain
-    from asistente.plataforma.utils import get_openai_api_key
-
-    return create_openai_chain(openai_api_key=get_openai_api_key())
-
-
-def get_qa_chain():
-    """FastAPI dependency returning the cached retrieval chain.
-
-    Translates a failed chain build (missing OPENAI_API_KEY, absent FAISS index,
-    a model that won't load) into a clean 503 instead of an opaque 500. The
-    failure is cached by ``_build_qa_chain`` so repeated requests fail fast
-    rather than re-running the expensive build. Kept as a thin wrapper so tests
-    can still override it via ``app.dependency_overrides``.
-    """
-    try:
-        return _build_qa_chain()
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise _no_disponible("El servicio de consulta no está disponible.", exc) from exc
-
-
-# The legacy chain calls OpenAI through LangChain, outside the metered providers (no usage log, no daily
-# budget): only without accounts (docs/seguridad.md, S-14). The web app no longer calls it.
-@app.post(
-    "/qa",
-    response_model=AnswerEnvelope,
-    dependencies=[Depends(require_qa_legado), Depends(require_api_key), Depends(require_session)],
-)
-def post_qa(payload: QARequest, chain=Depends(get_qa_chain)) -> AnswerEnvelope:
-    from asistente.conocimiento.llm.chain import answer_with_grounding
-
-    comprobar_pregunta(payload.query)
-    try:
-        return answer_with_grounding(chain, query=payload.query, chat_history=recortar_historial(payload.chat_history))
-    except HTTPException:
-        raise
-    except Exception as exc:
-        # The chain built fine but answering failed (retrieval, the OpenAI call,
-        # grounding…). Surface a clean error instead of an opaque 500. This is
-        # per-request, so — unlike a build failure — it is NOT cached.
-        raise _no_disponible("No se pudo procesar la consulta. Inténtalo de nuevo en unos minutos.", exc) from exc
-
-
 class AgentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -537,7 +505,7 @@ class AgentResponse(AgentResult):
 
 @_thread_safe_singleton
 def _build_agent() -> Agente:
-    """Build the agent once (loads the embedder + FAISS index, like the QA chain)."""
+    """Build the agent once (loads the embedder + FAISS index)."""
     from asistente.nucleo.agent.agent import build_agent
 
     return build_agent()
@@ -787,7 +755,7 @@ def post_agent(
 ) -> AgentResponse:
     """Tool-using advisor: searches the corpus, cites fragments, verifies claims.
 
-    Unlike ``/qa`` (fixed retrieve-then-answer chain), the model decides what to
+    The model decides what to
     look up and how often, and every normative claim in the answer is checked
     against the fragment it cites before the response is labelled ``verified``.
     """
@@ -815,83 +783,186 @@ def post_agent(
     return response
 
 
-# Seconds between keep-alive lines while the model is working, so proxies and
-# the browser's idle timeout do not cut a long (but healthy) run.
+# Seconds between keep-alive comments while the model is working, so proxies and the browser's idle timeout do
+# not cut a long (but healthy) run. The client's disconnection is checked more often than that.
 _STREAM_HEARTBEAT_SECONDS = 10.0
+_STREAM_DISCONNECT_CHECK_SECONDS = 1.0
+_STREAM_QUEUE_CHECK_SECONDS = 0.25
+_TURNOS_COMPLETOS = "Hay demasiadas consultas en curso en este momento. Inténtalo de nuevo dentro de un minuto."
+
+
+class _LimiteTurnos:
+    """How many agent turns this process streams at once (``AGENT_MAX_TURNOS_SIMULTANEOS``), all users together.
+
+    Not an asyncio primitive: the slot is taken on the event loop and given back by the turn's own thread when it
+    really ends, which can be after its client left (the turn then stops at its next model call)."""
+
+    def __init__(self, maximo: int) -> None:
+        self.maximo = maximo
+        self.en_curso = 0
+        self._lock = threading.Lock()
+
+    def tomar(self) -> bool:
+        with self._lock:
+            if self.en_curso >= self.maximo:
+                return False
+            self.en_curso += 1
+            return True
+
+    def soltar(self) -> None:
+        with self._lock:
+            self.en_curso = max(0, self.en_curso - 1)
+
+
+_limite_turnos = _LimiteTurnos(AGENT_MAX_TURNOS_SIMULTANEOS)
 
 
 @app.post("/agent/stream", dependencies=[Depends(require_api_key)])
-def post_agent_stream(
+async def post_agent_stream(
     payload: AgentRequest,
+    request: Request,
     agent: Annotated[Agente, Depends(get_agent)],
     store: Annotated[SQLiteCaseStateStore, Depends(get_case_store)],
     access: Annotated[CaseAccess, Depends(get_case_access)],
     acciones: Annotated[AccionStore, Depends(get_accion_store)],
 ) -> StreamingResponse:
-    """Same as ``/agent``, streamed as NDJSON so the UI can show live progress.
+    """Same as ``/agent``, streamed as Server-Sent Events (``text/event-stream``) so the UI shows live progress.
 
-    One JSON object per line: ``{"event": "progress", "data": {...}}`` while the
-    agent works (searches issued, verification, revision), ``{"event": "ping"}``
-    keep-alives, then exactly one terminal line — ``{"event": "result", "data":
-    <AgentResponse>}`` or ``{"event": "error", "data": {"status", "detail"}}``.
-    Request-level failures that happen before the run starts (404 case, 503
-    agent unavailable, 401) are still plain HTTP errors.
+    Named events, each with an increasing ``id``: ``progress`` (``data``: the agent's event — searches issued,
+    verification, revision, text deltas) while it works; ``cola`` once if the turn waits for a free slot (the
+    process runs at most ``AGENT_MAX_TURNOS_SIMULTANEOS`` turns at once); ``: ping`` comments as keep-alives; then
+    exactly one terminal event — ``result`` (``data``: the ``AgentResponse``) or ``error`` (``data``:
+    ``{"status", "detail"}``). Request-level failures that happen before the run starts (404 case, 503 agent
+    unavailable, 401) are still plain HTTP errors.
+
+    The turn runs in its own thread, not on the event loop nor in the shared worker pool. When the client goes away
+    the turn's cancellation token is set: the agent stops before its next model call, so an answer nobody will read
+    stops spending.
     """
-    case = _load_agent_case(payload.case_id, store, access)
+    case = await run_in_threadpool(_load_agent_case, payload.case_id, store, access)
     comprobar_pregunta(payload.query)
     historial = recortar_historial(payload.chat_history)
-    modulos = _modulos_del_turno(payload.case_id, access)
-    events: queue.Queue[dict] = queue.Queue()
+    modulos = await run_in_threadpool(_modulos_del_turno, payload.case_id, access)
+    del_cerebro = _del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case))
 
-    def work() -> None:
+    def turno(publicar: Callable[[dict[str, Any]], None], cancelacion: threading.Event) -> None:
+        def progreso(event: dict[str, Any]) -> None:
+            # Also checked here: a provider that is not metered (tests, a local model) stops at its next event.
+            if cancelacion.is_set():
+                raise TurnoCanceladoError("el cliente se ha desconectado")
+            publicar({"event": "progress", "data": event})
+
         try:
-            # Inside the worker thread: the usage context does not cross threads by itself.
-            with contexto_consumo(
-                user_id=access.user.id if access.user is not None else (case.user_id if case is not None else None),
-                case_id=payload.case_id,
-            ):
+            with contexto_consumo(user_id=_consumidor(access, case), case_id=payload.case_id, cancelacion=cancelacion):
                 result = agent.run(
                     payload.query,
                     chat_history=historial,
                     case=case,
-                    on_event=lambda event: events.put({"event": "progress", "data": event}),
+                    on_event=progreso,
                     **modulos,
-                    **_del_cerebro(agent, payload.conversacion_id, _usuario_del_turno(access, case)),
+                    **del_cerebro,
                 )
             response = _finish_agent_turn(payload, case, result, store, acciones, agent)
-            events.put({"event": "result", "data": response.model_dump(mode="json")})
+            publicar({"event": "result", "data": response.model_dump(mode="json")})
             # The user already has the answer: the memory may take its time.
             _registrar_en_memoria(agent, payload, case, result, access)
+        except TurnoCanceladoError:
+            _logger.info("agent turn cancelled: the client went away")
         except PresupuestoAgotadoError as exc:
-            events.put({"event": "error", "data": {"status": 429, "detail": str(exc)}})
+            publicar({"event": "error", "data": {"status": 429, "detail": str(exc)}})
         except ProviderError as exc:
             fallo = _no_disponible(_PROVEEDOR_NO_RESPONDE, exc)
-            events.put({"event": "error", "data": {"status": 503, "detail": fallo.detail}})
+            publicar({"event": "error", "data": {"status": 503, "detail": fallo.detail}})
         except HTTPException as exc:
-            events.put({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
-        except Exception:  # the stream must always end with a terminal line
+            publicar({"event": "error", "data": {"status": exc.status_code, "detail": str(exc.detail)}})
+        except Exception:  # the stream must always end with a terminal event
             # The exception text can carry paths, SQL or data of the case: it goes to the log, not to the client.
             _logger.exception("agent stream failed")
-            events.put({"event": "error", "data": {"status": 500, "detail": "Error interno."}})
+            publicar({"event": "error", "data": {"status": 500, "detail": "Error interno."}})
 
-    def lines():
-        threading.Thread(target=work, name="agent-stream", daemon=True).start()
+    return respuesta_sse(_eventos_del_turno(request, turno, _limite_turnos))
+
+
+async def _eventos_del_turno(
+    request: Request,
+    turno: Callable[[Callable[[dict[str, Any]], None], threading.Event], None],
+    limite: _LimiteTurnos,
+) -> AsyncIterator[str]:
+    """The SSE frames of one agent turn: wait for a slot, run ``turno`` in a thread, relay what it publishes.
+
+    Whatever way the stream ends before a terminal event (the client disconnected, the server cancelled the
+    response), the ``finally`` sets the turn's cancellation token.
+    """
+    loop = asyncio.get_running_loop()
+    cola: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+    cancelacion = threading.Event()
+    secuencia = 0
+    terminado = False
+    slot_propio = False
+
+    def frame(nombre: str, datos: Any) -> str:
+        nonlocal secuencia
+        secuencia += 1
+        return sse.evento(nombre, datos, id=str(secuencia))
+
+    def publicar(event: dict[str, Any]) -> None:  # from the turn's thread
+        try:
+            loop.call_soon_threadsafe(cola.put_nowait, event)
+        except RuntimeError:  # the loop is gone: nobody is listening any more
+            cancelacion.set()
+
+    def en_hilo() -> None:
+        try:
+            turno(publicar, cancelacion)
+        finally:
+            limite.soltar()
+
+    try:
+        limite_espera = loop.time() + AGENT_STREAM_ESPERA_SEGUNDOS
+        en_cola = False
+        while not limite.tomar():
+            if await request.is_disconnected():
+                return
+            if loop.time() >= limite_espera:
+                terminado = True
+                yield frame("error", {"status": 503, "detail": _TURNOS_COMPLETOS})
+                return
+            if not en_cola:
+                en_cola = True
+                yield frame("cola", {"maximo": limite.maximo})
+            await asyncio.sleep(_STREAM_QUEUE_CHECK_SECONDS)
+        slot_propio = True
+        threading.Thread(target=en_hilo, name="agent-stream", daemon=True).start()
+        slot_propio = False  # the thread gives it back when the turn really ends
+
+        ultimo_envio = ultima_comprobacion = loop.time()
         while True:
             try:
-                event = events.get(timeout=_STREAM_HEARTBEAT_SECONDS)
-            except queue.Empty:
-                yield json.dumps({"event": "ping"}) + "\n"
+                event = await asyncio.wait_for(cola.get(), timeout=_STREAM_DISCONNECT_CHECK_SECONDS)
+            except TimeoutError:
+                event = None
+            # Checked on a clock, not only when the turn is quiet: a server on ASGI spec 2.4 does not cancel the
+            # response when the client leaves, and a turn streaming text never goes quiet.
+            if loop.time() - ultima_comprobacion >= _STREAM_DISCONNECT_CHECK_SECONDS:
+                ultima_comprobacion = loop.time()
+                if await request.is_disconnected():
+                    return
+            if event is None:
+                if loop.time() - ultimo_envio >= _STREAM_HEARTBEAT_SECONDS:
+                    ultimo_envio = loop.time()
+                    yield sse.comentario()
                 continue
-            yield json.dumps(event, ensure_ascii=False, default=str) + "\n"
-            if event["event"] in ("result", "error"):
+            terminal = event["event"] in ("result", "error")
+            terminado = terminado or terminal
+            ultimo_envio = loop.time()
+            yield frame(event["event"], event["data"])
+            if terminal:
                 return
-
-    return StreamingResponse(
-        lines(),
-        media_type="application/x-ndjson",
-        # Tell reverse proxies (nginx) not to buffer: progress must arrive live.
-        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
-    )
+    finally:
+        if slot_propio:
+            limite.soltar()
+        if not terminado:
+            cancelacion.set()
 
 
 def _save_case_after_user_edit(

@@ -34,6 +34,7 @@ from scrapy.http import Response
 from scrapy.spidermiddlewares.httperror import HttpError
 
 from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.middlewares import peticion_fallida
 
 BOE_BASE_URL = "https://www.boe.es/biblioteca_juridica/codigos"
 
@@ -146,7 +147,7 @@ class BOECCAACrawler(scrapy.Spider):
                 dont_filter=True,
             )
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         for ccaa_key in self._targets:
             urls = build_code_urls(ccaa_key, base_url=self.base_url)
             yield scrapy.Request(
@@ -194,6 +195,7 @@ class BOECCAACrawler(scrapy.Spider):
         self._guardados.append(ccaa_key)
 
     def handle_error(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
         request = failure.request if hasattr(failure, "request") else None
         url = request.url if request else "unknown"
         self.logger.warning("Failed to fetch %s: %s", url, failure)

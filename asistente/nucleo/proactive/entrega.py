@@ -30,12 +30,11 @@ import smtplib
 import sqlite3
 import ssl
 from threading import RLock
-from typing import Any, Protocol
+from typing import Any, Protocol, runtime_checkable
 from urllib.parse import urlsplit
-import urllib.request
 
 from asistente.nucleo.proactive.store import Notification, NotificationStore
-from asistente.plataforma import settings
+from asistente.plataforma import http, settings
 from asistente.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
@@ -58,6 +57,15 @@ class Canal(Protocol):
     def enviar(self, asunto: str, cuerpo: str) -> None:
         """Send one message; raise on any failure."""
         ...
+
+
+@runtime_checkable
+class CanalPorUsuario(Protocol):
+    """A channel that reads its recipients and their opt-in from the database (Web Push)."""
+
+    def preparar(self, db_path: str) -> Callable[[Notification], bool]: ...
+
+    def enviar_aviso(self, notification: Notification) -> None: ...
 
 
 class WebhookCanal:
@@ -96,9 +104,9 @@ class WebhookCanal:
             titulo = asunto if asunto.isascii() else Header(asunto, "utf-8").encode(maxlinelen=10_000)
             headers = {"Content-Type": "text/plain; charset=utf-8", "Title": titulo}
         # The scheme was validated in __init__, so this never opens file:// and the like.
-        request = urllib.request.Request(self._url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(request, timeout=self._timeout) as response:
-            response.read()
+        # Not retried: a webhook that timed out may still have delivered the message.
+        respuesta = http.cliente().post(self._url, content=data, cabeceras=headers, timeout=self._timeout)
+        respuesta.raise_for_status()
 
 
 class SmtpCanal:
@@ -307,9 +315,9 @@ def entregar_pendientes(
     for canal in canales:
         pendientes = store.pendientes(canal.nombre)
         # A per-user channel (Web Push) reads its recipients and their opt-in from this database instead.
-        por_usuario = getattr(canal, "enviar_aviso", None)
+        por_usuario = canal if isinstance(canal, CanalPorUsuario) else None
         if por_usuario is not None:
-            filtro = canal.preparar(store.db_path)  # type: ignore[attr-defined]
+            filtro = por_usuario.preparar(store.db_path)
             pendientes = [n for n in pendientes if filtro(n)]
         elif permitido is not None:
             # e.g. the owner of the case has not consented to notices leaving the app:
@@ -320,7 +328,9 @@ def entregar_pendientes(
         for notification in pendientes:
             try:
                 if por_usuario is not None:
-                    por_usuario(notification)  # only a generic sentence leaves: asistente/plataforma/push/envio.py
+                    por_usuario.enviar_aviso(
+                        notification
+                    )  # only a generic sentence leaves: asistente/plataforma/push/envio.py
                 else:
                     canal.enviar(notification.title, texto_plano(notification))
             except Exception as exc:  # one broken channel must not stop the others

@@ -2,12 +2,11 @@
 // rejected, cannot do, prefer or already did), with their words, the date and until when it holds.
 // The user can add, edit or forget any of them; forgetting erases their words (only a trace that
 // something was deleted remains).
+//
+// Shown in a side sheet (registro.ts: presentacion "dialogo"); `open` only triggers reading the decisions again.
 
-import { BookUser, Pencil, Plus, Trash2, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
-import { formatDate } from "../lib/presentation";
-import { errorMessage } from "../lib/memoria";
 import {
   ESTADO_LABEL,
   TIPO_LABEL,
@@ -19,10 +18,14 @@ import {
   type DecisionesResponse,
   type TipoDecision,
 } from "../apiMemoria";
+import { errorMessage } from "../lib/memoria";
+import { formatDate } from "../lib/presentation";
+import { Blankslate, Button, Caja, CargandoLista, Checkbox, CounterLabel, Flash, FormControl, Label, Select, TextInput } from "../ui";
+import { PencilIcon, PlusIcon, SlidersIcon, TrashIcon } from "../ui/iconos";
+import { useConfirmar } from "./useConfirmar";
 
 interface PreferenciasPanelProps {
   open: boolean;
-  onClose: () => void;
   caseId: string | null;
   /** Called after any change (the inbox may have changed: notices removed, the year-end plan rebuilt). */
   onChanged?: () => void;
@@ -38,6 +41,13 @@ function condicionTexto(d: Decision): string | null {
     return "si aparece una propuesta mucho mejor";
   });
   return partes.length ? `Te lo volveré a proponer ${partes.join("; ")}.` : null;
+}
+
+function fuenteTexto(fuente: Decision["fuente"]): string {
+  if (fuente === "chat") return "Me lo dijiste";
+  if (fuente === "boton") return "Lo marcaste";
+  if (fuente === "accion") return "Lo decidiste en una acción pendiente";
+  return "Lo escribiste aquí";
 }
 
 function Formulario({
@@ -59,7 +69,8 @@ function Formulario({
   const [enviando, setEnviando] = useState(false);
   return (
     <form
-      className="space-y-2 rounded-xl border border-primary/40 bg-surface px-4 py-3"
+      aria-label={inicial ? `Cambiar: ${inicial.etiqueta}` : "Nueva preferencia"}
+      className="flex flex-col gap-3"
       onSubmit={(e) => {
         e.preventDefault();
         setEnviando(true);
@@ -67,75 +78,68 @@ function Formulario({
       }}
     >
       {!inicial && (
-        <label className="block text-[12.5px] text-ink-soft">
-          Sobre qué
-          <select value={ambito} onChange={(e) => setAmbito(e.target.value)} className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink">
+        <FormControl>
+          <FormControl.Label>Sobre qué</FormControl.Label>
+          <Select block value={ambito} onChange={(e) => setAmbito(e.target.value)}>
             {catalogo.map((c) => (
-              <option key={c.ambito} value={c.ambito}>
+              <Select.Option key={c.ambito} value={c.ambito}>
                 {c.etiqueta}
-              </option>
+              </Select.Option>
             ))}
-          </select>
-        </label>
+          </Select>
+        </FormControl>
       )}
-      <label className="block text-[12.5px] text-ink-soft">
-        Qué decides
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDecision)} className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink">
+      <FormControl>
+        <FormControl.Label>Qué decides</FormControl.Label>
+        <Select block value={tipo} onChange={(e) => setTipo(e.target.value as TipoDecision)}>
           {TIPOS.map((t) => (
-            <option key={t} value={t}>
+            <Select.Option key={t} value={t}>
               {TIPO_LABEL[t]}
-            </option>
+            </Select.Option>
           ))}
-        </select>
-      </label>
-      <label className="block text-[12.5px] text-ink-soft">
-        Con tus palabras, y si quieres por qué
-        <input
-          type="text"
-          required
+        </Select>
+      </FormControl>
+      <FormControl required>
+        <FormControl.Label>Con tus palabras, y si quieres por qué</FormControl.Label>
+        <TextInput
+          block
           maxLength={500}
           value={razon}
           onChange={(e) => setRazon(e.target.value)}
           placeholder="p. ej. no quiero planes de pensiones porque necesito liquidez"
-          className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink"
         />
-      </label>
-      <div className="flex flex-wrap items-end gap-3 text-[12.5px] text-ink-soft">
-        <label>
-          Hasta
-          <input
-            type="date"
-            value={caducidad}
-            disabled={sinFecha}
-            onChange={(e) => setCaducidad(e.target.value)}
-            className="mt-1 block rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink disabled:opacity-50"
-          />
-        </label>
-        <label className="inline-flex items-center gap-1.5 pb-1">
-          <input type="checkbox" checked={sinFecha} onChange={(e) => setSinFecha(e.target.checked)} />
-          Sin fecha (hasta que lo cambie)
-        </label>
+      </FormControl>
+      <div className="flex flex-wrap items-end gap-4">
+        <FormControl disabled={sinFecha}>
+          <FormControl.Label>Hasta</FormControl.Label>
+          <TextInput type="date" value={caducidad} onChange={(e) => setCaducidad(e.target.value)} />
+        </FormControl>
+        <FormControl>
+          <Checkbox checked={sinFecha} onChange={(e) => setSinFecha(e.target.checked)} />
+          <FormControl.Label>Sin fecha (hasta que lo cambie)</FormControl.Label>
+        </FormControl>
       </div>
       {!inicial && !sinFecha && !caducidad && (
-        <p className="text-[11.5px] text-muted">Sin fecha, vale un año (seis meses si ya lo hiciste; las preferencias, hasta que las cambies).</p>
+        <p className="m-0 text-xs text-fg-muted">Sin fecha, vale un año (seis meses si ya lo hiciste; las preferencias, hasta que las cambies).</p>
       )}
       <div className="flex gap-2">
-        <button type="submit" disabled={enviando || !razon.trim()} className="rounded-lg bg-primary px-3 py-1 text-[12.5px] font-semibold text-white disabled:opacity-50">
-          {enviando ? "Guardando…" : "Guardar"}
-        </button>
-        <button type="button" onClick={onCancelar} className="rounded-lg px-3 py-1 text-[12.5px] font-semibold text-ink-soft hover:bg-line/60">
+        <Button type="submit" size="small" variant="primary" disabled={enviando || !razon.trim()} loading={enviando}>
+          Guardar
+        </Button>
+        <Button type="button" size="small" onClick={onCancelar}>
           Cancelar
-        </button>
+        </Button>
       </div>
     </form>
   );
 }
 
-export function PreferenciasPanel({ open, onClose, caseId, onChanged }: PreferenciasPanelProps) {
+export function PreferenciasPanel({ open, caseId, onChanged }: PreferenciasPanelProps) {
   const [datos, setDatos] = useState<DecisionesResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [editando, setEditando] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const confirmar = useConfirmar();
 
   const recargar = useCallback(() => setTick((n) => n + 1), []);
 
@@ -154,15 +158,6 @@ export function PreferenciasPanel({ open, onClose, caseId, onChanged }: Preferen
     return () => controller.abort();
   }, [open, caseId, tick]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
-
   async function hecho(promesa: Promise<unknown>) {
     try {
       await promesa;
@@ -175,129 +170,125 @@ export function PreferenciasPanel({ open, onClose, caseId, onChanged }: Preferen
     }
   }
 
-  const decisiones = datos?.decisiones ?? [];
-  const activas = decisiones.filter((d) => d.estado === "vigente");
-  const pueden = decisiones.filter((d) => d.estado === "reabrible" || d.estado === "caducada");
-  const pasadas = decisiones.filter((d) => d.estado === "reabierta" || d.estado === "sustituida");
+  async function olvidar(id: string) {
+    if (!caseId) return;
+    const si = await confirmar("¿Olvidar esta decisión?", "Se borrarán tus palabras y podré volver a proponértelo.", "Olvidar");
+    if (si) await hecho(borrarDecision(caseId, id));
+  }
 
-  function tarjeta(d: Decision) {
+  const decisiones = datos?.decisiones ?? [];
+  const grupos = [
+    { clave: "activas", titulo: "En vigor", items: decisiones.filter((d) => d.estado === "vigente") },
+    { clave: "pueden", titulo: "Ha cambiado algo: te lo podré proponer una vez más", items: decisiones.filter((d) => d.estado === "reabrible" || d.estado === "caducada") },
+    { clave: "pasadas", titulo: "Anteriores", items: decisiones.filter((d) => d.estado === "reabierta" || d.estado === "sustituida") },
+  ];
+
+  function fila(d: Decision) {
     if (editando === d.id && caseId && datos) {
       return (
-        <li key={d.id}>
+        <Caja.Fila key={d.id}>
           <Formulario
             inicial={d}
             catalogo={datos.catalogo}
             onCancelar={() => setEditando(null)}
             onGuardar={(f) => hecho(editarDecision(caseId, d.id, { tipo: f.tipo, razon: f.razon, caducidad: f.caducidad || null }))}
           />
-        </li>
+        </Caja.Fila>
       );
     }
     const condicion = condicionTexto(d);
     return (
-      <li key={d.id} className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-        <p className="flex flex-wrap items-center gap-2 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-          {TIPO_LABEL[d.tipo]}
-          <span className="rounded-pill bg-line/70 px-2 py-px normal-case tracking-normal text-ink-soft">{ESTADO_LABEL[d.estado]}</span>
+      <Caja.Fila key={d.id} className="flex flex-col gap-1">
+        <p className="m-0 flex flex-wrap items-center gap-2">
+          <Label variant="accent">{TIPO_LABEL[d.tipo]}</Label>
+          <Label variant="secondary">{ESTADO_LABEL[d.estado]}</Label>
         </p>
-        <h4 className="mt-1 text-[14.5px] font-bold leading-snug text-ink">{d.etiqueta}</h4>
-        <p className="mt-1 text-[13.5px] leading-snug text-ink">«{d.razon}»</p>
-        <p className="mt-1 text-[12px] leading-snug text-muted">
-          {d.fuente === "chat" ? "Me lo dijiste" : d.fuente === "boton" ? "Lo marcaste" : d.fuente === "accion" ? "Lo decidiste en una acción pendiente" : "Lo escribiste aquí"} el{" "}
-          {formatDate(d.fecha)}
+        <h4 className="m-0 text-sm font-semibold">{d.etiqueta}</h4>
+        <p className="m-0">«{d.razon}»</p>
+        <p className="m-0 text-xs text-fg-muted">
+          {fuenteTexto(d.fuente)} el {formatDate(d.fecha)}
           {d.caducidad ? ` · lo tendré en cuenta hasta el ${formatDate(d.caducidad)}` : " · sin fecha de fin"}
           {d.omisiones > 0 && ` · por esto he dejado de avisarte ${d.omisiones} ${d.omisiones === 1 ? "vez" : "veces"}`}
         </p>
-        {condicion && <p className="mt-1 text-[12px] leading-snug text-ink-soft">{condicion}</p>}
-        {d.motivo_estado && d.estado !== "vigente" && <p className="mt-1 text-[12px] leading-snug text-ink-soft">Ahora: {d.motivo_estado}.</p>}
+        {condicion && <p className="m-0 text-xs">{condicion}</p>}
+        {d.motivo_estado && d.estado !== "vigente" && <p className="m-0 text-xs">Ahora: {d.motivo_estado}.</p>}
         {caseId && (
-          <div className="mt-2 flex gap-2">
-            <button type="button" onClick={() => setEditando(d.id)} className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-primary">
-              <Pencil size={12} aria-hidden />
+          <div className="mt-1 flex gap-2">
+            <Button size="small" leadingVisual={PencilIcon} onClick={() => setEditando(d.id)} aria-label={`Cambiar: ${d.etiqueta}`}>
               Cambiar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (window.confirm("¿Olvidar esta decisión? Se borrarán tus palabras y podré volver a proponértelo.")) void hecho(borrarDecision(caseId, d.id));
-              }}
-              className="inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-risk-high-fg hover:text-risk-high-fg"
-            >
-              <Trash2 size={12} aria-hidden />
+            </Button>
+            <Button size="small" variant="danger" leadingVisual={TrashIcon} onClick={() => void olvidar(d.id)} aria-label={`Olvidar: ${d.etiqueta}`}>
               Olvidar
-            </button>
+            </Button>
           </div>
         )}
-      </li>
+      </Caja.Fila>
     );
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <button type="button" aria-label="Cerrar tus preferencias" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label="Lo que sé de tus preferencias" className="relative flex h-full w-full max-w-[440px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h2 className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <BookUser size={18} aria-hidden className="text-primary-dark" />
-              Lo que sé de tus preferencias
-            </h2>
-            <p className="text-[12.5px] text-muted">Lo que me has dicho que no quieres, no puedes, prefieres o ya hiciste</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5">
-          {error && (
-            <p role="alert" className="rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              {error}
-            </p>
-          )}
-          {!caseId && <p className="text-[13.5px] text-ink-soft">Cuando tengas un expediente, aquí verás lo que me hayas dicho que no te interesa o que prefieres.</p>}
-          {caseId && datos && editando === "nueva" ? (
+    <div className="flex flex-col gap-4">
+      {caseId && datos && editando !== "nueva" && (
+        <div className="flex justify-end">
+          <Button size="small" leadingVisual={PlusIcon} onClick={() => setEditando("nueva")}>
+            Añadir una preferencia
+          </Button>
+        </div>
+      )}
+
+      {error && <Flash variant="danger">{error}</Flash>}
+
+      {!caseId && (
+        <Blankslate narrow>
+          <Blankslate.Visual>
+            <SlidersIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading as="h3">Aún no tienes expediente</Blankslate.Heading>
+          <Blankslate.Description>Cuando lo tengas, aquí verás lo que me hayas dicho que no te interesa o que prefieres.</Blankslate.Description>
+        </Blankslate>
+      )}
+      {caseId && !datos && !error && <CargandoLista filas={2} etiqueta="Cargando tus preferencias" />}
+
+      {caseId && datos && editando === "nueva" && (
+        <Caja variante="acento">
+          <Caja.Cabecera titulo="Nueva preferencia" />
+          <Caja.Cuerpo>
             <Formulario
               catalogo={datos.catalogo}
               onCancelar={() => setEditando(null)}
-              onGuardar={(f) => hecho(crearDecision(caseId, { ambito: f.ambito, tipo: f.tipo, razon: f.razon, ...(f.caducidad === "" ? {} : { caducidad: f.caducidad }) }))}
+              onGuardar={(f) =>
+                hecho(crearDecision(caseId, { ambito: f.ambito, tipo: f.tipo, razon: f.razon, ...(f.caducidad === "" ? {} : { caducidad: f.caducidad }) }))
+              }
             />
-          ) : (
-            caseId &&
-            datos && (
-              <button type="button" onClick={() => setEditando("nueva")} className="inline-flex items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[13px] font-semibold text-primary-dark hover:border-primary">
-                <Plus size={14} aria-hidden />
-                Añadir una preferencia
-              </button>
-            )
-          )}
-          {datos && decisiones.length === 0 && (
-            <p className="text-[13.5px] leading-relaxed text-ink-soft">
-              Todavía no me has dicho nada que deba recordar. Cuando algo no te interese, dímelo en el chat o pulsa «No me interesa» en un aviso, y no volveré a proponértelo.
-            </p>
-          )}
-          {activas.length > 0 && (
-            <section aria-label="En vigor" className="space-y-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-soft">En vigor ({activas.length})</h3>
-              <ul className="space-y-2">{activas.map(tarjeta)}</ul>
-            </section>
-          )}
-          {pueden.length > 0 && (
-            <section aria-label="Pueden volver" className="space-y-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-soft">Ha cambiado algo: te lo podré proponer una vez más ({pueden.length})</h3>
-              <ul className="space-y-2">{pueden.map(tarjeta)}</ul>
-            </section>
-          )}
-          {pasadas.length > 0 && (
-            <section aria-label="Anteriores" className="space-y-2">
-              <h3 className="text-[12px] font-bold uppercase tracking-[0.08em] text-ink-soft">Anteriores ({pasadas.length})</h3>
-              <ul className="space-y-2">{pasadas.map(tarjeta)}</ul>
-            </section>
-          )}
-        </div>
-        <footer className="border-t border-line px-5 py-3 text-[11.5px] leading-relaxed text-muted">
-          Se guarda en tu expediente, se incluye en la exportación de tu cuenta y se borra con ella. Si olvidas una decisión, se borran tus palabras.
-        </footer>
-      </aside>
+          </Caja.Cuerpo>
+        </Caja>
+      )}
+
+      {datos && decisiones.length === 0 && (
+        <Blankslate narrow>
+          <Blankslate.Visual>
+            <SlidersIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading as="h3">Nada que recordar todavía</Blankslate.Heading>
+          <Blankslate.Description>
+            Cuando algo no te interese, dímelo en el chat o pulsa «No me interesa» en un aviso, y no volveré a proponértelo.
+          </Blankslate.Description>
+        </Blankslate>
+      )}
+
+      {grupos
+        .filter((g) => g.items.length > 0)
+        .map((g) => (
+          <Caja key={g.clave} as="section" aria-label={g.titulo}>
+            <Caja.Cabecera titulo={g.titulo} acciones={<CounterLabel>{g.items.length}</CounterLabel>} />
+            <Caja.Lista>{g.items.map(fila)}</Caja.Lista>
+          </Caja>
+        ))}
+
+      <p className="m-0 text-xs text-fg-muted">
+        Se guarda en tu expediente, se incluye en la exportación de tu cuenta y se borra con ella. Si olvidas una decisión, se borran tus
+        palabras.
+      </p>
     </div>
   );
 }

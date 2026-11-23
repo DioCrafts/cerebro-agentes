@@ -197,3 +197,10 @@ def test_model_override_argument(monkeypatch, model_dir: Path) -> None:
     # Pass the real path — should not consult settings.
     emb = factory.create_embeddings(model=str(model_dir))
     assert isinstance(emb, factory.MLXEmbeddings)
+
+
+def test_one_embedder_per_process_and_model(monkeypatch, model_dir: Path) -> None:
+    _install_fake_mlx(monkeypatch)
+    monkeypatch.setattr(factory.settings, "EMBEDDING_MODEL", str(model_dir))
+    monkeypatch.setattr(factory, "_CACHE", {})
+    assert factory.create_embeddings() is factory.create_embeddings()

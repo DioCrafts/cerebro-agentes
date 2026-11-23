@@ -173,7 +173,7 @@ def calcular_factura(
     dias_kwh: Mapping[date, Sequence[Decimal]] | None = None,
     totales: Mapping[str, Decimal] | None = None,
     precios_pvpc: PreciosHorarios | None = None,
-    energia_pvpc_eur: Mapping[str, Decimal] | None = None,
+    precio_pvpc_medio: Mapping[str, Decimal] | None = None,
     tipos_reducidos: TiposReducidos = "auto",
     datos: Regulados | None = None,
 ) -> Factura:
@@ -181,8 +181,8 @@ def calcular_factura(
 
     Consumption, in order of preference: hourly ``lecturas``; ``dias_kwh`` (date -> [P1, P2, P3]); or the
     ``totales`` of the period by P1/P2/P3 (then spread by days if the period has to be split). PVPC needs
-    ``precios_pvpc`` (hourly €/kWh, REE indicator 1001) with hourly readings, or ``energia_pvpc_eur``
-    (month 'AAAA-MM' -> € of energy already estimated) for comparisons.
+    ``precios_pvpc`` (hourly €/kWh, REE indicator 1001) with hourly readings, or ``precio_pvpc_medio``
+    (month 'AAAA-MM' -> estimated average €/kWh, multiplied by each stretch's own kWh) for comparisons.
     """
     datos = datos or cargar_regulados()
     if hasta < desde:
@@ -217,7 +217,7 @@ def calcular_factura(
     elif totales is None:
         raise FacturaError("Falta el consumo: importa el CSV horario o indica los kWh de P1, P2 y P3 de la factura.")
 
-    if oferta.tipo == "pvpc" and energia_pvpc_eur is None:
+    if oferta.tipo == "pvpc" and precio_pvpc_medio is None:
         if precios_pvpc is None or lecturas is None:
             raise FacturaError(
                 "Para el PVPC hacen falta el consumo hora a hora y los precios horarios de REE (indicador 1001)."
@@ -247,11 +247,12 @@ def calcular_factura(
         else:
             tramos.append([d])
 
-    total_kwh_periodo: dict[str, Decimal] = (
-        {p: sum((por_dia[d][p] for d in dias), CERO) for p in PERIODOS}
-        if por_dia is not None
-        else {p: Decimal(totales[p]) for p in PERIODOS}  # type: ignore[index]
-    )
+    total_kwh_periodo: dict[str, Decimal]
+    if por_dia is not None:
+        total_kwh_periodo = {p: sum((por_dia[d][p] for d in dias), CERO) for p in PERIODOS}
+    else:
+        assert totales is not None  # without hourly or daily data the check above already demanded totals
+        total_kwh_periodo = {p: Decimal(totales[p]) for p in PERIODOS}
     if por_dia is None and len(tramos) > 1:
         avisos.add(
             "El periodo se parte en tramos con precios o impuestos distintos y solo hay totales por periodo: los kWh "
@@ -272,7 +273,10 @@ def calcular_factura(
         elif n == len(tramos) - 1:
             kwh = {p: total_kwh_periodo[p] - repartido[p] for p in PERIODOS}
         else:
-            kwh = {p: (total_kwh_periodo[p] * ndias / n_dias).quantize(Decimal("0.001")) for p in PERIODOS}
+            kwh = {
+                p: (total_kwh_periodo[p] * ndias / n_dias).quantize(Decimal("0.001"), rounding=ROUND_HALF_UP)
+                for p in PERIODOS
+            }
         for p in PERIODOS:
             repartido[p] += kwh[p]
 
@@ -281,7 +285,7 @@ def calcular_factura(
         for p, kw in (("p1", contrato.potencia_p1_kw), ("p2", contrato.potencia_p2_kw)):
             nombre = "punta-llano" if p == "p1" else "valle"
             if oferta.tipo == "pvpc" or not oferta.incluye_peajes_cargos:
-                anual = peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]  # type: ignore[index]
+                anual = peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]
                 brutas.append(
                     _Bruta(
                         1,
@@ -338,12 +342,17 @@ def calcular_factura(
         # Energy term.
         if oferta.tipo == "pvpc":
             en_tramo = set(tramo)
-            if energia_pvpc_eur is not None:
+            if precio_pvpc_medio is not None:
                 coste = CERO
                 for mes in sorted({f"{d:%Y-%m}" for d in tramo}):
-                    del_mes = [d for d in dias if f"{d:%Y-%m}" == mes]
-                    en_ambos = [d for d in del_mes if d in en_tramo]
-                    coste += energia_pvpc_eur.get(mes, CERO) * Decimal(len(en_ambos)) / Decimal(len(del_mes))
+                    if mes not in precio_pvpc_medio:
+                        raise FacturaError(f"No hay estimación del PVPC de {mes}.")
+                    del_mes = [d for d in tramo if f"{d:%Y-%m}" == mes]
+                    if por_dia is not None:
+                        kwh_mes = sum((sum(por_dia[d].values(), CERO) for d in del_mes), CERO)
+                    else:
+                        kwh_mes = sum(kwh.values(), CERO) * Decimal(len(del_mes)) / ndias
+                    coste += precio_pvpc_medio[mes] * kwh_mes
                 fuente = "estimación con el perfil horario medio del mes y los precios horarios de REE (indicador 1001)"
             else:
                 assert lecturas is not None and precios_pvpc is not None
@@ -371,7 +380,7 @@ def calcular_factura(
             for p in PERIODOS:
                 precio = getattr(oferta.energia_eur_kwh, p)
                 if not oferta.incluye_peajes_cargos:
-                    regulada = peaje.energia_eur_kwh[p] + cargo.energia_eur_kwh[p]  # type: ignore[index]
+                    regulada = peaje.energia_eur_kwh[p] + cargo.energia_eur_kwh[p]
                     brutas.append(
                         _Bruta(
                             5,

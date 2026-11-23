@@ -5,6 +5,7 @@ from datetime import UTC, datetime
 import hashlib
 import sqlite3
 
+from fastapi.routing import iter_route_contexts
 from fastapi.testclient import TestClient
 import pytest
 
@@ -241,6 +242,7 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         ("post", f"/cases/{case_id}/consejo", {"pregunta": "¿Me conviene amortizar la hipoteca o invertir?"}),
         ("post", f"/cases/{case_id}/consejo/detectar", {"pregunta": "¿Acepto la herencia o renuncio?"}),
         ("get", f"/cases/{case_id}/consejo/{{sesion_id}}", None),
+        ("get", f"/cases/{case_id}/consejo/{{sesion_id}}/eventos", None),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/confirmar", {}),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/rechazar", {}),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/cancelar", {}),
@@ -267,7 +269,7 @@ def no_model() -> None:
 def test_every_case_endpoint_is_covered_by_the_isolation_tests() -> None:
     covered = {path.replace("case_x", "{case_id}") for _, path, _ in _case_requests("case_x", "{notification_id}")}
     covered = {path.replace("/facts/edad", "/facts/{fact_name}") for path in covered}
-    declared = {route.path for route in app.routes if "{case_id}" in getattr(route, "path", "")}
+    declared = {route.path for route in iter_route_contexts(app.routes) if "{case_id}" in getattr(route, "path", "")}
     assert declared <= covered, declared - covered
 
 
@@ -364,11 +366,11 @@ def test_endpoints_without_a_case_still_need_a_session(env: Env, no_model) -> No
     assert env.client.post("/agent/stream", json={"query": "hola"}).status_code == 401
     assert env.client.post("/simulate", json={"datos": {}}).status_code == 401
     assert env.client.post("/optimize", json={"datos": {}}).status_code == 401
-    # The legacy /qa chain (unmetered) does not exist with accounts on, not even with a session (S-14).
+    # The legacy /qa chain was removed (S-14).
     assert env.client.post("/qa", json={"query": "hola"}).status_code == 404
-    # Liveness and metrics stay open.
+    # Liveness stays open; metrics are for the operator (404 without HACIENDA_OPERATOR_KEY).
     assert env.client.get("/health").status_code == 200
-    assert env.client.get("/metrics").status_code == 200
+    assert env.client.get("/metrics").status_code == 404
 
 
 def test_proactive_jobs_run_without_a_session(env: Env) -> None:

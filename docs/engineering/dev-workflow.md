@@ -6,7 +6,7 @@ Estandarizar un pipeline local de calidad para cambios en HaciendaGPT, con foco 
 ## Herramientas habilitadas
 - **Format**: `black`.
 - **Lint**: `ruff` (incluye import sorting con reglas de isort).
-- **Type-check**: `mypy` sobre `asistente`.
+- **Type-check**: `ty` (Astral) sobre `asistente`.
 - **Test**: `pytest`.
 
 ## Comandos disponibles
@@ -26,7 +26,7 @@ make quality
 - `tool.black`: longitud de línea y versión objetivo.
 - `tool.ruff`: reglas de lint y orden de imports.
 - `tool.pytest.ini_options`: configuración base de test discovery.
-- `tool.mypy`: reglas graduales de chequeo de tipos compatibles con el estado actual del código.
+- `tool.ty`: versión de Python y carpetas que comprueba el chequeo de tipos (`asistente`, sin `tests/`).
 
 ## Criterio recomendado para PR
 1. Ejecutar `make quality` localmente.
@@ -35,7 +35,7 @@ make quality
 
 ## Decisiones de diseño
 - Se adoptó una política de **endurecimiento gradual** para no romper la base actual:
-  - mypy con `ignore_missing_imports = true` para dependencias externas pesadas,
+  - ty resuelve las dependencias desde el entorno de `uv`; los `# type: ignore[...]` existentes se respetan,
   - chequeo de tipos sobre paquete principal,
   - tests descubiertos solo en `tests/`.
 - `PYTHONPATH=.` en comandos para evitar errores de importación al ejecutar localmente sin instalación editable.

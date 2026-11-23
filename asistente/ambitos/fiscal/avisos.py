@@ -347,7 +347,7 @@ def plan_fin_de_ejercicio(case: CaseState, *, hoy: date, store: NotificationStor
 
     actions = [f"{p.accion}. Ahorro dentro del plan: {_eur(p.ahorro_marginal)}." for p in plan.palancas]
     actions += [
-        f"Indica al asesor {', '.join(_etiqueta(name) for name in b.datos_que_faltan)} " f"para comprobar «{b.nombre}»."
+        f"Indica al asesor {', '.join(_etiqueta(name) for name in b.datos_que_faltan)} para comprobar «{b.nombre}»."
         for b in por_confirmar[:MAX_POR_CONFIRMAR]
     ]
     actions.append("Pide al asesor que simule cada opción con tus cifras antes de mover dinero.")

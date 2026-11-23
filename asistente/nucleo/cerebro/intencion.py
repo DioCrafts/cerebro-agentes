@@ -178,7 +178,7 @@ def vocabulario(ruta: str | None = None) -> Vocabulario:
     """The compiled vocabulary (cached). A broken file leaves the rules with derived vocabulary only."""
     try:
         datos = json.loads(Path(ruta or VOCABULARIO_PATH).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         logger.exception("brain vocabulary unreadable: rules fall back to the modules' own words")
         datos = {}
     pesos = {"fuerte": 3.0, "debil": 1.0, "derivado": 1.0, "derivado_max": 2.0, "previo_hechos": 0.5}
@@ -471,8 +471,7 @@ def _encargos(
         if len(claves) > 1:
             otros = ", ".join(fichas[c].nombre for c in claves if c != clave)
             pregunta = (
-                f"{pregunta}\n\nResponde a la parte de «{fichas[clave].nombre}»; de {otros} se ocupa otro "
-                "especialista."
+                f"{pregunta}\n\nResponde a la parte de «{fichas[clave].nombre}»; de {otros} se ocupa otro especialista."
             )[:_MAX_PREGUNTA]
         depende = [
             ids[espera]
@@ -750,8 +749,8 @@ def validar_del_modelo(datos: Any, activos: Sequence[str], *, consulta: str) -> 
     if tipo == "cruzada" and len({e["especialista"] for e in limpios}) == 1:
         tipo, reparado = "ambito", True
     try:
-        confianza = float(datos.get("confianza"))  # type: ignore[arg-type]  # TypeError handled below
-    except (TypeError, ValueError):
+        confianza = float(datos.get("confianza"))  # TypeError handled below
+    except TypeError, ValueError:
         confianza, reparado = 0.5, True
     if not 0.0 <= confianza <= 1.0:
         confianza, reparado = min(1.0, max(0.0, confianza)), True

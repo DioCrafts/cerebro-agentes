@@ -12,7 +12,16 @@ from collections.abc import Mapping
 from typing import Any, Literal
 
 from asistente.investigador.ejercito import AlProgresar, Ejercito, Rol
-from asistente.investigador.modelo import Afirmacion, Critica, Evento, Fuente, Hallazgo, Informe, Presupuesto, Subpregunta
+from asistente.investigador.modelo import (
+    Afirmacion,
+    Critica,
+    Evento,
+    Fuente,
+    Hallazgo,
+    Informe,
+    Presupuesto,
+    Subpregunta,
+)
 from asistente.investigador.presupuesto import PresupuestoAgotadoError
 from asistente.investigador.web import Documento, HerramientaWeb, WebDeCapacidad
 
@@ -39,9 +48,9 @@ def investigar(
         from asistente.investigador.web import web_por_defecto
 
         web = web_por_defecto(_proveedor_de(llm))
-    return Ejercito(llm, web, presupuesto or Presupuesto(), al_progresar=al_progresar, sin_fuente=sin_fuente).investigar(
-        pregunta.strip()
-    )
+    return Ejercito(
+        llm, web, presupuesto or Presupuesto(), al_progresar=al_progresar, sin_fuente=sin_fuente
+    ).investigar(pregunta.strip())
 
 
 def _proveedor_de(llm: Any) -> Any:
@@ -61,6 +70,18 @@ def _proveedor_de(llm: Any) -> Any:
 
 
 __all__ = [
-    "Afirmacion", "Critica", "Documento", "Ejercito", "Evento", "Fuente", "Hallazgo", "HerramientaWeb", "Informe",
-    "Presupuesto", "PresupuestoAgotadoError", "Subpregunta", "WebDeCapacidad", "investigar",
+    "Afirmacion",
+    "Critica",
+    "Documento",
+    "Ejercito",
+    "Evento",
+    "Fuente",
+    "Hallazgo",
+    "HerramientaWeb",
+    "Informe",
+    "Presupuesto",
+    "PresupuestoAgotadoError",
+    "Subpregunta",
+    "WebDeCapacidad",
+    "investigar",
 ]

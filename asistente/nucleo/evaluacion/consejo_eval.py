@@ -506,7 +506,7 @@ def decidir_un_paso(expediente: ExpedienteConsejo, proveedor: Any) -> RespuestaD
     ]
     try:
         confianza = min(1.0, max(0.0, float(datos.get("confianza", 0.5))))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         confianza = 0.5
     return RespuestaDecision(
         sistema="un_paso",
@@ -757,7 +757,7 @@ def _sesion_de(
     propuestas = [
         Propuesta(
             miembro_id=a,
-            ronda=ronda,  # type: ignore[arg-type]
+            ronda=ronda,
             recomendacion=respuesta.recomendacion,
             condicion=respuesta.condicion,
             confianza=respuesta.confianza,
@@ -1118,9 +1118,7 @@ def comparar(
         "promovida": "mantener",
         "rechazada": "no_mantener",
         "evidencia_insuficiente": "evidencia_insuficiente",
-    }[
-        promocion.decision
-    ]  # type: ignore[assignment]
+    }[promocion.decision]
     criterios = [
         ComparacionCriterio(
             criterio=criterio,
@@ -1553,7 +1551,7 @@ def guiones(casos: Sequence[CasoEvaluacion], directorio_consumo: Path) -> tuple[
             proveedor=proveedor_oraculo,
             consumo=ConsumoStore(str(directorio_consumo / f"consumo-{motor}.sqlite3")),
             modo="modelo",
-            motor=motor,  # type: ignore[arg-type]
+            motor=motor,
             fabrica_consejo=fabrica_oraculo,
         )
         informe = evaluar(list(casos), VARIANTE_BASE, entorno, config=config, suite_huella="guiones")

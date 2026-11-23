@@ -19,6 +19,12 @@ Datos (versionados en ``eval_data/recuperacion/``):
   módulo (``eval_data/modulos/fiscal.jsonl``): esos evals prueban calculadoras,
   no recuperación, así que aquí se convierten en preguntas de normativa.
 
+Variantes: ``faiss`` es lo que recupera la herramienta ``search_corpus`` del agente
+(:class:`~asistente.nucleo.agent.search.FaissCorpusSearcher`: vecinos densos, reranker
+con ``--real`` y saneado); ``pageindex`` navega el árbol de headings con un LLM.
+El buscador del agente no se abstiene por sí solo (eso lo decide la puerta de
+grounding sobre lo que cita el modelo), así que sus abstenciones salen a 0 %.
+
 Modo simulado (por defecto): embeddings deterministas por *hashing* de términos
 y un selector léxico (:class:`SelectorLexico`) que hace de LLM y contabiliza los
 tokens del prompt que habría enviado. Es reproducible bit a bit y sirve para
@@ -41,23 +47,25 @@ from pathlib import Path
 import re
 import statistics
 import time
+from typing import TYPE_CHECKING
 
 import click
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
-from langchain_core.retrievers import BaseRetriever
-from pydantic import ConfigDict
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.llm.arbol import (
     RECUPERADORES,
     Consumo,
+    Recuperador,
     SelectorLexico,
     SelectorLLM,
     envolver_recuperador,
     ruta_headings,
     tokens,
 )
+
+if TYPE_CHECKING:
+    from asistente.conocimiento.llm.embeddings import Embedder
+    from asistente.nucleo.agent.search import CorpusSearcher, Reordenador
 
 RAIZ = Path(__file__).resolve().parents[3]
 CORPUS_POR_DEFECTO = RAIZ / "eval_data" / "recuperacion" / "corpus_fiscal.jsonl"
@@ -70,7 +78,7 @@ _ARTICULO = re.compile(r"art[íi]culo\s+(\d+)", re.I)
 # --------------------------------------------------------------------------
 
 
-def cargar_corpus(ruta: Path) -> list[Document]:
+def cargar_corpus(ruta: Path) -> list[FragmentoRecuperado]:
     docs = []
     for linea in ruta.read_text(encoding="utf-8").splitlines():
         if not linea.strip():
@@ -78,9 +86,9 @@ def cargar_corpus(ruta: Path) -> list[Document]:
         d = json.loads(linea)
         headings = d["headings"]
         docs.append(
-            Document(
-                page_content=f"{headings[-1]}. {d['texto']}",
-                metadata={
+            FragmentoRecuperado(
+                texto=f"{headings[-1]}. {d['texto']}",
+                metadatos={
                     "chunk_id": d["chunk_id"],
                     "source_file": d["source_file"],
                     "norma": d["norma"],
@@ -106,7 +114,10 @@ NORMAS_BOE = {
     "BOE-A-2014-12328": ("LIS", "Ley 27/2014, del Impuesto sobre Sociedades"),
     "BOE-A-1987-28141": ("LISD", "Ley 29/1987, del Impuesto sobre Sucesiones y Donaciones"),
     # The 20 % of the autónomos' quarterly payment (modelo 130) lives in the regulation, not in the law.
-    "BOE-A-2007-6820": ("RIRPF", "Real Decreto 439/2007, Reglamento del Impuesto sobre la Renta de las Personas Físicas"),
+    "BOE-A-2007-6820": (
+        "RIRPF",
+        "Real Decreto 439/2007, Reglamento del Impuesto sobre la Renta de las Personas Físicas",
+    ),
 }
 
 
@@ -114,26 +125,26 @@ NORMAS_BOE = {
 _PAGINA_AEAT = re.compile(r"(?:^|/)([0-9a-f]{32})\.html$")
 
 
-def pagina_aeat(doc: Document) -> str | None:
+def pagina_aeat(doc: FragmentoRecuperado) -> str | None:
     """Hash of the AEAT page a chunk comes from, or ``None`` if it is not an AEAT page."""
-    m = _PAGINA_AEAT.search(str((doc.metadata or {}).get("source_file") or (doc.metadata or {}).get("source") or ""))
+    m = _PAGINA_AEAT.search(str((doc.metadatos or {}).get("source_file") or (doc.metadatos or {}).get("source") or ""))
     return m.group(1) if m else None
 
 
-def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[Document]:
+def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[FragmentoRecuperado]:
     """The chunks of the cited norms (and the AEAT pages) as the real processor indexed them.
 
-    Reads ``index.pkl`` of a FAISS index. Text and heading path are kept as Docling left them; ``norma`` /
+    Reads ``index.pkl`` of a FAISS index (through ``conocimiento/indice/faiss_legado.py``). Text and heading path are kept as Docling left them; ``norma`` /
     ``documento`` are stamped from the BOE id in the file name so the citation can be scored. With ``aeat``
     the AEAT pages compete too, as they do in production (``norma="AEAT"``; the page is scored by its hash).
     Vectors are recomputed by the benchmark's embedder.
     """
-    import pickle  # noqa: S403 - a local index this project built (same trust as FAISS_TRUSTED_INDEX)
+    from asistente.conocimiento.indice.faiss_legado import leer_fragmentos
 
-    docstore, _ = pickle.loads((ruta / "index.pkl").read_bytes())  # noqa: S301
     docs = []
-    for d in docstore._dict.values():
-        fuente = str(d.metadata.get("source_file") or d.metadata.get("source") or "")
+    # A local index this project built: same trust as FAISS_TRUSTED_INDEX.
+    for d in leer_fragmentos(ruta, confiar=True):
+        fuente = str(d.metadatos.get("source_file") or d.metadatos.get("source") or "")
         boe = next((b for b in NORMAS_BOE if b in fuente), None)
         if boe is not None:
             norma, documento = NORMAS_BOE[boe]
@@ -141,26 +152,26 @@ def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[Document]:
             norma, documento = "AEAT", None
         else:
             continue
-        meta = {**d.metadata, "norma": norma}
+        meta = {**d.metadatos, "norma": norma}
         if documento:
             meta["documento"] = documento
-        docs.append(Document(page_content=d.page_content, metadata=meta))
+        docs.append(FragmentoRecuperado(texto=d.texto, metadatos=meta))
     return docs
 
 
-def manifiesto_de_corpus(docs: Sequence[Document]) -> dict:
+def manifiesto_de_corpus(docs: Sequence[FragmentoRecuperado]) -> dict:
     """Which citations exist in a corpus: article numbers per norm and AEAT pages (hash → title)."""
     normas: dict[str, set[str]] = {}
     aeat: dict[str, str] = {}
     for d in docs:
-        h = pagina_aeat(d) if d.metadata.get("norma") == "AEAT" else None
+        h = pagina_aeat(d) if d.metadatos.get("norma") == "AEAT" else None
         if h:
             ruta = ruta_headings(d)
             aeat.setdefault(h, ruta[0] if ruta else "")
             continue
         _, articulo = cita_de(d)
         if articulo:
-            normas.setdefault(str(d.metadata.get("norma")), set()).add(articulo)
+            normas.setdefault(str(d.metadatos.get("norma")), set()).add(articulo)
     return {
         "normas": {n: sorted(a, key=int) for n, a in sorted(normas.items())},
         "aeat": dict(sorted(aeat.items())),
@@ -175,9 +186,9 @@ def cita_en_manifiesto(espera: dict, manifiesto: dict) -> bool:
     return all(str(o["articulo"]) in manifiesto["normas"].get(o["norma"], []) for o in opciones)
 
 
-def cita_de(doc: Document) -> tuple[str, str | None]:
+def cita_de(doc: FragmentoRecuperado) -> tuple[str, str | None]:
     """(norma/fuente, nº de artículo) que citaría el grounding gate para ``doc``."""
-    meta = doc.metadata or {}
+    meta = doc.metadatos or {}
     ruta = ruta_headings(doc)
     articulo = None
     for h in reversed(ruta):
@@ -189,7 +200,7 @@ def cita_de(doc: Document) -> tuple[str, str | None]:
     return fuente, articulo
 
 
-def es_cita_correcta(doc: Document, espera: dict) -> bool:
+def es_cita_correcta(doc: FragmentoRecuperado, espera: dict) -> bool:
     """Whether ``doc`` is an acceptable source for the expected citation.
 
     * Law article: same norm and article number (``alternativas`` lists other articles that also answer).
@@ -197,9 +208,9 @@ def es_cita_correcta(doc: Document, espera: dict) -> bool:
       articles, so the unit the grounding gate would cite is the page itself.
     """
     if "pagina" in espera:
-        return pagina_aeat(doc) == espera["pagina"]
+        return bool(pagina_aeat(doc) == espera["pagina"])
     fuente, articulo = cita_de(doc)
-    norma = str((doc.metadata or {}).get("norma") or "").upper()
+    norma = str((doc.metadatos or {}).get("norma") or "").upper()
     for o in (espera, *espera.get("alternativas", [])):
         # Same norm by equality when the chunk carries one: a substring test let "LIS" match "LISD".
         misma = norma == o["norma"].upper() if norma else o["norma"].upper() in fuente.upper()
@@ -209,11 +220,11 @@ def es_cita_correcta(doc: Document, espera: dict) -> bool:
 
 
 # --------------------------------------------------------------------------
-# Recuperador base: el camino faiss de producción (denso + EmbeddingsFilter, BM25 opcional)
+# Recuperador base: el buscador del agente (FaissCorpusSearcher)
 # --------------------------------------------------------------------------
 
 
-class EmbeddingsHash(Embeddings):
+class EmbeddingsHash:
     """Embeddings deterministas: bolsa de términos (stem de 6) por *hashing*."""
 
     def __init__(self, dim: int = 1024) -> None:
@@ -233,81 +244,77 @@ class EmbeddingsHash(Embeddings):
         return self._uno(text)
 
 
-class RecuperadorProduccion(BaseRetriever):
-    """The ``faiss`` path of ``chain._create_retriever`` with what decides abstention kept intact.
+class VectoresEnMemoria:
+    """The part of the FAISS vector store that :class:`FaissCorpusSearcher` uses, over a numpy matrix.
 
-    * First stage: the ``primera_etapa`` nearest chunks (``RERANKER_FIRST_STAGE_K`` with the reranker on,
-      ``TOP_K`` otherwise), optionally fused with BM25 by RRF (``BM25_ENABLED``, off by default).
-    * ``EmbeddingsFilter``: every candidate, dense or BM25, whose cosine similarity to the query is below
-      ``umbral`` is dropped. If none survives the context is empty and the gate abstains.
-    * The first ``k`` survivors in first-stage order are returned.
-
-    Not modelled: ``MultiQueryRetriever`` (LLM paraphrases of the query) and the cross-encoder reranker. The
-    reranker only reorders the survivors, so it cannot change whether the retriever abstains; it can change
-    top-1, which is why top-1 here is a lower bound for production with the reranker on.
+    Exact cosine search (FAISS' flat index is exact too), so the ranking matches the real store without building
+    one: ``similarity_search(query, k=…, filter=…, fetch_k=…)`` with the filter applied after the ``fetch_k``
+    nearest neighbours, as FAISS does.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    def __init__(self, corpus: Sequence[FragmentoRecuperado], embeddings: Embedder) -> None:
+        import numpy as np
 
-    embeddings: object
-    matriz: object  # (n_chunks, dim) unit vectors, same order as ``corpus``
-    bm25: object | None = None
-    corpus: list
-    k: int = 3
-    primera_etapa: int = 30
-    umbral: float = 0.35
-    cache: dict = {}
+        self.corpus = list(corpus)
+        self.embeddings = embeddings
+        matriz = np.asarray(embeddings.embed_documents([d.texto for d in self.corpus]), dtype=np.float32)
+        matriz /= np.clip(np.linalg.norm(matriz, axis=1, keepdims=True), 1e-12, None)
+        self.matriz = matriz
+        self._cache: dict[str, object] = {}
 
     def similitudes(self, query: str):
         import numpy as np
 
-        if query not in self.cache:
-            q = np.asarray(self.embeddings.embed_query(query), dtype=np.float32)  # type: ignore[attr-defined]
+        if query not in self._cache:
+            q = np.asarray(self.embeddings.embed_query(query), dtype=np.float32)
             q /= np.linalg.norm(q) or 1.0
-            self.cache[query] = self.matriz @ q  # type: ignore[operator]
-        return self.cache[query]
+            self._cache[query] = self.matriz @ q
+        return self._cache[query]
 
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+    def similarity_search(
+        self, query: str, k: int = 4, filter=None, fetch_k: int = 20, **_: object
+    ) -> list[FragmentoRecuperado]:
         import numpy as np
 
-        sims = self.similitudes(query)
-        densos = [int(i) for i in np.argsort(-sims, kind="stable")[: self.primera_etapa]]
-        if self.bm25 is None:
-            orden = densos
-        else:
-            rrf: dict[int, float] = {}
-            for rango, i in enumerate(densos):
-                rrf[i] = rrf.get(i, 0.0) + 0.6 / (60 + rango)
-            puntuaciones = self.bm25.get_scores(sorted(tokens(query)))  # type: ignore[attr-defined]
-            for rango, i in enumerate(sorted(range(len(self.corpus)), key=lambda j: -puntuaciones[j])[: self.primera_etapa]):
-                rrf[i] = rrf.get(i, 0.0) + 0.4 / (60 + rango)
-            orden = sorted(rrf, key=lambda i: -rrf[i])
-        supervivientes = [i for i in orden if sims[i] >= self.umbral]
-        return [self.corpus[i] for i in supervivientes[: self.k]]
+        orden = [int(i) for i in np.argsort(-self.similitudes(query), kind="stable")]
+        if filter is None:
+            return [self.corpus[i] for i in orden[:k]]
+        vecinos = [self.corpus[i] for i in orden[:fetch_k]]
+        return [d for d in vecinos if filter(d.metadatos)][:k]
+
+
+class RecuperadorAgente:
+    """The ``faiss`` variant: exactly what the agent's ``search_corpus`` tool retrieves.
+
+    :class:`FaissCorpusSearcher` with no filters: the ``primera_etapa`` nearest chunks, reordered by the
+    cross-encoder when there is one (``--real`` with ``RERANKER_ENABLED``), the first ``k`` sanitized. It never
+    abstains on its own: in the agent, abstaining is the grounding gate's call over what the model cites.
+    """
+
+    def __init__(self, buscador: CorpusSearcher, k: int = 3) -> None:
+        self.buscador = buscador
+        self.k = k
+
+    def invoke(self, consulta: str) -> list[FragmentoRecuperado]:
+        from asistente.nucleo.agent.search import SearchFilters
+
+        return list(self.buscador.search(consulta, k=self.k, filters=SearchFilters()))
 
 
 def construir_base(
-    corpus: list[Document],
-    embeddings: Embeddings,
+    corpus: list[FragmentoRecuperado],
+    embeddings: Embedder,
     *,
     k: int,
-    umbral: float,
-    bm25: bool = False,
     primera_etapa: int = 30,
-) -> RecuperadorProduccion:
-    import numpy as np
+    reranker: Reordenador | None = None,
+) -> RecuperadorAgente:
+    from asistente.nucleo.agent.search import FaissCorpusSearcher
 
-    matriz = np.asarray(embeddings.embed_documents([d.page_content for d in corpus]), dtype=np.float32)
-    matriz /= np.clip(np.linalg.norm(matriz, axis=1, keepdims=True), 1e-12, None)
-    indice_bm25 = None
-    if bm25:
-        from rank_bm25 import BM25Okapi
-
-        indice_bm25 = BM25Okapi([sorted(tokens(d.page_content)) for d in corpus])
-    return RecuperadorProduccion(
-        embeddings=embeddings, matriz=matriz, bm25=indice_bm25, corpus=corpus, k=k,
-        primera_etapa=primera_etapa, umbral=umbral, cache={},
+    buscador = FaissCorpusSearcher(
+        VectoresEnMemoria(corpus, embeddings), reranker=reranker, first_stage_k=primera_etapa
     )
+    return RecuperadorAgente(buscador=buscador, k=k)
 
 
 # --------------------------------------------------------------------------
@@ -325,9 +332,7 @@ class Precios:
         return (c.tokens_entrada * self.entrada_por_millon + c.tokens_salida * self.salida_por_millon) / 1e6
 
 
-def evaluar_variante(
-    nombre: str, recuperador: BaseRetriever, consultas: Sequence[dict], precios: Precios
-) -> dict:
+def evaluar_variante(nombre: str, recuperador: Recuperador, consultas: Sequence[dict], precios: Precios) -> dict:
     filas = []
     for q in consultas:
         t0 = time.perf_counter()
@@ -353,9 +358,9 @@ def evaluar_variante(
     return {"variante": nombre, "resumen": resumir(filas), "filas": filas}
 
 
-def _etiqueta(doc: Document) -> str:
+def _etiqueta(doc: FragmentoRecuperado) -> str:
     h = pagina_aeat(doc)
-    if h and doc.metadata.get("norma") == "AEAT":
+    if h and doc.metadatos.get("norma") == "AEAT":
         return f"AEAT {h[:8]}"
     fuente, articulo = cita_de(doc)
     return f"{fuente.split()[0] if fuente.split() else '?'} art. {articulo}"
@@ -384,7 +389,11 @@ def resumir(filas: list[dict]) -> dict:
     por_estilo = {}
     for estilo in sorted({f["estilo"] for f in citas}):
         grupo = [f for f in citas if f["estilo"] == estilo]
-        por_estilo[estilo] = {"n": len(grupo), "top1": frac([f["top1"] for f in grupo]), "en_k": frac([f["en_k"] for f in grupo])}
+        por_estilo[estilo] = {
+            "n": len(grupo),
+            "top1": frac([f["top1"] for f in grupo]),
+            "en_k": frac([f["en_k"] for f in grupo]),
+        }
     return {
         "consultas": len(filas),
         "n_citas": len(citas),
@@ -412,52 +421,36 @@ def ejecutar(
     variantes: Sequence[str] = RECUPERADORES,
     corpus_path: Path = CORPUS_POR_DEFECTO,
     consultas_path: Path = CONSULTAS_POR_DEFECTO,
-    embeddings: Embeddings | None = None,
+    embeddings: Embedder | None = None,
     selector=None,
     k: int = 3,
-    umbral: float = 0.35,
-    umbrales: Sequence[float] = (),
     precios: Precios | None = None,
     indice: Path | None = None,
     aeat: bool = True,
-    bm25: bool = False,
     primera_etapa: int = 30,
+    reranker: Reordenador | None = None,
 ) -> dict:
-    """Run every variant at ``umbral``; with ``umbrales``, also sweep the dense threshold for ``faiss``.
-
-    The sweep reuses the same embeddings (one query embedding per query), so it costs no extra model calls.
-    """
+    """Run every variant over the same corpus and queries."""
     corpus = cargar_corpus_de_indice(indice, aeat=aeat) if indice is not None else cargar_corpus(corpus_path)
     consultas = cargar_consultas(consultas_path)
     precios = precios or Precios(0.15, 0.60, 800.0)
-    base = construir_base(corpus, embeddings or EmbeddingsHash(), k=k, umbral=umbral, bm25=bm25, primera_etapa=primera_etapa)
+    base = construir_base(corpus, embeddings or EmbeddingsHash(), k=k, primera_etapa=primera_etapa, reranker=reranker)
     selector = selector or SelectorLexico()
-    barrido = []
-    for u in umbrales:
-        base.umbral = u
-        r = evaluar_variante("faiss", base, consultas, precios)["resumen"]
-        barrido.append({"umbral": u, **{c: r[c] for c in (
-            "cita_top1", "cita_en_k", "abstencion_correcta", "abstencion_correcta_ic95", "falsa_abstencion",
-            "conducta_correcta", "por_estilo")}})
-    base.umbral = umbral
     resultados = [
-        evaluar_variante(v, envolver_recuperador(v, base, corpus, selector, k=k), consultas, precios)
-        for v in variantes
+        evaluar_variante(v, envolver_recuperador(v, base, corpus, selector, k=k), consultas, precios) for v in variantes
     ]
     return {
-        "corpus": str(indice) if indice is not None else (
-            str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)
-        ),
+        "corpus": str(indice)
+        if indice is not None
+        else (str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)),
         "chunks": len(corpus),
-        "chunks_aeat": sum(d.metadata.get("norma") == "AEAT" for d in corpus),
+        "chunks_aeat": sum(d.metadatos.get("norma") == "AEAT" for d in corpus),
         "consultas": len(consultas),
         "k": k,
-        "umbral": umbral,
-        "bm25": bm25,
         "primera_etapa": primera_etapa,
+        "reranker": reranker is not None,
         "precios_por_millon_tokens": {"entrada": precios.entrada_por_millon, "salida": precios.salida_por_millon},
         "latencia_llm_ms_supuesta": precios.latencia_llm_ms,
-        "barrido": barrido,
         "variantes": resultados,
     }
 
@@ -471,8 +464,10 @@ def _ic(par: Sequence[float]) -> str:
 
 
 def tabla_markdown(resultado: dict) -> str:
-    cab = ("| variante | cita top-1 | cita en top-k (IC 95 %) | abst. correctas (IC 95 %) | falsas abst. | "
-           "conducta correcta | lat. est. media (ms) | p95 (ms) | llamadas LLM | tokens | coste/consulta |")
+    cab = (
+        "| variante | cita top-1 | cita en top-k (IC 95 %) | abst. correctas (IC 95 %) | falsas abst. | "
+        "conducta correcta | lat. est. media (ms) | p95 (ms) | llamadas LLM | tokens | coste/consulta |"
+    )
     out = [cab, "|" + "---|" * 11]
     for v in resultado["variantes"]:
         r = v["resumen"]
@@ -485,19 +480,16 @@ def tabla_markdown(resultado: dict) -> str:
     if resultado["variantes"]:
         r = resultado["variantes"][0]["resumen"]
         out.append(f"\nn = {r['n_citas']} citas, {r['n_abstenciones']} abstenciones")
-        out.append("\n| variante | " + " | ".join(f"{e} (n={x['n']}) top-1 / top-k" for e, x in r["por_estilo"].items()) + " |")
+        out.append(
+            "\n| variante | " + " | ".join(f"{e} (n={x['n']}) top-1 / top-k" for e, x in r["por_estilo"].items()) + " |"
+        )
         out.append("|" + "---|" * (1 + len(r["por_estilo"])))
         for v in resultado["variantes"]:
             pe = v["resumen"]["por_estilo"]
-            out.append(f"| {v['variante']} | " + " | ".join(f"{_pct(x['top1'])} / {_pct(x['en_k'])}" for x in pe.values()) + " |")
-    if resultado.get("barrido"):
-        out.append("\n| umbral (faiss) | cita top-1 | cita en top-k | abst. correctas (IC 95 %) | falsas abst. | conducta correcta |")
-        out.append("|" + "---|" * 6)
-        for b in resultado["barrido"]:
             out.append(
-                f"| {b['umbral']:g} | {_pct(b['cita_top1'])} | {_pct(b['cita_en_k'])} | "
-                f"{_pct(b['abstencion_correcta'])} ({_ic(b['abstencion_correcta_ic95'])}) | "
-                f"{_pct(b['falsa_abstencion'])} | {_pct(b['conducta_correcta'])} |"
+                f"| {v['variante']} | "
+                + " | ".join(f"{_pct(x['top1'])} / {_pct(x['en_k'])}" for x in pe.values())
+                + " |"
             )
     return "\n".join(out)
 
@@ -520,29 +512,71 @@ class _ClaudeTexto:
         return "".join(getattr(b, "text", "") for b in r.content)
 
 
+class _OpenAITexto:
+    """``.invoke(prompt) -> str`` over the OpenAI SDK (``OPENAI_AGENT_MODEL``), for :class:`SelectorLLM`."""
+
+    def __init__(self) -> None:
+        import openai
+
+        from asistente.plataforma.settings import OPENAI_AGENT_MODEL
+        from asistente.plataforma.utils import get_openai_api_key
+
+        self._cliente = openai.OpenAI(api_key=get_openai_api_key())
+        self._modelo = OPENAI_AGENT_MODEL
+
+    def invoke(self, prompt: str) -> str:
+        r = self._cliente.chat.completions.create(
+            model=self._modelo, temperature=0, messages=[{"role": "user", "content": prompt}]
+        )
+        return r.choices[0].message.content or ""
+
+
 @click.command()
 @click.option("--variantes", default=",".join(RECUPERADORES), help="Lista separada por comas.")
 @click.option("--corpus", "corpus_path", type=click.Path(path_type=Path), default=CORPUS_POR_DEFECTO)
 @click.option("--consultas", "consultas_path", type=click.Path(path_type=Path), default=CONSULTAS_POR_DEFECTO)
-@click.option("--real", is_flag=True, help="Embeddings del proyecto + LLM real como selector.")
-@click.option("--proveedor", type=click.Choice(["openai", "anthropic"]), default="openai", show_default=True,
-              help="LLM selector con --real (anthropic: ANTHROPIC_MODEL).")
-@click.option("--indice", type=click.Path(path_type=Path, exists=True, file_okay=False), default=None,
-              help="Evalúa sobre los chunks reales de un índice FAISS del procesador (las normas citadas).")
+@click.option(
+    "--real",
+    is_flag=True,
+    help="Embeddings del proyecto, reranker si RERANKER_ENABLED y LLM real como selector de pageindex.",
+)
+@click.option(
+    "--proveedor",
+    type=click.Choice(["anthropic", "openai"]),
+    default="anthropic",
+    show_default=True,
+    help="LLM selector con --real (ANTHROPIC_MODEL u OPENAI_AGENT_MODEL).",
+)
+@click.option(
+    "--indice",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=None,
+    help="Evalúa sobre los chunks reales de un índice FAISS del procesador (las normas citadas).",
+)
 @click.option("--k", default=3, show_default=True)
-@click.option("--umbral", default=None, type=float,
-              help="Umbral del EmbeddingsFilter (abstención). Por defecto RETRIEVAL_EXPLAIN_THRESHOLD, el del módulo fiscal.")
-@click.option("--umbrales", default="", help="Barrido de umbrales para faiss, p. ej. 0.35,0.40,0.45.")
-@click.option("--aeat/--sin-aeat", default=True, show_default=True,
-              help="Con --indice, incluye las páginas de la AEAT como competidoras.")
-@click.option("--bm25/--sin-bm25", default=None, help="Fusión BM25 (por defecto, BM25_ENABLED).")
-@click.option("--primera-etapa", default=None, type=int,
-              help="Candidatos densos antes del filtro (por defecto, RERANKER_FIRST_STAGE_K o TOP_K, como chain.py).")
-@click.option("--escribir-manifiesto", type=click.Path(path_type=Path), default=None,
-              help="Con --indice: escribe qué artículos y páginas AEAT existen y termina.")
+@click.option(
+    "--aeat/--sin-aeat",
+    default=True,
+    show_default=True,
+    help="Con --indice, incluye las páginas de la AEAT como competidoras.",
+)
+@click.option(
+    "--primera-etapa",
+    default=None,
+    type=int,
+    help="Candidatos densos antes del reranker (por defecto, RERANKER_FIRST_STAGE_K, como el agente).",
+)
+@click.option(
+    "--escribir-manifiesto",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Con --indice: escribe qué artículos y páginas AEAT existen y termina.",
+)
 @click.option("--precio-entrada", default=0.15, show_default=True, help="Precio por 1M tokens de entrada.")
 @click.option("--precio-salida", default=0.60, show_default=True, help="Precio por 1M tokens de salida.")
-@click.option("--latencia-llm-ms", default=800.0, show_default=True, help="Latencia supuesta por llamada LLM (simulado).")
+@click.option(
+    "--latencia-llm-ms", default=800.0, show_default=True, help="Latencia supuesta por llamada LLM (simulado)."
+)
 @click.option("--salida", type=click.Path(path_type=Path), default=None, help="Guarda el JSON completo.")
 def cli(
     variantes: str,
@@ -552,10 +586,7 @@ def cli(
     proveedor: str,
     indice: Path | None,
     k: int,
-    umbral: float | None,
-    umbrales: str,
     aeat: bool,
-    bm25: bool | None,
     primera_etapa: int | None,
     escribir_manifiesto: Path | None,
     precio_entrada: float,
@@ -572,25 +603,20 @@ def cli(
         escribir_manifiesto.write_text(json.dumps(manifiesto, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         click.echo(f"{sum(map(len, manifiesto['normas'].values()))} artículos, {len(manifiesto['aeat'])} páginas AEAT")
         return
-    umbral = settings.RETRIEVAL_EXPLAIN_THRESHOLD if umbral is None else umbral
-    bm25 = settings.BM25_ENABLED if bm25 is None else bm25
     if primera_etapa is None:
-        primera_etapa = settings.RERANKER_FIRST_STAGE_K if settings.RERANKER_ENABLED else settings.TOP_K
+        primera_etapa = settings.RERANKER_FIRST_STAGE_K
     embeddings = None
     selector = None
+    reranker = None
     if real:
         from asistente.conocimiento.llm.embeddings import create_embeddings
 
         embeddings = create_embeddings()
-        if proveedor == "anthropic":
-            selector = SelectorLLM(_ClaudeTexto())
-        else:
-            from langchain_openai import ChatOpenAI
+        if settings.RERANKER_ENABLED:
+            from asistente.conocimiento.llm.reranker import MLXReranker
 
-            from asistente.plataforma.settings import OPENAI_MODEL
-            from asistente.plataforma.utils import get_openai_api_key
-
-            selector = SelectorLLM(ChatOpenAI(model=OPENAI_MODEL, temperature=0, api_key=get_openai_api_key()))
+            reranker = MLXReranker(model_path=settings.RERANKER_MODEL, top_k=settings.RERANKER_TOP_K)
+        selector = SelectorLLM(_ClaudeTexto() if proveedor == "anthropic" else _OpenAITexto())
         latencia_llm_ms = 0.0  # con LLM real la latencia ya va medida
     resultado = ejecutar(
         variantes=[v.strip() for v in variantes.split(",") if v.strip()],
@@ -599,13 +625,11 @@ def cli(
         embeddings=embeddings,
         selector=selector,
         k=k,
-        umbral=umbral,
-        umbrales=[float(x) for x in umbrales.split(",") if x.strip()],
         precios=Precios(precio_entrada, precio_salida, latencia_llm_ms),
         indice=indice,
         aeat=aeat,
-        bm25=bm25,
         primera_etapa=primera_etapa,
+        reranker=reranker,
     )
     resultado["modo"] = "real" if real else "simulado"
     if salida:

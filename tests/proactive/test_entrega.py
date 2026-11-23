@@ -2,6 +2,7 @@ from datetime import UTC, datetime
 import json
 import sqlite3
 
+import httpx
 import pytest
 
 from asistente.nucleo.proactive import entrega
@@ -186,26 +187,19 @@ class _Response:
 
 
 @pytest.fixture
-def urlopen_calls(monkeypatch) -> list:
-    calls: list = []
-
-    def fake_urlopen(request, timeout=None):
-        calls.append((request, timeout))
-        return _Response()
-
-    monkeypatch.setattr(entrega.urllib.request, "urlopen", fake_urlopen)
-    return calls
+def urlopen_calls(red_falsa) -> list:
+    return red_falsa(lambda request: httpx.Response(200, content=b"ok"))
 
 
 def test_webhook_posts_json_with_title_and_text(urlopen_calls) -> None:
     WebhookCanal("https://hooks.example.test/abc").enviar("Título ñ", "Cuerpo €")
 
-    ((request, timeout),) = urlopen_calls
-    assert request.full_url == "https://hooks.example.test/abc"
-    assert request.get_method() == "POST"
-    assert request.get_header("Content-type") == "application/json; charset=utf-8"
-    assert json.loads(request.data.decode("utf-8")) == {"title": "Título ñ", "text": "Cuerpo €"}
-    assert timeout == 30
+    (request,) = urlopen_calls
+    assert str(request.url) == "https://hooks.example.test/abc"
+    assert request.method == "POST"
+    assert request.headers["Content-type"] == "application/json; charset=utf-8"
+    assert json.loads(request.content.decode("utf-8")) == {"title": "Título ñ", "text": "Cuerpo €"}
+    assert request.extensions["timeout"]["read"] == 30
 
 
 def test_webhook_text_format_sends_the_body_and_a_title_header(urlopen_calls) -> None:
@@ -213,12 +207,12 @@ def test_webhook_text_format_sends_the_body_and_a_title_header(urlopen_calls) ->
     canal.enviar("Plazo IVA", "Cuerpo €")
     canal.enviar("Título ñ", "x")
 
-    (primero, _), (segundo, _) = urlopen_calls
-    assert primero.data == "Cuerpo €".encode()
-    assert primero.get_header("Content-type") == "text/plain; charset=utf-8"
-    assert primero.get_header("Title") == "Plazo IVA"
+    primero, segundo = urlopen_calls
+    assert primero.content == "Cuerpo €".encode()
+    assert primero.headers["Content-type"] == "text/plain; charset=utf-8"
+    assert primero.headers["Title"] == "Plazo IVA"
     # Non-ASCII titles travel as an RFC 2047 encoded word (headers are latin-1 only).
-    assert segundo.get_header("Title") == "=?utf-8?b?VMOtdHVsbyDDsQ==?="
+    assert segundo.headers["Title"] == "=?utf-8?b?VMOtdHVsbyDDsQ==?="
 
 
 @pytest.mark.parametrize("url", ["file:///etc/passwd", "hooks.example.test/abc", "ftp://example.test/x"])
@@ -233,7 +227,7 @@ def test_webhook_rejects_an_unknown_format() -> None:
 
 
 class _FakeSMTP:
-    instances: list["_FakeSMTP"] = []
+    instances: list[_FakeSMTP] = []
 
     def __init__(self, host, port, timeout=None, **kwargs) -> None:
         self.host, self.port, self.kwargs = host, port, kwargs

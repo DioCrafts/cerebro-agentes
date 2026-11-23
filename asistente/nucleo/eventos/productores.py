@@ -37,6 +37,7 @@ from asistente.nucleo.eventos.tipos import (
     PERFIL_CAMBIADO,
 )
 from asistente.plataforma import settings
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -161,9 +162,8 @@ def emitir(
         return None
     ruta = db_path or settings.DECISION_STATE_DB_PATH
     try:
-        conn = sqlite3.connect(ruta, timeout=30.0, isolation_level=None)
+        conn = abrir_sqlite(ruta, timeout=30.0, isolation_level=None)
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             crear_tablas(conn)
             conn.execute("BEGIN IMMEDIATE")
             try:

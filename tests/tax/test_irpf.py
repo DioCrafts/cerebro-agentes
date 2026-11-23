@@ -222,9 +222,17 @@ def test_madrid_resident_uses_regional_scale_and_minimums() -> None:
 
 
 def test_unloaded_community_is_still_approximated_and_flagged() -> None:
-    r = _calc(comunidad_autonoma="Navarra", rendimiento_trabajo_bruto=D(30000), cotizaciones_seguridad_social=D(1905))
+    r = _calc(comunidad_autonoma="Tabarnia", rendimiento_trabajo_bruto=D(30000), cotizaciones_seguridad_social=D(1905))
     assert r.comunidad_aplicada is None and r.cuota_integra_autonomica == r.cuota_integra_estatal
-    assert any("«Navarra» no está cargada" in aviso for aviso in r.avisos)
+    assert any("«Tabarnia» no está cargada" in aviso for aviso in r.avisos)
+
+
+@pytest.mark.parametrize("territorio", ["Navarra", "País Vasco", "Bizkaia", "Álava"])
+def test_foral_territory_is_an_explicit_error(territorio: str) -> None:
+    from asistente.ambitos.fiscal.calculo.params import TerritorioForalError
+
+    with pytest.raises(TerritorioForalError, match="foral"):
+        _calc(comunidad_autonoma=territorio, rendimiento_trabajo_bruto=D(30000))
 
 
 def test_2025_omits_the_unverifiable_work_deduction_and_says_so() -> None:
@@ -367,9 +375,7 @@ def test_madrid_education_expenses_child_by_child() -> None:
     assert con(
         {"edad": 2, "etapa_educativa": "infantil_primer_ciclo", "gastos": {"gastos_escolaridad": 9000}},
         {"edad": 8, "gastos": {"gastos_escolaridad": 9000}},
-    ) == D(
-        "1958.90"
-    )  # 1.031 + 927,90
+    ) == D("1958.90")  # 1.031 + 927,90
     exacto = _madrid(descendientes=[{"edad": 10, "gastos": {"gastos_escolaridad": 8000}}, {"edad": 7}], **base)
     assert any("hijo a hijo con el desglose" in aviso for aviso in exacto.avisos)
     assert exacto.base_imponible_general == _madrid(num_descendientes=2, **base).base_imponible_general
@@ -451,7 +457,7 @@ def test_general_deductions_are_split_between_state_and_regional_tax() -> None:
 
     # Madrid inputs supplied for a non-Madrid simulation are reported, not silently ignored.
     elsewhere = _calc(
-        comunidad_autonoma="Navarra", rendimiento_trabajo_bruto=D(24000), edad=30, alquiler_vivienda_habitual=D(9600)
+        comunidad_autonoma="Tabarnia", rendimiento_trabajo_bruto=D(24000), edad=30, alquiler_vivienda_habitual=D(9600)
     )
     assert any("no tiene deducciones calculables para tu comunidad" in aviso for aviso in elsewhere.avisos)
     assert _aplicada(elsewhere, "Deducción autonómica por alquiler") == 0

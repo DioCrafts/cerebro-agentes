@@ -32,7 +32,6 @@ from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError, To
 from asistente.nucleo.agent.search import CorpusSearcher
 from asistente.nucleo.agent.team import (
     RESEARCH_TOOLS,
-    LockedSearcher,
     Plan,
     SubagentRun,
     TeamReport,
@@ -69,6 +68,9 @@ ABSTAIN_MESSAGE = (
 REFUSAL_MESSAGE = "El modelo ha declinado responder a esta consulta."
 # Extra model turns granted to act on a verifier rejection (search + rewrite).
 _STEPS_PER_REVISION = 3
+
+
+TRUNCATED_WARNING = "La respuesta se cortó por el límite de longitud del modelo; puede estar incompleta."
 
 
 class AgentMode(str, Enum):
@@ -329,7 +331,7 @@ class TaxAgent:
         conversation = self._provider.start(
             system=system,
             tools=toolbox.specs(),
-            history=chat_history or [],  # type: ignore[arg-type]  # normalized by the provider
+            history=chat_history or [],  # normalized by the provider
             user_message="\n\n".join(
                 part
                 for part in (
@@ -348,10 +350,16 @@ class TaxAgent:
         usage: dict[str, int] = {}
         steps = 0
         revisions = 0
+        truncated = False
         budget = self._max_steps
         critic_pending = critic is not None
 
         def finish(**fields: Any) -> AgentResult:
+            if truncated and fields.get("mode") is AgentMode.VERIFIED:
+                # A draft cut by max_tokens may have lost a caveat or a claim at its end: never fully verified.
+                fields["mode"] = AgentMode.PARTIALLY_VERIFIED
+            if truncated and fields.get("mode") is not AgentMode.ABSTAINED:
+                fields["warnings"] = [*fields.get("warnings", []), TRUNCATED_WARNING]
             total = dict(usage)
             full_trace = list(trace)
             if especialistas is not None:
@@ -430,6 +438,7 @@ class TaxAgent:
                 continue
 
             answer = turn.text
+            truncated = bool(answer) and turn.stop_reason == "max_tokens"
             if not answer:
                 reason = (
                     "La respuesta se truncó por límite de tokens."
@@ -624,17 +633,28 @@ class TeamAgent(TaxAgent):
                     "fuentes de rango comparable siguen discrepando, dilo."
                 ),
             )
-            team_result = self._run_team(
-                query,
-                plan,
-                "conflicto",
-                chat_history=chat_history,
-                # Facts the first pass recorded must not be lost.
-                case=result.updated_case or case,
-                on_event=on_event,
-                emit=emit,
-                modulos=modulos,
-            )
+            try:
+                team_result = self._run_team(
+                    query,
+                    plan,
+                    "conflicto",
+                    chat_history=chat_history,
+                    # Facts the first pass recorded must not be lost.
+                    case=result.updated_case or case,
+                    on_event=on_event,
+                    emit=emit,
+                    modulos=modulos,
+                )
+            except ProviderError as exc:
+                # The escalation failed: the first answer (already paid for) is still worth giving, with a warning.
+                logger.warning("team escalation failed: %s", exc)
+                emit("team", stage="escalation", agent="planificador", status="error")
+                result.warnings = [
+                    *result.warnings,
+                    "No se pudo contrastar con el equipo la vigencia de las fuentes discutidas; "
+                    "la respuesta es la primera, sin esa revisión.",
+                ]
+                return result
             for key, value in result.usage.items():
                 team_result.usage[key] = team_result.usage.get(key, 0) + value
             if team_result.updated_case is None:
@@ -658,7 +678,8 @@ class TeamAgent(TaxAgent):
     ) -> AgentResult:
         ledger = self._nuevo_ledger()
         make_toolbox = new_toolbox_factory(
-            searcher=LockedSearcher(self._searcher),
+            # The corpus searcher serialises itself (one lock per process, see FaissCorpusSearcher): no per-run lock.
+            searcher=self._searcher,
             ledger=ledger,
             case=case,
             default_k=self._default_k,

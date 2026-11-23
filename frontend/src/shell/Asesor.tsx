@@ -1,17 +1,17 @@
-// The advisor's shell: sidebar (history) + main column (top bar, conversation, composer) + the panels of the
-// registry (src/paneles/registro.ts), opened from the navigation or a link (`/?panel=<id>`).
+// The advisor's shell, laid out like a GitHub page: the global header with the section tabs (CabeceraGlobal),
+// then a PageLayout with the consultations in the pane (ListaConsultas) and, in the content, either the
+// conversation (Hilo + Composer) or the page panel that is open. The panels of the registry
+// (src/paneles/registro.ts) open from the tabs, the palette or a link (`/?panel=<id>`): pages in the content,
+// sheets and legacy overlays above it (PanelHost).
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { getCase } from "../api";
-import { AuthAccountBar } from "../components/AuthAccountBar";
 import { AvisoInstalar } from "../components/AvisoInstalar";
 import { Composer } from "../components/Composer";
 import { Hilo } from "../components/Hilo";
 import { PanelHost } from "../components/PanelHost";
 import type { SimulatorSeed } from "../components/SimulatorPanel";
-import { Sidebar } from "../components/Sidebar";
-import { TopBar } from "../components/TopBar";
 import { newId } from "../lib/id";
 import { useNavegadorActivo } from "../lib/navegador";
 import { abrirPanel, panelEnUrl, quitarParametro, usePanelUrl } from "../lib/panelUrl";
@@ -20,6 +20,11 @@ import { admiteServiceWorker } from "../lib/pwa";
 import { useTheme } from "../lib/theme";
 import { modulosActivos, panelesVisibles } from "../paneles/registro";
 import type { ContextoPanel, Insignias } from "../paneles/tipos";
+import type { Comando } from "../ui";
+import { Button, Dialog, Flash, PageLayout } from "../ui";
+import { CommentDiscussionIcon } from "../ui/iconos";
+import { CabeceraGlobal } from "./CabeceraGlobal";
+import { ListaConsultas } from "./ListaConsultas";
 import { useAvisos } from "./useAvisos";
 import { useConsulta } from "./useConsulta";
 import { useModulos } from "./useModulos";
@@ -152,70 +157,109 @@ export function Asesor({ account }: { account?: AccountControls }) {
     },
   };
 
+  const conversaciones = consulta.conversations.filter((c) => c.turns.length > 0);
+  const nuevaConsulta = () => {
+    cerrarYLimpiar();
+    consulta.switchTo(newId());
+  };
+  const comandosConsultas: Comando[] = conversaciones.map((c) => ({
+    id: `consulta-${c.id}`,
+    grupo: "Consultas",
+    etiqueta: c.title,
+    icono: CommentDiscussionIcon,
+    ejecutar: () => {
+      cerrarYLimpiar();
+      consulta.switchTo(c.id);
+    },
+  }));
+  const lista = (alElegir?: () => void) => (
+    <ListaConsultas
+      conversations={conversaciones}
+      activeId={activeId}
+      onSelect={(id) => {
+        alElegir?.();
+        cerrarYLimpiar();
+        consulta.switchTo(id);
+      }}
+      onDelete={consulta.remove}
+      onNewConsultation={() => {
+        alElegir?.();
+        nuevaConsulta();
+      }}
+    />
+  );
+  // A page panel takes the content's place; the conversation stays mounted underneath (hidden).
+  const paginaAbierta = paneles.some((p) => p.id === abierto && p.presentacion === "pagina");
+
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden">
-      <Sidebar
-        conversations={consulta.conversations.filter((c) => c.turns.length > 0)}
-        activeId={activeId}
-        onSelect={consulta.switchTo}
-        onDelete={consulta.remove}
-        onNewConsultation={() => consulta.switchTo(newId())}
-        open={menuOpen}
-        onClose={() => setMenuOpen(false)}
+    <div className="flex min-h-dvh flex-col">
+      <CabeceraGlobal
+        title={active.title}
+        conTitulo={active.turns.length > 0}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        paneles={paneles}
+        insignias={insignias}
+        abierto={abierto}
+        onAbrir={abrirDesde}
+        onCerrar={cerrarYLimpiar}
+        onAbrirConsultas={() => setMenuOpen(true)}
+        onNuevaConsulta={nuevaConsulta}
+        comandosExtra={comandosConsultas}
+        account={account}
       />
-      <main className="flex h-full min-w-0 flex-1 flex-col bg-paper">
-        {account && <AuthAccountBar email={account.email} onOpenPrivacy={account.onOpenPrivacy} onLogout={account.onLogout} />}
-        <TopBar
-          title={active.title}
-          onOpenMenu={() => setMenuOpen(true)}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          paneles={paneles}
-          insignias={insignias}
-          abierto={abierto}
-          onAbrir={abrirDesde}
-        />
-        <AvisoInstalar />
-        <div className="flex-1 overflow-y-auto px-3 py-5 sm:px-8 sm:py-6">
-          <Hilo
-            active={active}
-            pending={consulta.pending}
-            busy={consulta.busy}
-            highlightedId={consulta.highlightedId}
-            onSubmit={(text, replaceTurnId) => void consulta.submit(text, replaceTurnId)}
-            onCite={consulta.handleCite}
-            lastTurnRef={consulta.lastTurnRef}
-            bottomRef={consulta.bottomRef}
-          />
-        </div>
-        <div className="border-t border-line bg-paper px-3 pb-[max(env(safe-area-inset-bottom),12px)] pt-3 sm:px-8">
-          <div className="mx-auto max-w-3xl">
-            {modulos.pendientes > 0 && (
-              <div role="status" className="mb-2 flex flex-wrap items-center justify-between gap-2 rounded-lg border border-risk-high-fg/40 bg-risk-high-bg px-3 py-2 text-[13px] text-ink">
-                <span>
-                  {modulos.pendientes === 1 ? "Tienes 1 acción pendiente" : `Tienes ${modulos.pendientes} acciones pendientes`} de tu confirmación. No se hará
-                  nada hasta que la confirmes.
-                </span>
-                <button
-                  type="button"
-                  onClick={() => abrirDesde("modulos")}
-                  className="rounded-lg bg-surface px-2.5 py-1 text-[12.5px] font-semibold text-ink shadow-card hover:bg-line/60"
-                >
-                  Revisar
-                </button>
-              </div>
-            )}
-            <Composer
-              key={`${activeId}-${consulta.composerSeed.id}`}
-              initialValue={consulta.composerSeed.text}
-              onSubmit={(text) => void consulta.submit(text)}
-              onStop={consulta.stop}
+      <AvisoInstalar />
+      <PageLayout containerWidth="xlarge" padding="normal" columnGap="normal" className="flex-1">
+        <PageLayout.Pane position="start" width="medium" sticky hidden={{ narrow: true }} aria-label="Consultas" divider="none">
+          {lista()}
+        </PageLayout.Pane>
+        <PageLayout.Content as="main" width="large">
+          <div id="contenido" tabIndex={-1} className="outline-none" />
+          <PanelHost zona="pagina" paneles={paneles} abierto={abierto} ctx={ctx} onClose={cerrarYLimpiar} />
+          <div hidden={paginaAbierta} className="flex flex-col gap-4">
+            <Hilo
+              active={active}
+              turno={consulta.turno}
               busy={consulta.busy}
+              highlightedId={consulta.highlightedId}
+              onSubmit={(text, replaceTurnId) => void consulta.submit(text, replaceTurnId)}
+              onCite={consulta.handleCite}
+              lastTurnRef={consulta.lastTurnRef}
+              bottomRef={consulta.bottomRef}
             />
+            <div
+              className={`sticky bottom-0 z-[1] -mx-2 flex flex-col gap-2 bg-canvas-default px-2 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 ${active.turns.length > 0 || consulta.busy ? "md:ml-14" : ""}`}
+            >
+              {modulos.pendientes > 0 && (
+                <Flash variant="warning" role="status">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                      {modulos.pendientes === 1 ? "Tienes 1 acción pendiente" : `Tienes ${modulos.pendientes} acciones pendientes`} de tu
+                      confirmación. No se hará nada hasta que la confirmes.
+                    </span>
+                    <Button size="small" onClick={() => abrirDesde("modulos")}>
+                      Revisar
+                    </Button>
+                  </div>
+                </Flash>
+              )}
+              <Composer
+                key={`${activeId}-${consulta.composerSeed.id}`}
+                initialValue={consulta.composerSeed.text}
+                onSubmit={(text) => void consulta.submit(text)}
+                onStop={() => consulta.stop()}
+                busy={consulta.busy}
+              />
+            </div>
           </div>
-        </div>
-      </main>
-      <PanelHost paneles={paneles} abierto={abierto} ctx={ctx} onClose={cerrarYLimpiar} />
+        </PageLayout.Content>
+      </PageLayout>
+      {menuOpen && (
+        <Dialog title="Menú" position="left" width="medium" onClose={() => setMenuOpen(false)}>
+          {lista(() => setMenuOpen(false))}
+        </Dialog>
+      )}
+      <PanelHost zona="superpuesto" paneles={paneles} abierto={abierto} ctx={ctx} onClose={cerrarYLimpiar} />
     </div>
   );
 }

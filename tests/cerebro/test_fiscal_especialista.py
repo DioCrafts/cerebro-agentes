@@ -273,3 +273,19 @@ def test_the_local_figure_extractor_reads_spanish_numbers() -> None:
         (Decimal("14.40"), "%", "F1"),
     ]
     assert valor_decimal("1.234,56") == Decimal("1234.56") and valor_decimal("1234.56") == Decimal("1234.56")
+
+
+def test_a_cancelled_encargo_never_writes_into_the_case() -> None:
+    proveedor = Grabador(
+        [
+            tool_turn(("registrar_hechos", {"hechos": [{"nombre": "rendimiento_trabajo_bruto", "valor": 30000}]})),
+            text_turn("Anotado: 30.000 €."),
+        ],
+        [verdict("respuesta")],
+    )
+    turno = _turno(proveedor, case=caso(comunidad_autonoma="Madrid"))
+    pizarra = PizarraFalsa(RespuestaPeticion(peticion_id="p1", estado="sin_dato"))
+    pizarra.cancelada = True  # type: ignore[attr-defined]  # its time ran out while the advisor worked
+    _especialista(proveedor).atender(_contexto(turno, pizarra=pizarra))
+    hechos = {f.name for f in turno.expediente.case.facts}  # type: ignore[union-attr]
+    assert "rendimiento_trabajo_bruto" not in hechos and not turno.expediente.cambiado

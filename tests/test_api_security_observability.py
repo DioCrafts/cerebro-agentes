@@ -62,10 +62,11 @@ def test_api_key_wrong_value_rejected(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.status_code == 401
 
 
-def test_health_and_metrics_exempt_from_auth(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_health_open_and_metrics_operator_only(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("HACIENDA_API_KEY", "s3cret")
     assert client.get("/health").status_code == 200
-    assert client.get("/metrics").status_code == 200
+    assert client.get("/metrics").status_code == 401
+    assert client.get("/metrics", headers={"X-API-Key": "s3cret"}).status_code == 200
 
 
 def test_auth_disabled_by_default(monkeypatch: pytest.MonkeyPatch) -> None:

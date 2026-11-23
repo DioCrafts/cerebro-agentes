@@ -18,18 +18,17 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-import pickle
-from typing import Any
 
 import click
 
 from asistente.conocimiento.doctrine.citas import extract_citations
 from asistente.conocimiento.doctrine.construccion import build_graph
 from asistente.conocimiento.doctrine.grafo import DoctrineGraph
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.plataforma import settings
 
 
-def load_corpus_chunks(index_path: str) -> list[Any]:
+def load_corpus_chunks(index_path: str) -> list[FragmentoRecuperado]:
     """Chunks of the FAISS index, read from its docstore without loading the
     embedder (building the graph needs the text, not the vectors)."""
     if not settings.FAISS_TRUSTED_INDEX:
@@ -41,9 +40,9 @@ def load_corpus_chunks(index_path: str) -> list[Any]:
         raise click.ClickException(
             f"No existe {path}. Construye antes el índice con asistente.plataforma.cli.processor."
         )
-    with path.open("rb") as handle:
-        docstore, _ = pickle.load(handle)  # noqa: S301 - gated by FAISS_TRUSTED_INDEX above
-    return list(docstore._dict.values())
+    from asistente.conocimiento.indice.faiss_legado import leer_fragmentos
+
+    return leer_fragmentos(index_path, confiar=True)
 
 
 @click.group()

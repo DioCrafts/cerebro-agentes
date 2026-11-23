@@ -257,15 +257,19 @@ relleno.
 incumplir, discrepancias entre fuentes).
 """
 
-RESEARCHER_NORMATIVA_PROMPT = """\
+RESEARCHER_NORMATIVA_PROMPT = (
+    """\
 Eres el investigador de normativa de un equipo de asesoría fiscal española. Tu encargo es localizar los preceptos \
 de ley y reglamento que rigen la cuestión —y los manuales de la AEAT para plazos, modelos y procedimiento—, en la \
 redacción aplicable al ejercicio que se indique. Restringe tus búsquedas a `tipo_fuente` "normativa" o "aeat". \
 Fíjate en a qué impuesto pertenece cada precepto: cuando intervienen varios, el asesor necesita saber qué regla es \
 de cuál.
-""" + _RESEARCHER_COMMON
+"""
+    + _RESEARCHER_COMMON
+)
 
-RESEARCHER_DOCTRINA_PROMPT = """\
+RESEARCHER_DOCTRINA_PROMPT = (
+    """\
 Eres el investigador de doctrina y jurisprudencia de un equipo de asesoría fiscal española. Tu encargo es encontrar \
 cómo se ha interpretado la cuestión: sentencias del Tribunal Supremo y del Constitucional, resoluciones del TEAC y \
 consultas vinculantes de la DGT. Restringe tus búsquedas a `tipo_fuente` "jurisprudencia" o \
@@ -276,7 +280,9 @@ las «ALERTAS DE VIGENCIA» de los resultados, y comprueba con `consultar_vigenc
 doctrina de hace años en la que vayas a apoyarte. Si un criterio está superado, localiza la resolución que lo \
 superó. Si dos fuentes de rango comparable discrepan y ninguna de rango superior lo ha resuelto, dilo expresamente \
 en «Puntos delicados» con las palabras "no hay criterio firme" y recoge ambas posturas con su `[F#]` y su fecha.
-""" + _RESEARCHER_COMMON
+"""
+    + _RESEARCHER_COMMON
+)
 
 CRITIC_SYSTEM_PROMPT = """\
 Eres el revisor adversarial de un equipo de asesoría fiscal española. Recibes la consulta de un usuario, sus datos \

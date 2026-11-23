@@ -12,10 +12,10 @@ from asistente.investigador import investigar, Presupuesto
 informe = investigar(
     "¿Qué deducciones por alquiler hay en Madrid?",
     Presupuesto(max_tokens=200_000, max_euros=1.0, max_profundidad=2),
-    llm=mi_proveedor,           # un LLMProvider, o {"planificador": …, "lector": …, "critico": …, "redactor": …}
-    web=None,                   # por defecto, el buscador web de asistente/capacidades/investigacion
-    al_progresar=print,         # recibe Evento(tipo, mensaje, datos)
-    sin_fuente="eliminar",      # o "marcar"
+    llm=mi_proveedor,  # un LLMProvider, o {"planificador": …, "lector": …, "critico": …, "redactor": …}
+    web=None,  # por defecto, el buscador web de asistente/capacidades/investigacion
+    al_progresar=print,  # recibe Evento(tipo, mensaje, datos)
+    sin_fuente="eliminar",  # o "marcar"
 )
 print(informe.markdown())
 ```

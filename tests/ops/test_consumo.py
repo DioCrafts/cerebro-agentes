@@ -53,7 +53,7 @@ PRECIOS = TablaPrecios(
 
 
 class FakeConversation:
-    def __init__(self, provider: "FakeProvider") -> None:
+    def __init__(self, provider: FakeProvider) -> None:
         self._provider = provider
 
     def step(self, *, allow_tools: bool = True, on_text: Callable[[str], None] | None = None) -> ModelTurn:
@@ -613,7 +613,7 @@ def test_openai_reports_usage_per_call_including_streams() -> None:
             _openai_response("sin datos", usage=None),  # local servers often send no usage
         ]
     )
-    provider = OpenAIProvider(model="gpt-4o-mini", client=client)
+    provider = OpenAIProvider(model="gpt-4o-mini", client=client, api_style="chat")
     seen: list[Usage] = []
     provider.on_usage = seen.append
 
@@ -754,3 +754,15 @@ def test_a_hook_set_by_someone_else_is_kept_and_usage_is_captured_once(store) ->
     primero.start(system="S", tools=[], history=[], user_message="x").step()
 
     assert len(seen) == 1 and len(_rows(store)) == 1
+
+
+def test_coste_prudente_prices_an_unknown_model_at_the_dearest_one() -> None:
+    from asistente.plataforma.ops.consumo import coste_prudente
+
+    conocido = _usage(input_tokens=1_000_000)
+    desconocido = _usage(model="modelo-nuevo", input_tokens=1_000_000, output_tokens=1_000_000)
+    assert coste_prudente(conocido, PRECIOS) == calcular_coste(conocido, PRECIOS)
+    maximo_in = max(p.input for p in PRECIOS.modelos.values() if p.input is not None)
+    maximo_out = max(p.output for p in PRECIOS.modelos.values() if p.output is not None)
+    assert coste_prudente(desconocido, PRECIOS) == maximo_in + maximo_out
+    assert coste_prudente(Usage(provider="p", model="x", reported=False), PRECIOS) is None

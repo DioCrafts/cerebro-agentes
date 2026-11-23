@@ -205,7 +205,7 @@ def _en_modelo(params: Any, ruta: Sequence[str]) -> Any:
                 nodo = nodo[paso]
             else:
                 nodo = nodo[int(paso)]
-    except (AttributeError, KeyError, IndexError, ValueError, TypeError):
+    except AttributeError, KeyError, IndexError, ValueError, TypeError:
         return None
     return nodo
 
@@ -627,10 +627,12 @@ def bloques_de(etiqueta: str) -> list[str]:
     if not claves:
         # "disp. adicional primera DLeg 1/2005": the ordinal in words, as the BOE heads the provision.
         en_letras = _DISPOSICION_EN_LETRAS.match(etiqueta)
-        for ordinal in (en_letras.group(2), en_letras.group(2).split()[0]) if en_letras else ():
-            clave = clave_de_disposicion(f"Disposición {en_letras.group(1).lower()} {ordinal}.")  # type: ignore[union-attr]
-            if clave is not None:
-                return [clave]
+        if en_letras is not None:
+            clase, ordinal = en_letras.group(1).lower(), en_letras.group(2)
+            for forma in (ordinal, ordinal.split()[0]):
+                clave = clave_de_disposicion(f"Disposición {clase} {forma}.")
+                if clave is not None:
+                    return [clave]
     ruta = ruta_de_etiqueta(etiqueta)
     if len(claves) == 1 and ruta is not None and ruta.split(".")[0] == claves[0]:
         return [ruta]
@@ -890,11 +892,12 @@ class GrupoConEvidencia(Adaptador):
         familia = self.familia
         assert familia.hojas is not None and familia.leer_cifra is not None
         hojas = familia.hojas(grupo)
+        leer_cifra = familia.leer_cifra
 
         def vale(literal: str, ruta: str, cita: str) -> bool:
             try:
-                return _es_token(literal, cita) and familia.leer_cifra(literal, ruta) == hojas[ruta]  # type: ignore[misc]
-            except (InvalidOperation, IndexError, ValueError, KeyError, ArithmeticError):
+                return _es_token(literal, cita) and leer_cifra(literal, ruta) == hojas[ruta]
+            except InvalidOperation, IndexError, ValueError, KeyError, ArithmeticError:
                 return False
 
         cubiertas: set[str] = set()

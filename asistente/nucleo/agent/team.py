@@ -30,9 +30,9 @@ import re
 import threading
 from typing import Any, Protocol
 
-from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.evidence import EvidenceLedger, Fragment
 from asistente.nucleo.agent.prompts import (
     CRITIC_SYSTEM_PROMPT,
@@ -145,7 +145,7 @@ class LockedSearcher:
         self._inner = inner
         self._lock = threading.Lock()
 
-    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[FragmentoRecuperado]:
         with self._lock:
             return self._inner.search(query, k=k, filters=filters)
 

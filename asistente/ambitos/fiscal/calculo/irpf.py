@@ -24,6 +24,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 from asistente.ambitos.fiscal.calculo import autonomicas
 from asistente.ambitos.fiscal.calculo.arrendamiento import DatosArrendamiento, reduccion_arrendamiento
 from asistente.ambitos.fiscal.calculo.compensacion import compensar_ahorro
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.obligacion import ResultadoObligacion, obligado_a_declarar
 from asistente.ambitos.fiscal.calculo.params import (
     CAMPOS_GASTO,
@@ -35,6 +36,7 @@ from asistente.ambitos.fiscal.calculo.params import (
     IRPFParams,
     Minimos,
     RepartoDeducciones,
+    TerritorioForalError,
     _MadridEducacion,
     load_params,
     normalizar_comunidad,
@@ -45,6 +47,33 @@ CENT = Decimal("0.01")
 ZERO = Decimal(0)
 
 Tributacion = Literal["individual", "conjunta_biparental", "conjunta_monoparental"]
+
+
+_TERRITORIOS_FORALES = (
+    "navarra",
+    "nafarroa",
+    "pais vasco",
+    "euskadi",
+    "alava",
+    "araba",
+    "gipuzkoa",
+    "guipuzcoa",
+    "bizkaia",
+    "vizcaya",
+)
+
+
+def _es(valor: Decimal, decimales: int = 2) -> str:
+    """'30930' → '30.930', '721.70' → '721,70' (figures read from the data, written the Spanish way)."""
+    texto = f"{valor:,.{decimales}f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return texto[:-3] if decimales == 2 and texto.endswith(",00") else texto
+
+
+def _fecha_es(iso: str) -> str:
+    try:
+        return date.fromisoformat(iso).strftime("%d/%m/%Y")
+    except ValueError:
+        return iso
 
 
 def _round(value: Decimal) -> Decimal:
@@ -464,6 +493,9 @@ class Linea(BaseModel):
     concepto: str
     importe: Decimal
     referencia: str | None = None
+    # Stable identifier for code that reads a line back (see :class:`ClaveLinea`); the ``concepto``
+    # is wording for people and may change.
+    clave: str | None = None
 
 
 class IRPFResult(BaseModel):
@@ -504,15 +536,22 @@ class _Trace:
         self.avisos: list[str] = []
         self.no_verificados: list[str] = []
 
-    def linea(self, concepto: str, importe: Decimal, fuente: Fuente | str | None = None) -> None:
+    def linea(
+        self, concepto: str, importe: Decimal, fuente: Fuente | str | None = None, clave: str | None = None
+    ) -> None:
         referencia = fuente.referencia if isinstance(fuente, Fuente) else fuente
-        self.lineas.append(Linea(concepto=concepto, importe=_round(importe), referencia=referencia))
+        self.lineas.append(Linea(concepto=concepto, importe=_round(importe), referencia=referencia, clave=clave))
         if isinstance(fuente, Fuente) and not fuente.verificado and fuente.referencia not in self.no_verificados:
             self.no_verificados.append(fuente.referencia)
 
     def aviso(self, text: str) -> None:
         if text not in self.avisos:
             self.avisos.append(text)
+
+
+def importe_linea(result: IRPFResult, clave: str) -> Decimal:
+    """Sum of the lines of ``result`` with stable key ``clave`` (zero when there are none)."""
+    return sum((line.importe for line in result.lineas if line.clave == clave), Decimal(0))
 
 
 def _rendimientos_para_prevision_social(bruto: Decimal, gastos: Decimal, actividad: Decimal, p: IRPFParams) -> Decimal:
@@ -648,13 +687,13 @@ def _minimo(inp: IRPFInput, m: Minimos, t: _Trace | None = None) -> Decimal:
             )
         if descendientes:
             label = "Mínimo por descendientes" + (" (50 %, compartido)" if inp.descendientes_compartidos else "")
-            t.linea(label, descendientes, m.fuente)
+            t.linea(label, descendientes, m.fuente, clave=ClaveLinea.MINIMO_DESCENDIENTES)
             t.aviso(
                 "El mínimo por descendientes exige que convivan contigo, sean menores de 25 años (o con discapacidad) "
                 "y no tengan rentas superiores a 8.000 €; el cálculo da por cumplidos esos requisitos."
             )
         if ascendientes:
-            t.linea("Mínimo por ascendientes" + prorrateo, ascendientes, m.fuente)
+            t.linea("Mínimo por ascendientes" + prorrateo, ascendientes, m.fuente, clave=ClaveLinea.MINIMO_ASCENDIENTES)
         if discapacidad:
             t.linea("Mínimo por discapacidad del contribuyente", discapacidad, m.fuente)
         if discapacidad_descendientes:
@@ -663,9 +702,15 @@ def _minimo(inp: IRPFInput, m: Minimos, t: _Trace | None = None) -> Decimal:
                 + (" (50 %, compartido)" if inp.descendientes_compartidos else ""),
                 discapacidad_descendientes,
                 m.fuente,
+                clave=ClaveLinea.MINIMO_DISCAPACIDAD_DESCENDIENTES,
             )
         if discapacidad_ascendientes:
-            t.linea("Mínimo por discapacidad de ascendientes" + prorrateo, discapacidad_ascendientes, m.fuente)
+            t.linea(
+                "Mínimo por discapacidad de ascendientes" + prorrateo,
+                discapacidad_ascendientes,
+                m.fuente,
+                clave=ClaveLinea.MINIMO_DISCAPACIDAD_ASCENDIENTES,
+            )
         _avisos_del_minimo(inp, m, t, ascendientes=ascendientes)
 
     return (
@@ -892,10 +937,15 @@ def _deducciones_madrid(
             )
         else:
             importe = n.importe_por_hijo * inp.hijos_nacidos_ultimos_3_ejercicios * reparto
-            t.linea("Deducción autonómica por nacimiento o adopción de hijos", -importe, n.fuente)
+            t.linea(
+                "Deducción autonómica por nacimiento o adopción de hijos",
+                -importe,
+                n.fuente,
+                clave=ClaveLinea.MADRID_NACIMIENTO,
+            )
             t.aviso(
                 "La deducción por nacimiento exige convivir con el hijo; en partos o adopciones múltiples el primer "
-                "año se incrementa en 721,70 € por hijo, lo que no se calcula aquí."
+                f"año se incrementa en {_es(n.importe_por_hijo)} € por hijo, lo que no se calcula aquí."
             )
             total += importe
 
@@ -919,7 +969,12 @@ def _deducciones_madrid(
             fuera("alquiler", f"el alquiler pagado no supera el 20 % de tu base imponible ({minimo_renta:.2f} €).")
         else:
             importe = min(inp.alquiler_vivienda_habitual * a.porcentaje, a.maximo)
-            t.linea("Deducción autonómica por alquiler de vivienda habitual", -importe, a.fuente)
+            t.linea(
+                "Deducción autonómica por alquiler de vivienda habitual",
+                -importe,
+                a.fuente,
+                clave=ClaveLinea.MADRID_ALQUILER,
+            )
             t.aviso(
                 "La deducción madrileña por alquiler exige conservar el justificante del depósito de la fianza (o la "
                 "denuncia por no haberlo recibido), art. 18.4.c) del DLeg. 1/2010; no se ha comprobado."
@@ -930,7 +985,7 @@ def _deducciones_madrid(
     excede_familiar = base_familia > limite_familiar_gastos
     motivo_familiar = (
         f"la base imponible de la unidad familiar ({base_familia:.2f} €) supera {limite_familiar_gastos:.2f} € "
-        f"(30.930 € × {miembros} miembros)."
+        f"({_es(d.gastos_educativos.limite_base_por_miembro)} € × {miembros} miembros)."
     )
     usa_limite_familiar = False
 
@@ -949,7 +1004,12 @@ def _deducciones_madrid(
         else:
             importe, exacto = _gastos_educativos_madrid(inp, e, hijos)
             importe *= reparto
-            t.linea("Deducción autonómica por gastos educativos", -importe, e.fuente)
+            t.linea(
+                "Deducción autonómica por gastos educativos",
+                -importe,
+                e.fuente,
+                clave=ClaveLinea.MADRID_GASTOS_EDUCATIVOS,
+            )
             t.aviso(
                 (
                     "En gastos educativos el máximo se ha aplicado hijo a hijo con el desglose que has dado "
@@ -990,7 +1050,12 @@ def _deducciones_madrid(
                 else (c.porcentaje, c.maximo)
             )
             importe = min(inp.cotizaciones_empleada_hogar * porcentaje, maximo)
-            t.linea("Deducción autonómica por cuidado de menores o dependientes", -importe, c.fuente)
+            t.linea(
+                "Deducción autonómica por cuidado de menores o dependientes",
+                -importe,
+                c.fuente,
+                clave=ClaveLinea.MADRID_CUIDADO,
+            )
             t.aviso(
                 "La deducción por cuidado solo cuenta las cotizaciones de los meses en que se cumple el requisito, exige "
                 "estar de alta como empleador con al menos 40 horas mensuales contratadas y, si es por un hijo menor de "
@@ -1008,7 +1073,12 @@ def _deducciones_madrid(
         dn = d.donativos
         base = min(inp.donativos_fundaciones_madrid, dn.limite_base_liquidable * base_liquidable)
         importe = base * dn.porcentaje
-        t.linea("Deducción autonómica por donativos a fundaciones y clubes deportivos", -importe, dn.fuente)
+        t.linea(
+            "Deducción autonómica por donativos a fundaciones y clubes deportivos",
+            -importe,
+            dn.fuente,
+            clave=ClaveLinea.MADRID_DONATIVOS,
+        )
         t.aviso(
             "La deducción madrileña por donativos solo vale para fundaciones inscritas en el Registro de Fundaciones "
             "de la Comunidad de Madrid y clubes deportivos elementales o básicos."
@@ -1089,6 +1159,7 @@ def _alquiler_vivienda_reducido(inp: IRPFInput, p: IRPFParams, t: _Trace) -> Dec
             f"Reducción por arrendamiento de vivienda ({r.porcentaje * 100:.0f} %: {r.motivo})",
             -reduccion,
             r.referencia,
+            clave=ClaveLinea.REDUCCION_ARRENDAMIENTO_VIVIENDA,
         )
     else:
         t.aviso(f"No se aplica reducción por arrendamiento de vivienda: {r.motivo} ({r.regimen}).")
@@ -1137,9 +1208,14 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         neto_trabajo_sin_reduccion = max(ZERO, neto_previo - otros)
         reduccion = min(reduccion, neto_trabajo_sin_reduccion)
         if reduccion:
-            t.linea("Reducción por obtención de rendimientos del trabajo", -reduccion, p.trabajo.fuente)
+            t.linea(
+                "Reducción por obtención de rendimientos del trabajo",
+                -reduccion,
+                p.trabajo.fuente,
+                clave=ClaveLinea.REDUCCION_TRABAJO,
+            )
         neto_trabajo = neto_trabajo_sin_reduccion - reduccion
-        t.linea("Rendimiento neto reducido del trabajo", neto_trabajo)
+        t.linea("Rendimiento neto reducido del trabajo", neto_trabajo, clave=ClaveLinea.RENDIMIENTO_NETO_TRABAJO)
 
     # ---- 2. Taxable bases -------------------------------------------------
     general = (
@@ -1220,7 +1296,12 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         a_ahorro = min(conjunta - a_general, ahorro)
         general -= a_general
         ahorro -= a_ahorro
-        t.linea("Reducción por tributación conjunta", -(a_general + a_ahorro), p.tributacion_conjunta.fuente)
+        t.linea(
+            "Reducción por tributación conjunta",
+            -(a_general + a_ahorro),
+            p.tributacion_conjunta.fuente,
+            clave=ClaveLinea.REDUCCION_CONJUNTA,
+        )
         t.aviso(
             "En tributación conjunta deben incluirse las rentas de todos los miembros de la unidad familiar; "
             "asegúrate de que las cifras aportadas las suman."
@@ -1285,7 +1366,12 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         reducible = sum((min(importe, porcentual) for importe, porcentual in limites), ZERO)
         reduccion_ps = max(ZERO, min(reducible, general))
         general -= reduccion_ps
-        t.linea("Reducción por aportaciones a sistemas de previsión social", -reduccion_ps, ps.fuente)
+        t.linea(
+            "Reducción por aportaciones a sistemas de previsión social",
+            -reduccion_ps,
+            ps.fuente,
+            clave=ClaveLinea.REDUCCION_PREVISION_SOCIAL,
+        )
         if miembros:
             t.aviso(
                 "En la declaración conjunta, los límites de reducción por aportaciones a sistemas de previsión social "
@@ -1344,6 +1430,12 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
     # ---- 5. Gross tax ------------------------------------------------------
     comunidad = p.comunidad(inp.comunidad_autonoma)
     territorio = normalizar_comunidad(inp.comunidad_autonoma or "")
+    if any(nombre in territorio for nombre in _TERRITORIOS_FORALES):
+        raise TerritorioForalError(
+            f"«{inp.comunidad_autonoma}» es territorio foral: el IRPF lo regula su Diputación foral (País Vasco) o "
+            "la Comunidad Foral de Navarra con escalas, mínimos y deducciones propios, y aquí solo están cargadas "
+            "la ley estatal y las de régimen común. No se puede calcular esta declaración."
+        )
     if any(nombre in territorio for nombre in ("ceuta", "melilla", "la palma")):
         t.aviso(
             "La deducción por rentas obtenidas en Ceuta o Melilla (art. 68.4 LIRPF; en 2022 a 2026 también para "
@@ -1379,7 +1471,12 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
                 "dependientes, donativos y familias con ingresos reducidos cuando aportas sus datos. El resto de "
                 "deducciones autonómicas no se calcula."
                 if comunidad.deducciones_madrid is not None
-                else ". Sus deducciones autonómicas NO están incluidas en el cálculo."
+                else (
+                    ". De sus deducciones autonómicas solo se calculan las que tienen datos estructurados y "
+                    "dependen de lo que aportas; el resto NO está incluido en el cálculo."
+                    if comunidad.deducciones_calculables
+                    else ". Sus deducciones autonómicas NO están incluidas en el cálculo."
+                )
             )
         )
     if comunidad is not None:
@@ -1420,14 +1517,22 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         primero = min(base_donativos, d.tramo_primero)
         tipo_resto = d.tipo_resto_recurrente if inp.donativos_recurrentes else d.tipo_resto
         importe = primero * d.tipo_primero + (base_donativos - primero) * tipo_resto
-        t.linea("Deducción por donativos", -importe, d.fuente)
+        t.linea("Deducción por donativos", -importe, d.fuente, clave=ClaveLinea.DEDUCCION_DONATIVOS)
         if base_donativos < inp.donativos:
-            t.aviso("Los donativos superan el 10 % de la base liquidable; el exceso no da derecho a deducción.")
+            t.aviso(
+                f"Los donativos superan el {_es(d.limite_base_liquidable * 100, 0)} % de la base liquidable; "
+                "el exceso no da derecho a deducción."
+            )
         deducciones += importe
     if inp.pagos_vivienda_habitual_pre2013:
         v = p.vivienda_habitual_transitoria
         importe = min(inp.pagos_vivienda_habitual_pre2013, v.base_maxima) * v.tipo
-        t.linea("Deducción por inversión en vivienda habitual (régimen transitorio)", -importe, v.fuente)
+        t.linea(
+            "Deducción por inversión en vivienda habitual (régimen transitorio)",
+            -importe,
+            v.fuente,
+            clave=ClaveLinea.DEDUCCION_VIVIENDA_TRANSITORIA,
+        )
         t.aviso(
             "La deducción por vivienda solo procede si compraste antes de 2013 y ya te la aplicaste entonces; "
             "se ha calculado con el porcentaje estatal más el autonómico general (algunas comunidades fijan otro)."
@@ -1456,10 +1561,16 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
                 base_maxima -= av.pendiente * (base_imponible - av.umbral_inferior)
             solo_estatal = _round(min(inp.alquiler_vivienda_habitual, max(ZERO, base_maxima)) * av.porcentaje)
         if solo_estatal:
-            t.linea("Deducción estatal por alquiler de vivienda habitual", -solo_estatal, av.fuente)
+            t.linea(
+                "Deducción estatal por alquiler de vivienda habitual",
+                -solo_estatal,
+                av.fuente,
+                clave=ClaveLinea.DEDUCCION_ALQUILER_ESTATAL,
+            )
             t.aviso(
-                "La deducción estatal por alquiler (art. 68.6 LIRPF) la introdujo el Real Decreto-ley 29/2026, en vigor "
-                "desde el 8 de octubre de 2026"
+                "La deducción estatal por alquiler (art. 68.6 LIRPF) la introdujo un real decreto-ley"
+                + (f" ({av.fuente.condicionada_a})" if av.fuente.condicionada_a else "")
+                + f", en vigor desde el {_fecha_es(av.fuente.en_vigor_desde)}"
                 + (
                     " y ya convalidado por el Congreso. "
                     if vigencia_av is not None and vigencia_av.estado == "convalidada"
@@ -1547,7 +1658,12 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         proporcion = (neto_trabajo / base_liquidable) if base_liquidable > 0 else ZERO
         importe = max(ZERO, min(importe, cuota_integra * min(Decimal(1), proporcion), cuota_liquida))
         if importe:
-            t.linea("Deducción por obtención de rendimientos del trabajo", -importe, dt.fuente)
+            t.linea(
+                "Deducción por obtención de rendimientos del trabajo",
+                -importe,
+                dt.fuente,
+                clave=ClaveLinea.DEDUCCION_TRABAJO,
+            )
             cuota_liquida -= _round(importe)
             t.aviso(
                 "La deducción por rendimientos del trabajo exige que procedan de una relación laboral o estatutaria "
@@ -1564,7 +1680,7 @@ def calcular_irpf(inp: IRPFInput, params: IRPFParams | None = None) -> IRPFResul
         mat = p.maternidad
         guarderia = min(inp.gastos_guarderia, mat.incremento_guarderia * inp.hijos_deduccion_maternidad)
         importe = mat.importe_por_hijo * inp.hijos_deduccion_maternidad + guarderia
-        t.linea("Deducción por maternidad", -importe, mat.fuente)
+        t.linea("Deducción por maternidad", -importe, mat.fuente, clave=ClaveLinea.DEDUCCION_MATERNIDAD)
         t.aviso(
             "La deducción por maternidad se ha calculado para el año completo; se prorratea por los meses en que "
             "se cumplen los requisitos y se reduce en lo que ya hayas cobrado de forma anticipada."

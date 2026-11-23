@@ -37,10 +37,11 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
     """Build the provider named by ``name`` (default: ``settings.LLM_PROVIDER``).
 
     * ``anthropic`` — Claude via the official SDK (default).
-    * ``openai``    — OpenAI Chat Completions.
-    * ``local``     — any OpenAI-compatible server at ``LOCAL_LLM_BASE_URL``.
+    * ``openai``    — OpenAI Responses API (``OPENAI_API_STYLE=chat`` for Chat Completions).
+    * ``local``     — any OpenAI-compatible server at ``LOCAL_LLM_BASE_URL`` (Chat Completions).
 
-    ``effort`` overrides the thinking depth for Claude; other backends ignore it.
+    ``effort`` sets the thinking depth: Claude's effort, or ``reasoning.effort`` on OpenAI
+    reasoning models; other backends ignore it.
     Which model serves each PURPOSE is decided later, by the metering wrapper and
     the routing table (``asistente/nucleo/agent/enrutado.py``); with no routing setting
     it is this model everywhere.
@@ -58,7 +59,11 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
     if choice == "openai":
         from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
-        return OpenAIProvider(model=model or settings.OPENAI_AGENT_MODEL)
+        return OpenAIProvider(
+            model=model or settings.OPENAI_AGENT_MODEL,
+            effort=effort,
+            api_style=settings.OPENAI_API_STYLE or None,
+        )
     if choice == "local":
         from asistente.nucleo.agent.providers.openai_provider import OpenAIProvider
 
@@ -71,5 +76,6 @@ def create_provider(name: str | None = None, *, model: str | None = None, effort
             api_key=settings.LOCAL_LLM_API_KEY,
             name="local",
             timeout=settings.LOCAL_LLM_TIMEOUT,
+            api_style=settings.OPENAI_API_STYLE or None,
         )
     raise ValueError(f"LLM_PROVIDER desconocido: {choice!r} (usa anthropic, openai o local)")

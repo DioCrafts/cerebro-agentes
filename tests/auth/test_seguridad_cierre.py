@@ -15,7 +15,7 @@ from asistente.nucleo.decision.fact_extractor import FactExtractionError
 from asistente.plataforma import settings
 from asistente.plataforma.api import api as api_module
 from asistente.plataforma.api import security
-from asistente.plataforma.api.api import app, get_agent, get_fact_extractor, get_qa_chain
+from asistente.plataforma.api.api import app, get_agent, get_fact_extractor
 from .conftest import CONSENTS, Env
 
 client = TestClient(app)
@@ -58,35 +58,14 @@ def _historial(n: int, largo: int = 10) -> list[dict[str, str]]:
     ]
 
 
-# --- S-14: the legacy /qa chain --------------------------------------------------------------------------------
+# --- S-14: the legacy /qa chain, removed -----------------------------------------------------------------------
 
 
-def test_qa_is_gone_with_accounts_even_for_a_session_and_never_builds_the_chain(env: Env) -> None:
-    ana = env.register("ana@example.com")
-
-    def no_construir():
-        raise AssertionError("the unmetered chain was built")
-
-    app.dependency_overrides[get_qa_chain] = no_construir
-    try:
-        assert env.client.post("/qa", json={"query": "¿IRPF?"}, headers=ana).status_code == 404
-        assert env.client.post("/qa", json={"query": "¿IRPF?"}).status_code == 404
-    finally:
-        app.dependency_overrides.pop(get_qa_chain, None)
-
-
-def test_qa_still_answers_without_accounts(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "AUTH_MODE", "off")
-
-    class _Cadena:
-        def invoke(self, inputs: dict) -> dict:
-            return {"answer": "Respuesta", "context": []}
-
-    app.dependency_overrides[get_qa_chain] = lambda: _Cadena()
-    try:
-        assert client.post("/qa", json={"query": "¿IRPF?"}).status_code != 404
-    finally:
-        app.dependency_overrides.pop(get_qa_chain, None)
+@pytest.mark.parametrize("auth_mode", ["off", "required"])
+def test_qa_no_longer_exists(auth_mode: str, monkeypatch) -> None:
+    """The LangChain chain behind /qa (unmetered) is gone: /agent is the only way to ask."""
+    monkeypatch.setattr(settings, "AUTH_MODE", auth_mode)
+    assert client.post("/qa", json={"query": "¿IRPF?"}).status_code == 404
 
 
 # --- S-18: the API documentation -------------------------------------------------------------------------------
@@ -139,16 +118,6 @@ def test_a_question_over_the_limit_is_a_422_in_spanish_before_any_model_call(env
     assert env.client.post("/agent", json={"query": "una pregunta de más de diez"}, headers=ana).status_code == 422
     assert env.client.post("/agent", json={"query": "corta"}, headers=ana).status_code == 503
     assert grabador.preguntas == ["corta"]
-
-
-def test_qa_caps_the_question_too_without_accounts(monkeypatch) -> None:
-    monkeypatch.setattr(settings, "AUTH_MODE", "off")
-    app.dependency_overrides[get_qa_chain] = lambda: object()
-    try:
-        respuesta = client.post("/qa", json={"query": "a" * (security.DEFAULT_MAX_QUERY_CHARS + 1)})
-    finally:
-        app.dependency_overrides.pop(get_qa_chain, None)
-    assert respuesta.status_code == 422 and "demasiado larga" in respuesta.json()["detail"]
 
 
 def test_the_history_sent_to_the_model_is_trimmed_oldest_first(env: Env, grabador, monkeypatch) -> None:

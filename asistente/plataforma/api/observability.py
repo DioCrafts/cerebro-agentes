@@ -53,7 +53,7 @@ class ApiMetrics:
         with self._lock:
             for (method, route, status), count in sorted(self._requests.items()):
                 lines.append(
-                    f'hacienda_http_requests_total{{method="{method}",route="{route}",status="{status}"}} {count}'
+                    f'hacienda_http_requests_total{{method="{_escapar(method)}",route="{_escapar(route)}",status="{status}"}} {count}'
                 )
             lines.append("# HELP hacienda_http_request_errors_total HTTP responses with status >= 500.")
             lines.append("# TYPE hacienda_http_request_errors_total counter")
@@ -61,19 +61,39 @@ class ApiMetrics:
             lines.append("# HELP hacienda_http_request_latency_ms_sum Cumulative latency per method+route (ms).")
             lines.append("# TYPE hacienda_http_request_latency_ms_sum counter")
             for (method, route), total in sorted(self._latency_sum_ms.items()):
-                lines.append(f'hacienda_http_request_latency_ms_sum{{method="{method}",route="{route}"}} {total:.3f}')
+                lines.append(
+                    f'hacienda_http_request_latency_ms_sum{{method="{_escapar(method)}",route="{_escapar(route)}"}} {total:.3f}'
+                )
             lines.append("# HELP hacienda_http_request_latency_count Number of requests per method+route.")
             lines.append("# TYPE hacienda_http_request_latency_count counter")
             for (method, route), count in sorted(self._latency_count.items()):
-                lines.append(f'hacienda_http_request_latency_count{{method="{method}",route="{route}"}} {count}')
+                lines.append(
+                    f'hacienda_http_request_latency_count{{method="{_escapar(method)}",route="{_escapar(route)}"}} {count}'
+                )
         return "\n".join(lines) + "\n"
 
 
+# Label of every request that matched no route (404, refused by a middleware): the raw path is never a
+# label, or anyone could grow the registry without bound (and inject text into the exposition).
+RUTA_SIN_PLANTILLA = "sin_ruta"
+_METODOS = frozenset({"GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"})
+
+
 def _route_template(request: Request) -> str:
-    """Matched route path (``/cases/{case_id}``) to keep metric cardinality
-    bounded; falls back to the raw path when no route matched (e.g. 404)."""
+    """Matched route path (``/cases/{case_id}``) to keep metric cardinality bounded; a fixed label when no
+    route matched."""
     route = request.scope.get("route")
-    return getattr(route, "path", None) or request.url.path
+    plantilla = getattr(route, "path", None)
+    return plantilla if isinstance(plantilla, str) and plantilla else RUTA_SIN_PLANTILLA
+
+
+def _metodo(request: Request) -> str:
+    return request.method if request.method in _METODOS else "OTRO"
+
+
+def _escapar(valor: object) -> str:
+    """A Prometheus label value: backslash, double quote and newline escaped."""
+    return str(valor).replace("\\", "\\\\").replace('"', '\\"').replace("\n", "\\n")
 
 
 async def observability_middleware(request: Request, call_next) -> Response:
@@ -92,7 +112,7 @@ async def observability_middleware(request: Request, call_next) -> Response:
         route = _route_template(request)
         metrics: ApiMetrics | None = getattr(request.app.state, "api_metrics", None)
         if metrics is not None:
-            metrics.record(request.method, route, status, elapsed_ms)
+            metrics.record(_metodo(request), route, status, elapsed_ms)
         emit_structured_log(
             "http_request",
             {

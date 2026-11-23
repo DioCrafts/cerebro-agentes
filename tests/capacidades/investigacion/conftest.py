@@ -9,7 +9,6 @@ from decimal import Decimal
 import json
 from typing import Any
 
-from langchain_core.documents import Document
 import pytest
 
 from asistente.capacidades.investigacion import capacidad
@@ -18,6 +17,7 @@ from asistente.capacidades.investigacion.fuentes import API_BOE, ClienteBOE
 from asistente.capacidades.investigacion.servicio import Investigador
 from asistente.capacidades.investigacion.web import DocumentoWeb, ResultadoWeb
 from asistente.capacidades.registro import construir_registro, reiniciar
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.providers.base import ProviderError, Usage
 from asistente.plataforma import settings
 
@@ -55,9 +55,9 @@ class FakeSearcher:
     )
     consultas: list[str] = field(default_factory=list)
 
-    def search(self, query: str, *, k: int, filters: Any) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: Any) -> list[FragmentoRecuperado]:
         self.consultas.append(query)
-        return [Document(page_content=t, metadata=dict(m)) for t, m in self.textos][:k]
+        return [FragmentoRecuperado(texto=t, metadatos=dict(m)) for t, m in self.textos][:k]
 
 
 def descargas_boe(

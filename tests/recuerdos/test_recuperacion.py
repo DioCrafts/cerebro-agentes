@@ -426,7 +426,14 @@ def benchmark(memoria: ServicioMemoria, reloj: Reloj) -> ServicioMemoria:
         store.guardar(
             ANA,
             Recuerdo(
-                id=id_, tipo=tipo, clave=clave, texto=texto, origen=fuente, fuentes=[fuente], creado=momento, actualizado=momento  # type: ignore[arg-type]
+                id=id_,
+                tipo=tipo,
+                clave=clave,
+                texto=texto,
+                origen=fuente,
+                fuentes=[fuente],
+                creado=momento,
+                actualizado=momento,  # type: ignore[arg-type]
             ),
         )
     for conversacion, titulo, resumen, cita, dias in CONVERSACIONES:
@@ -441,7 +448,14 @@ def benchmark(memoria: ServicioMemoria, reloj: Reloj) -> ServicioMemoria:
         store.guardar(
             BEA,
             Recuerdo(
-                id=f"bea_{id_}", tipo=tipo, clave=clave, texto=texto, origen=fuente, fuentes=[fuente], creado=reloj.momento, actualizado=reloj.momento  # type: ignore[arg-type]
+                id=f"bea_{id_}",
+                tipo=tipo,
+                clave=clave,
+                texto=texto,
+                origen=fuente,
+                fuentes=[fuente],
+                creado=reloj.momento,
+                actualizado=reloj.momento,  # type: ignore[arg-type]
             ),
         )
     return memoria

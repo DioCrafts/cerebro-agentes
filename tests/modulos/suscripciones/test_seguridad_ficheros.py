@@ -52,7 +52,7 @@ def memory_cap():
     try:  # the address space already mapped (libraries, arenas) plus 1 GB
         with open("/proc/self/status", encoding="ascii") as estado:
             mapeado = next(int(linea.split()[1]) * 1024 for linea in estado if linea.startswith("VmSize:"))
-    except (OSError, StopIteration):
+    except OSError, StopIteration:
         yield
         return
     tope = mapeado + 1024**3

@@ -159,6 +159,21 @@ class GroundingGate:
                 min_citations_required=self.min_citations,
             )
 
+        inventadas = _references_not_retrieved(answer_body, documents)
+        if inventadas:
+            # The answer names a law, decree, form or ruling that nothing retrieved contains: its citations do not
+            # back it, so it is never shown as cited.
+            return AnswerEnvelope(
+                answer=clean_answer,
+                mode=AnswerMode.UNCITED,
+                citations=citations,
+                raw_answer=None,
+                reason="La respuesta cita referencias normativas que no están en lo recuperado: "
+                + ", ".join(inventadas)
+                + ".",
+                min_citations_required=self.min_citations,
+            )
+
         if len(citations) >= self.min_citations:
             return AnswerEnvelope(
                 answer=clean_answer,
@@ -250,12 +265,12 @@ class GroundingGate:
         return citations
 
     def _document_to_citation(self, doc: Any) -> Citation | None:
-        metadata = getattr(doc, "metadata", None) or {}
+        metadata = getattr(doc, "metadatos", None) or {}
         title = self._first_non_empty(metadata, ("title", "section"))
         locator = self._first_non_empty(metadata, ("source_url", "source", "locator"))
         if not title or not locator:
             return None
-        snippet = self._truncate(getattr(doc, "page_content", "") or "")
+        snippet = self._truncate(getattr(doc, "texto", "") or "")
         return Citation(
             title=title,
             locator=locator,
@@ -307,6 +322,26 @@ def _detect_missing_entities(query: str, citations: Sequence[Citation]) -> list[
             if not _entity_in_haystack(number, haystack):
                 missing.append(entity)
     return missing
+
+
+def _references_not_retrieved(answer: str, documents: Sequence[Any]) -> list[str]:
+    """Regulatory references (``Ley 7/2012``, ``modelo 721``…) in ``answer`` absent from every retrieved document
+    (full text and metadata, not the truncated snippet)."""
+    if not answer:
+        return []
+    partes: list[str] = []
+    for doc in documents:
+        partes.append(getattr(doc, "texto", "") or "")
+        metadata = getattr(doc, "metadatos", None) or {}
+        partes.extend(str(v) for v in metadata.values() if isinstance(v, str))
+    haystack = " ".join(partes)
+    ausentes: list[str] = []
+    for label, pattern in _ENTITY_PATTERNS:
+        for match in pattern.finditer(answer):
+            entity = f"{label} {match.group(1)}"
+            if entity not in ausentes and not _entity_in_haystack(match.group(1), haystack):
+                ausentes.append(entity)
+    return ausentes
 
 
 def _entity_in_haystack(entity_number: str, haystack: str) -> bool:

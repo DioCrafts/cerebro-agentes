@@ -1,6 +1,7 @@
 // Renders an answer: a small, dependency-free Markdown subset (headings,
 // lists, bold, italic, inline code) plus the part that matters here — every
 // `[F2]` the advisor cites becomes a chip that jumps to that source card.
+// Styled as a GitHub comment body: `.markdown-body` (src/ui/markdown.css).
 
 import type { ReactNode } from "react";
 
@@ -41,7 +42,7 @@ function parseBlocks(text: string): Block[] {
     const heading = HEADING_RE.exec(line);
     if (heading) {
       flush();
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2] });
+      blocks.push({ kind: "heading", level: heading[1]?.length ?? 1, text: heading[2] ?? "" });
       continue;
     }
     const bullet = BULLET_RE.exec(line);
@@ -49,7 +50,7 @@ function parseBlocks(text: string): Block[] {
     if (bullet || ordered) {
       flush();
       const isOrdered = !bullet;
-      const item = (bullet ?? ordered)![1];
+      const item = (bullet ?? ordered)?.[1] ?? "";
       const last = blocks[blocks.length - 1];
       if (last?.kind === "list" && last.ordered === isOrdered) last.items.push(item);
       else blocks.push({ kind: "list", ordered: isOrdered, items: [item] });
@@ -72,14 +73,14 @@ function parseBlocks(text: string): Block[] {
 const INLINE_RE = /\[\s*(F\d+(?:\s*[,;y]\s*F\d+)*)\s*\]|\*\*([^*]+)\*\*|\*([^*\s][^*]*)\*|`([^`]+)`/gi;
 
 export function RichText({ text, citations = [], onCite, draft = false }: RichTextProps) {
-  const byId = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id as string, c]));
+  const byId = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id, c]));
 
   function citeChip(rawId: string, key: string): ReactNode {
     const id = rawId.toUpperCase();
     const citation = byId.get(id);
     if (draft) {
       return (
-        <span key={key} className="ml-0.5 rounded bg-line/70 px-1.5 py-px font-mono text-[11px] font-semibold text-muted">
+        <span key={key} className="cita cita-borrador">
           {id}
         </span>
       );
@@ -90,7 +91,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         <span
           key={key}
           title="Esta referencia no corresponde a ninguna fuente recuperada"
-          className="mx-0.5 rounded bg-risk-high-bg px-1 font-mono text-[11px] text-risk-high-fg line-through"
+          className="cita cita-rota"
         >
           {id}
         </span>
@@ -103,7 +104,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         onClick={() => onCite?.(id)}
         title={`${citation.title}${citation.section && citation.section !== "general" ? ` · ${citation.section}` : ""}`}
         aria-label={`Ver la fuente ${id}: ${citation.title}`}
-        className="ml-0.5 inline-flex translate-y-[-1px] items-center rounded bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
+        className="cita"
       >
         {id}
       </button>
@@ -122,7 +123,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         for (const id of match[1].match(/F\d+/gi) ?? []) nodes.push(citeChip(id, `${key}-${id}`));
       } else if (match[2]) {
         nodes.push(
-          <strong key={key} className="font-semibold text-ink">
+          <strong key={key}>
             {inline(match[2], key)}
           </strong>,
         );
@@ -130,7 +131,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         nodes.push(<em key={key}>{match[3]}</em>);
       } else if (match[4]) {
         nodes.push(
-          <code key={key} className="rounded bg-line/70 px-1 py-px font-mono text-[0.9em]">
+          <code key={key}>
             {match[4]}
           </code>,
         );
@@ -142,12 +143,12 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
   }
 
   return (
-    <div className="space-y-3 text-[15.5px] leading-relaxed text-ink">
+    <div className="markdown-body">
       {parseBlocks(text).map((block, i) => {
         const key = `b${i}`;
         if (block.kind === "heading") {
           return (
-            <h3 key={key} className="pt-1 font-serif text-[17px] font-bold text-ink">
+            <h3 key={key}>
               {inline(block.text, key)}
             </h3>
           );
@@ -155,7 +156,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         if (block.kind === "list") {
           const List = block.ordered ? "ol" : "ul";
           return (
-            <List key={key} className={`space-y-1.5 pl-5 ${block.ordered ? "list-decimal" : "list-disc"} marker:text-muted`}>
+            <List key={key}>
               {block.items.map((item, j) => (
                 <li key={`${key}-${j}`}>{inline(item, `${key}-${j}`)}</li>
               ))}

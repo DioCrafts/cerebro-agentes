@@ -140,11 +140,14 @@ SCHEMA: dict[str, Any] = {
 }
 
 
-SYSTEM_PROMPT_IMAGEN = SYSTEM_PROMPT + """
+SYSTEM_PROMPT_IMAGEN = (
+    SYSTEM_PROMPT
+    + """
 El documento te llega como imagen (escaneado o fotografiado): léelo tú. En `transcripcion` copia TODO el texto \
 legible, tal cual, línea a línea, sin corregir ni completar nada. La `evidencia` de cada dato debe ser un fragmento \
 literal de tu transcripción. Si una cifra no se lee con claridad (borrosa, cortada, tapada), NO la incluyas como dato.
 """
+)
 
 SCHEMA_IMAGEN: dict[str, Any] = {
     **SCHEMA,

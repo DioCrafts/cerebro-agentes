@@ -322,9 +322,9 @@ def prompt_de(rol: str, por_defecto: str) -> str:
     try:
         from asistente.nucleo.evaluacion import variantes
 
-        if rol not in getattr(variantes, "ROLES", ()):
+        if not variantes.es_rol(rol):
             return por_defecto
-        texto = variantes.prompt_activo(rol)  # type: ignore[arg-type]
+        texto = variantes.prompt_activo(rol)
     except Exception:
         logger.exception("could not read the active prompt %s: using the built-in one", rol)
         return por_defecto
@@ -488,7 +488,7 @@ def mensaje_reparacion(mensaje: str, motivo: str, anterior: Any | None) -> str:
     if anterior is not None:
         try:
             texto = json.dumps(anterior, ensure_ascii=False)
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             texto = str(anterior)
         partes.append(f"<respuesta_anterior>{neutralizar(texto)[:6000]}</respuesta_anterior>")
     return "\n".join(partes)

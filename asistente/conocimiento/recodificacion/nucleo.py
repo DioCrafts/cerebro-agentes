@@ -319,7 +319,7 @@ def leer_ruta(raw: dict[str, Any], ruta: Sequence[str]) -> Any:
     try:
         for paso in ruta:
             nodo = _bajar(nodo, paso)
-    except (KeyError, IndexError, ValueError, TypeError):
+    except KeyError, IndexError, ValueError, TypeError:
         return None
     return nodo
 
@@ -933,7 +933,7 @@ def _evaluar_casos(
         try:
             caso.datos = json.loads(_texto(item.get("datos_json")))
             caso.esperado = Decimal(_texto(item.get("importe_esperado")).replace(",", ".")).quantize(CENT)
-        except (json.JSONDecodeError, InvalidOperation):
+        except json.JSONDecodeError, InvalidOperation:
             caso.error = "datos_json o importe_esperado mal formados"
             continue
         if not es_literal(caso.fundamento, comprimido):

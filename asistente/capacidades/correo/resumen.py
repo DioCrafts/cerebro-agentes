@@ -96,7 +96,9 @@ def linea(e: Elemento, *, para_modelo: bool = True) -> str:
         valor = (
             eur(c.valor)
             if c.campo == "importe"
-            else fecha_es(c.valor) if c.campo.startswith(("fecha", "periodo")) else c.valor
+            else fecha_es(c.valor)
+            if c.campo.startswith(("fecha", "periodo"))
+            else c.valor
         )
         partes.append(f"{c.campo.replace('_', ' ')}: {valor} (leído en {cita(c.fragmento)})")
     if e.sospechoso and e.motivos:

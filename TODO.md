@@ -6,6 +6,7 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 
 - [ ] Fijar la línea base de la batería con modelo real. El código está hecho y reanuda por casos (`reports/bateria/en_curso.jsonl`); la ejecución se cortó dos veces.
 - [ ] Terminar la comparación faiss frente a pageindex con Claude sobre las 118 consultas del benchmark ampliado y actualizar `docs/cerebro/benchmark-recuperacion.md`. El umbral de explicación ya está en 0,525; falta la tabla de PageIndex.
+- [ ] Pasar el índice a SQLite y sacar LangChain: medir la línea base con FAISS, migrar con `cli.indice migrar`, medir con `INDICE_BACKEND=sqlite` y, si ningún caso crítico empeora, poner `sqlite` por defecto y borrar `conocimiento/indice/faiss_legado.py` junto con `faiss-cpu`, `langchain-community` y `langchain-core`. Los pasos y la lista de lo que se borra están en `docs/cerebro/benchmark-recuperacion.md`, sección «Retirar FAISS y LangChain».
 - [ ] Terminar el índice `data/faiss-v2` (3.310 documentos descargados, solo 200 indexados) con 2 o 3 procesos, y medirlo con el benchmark antes de cambiar `FAISS_INDEX_PATH`.
 
 ## Memoria (sin cambio de resultados)
@@ -20,9 +21,7 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 - [ ] Trocear el HTML consolidado del BOE con lxml por su estructura fija (`h4.titulo_*`, `h4.capitulo_*`, `h4.seccion`, `h5.articulo`) en lugar de Docling. El 95 % de los fragmentos son del BOE; la jerarquía saldría exacta y el indexado mucho más rápido.
 - [ ] Ampliar la caché de prompts: hoy solo se marca el prompt de sistema de Anthropic. Marcar también los bloques estables del investigador y de los especialistas (instrucciones, aviso de seguridad, fuentes que el lector y el crítico releen) y ponerlos delante del prompt.
 - [ ] Activar el enrutado por niveles (`LLM_ROUTING_PROFILE=recomendado`): modelo pequeño o esfuerzo bajo para intención, extracción de hechos, selección de nodos, lector y planificador; modelo grande para síntesis, verificador y crítico. Hoy todo va al mismo modelo con `ANTHROPIC_EFFORT=high`. Es el mayor ahorro y el de más riesgo: solo con la batería en verde.
-- [ ] MultiQuery solo cuando la primera búsqueda no supera el umbral, en vez de en cada consulta.
 - [ ] Caché de resultados de recuperación por pregunta normalizada.
-- [ ] Probar `BM25_ENABLED=true` en el benchmark (ayuda a encontrar artículos citados por número).
 - [ ] Investigador: segunda ronda solo si el crítico señala lagunas; caché de páginas leídas por URL con fecha de lectura.
 
 ## Tests

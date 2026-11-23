@@ -427,7 +427,7 @@ def _comprobar_atribuida(
     return [f"la cifra {cifra} se atribuye a {quien} y debía venir de {exp.especialista}"]
 
 
-def comprobar_repaso(exp: ExpRepaso, salida: dict | None, caso: CasoEvaluacion) -> list[str]:  # type: ignore[type-arg]
+def comprobar_repaso(exp: ExpRepaso, salida: dict | None, caso: CasoEvaluacion) -> list[str]:
     """The proactive pass's output (``{"texto", "afirmaciones": [{"texto", "senales"}], "propuestas": [{"texto",
     "senal"}]}``) against its input signals."""
     if salida is None:

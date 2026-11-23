@@ -204,7 +204,7 @@ def test_openai_tool_loop_request_shape_and_bad_arguments() -> None:
             _chat_response("El tipo general es el 21 % [F1]."),
         ]
     )
-    provider = OpenAIProvider(model="gpt-test", client=client)
+    provider = OpenAIProvider(model="gpt-test", client=client, api_style="chat")
     conversation = provider.start(system="SYS", tools=TOOLS, history=[], user_message="¿IVA?")
 
     first = conversation.step()
@@ -238,7 +238,9 @@ def test_openai_finish_reasons_map_to_stop_reasons() -> None:
     client, _ = _fake_openai(
         [_chat_response("a medias", finish_reason="length"), _chat_response(None, finish_reason="content_filter")]
     )
-    conversation = OpenAIProvider(model="m", client=client).start(system="S", tools=[], history=[], user_message="x")
+    conversation = OpenAIProvider(model="m", client=client, api_style="chat").start(
+        system="S", tools=[], history=[], user_message="x"
+    )
     assert conversation.step().stop_reason == "max_tokens"
     assert conversation.step().stop_reason == "refusal"
 
@@ -270,7 +272,9 @@ def test_openai_complete_json_falls_back_when_json_schema_is_unsupported() -> No
 def test_openai_complete_json_rejects_non_json() -> None:
     client, _ = _fake_openai([_chat_response("no puedo")])
     with pytest.raises(ProviderError):
-        OpenAIProvider(model="m", client=client).complete_json(system="S", user="U", schema={}, schema_name="x")
+        OpenAIProvider(model="m", client=client, api_style="chat").complete_json(
+            system="S", user="U", schema={}, schema_name="x"
+        )
 
 
 # --------------------------------------------------------------------------- #
@@ -395,7 +399,7 @@ def test_openai_streaming_forwards_text_and_reassembles_tool_calls() -> None:
     ]
     client, completions = _fake_openai([iter(chunks_in)])
     chunks: list[str] = []
-    conversation = OpenAIProvider(model="gpt-test", client=client).start(
+    conversation = OpenAIProvider(model="gpt-test", client=client, api_style="chat").start(
         system="S", tools=TOOLS, history=[], user_message="¿IVA?"
     )
 
@@ -425,3 +429,15 @@ def test_local_streaming_omits_stream_options_and_truncation_wins_over_tool_call
     assert "stream_options" not in completions.calls[0]
     # A turn cut off mid tool call must surface as truncated, not as runnable tools.
     assert turn.stop_reason == "max_tokens" and turn.tool_calls[0].arguments_error is not None
+
+
+def test_the_anthropic_client_times_out_before_the_encargo_deadline(monkeypatch) -> None:
+    from asistente.nucleo.agent.providers import anthropic_provider
+    from asistente.plataforma import settings
+
+    monkeypatch.setattr(settings, "ANTHROPIC_TIMEOUT_S", "")
+    monkeypatch.setattr(settings, "CEREBRO_TIMEOUT_ENCARGO_S", 180.0)
+    timeout_s, reintentos = anthropic_provider.limites_cliente()
+    assert timeout_s * (reintentos + 1) < 180
+    monkeypatch.setattr(settings, "ANTHROPIC_TIMEOUT_S", "42")
+    assert anthropic_provider.limites_cliente()[0] == 42.0

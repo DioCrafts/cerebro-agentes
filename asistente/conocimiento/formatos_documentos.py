@@ -126,7 +126,7 @@ def _ruta_esqueletos(clase: str, directorio: str | Path | None = None) -> Path:
 def leer_esqueletos(clase: str, directorio: str | Path | None = None) -> list[str]:
     try:
         data = json.loads(_ruta_esqueletos(clase, directorio).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return []
     return [item for item in data if isinstance(item, str)] if isinstance(data, list) else []
 

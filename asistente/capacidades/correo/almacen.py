@@ -18,7 +18,7 @@ transaction) and exported with :func:`exportar` (without the token).
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 import hashlib
@@ -34,6 +34,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -171,20 +172,14 @@ class Conexion(_M):
 
 
 _lock = threading.RLock()
-_wal: set[str] = set()
 
 
 @contextmanager
-def conectar(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
+def conectar(db_path: str | None = None) -> Generator[sqlite3.Connection]:
     ruta = db_path or ruta_db()
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(ruta, timeout=30.0)
-    conn.row_factory = sqlite3.Row
+    conn = abrir_sqlite(ruta, timeout=30.0, filas=True)
     try:
-        if ruta not in _wal:
-            conn.execute("PRAGMA journal_mode=WAL;")
-            with _lock:
-                _wal.add(ruta)
         asegurar_esquema(conn, "correo")  # migrations (asistente/plataforma)
         conn.executescript(_ESQUEMA)  # idempotent and cheap: a recreated file always gets its tables
         with conn:
@@ -263,13 +258,16 @@ def guardar_estado_oauth(
 
 
 def consumir_estado_oauth(estado: str, db_path: str | None = None) -> dict[str, Any] | None:
-    """The request in flight for ``estado`` (deleted: single use), or None when unknown or expired."""
+    """The request in flight for ``estado`` (deleted: single use), or None when unknown or expired.
+
+    One atomic ``DELETE … RETURNING``: two callbacks racing with the same ``state`` cannot both get it."""
     with conectar(db_path) as conn:
-        fila = conn.execute("SELECT * FROM correo_oauth_estados WHERE estado_hash = ?", (_hash(estado),)).fetchone()
-        if fila is None:
-            return None
-        conn.execute("DELETE FROM correo_oauth_estados WHERE estado_hash = ?", (_hash(estado),))
-    datos = dict(fila)
+        filas = conn.execute(
+            "DELETE FROM correo_oauth_estados WHERE estado_hash = ? RETURNING *", (_hash(estado),)
+        ).fetchall()  # read to the end: the statement is finished before the commit
+    if not filas:
+        return None
+    datos = dict(filas[0])
     if datetime.fromisoformat(datos["creado"]) < datetime.now(UTC) - VIDA_ESTADO_OAUTH:
         return None
     return datos

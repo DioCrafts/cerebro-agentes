@@ -31,7 +31,9 @@ fechas de próximo cargo son estimaciones: pide al usuario que confirme en su co
 renovación. No sabes si el usuario usa un servicio: pregúntalo en vez de suponerlo. Si una herramienta dice \
 que hay columnas ambiguas o importes sin signo, pregunta al usuario. No repitas en la conversación números \
 de cuenta ni movimientos que no sean cargos recurrentes. Si el usuario da los importes en la conversación \
-(sin extracto), calcula con suscripciones_calculo_importes y di que son sus importes, no cargos detectados.""" + instrucciones_calculo("suscripciones")
+(sin extracto), calcula con suscripciones_calculo_importes y di que son sus importes, no cargos detectados.""" + instrucciones_calculo(
+    "suscripciones"
+)
 
 
 @dataclass

@@ -185,7 +185,7 @@ class Servicios:
 
 def modos_permitidos() -> list[Modo]:
     modos = [m.strip() for m in settings.NAVEGADOR_MODOS.split(",")]
-    return [m for m in ("ventana", "sesion") if m in modos]  # type: ignore[misc]
+    return [m for m in ("ventana", "sesion") if m in modos]
 
 
 def sustitutos() -> dict[str, str]:
@@ -203,7 +203,7 @@ def disponibles() -> list[SpecGuion]:
     for clave in claves_incorporadas():
         try:
             spec = guion_activo(clave)
-        except (GuionError, ValueError):
+        except GuionError, ValueError:
             logger.exception("browser script %s is not usable", clave)
             continue
         if spec.reglas.demostracion and not all((origen_de(o) or o) in locales for o in spec.reglas.origenes.values()):

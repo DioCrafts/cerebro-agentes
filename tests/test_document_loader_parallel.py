@@ -17,9 +17,9 @@ calling `_process_shard_worker` directly with a stubbed loader.
 from __future__ import annotations
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.document_loader import DocumentProcessor, _shard_files
 from asistente.plataforma.cli import processor as cli_module
 
@@ -80,35 +80,62 @@ def test_process_one_file_uses_per_worker_chunker(monkeypatch: pytest.MonkeyPatc
     """
     from asistente.conocimiento.processor import document_loader as dl
 
-    sentinel_chunker = object()
-    monkeypatch.setattr(dl, "_WORKER_CHUNKER", sentinel_chunker)
+    captured: dict = {"chunked": []}
 
-    captured: dict = {}
-
-    class _FakeLoader:
-        def __init__(self, *, file_path, export_type, chunker):
-            captured["file_path"] = file_path
-            captured["chunker"] = chunker
-
-        def load(self):
+    class _Chunker:
+        def chunk(self, dl_doc):
+            captured["chunked"].append(dl_doc)
             return []
 
-    class _FakeLoaderModule:
-        DoclingLoader = _FakeLoader
+    class _Converter:
+        def convert(self, *, source):
+            captured["file_path"] = source
+            return type("R", (), {"document": f"doc:{source}"})()
 
-        class ExportType:
-            DOC_CHUNKS = "doc_chunks"
-
-    monkeypatch.setitem(
-        __import__("sys").modules,
-        "langchain_docling.loader",
-        _FakeLoaderModule,
-    )
+    sentinel_chunker = _Chunker()
+    monkeypatch.setattr(dl, "_WORKER_CHUNKER", sentinel_chunker)
+    monkeypatch.setattr(dl, "_docling_converter", _Converter)
     fp, chunks = dl._process_one_file("/tmp/some.html")
     assert fp == "/tmp/some.html"
     assert chunks == []
-    assert captured["chunker"] is sentinel_chunker, "must reuse the per-process chunker"
-    assert captured["file_path"] == ["/tmp/some.html"]
+    assert captured["chunked"] == ["doc:/tmp/some.html"], "must reuse the per-process chunker"
+    assert captured["file_path"] == "/tmp/some.html"
+
+
+def test_iter_docling_chunks_keeps_the_langchain_docling_output() -> None:
+    """Text = ``contextualize(chunk)``; metadata = ``source`` + ``dl_meta``, as langchain-docling produced, so the
+    chunk ids and the metadata of an existing index stay valid."""
+    from asistente.conocimiento.processor import document_loader as dl
+
+    class _Meta:
+        def __init__(self, n):
+            self.n = n
+
+        def export_json_dict(self):
+            return {"headings": [f"Artículo {self.n}"], "origin": {"filename": "ley.html"}}
+
+    class _Chunk:
+        def __init__(self, n):
+            self.meta = _Meta(n)
+            self.text = f"texto {n}"
+
+    class _Chunker:
+        def chunk(self, dl_doc):
+            return [_Chunk(1), _Chunk(2)]
+
+        def contextualize(self, *, chunk):
+            return f"Artículo {chunk.meta.n}\n{chunk.text}"
+
+    class _Converter:
+        def convert(self, *, source):
+            return type("R", (), {"document": source})()
+
+    docs = list(dl.iter_docling_chunks(["/c/ley.html"], _Chunker(), _Converter()))
+    assert [d.texto for d in docs] == ["Artículo 1\ntexto 1", "Artículo 2\ntexto 2"]
+    assert docs[0].metadatos == {
+        "source": "/c/ley.html",
+        "dl_meta": {"headings": ["Artículo 1"], "origin": {"filename": "ley.html"}},
+    }
 
 
 def test_init_worker_configures_logging(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -189,7 +216,7 @@ def test_load_chunks_num_workers_1_uses_sequential_path(monkeypatch: pytest.Monk
 
     def fake_process(file_path):
         process_calls.append(file_path)
-        return (file_path, [Document(page_content="x", metadata={})])
+        return (file_path, [FragmentoRecuperado(texto="x", metadatos={})])
 
     monkeypatch.setattr(dl, "_process_one_file", fake_process)
     # Make _init_worker a no-op so the test doesn't try to load Docling.
@@ -247,7 +274,7 @@ def test_load_chunks_single_file_skips_pool_even_with_workers(monkeypatch: pytes
 
     def fake_process(file_path):
         process_calls.append(file_path)
-        return (file_path, [Document(page_content="x", metadata={})])
+        return (file_path, [FragmentoRecuperado(texto="x", metadatos={})])
 
     monkeypatch.setattr(dl, "_process_one_file", fake_process)
     monkeypatch.setattr(dl, "_init_worker", lambda max_tokens: None)
@@ -262,7 +289,7 @@ def test_load_chunks_single_file_skips_pool_even_with_workers(monkeypatch: pytes
     monkeypatch.setattr(  # pragma: no cover
         proc,
         "_load_chunks_sequential",
-        lambda files: called.__setitem__("seq", called["seq"] + 1) or [Document(page_content="x", metadata={})],
+        lambda files: called.__setitem__("seq", called["seq"] + 1) or [FragmentoRecuperado(texto="x", metadatos={})],
     )
     monkeypatch.setattr(
         proc,

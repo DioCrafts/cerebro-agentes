@@ -24,7 +24,7 @@ call in flight (or several concurrent ones) can take the day slightly over.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
@@ -36,7 +36,7 @@ import logging
 from pathlib import Path
 import re
 import sqlite3
-from threading import Lock, RLock
+from threading import Event, Lock, RLock
 from typing import Any, Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -56,6 +56,7 @@ from asistente.nucleo.agent.providers.base import (
 )
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +74,7 @@ __all__ = [
     "TablaPrecios",
     "Tarifa",
     "TramoLargo",
+    "TurnoCanceladoError",
     "Usage",
     "almacen_por_defecto",
     "calcular_coste",
@@ -175,6 +177,23 @@ def _leer_precios(path: str) -> TablaPrecios:
 def cargar_precios(path: str | Path | None = None) -> TablaPrecios:
     """Load the price table: ``path``, else ``LLM_PRICES_PATH``, else the bundled one."""
     return _leer_precios(str(path or settings.LLM_PRICES_PATH or PRECIOS_PATH))
+
+
+def coste_prudente(usage: Usage, precios: TablaPrecios | None = None) -> Decimal | None:
+    """Cost of one call for a HARD cap: the exact cost when it is known, else the call priced at the most expensive
+    model in the table (an unknown price never lets a capped session spend for free). None only when the API
+    reported no usage at all."""
+    if not usage.reported:
+        return None
+    tabla = precios or cargar_precios()
+    exacto = calcular_coste(usage, tabla)
+    if exacto is not None:
+        return exacto
+    tarifas = list(tabla.modelos.values())
+    maximo_in = max((t.input for t in tarifas if t.input is not None), default=Decimal(0))
+    maximo_out = max((t.output for t in tarifas if t.output is not None), default=Decimal(0))
+    entrada = usage.input_tokens + usage.cache_read_tokens + usage.cache_write_tokens
+    return (Decimal(entrada) * maximo_in + Decimal(usage.output_tokens) * maximo_out) / _MILLON
 
 
 def calcular_coste(usage: Usage, precios: TablaPrecios | None = None) -> Decimal | None:
@@ -309,10 +328,8 @@ class ConsumoStore:
         self._precios = precios
         self._lock = RLock()
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
         with self._lock, self._conn:
-            self._conn.execute("PRAGMA journal_mode=WAL;")
             asegurar_esquema(self._conn, "consumo")  # migrations (asistente/plataforma)
             # Token columns are NULL when the API reported no usage; cost_usd is
             # NULL whenever the cost is unknown. cost_usd is an operational
@@ -608,8 +625,7 @@ class Presupuesto:
             and self.store.coste_del_dia(dia, user_id=user_id) >= self.diario_por_usuario_usd
         ):
             raise PresupuestoAgotadoError(
-                "Has alcanzado tu límite diario de uso de modelos de IA. "
-                f"Se restablece {_formato_reinicio(reinicio)}.",
+                f"Has alcanzado tu límite diario de uso de modelos de IA. Se restablece {_formato_reinicio(reinicio)}.",
                 limite="diario_por_usuario",
                 se_restablece=reinicio,
             )
@@ -618,14 +634,33 @@ class Presupuesto:
 # --- Per-question context -----------------------------------------------------
 
 
+class TurnoCanceladoError(BaseException):
+    """The question was cancelled (its client went away): no further model call is made for it.
+
+    A ``BaseException``, like ``asyncio.CancelledError``: the agent and the brain swallow ``Exception`` in many
+    places so that one failing piece never breaks the answer, and a cancellation must not be swallowed there.
+    """
+
+
 @dataclass
 class ContextoConsumo:
-    """Who a question is for and how many model calls it has made so far."""
+    """Who a question is for, how many model calls it has made so far and whether it was cancelled.
+
+    ``cancelacion`` is the question's cancellation token: once set, every metered call made for the question
+    raises :class:`TurnoCanceladoError` before it starts (the threads it fans out to share the same context
+    object, so they stop too).
+    """
 
     user_id: str | None = None
     case_id: str | None = None
     llamadas: int = 0
+    cancelacion: Event | None = field(default=None, repr=False, compare=False)
     _lock: Lock = field(default_factory=Lock, repr=False, compare=False)
+
+    def comprobar_cancelacion(self) -> None:
+        """Raise :class:`TurnoCanceladoError` if the question was cancelled."""
+        if self.cancelacion is not None and self.cancelacion.is_set():
+            raise TurnoCanceladoError("la pregunta se ha cancelado")
 
 
 _CONTEXTO: ContextVar[ContextoConsumo | None] = ContextVar("consumo_contexto", default=None)
@@ -634,7 +669,9 @@ _CAPTURA: ContextVar[list[Usage] | None] = ContextVar("consumo_captura", default
 
 
 @contextmanager
-def contexto_consumo(*, user_id: str | None = None, case_id: str | None = None) -> Iterator[ContextoConsumo]:
+def contexto_consumo(
+    *, user_id: str | None = None, case_id: str | None = None, cancelacion: Event | None = None
+) -> Generator[ContextoConsumo]:
     """Attribute the model calls made inside the block to one user question.
 
     For providers that live longer than a question (the API builds its agent
@@ -643,8 +680,10 @@ def contexto_consumo(*, user_id: str | None = None, case_id: str | None = None) 
     context variable: code that fans out to threads must run them inside a copy
     of the context (``contextvars.copy_context()``) or their calls are recorded
     without user / case and outside the cap.
+
+    ``cancelacion`` is the question's cancellation token (see :class:`ContextoConsumo`).
     """
-    contexto = ContextoConsumo(user_id=user_id, case_id=case_id)
+    contexto = ContextoConsumo(user_id=user_id, case_id=case_id, cancelacion=cancelacion)
     token = _CONTEXTO.set(contexto)
     try:
         yield contexto
@@ -691,7 +730,7 @@ def _instalar_captura(provider: Any) -> None:
             previo(usage)
             _capturar(usage)
 
-        ambos.captura_consumo = True  # type: ignore[attr-defined]
+        ambos.captura_consumo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
         provider.on_usage = ambos
 
 
@@ -844,6 +883,8 @@ class MeteredProvider:
 
     def _medir[T](self, llamada: Callable[[], T], usage_de: Callable[[T], Usage | None] | None = None) -> T:
         contexto, cuenta = self._contexto_activo()
+        # A cancelled question makes no further call (nothing is spent on an answer nobody will read).
+        contexto.comprobar_cancelacion()
         with contexto._lock:
             user_id, case_id = contexto.user_id, contexto.case_id
             if self._presupuesto is not None:

@@ -47,7 +47,7 @@ from pathlib import Path
 import re
 import sqlite3
 from threading import RLock
-from typing import Any, Literal
+from typing import Any, Literal, TypeIs
 import unicodedata
 from uuid import uuid4
 
@@ -88,6 +88,7 @@ from asistente.nucleo.evaluacion.redaccion import (
 )
 from asistente.nucleo.evaluacion.reproduccion import guion_de_captura
 from asistente.nucleo.evaluacion.senales import SENALES_DEBILES, Senal, es_repregunta, respuestas, senales_de_turno
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -121,6 +122,12 @@ ETIQUETAS_FALLO: dict[str, str] = {
     "repregunta": "El usuario volvió a preguntar",
     "abstencion": "No respondió",
 }
+
+
+def _es_tipo_fallo(valor: object) -> TypeIs[TipoFallo]:
+    return valor in ETIQUETAS_FALLO
+
+
 _SENAL_A_FALLO: dict[str, TipoFallo] = {
     "puerta_cifras": "puerta_cifras",
     "afirmacion_rechazada": "verificador",
@@ -235,9 +242,7 @@ class CandidatoStore:
 
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
                 preparar(conn)
@@ -328,11 +333,10 @@ class CandidatoStore:
             conn = self._get()
             with conn:
                 cursor = conn.execute(
-                    f"DELETE FROM evaluacion_candidatos WHERE case_id IN ({marcas})", tuple(case_ids)  # noqa: S608
+                    f"DELETE FROM evaluacion_candidatos WHERE case_id IN ({marcas})",
+                    tuple(case_ids),  # noqa: S608
                 )
-                conn.execute(
-                    f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids)
-                )  # noqa: S608
+                conn.execute(f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids))  # noqa: S608
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return cursor.rowcount
 
@@ -699,7 +703,7 @@ def nuevo_candidato(
 
 
 def tipo_de_correccion(tipo: str | None) -> TipoFallo:
-    return tipo if tipo in ETIQUETAS_FALLO and tipo not in _SENAL_A_FALLO.values() else "otro"  # type: ignore[return-value]
+    return tipo if _es_tipo_fallo(tipo) and tipo not in _SENAL_A_FALLO.values() else "otro"
 
 
 # --------------------------------------------------------------------------- #
@@ -1183,7 +1187,9 @@ def _contar_al_usuario(cases: Any, candidato: Candidato, datos: dict[str, Any]) 
         pass
 
 
-def _marcar_feedback(db_path: str, candidato: Candidato, estado: str, caso: str | None) -> None:
+def _marcar_feedback(
+    db_path: str, candidato: Candidato, estado: Literal["promovido", "descartado"], caso: str | None
+) -> None:
     if candidato.feedback_id is None:
         return
     from asistente.nucleo.evaluacion.captura import FeedbackStore
@@ -1192,7 +1198,7 @@ def _marcar_feedback(db_path: str, candidato: Candidato, estado: str, caso: str 
     try:
         registro = feedback.get(candidato.feedback_id)
         if registro is not None and registro.estado == "pendiente":
-            registro.estado = estado  # type: ignore[assignment]
+            registro.estado = estado
             registro.revisado_el = datetime.now(UTC)
             registro.caso_suite = caso
             feedback.actualizar(registro)

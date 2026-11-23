@@ -9,9 +9,6 @@ def _env_bool(name: str, default: bool = False) -> bool:
     return value.strip().lower() in {"1", "true", "yes", "on"}
 
 
-OPENAI_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-OPENAI_TEMPERATURE = float(os.environ.get("OPENAI_TEMPERATURE", "0"))
-
 # --- Embeddings -------------------------------------------------------------
 # The app uses a single local embedder via MLX (Apple Silicon native, bf16,
 # no quantization). The converted model directory contains both the bf16
@@ -51,9 +48,9 @@ EMBEDDING_MAX_SEQ_LENGTH = int(os.environ.get("EMBEDDING_MAX_SEQ_LENGTH", "512")
 # (e.g. for latency benchmarks against the old baseline).
 RERANKER_ENABLED = _env_bool("RERANKER_ENABLED", default=True)
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "data/models/qwen3-reranker-mlx-bf16")
-# After reranking, keep the top-K documents to send to the LLM. The retriever's
-# ``TOP_K`` controls first-stage recall (how many docs reach the reranker);
-# this controls precision of what the LLM finally sees. Raised from 5 to 8
+# After reranking, keep the top-K documents to send to the LLM.
+# ``RERANKER_FIRST_STAGE_K`` controls first-stage recall (how many docs reach
+# the reranker); this controls precision of what the LLM finally sees. Raised from 5 to 8
 # (2026-06-02) to ATTACK FABRICATION: when the LLM was given only the top-5
 # reranked chunks for under-specified queries (e.g. "reducción 95% empresa
 # familiar"), it fell back to general knowledge and produced fluent-but-
@@ -67,39 +64,6 @@ RERANKER_TOP_K = int(os.environ.get("RERANKER_TOP_K", "8"))
 # alongside the RERANKER_TOP_K bump — the reranker needs proportionally more
 # raw recall to keep choosing 8 *good* chunks instead of 5.
 RERANKER_FIRST_STAGE_K = int(os.environ.get("RERANKER_FIRST_STAGE_K", "30"))
-
-# --- BM25 hybrid retrieval --------------------------------------------------
-# Sparse BM25 retriever combined with the dense FAISS retriever via
-# Reciprocal Rank Fusion (LangChain's ``EnsembleRetriever``). Targets queries
-# that mention concrete entity names — ``modelo 721``, ``Ley 7/2012``,
-# ``STC 182/2021`` — where token-overlap signal beats semantic similarity.
-#
-# **Disabled by default** based on measured A/B against the 15-scenario
-# fictional-user battery on the full 11 k-doc corpus:
-#
-# * cited count: 8 (reranker-only) → 7 (BM25 + reranker), **net -1**;
-# * latency: 12 s → 18 s median (+50 %, on top of the +10 GB build RAM);
-# * BM25 *broke* the reranker's biggest rescue (``iivtnu_devolucion``)
-#   because RRF mixed in topic-tangential docs that mention ``Tribunal
-#   Constitucional`` and demoted the plusvalía-specific STCs;
-# * the lexical queries we expected to rescue (Beckham, STC 8/2022) were
-#   not rescued — those failures are **semantic** (the corpus uses
-#   "régimen impatriados" not "Beckham") and **coverage** gaps that BM25
-#   can't bridge.
-#
-# Kept in code as an opt-in for future re-evaluation against a proper
-# golden test set (50–100 expert-annotated query-answer pairs) where the
-# wins on entity-name queries may show up at scale. Enable with
-# ``BM25_ENABLED=true``.
-BM25_ENABLED = _env_bool("BM25_ENABLED", default=False)
-# Relative weights for Reciprocal Rank Fusion: ``(dense_weight, bm25_weight)``.
-# Default 0.6 / 0.4 biases slightly toward dense (which handles semantic
-# queries) while letting BM25 dominate on exact-reference queries. Adjust
-# with the retrieval benchmark once a golden set exists.
-BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.6"))
-BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.4"))
-# First-stage k for BM25 — matched to the dense retriever's k so RRF is fair.
-BM25_K = int(os.environ.get("BM25_K", "20"))
 
 # --- Contextual embeddings (Anthropic September 2024) -----------------------
 # At index time, prepend each chunk with a 1-sentence contextual prefix
@@ -127,30 +91,17 @@ CONTEXTUAL_MODEL_PATH = os.environ.get("CONTEXTUAL_MODEL_PATH", "data/models/qwe
 # truncating, larger ones inflate ingest wall-clock without quality gain.
 CONTEXTUAL_MAX_TOKENS = int(os.environ.get("CONTEXTUAL_MAX_TOKENS", "80"))
 
-# Local MLX model used as the **judge** for RAGAS-based RAG evaluation
-# (``scripts/ragas_eval.py``). Decoupled from ``CONTEXTUAL_MODEL_PATH``
-# so we can use a larger / newer instruction-tuned checkpoint for the
-# judge — quality matters at judge time (structured-JSON outputs, yes/no
-# verdicts), and the volume is tiny (~15-50 scenarios per eval). The
-# default points at Qwen3-4B-Instruct-2507 (July-2025 refresh): native
-# non-thinking mode, IFEval 83.4, ~8 GB on disk in bf16. Override with
-# ``RAGAS_JUDGE_MODEL_PATH`` to A/B against a different judge.
-RAGAS_JUDGE_MODEL_PATH = os.environ.get("RAGAS_JUDGE_MODEL_PATH", "data/models/qwen3-4b-instruct-2507-mlx-bf16")
-# Generation budget for the judge. RAGAS faithfulness emits one JSON
-# object listing every statement in the answer with its verdict —
-# answers with many statements need a generous budget to avoid
-# mid-object truncation that breaks the parser.
-RAGAS_JUDGE_MAX_TOKENS = int(os.environ.get("RAGAS_JUDGE_MAX_TOKENS", "1024"))
-
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", ".faiss")
 FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
-MEMORY_KEY = os.environ.get("MEMORY_KEY", "chat_history")
-TOP_K = int(os.environ.get("TOP_K", "3"))
-# Recuperador experimental del módulo fiscal: ``faiss`` (por defecto, el
-# pipeline denso/BM25 de siempre) o ``pageindex`` (navegación en árbol sin
-# vectores: más recall y mejor abstención, pero ~130× más lento y de pago por consulta).
-# Ver docs/cerebro/benchmark-recuperacion.md.
-FISCAL_RECUPERADOR = os.environ.get("FISCAL_RECUPERADOR", "faiss").strip().lower()
+# Corpus index backend: "faiss" (pickle + rank-bm25, legacy) or "sqlite" (sqlite-vec + FTS5 in one file,
+# no pickle). Stays "faiss" until the retrieval benchmark validates the switch (docs/cerebro/benchmark-recuperacion.md).
+INDICE_BACKEND = os.environ.get("INDICE_BACKEND", "faiss").strip().lower()
+INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(FAISS_INDEX_PATH, "indice.sqlite"))
+# Hybrid retrieval in the sqlite backend: dense (sqlite-vec) + lexical (FTS5) fused with weighted RRF.
+# Off by default: on the fiscal benchmark BM25 cost one cited answer net; measure before turning it on.
+BM25_ENABLED = _env_bool("BM25_ENABLED", default=False)
+BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.6"))
+BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.4"))
 
 DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")
@@ -158,39 +109,21 @@ DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decisi
 NORM_STATUS_PATH = os.environ.get("NORM_STATUS_PATH", "./data/_estado_normas.json")
 # Decision rules live at the repo root (sibling of the asistente package).
 # Resolve to an ABSOLUTE path so the engine loads them regardless of the process
-# working directory (uvicorn/Streamlit may start elsewhere). A relative "rules"
+# working directory (uvicorn may start elsewhere). A relative "rules"
 # silently found nothing from any other CWD — and RuleSet(min_length=1) then
 # raised — stalling every turn. Overridable via the RULES_DIR env var.
 RULES_DIR = os.environ.get("RULES_DIR", str(Path(__file__).resolve().parents[2] / "rules"))
-UI_USE_API = _env_bool("UI_USE_API", default=False)
-API_BASE_URL = os.environ.get("API_BASE_URL", "http://127.0.0.1:8000")
-
-GROUNDING_MIN_CITATIONS = int(os.environ.get("GROUNDING_MIN_CITATIONS", "1"))
-GROUNDING_SNIPPET_CHARS = int(os.environ.get("GROUNDING_SNIPPET_CHARS", "240"))
-
 # --- API edge (auth + rate limiting) ----------------------------------------
 # Both opt-in; defaults keep local dev and tests unauthenticated/unthrottled.
 # Set HACIENDA_API_KEY (enforced via the X-API-Key header) and a positive
-# API_RATE_LIMIT_PER_MIN before exposing the API beyond localhost — /qa spends
-# OpenAI tokens and loads multi-GB models per process.
-API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "0"))
-
-# --- Retrieval thresholds ---------------------------------------------------
-# Cosine-similarity floor applied by the EmbeddingsFilter compressor in the
-# retrieval chain: a chunk below it is dropped, and when none survives the
-# context is empty and the grounding gate abstains. ``explain`` is the profile
-# of ``create_openai_chain`` (the fiscal module, /qa); ``decision`` is stricter.
-# Calibrated on 22 Nov 2026 with Qwen3-Embedding-0.6B over data/faiss (five
-# laws + RIRPF + AEAT pages), 97 citation and 21 out-of-corpus queries:
-#   python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
-#     --indice data/faiss --real --umbrales 0.35,0.45,0.5,0.525,0.55,0.6
-# 0.525 maximises correct behaviour (right source in top-3 or abstention):
-# 62 % of out-of-corpus queries abstain (19 % at the old 0.45, 10 % at 0.35)
-# for 2 % false abstentions; 0.55 trades 8 % false abstentions for 71 %.
-# See docs/cerebro/benchmark-recuperacion.md. Re-run it when the embedder or
-# the corpus changes, and override via env meanwhile.
-RETRIEVAL_DECISION_THRESHOLD = float(os.environ.get("RETRIEVAL_DECISION_THRESHOLD", "0.55"))
-RETRIEVAL_EXPLAIN_THRESHOLD = float(os.environ.get("RETRIEVAL_EXPLAIN_THRESHOLD", "0.525"))
+# API_RATE_LIMIT_PER_MIN before exposing the API beyond localhost — /agent spends
+# LLM tokens and loads multi-GB models per process.
+# Requests per minute per client (peer IP, or the configured API key). On by default; 0 disables it.
+API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "300"))
+# Agent turns streamed at the same time by this process (/agent/stream). Each one runs in its own thread and
+# spends model tokens; a turn over the cap waits (up to AGENT_STREAM_ESPERA_SEGUNDOS) before it is refused.
+AGENT_MAX_TURNOS_SIMULTANEOS = max(1, int(os.environ.get("AGENT_MAX_TURNOS_SIMULTANEOS", "4")))
+AGENT_STREAM_ESPERA_SEGUNDOS = float(os.environ.get("AGENT_STREAM_ESPERA_SEGUNDOS", "30"))
 
 # --- Agent (tool-using advisor) ---------------------------------------------
 # Which LLM drives the agent loop and the verifier:
@@ -204,7 +137,11 @@ ANTHROPIC_EFFORT = os.environ.get("ANTHROPIC_EFFORT", "high")
 # Re-run a request another Claude model when a safety classifier declines it
 # (server-side fallback). Only applied to models that support it.
 ANTHROPIC_REFUSAL_FALLBACK = _env_bool("ANTHROPIC_REFUSAL_FALLBACK", default=True)
-OPENAI_AGENT_MODEL = os.environ.get("OPENAI_AGENT_MODEL", OPENAI_MODEL)
+OPENAI_AGENT_MODEL = os.environ.get("OPENAI_AGENT_MODEL", "gpt-4o-mini")
+# Which OpenAI wire API the openai/local providers speak: "responses" (OpenAI's own API) or
+# "chat" (Chat Completions, what Ollama, LM Studio, mlx_lm.server and vLLM implement).
+# Empty = automatic: chat for the local provider and for a local OPENAI_BASE_URL, else responses.
+OPENAI_API_STYLE = os.environ.get("OPENAI_API_STYLE", "").strip().lower()
 LOCAL_LLM_BASE_URL = os.environ.get("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434/v1")  # Ollama default
 LOCAL_LLM_MODEL = os.environ.get("LOCAL_LLM_MODEL", "")
 LOCAL_LLM_API_KEY = os.environ.get("LOCAL_LLM_API_KEY", "local")
@@ -347,8 +284,9 @@ PRIVACY_NOTICE_URL = os.environ.get("PRIVACY_NOTICE_URL", "")
 LLM_DAILY_BUDGET_USD = os.environ.get("LLM_DAILY_BUDGET_USD", "")
 LLM_DAILY_BUDGET_USD_PER_USER = os.environ.get("LLM_DAILY_BUDGET_USD_PER_USER", "")
 # Hard cap on model calls spent on ONE user question (agent turns, planner,
-# researchers, critic and verifier together).
-LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "")
+# researchers, critic and verifier together). On by default: a loop must never
+# spend without end; set it to an empty value explicitly to lift it.
+LLM_MAX_CALLS_PER_QUESTION = os.environ.get("LLM_MAX_CALLS_PER_QUESTION", "60")
 # Replacement price table (same format as the bundled one), for when prices change.
 LLM_PRICES_PATH = os.environ.get("LLM_PRICES_PATH", "")
 
@@ -449,6 +387,8 @@ PLATAFORMA_TRABAJOS = os.environ.get("PLATAFORMA_TRABAJOS", "")
 PLATAFORMA_TRABAJOS_DESACTIVADOS = os.environ.get("PLATAFORMA_TRABAJOS_DESACTIVADOS", "")
 # A slot missed while no worker ran (restart, deploy) still runs if the worker is back within this many hours.
 PLATAFORMA_RECUPERAR_HORAS = float(os.environ.get("PLATAFORMA_RECUPERAR_HORAS", "6"))
+# Wall-clock limit of one scheduled child-process job; past it its process group is killed (exit code 124).
+PLATAFORMA_TIMEOUT_TRABAJO_S = float(os.environ.get("PLATAFORMA_TIMEOUT_TRABAJO_S", "3600"))
 # Seconds between the worker's heartbeats (and scheduler checks).
 PLATAFORMA_LATIDO_SEGUNDOS = float(os.environ.get("PLATAFORMA_LATIDO_SEGUNDOS", "30"))
 # Extra modules (comma-separated) whose ``registrar_en_plataforma(registro)`` adds services or jobs to the worker.
@@ -528,6 +468,9 @@ CEREBRO_MAX_PARALELO = int(os.environ.get("CEREBRO_MAX_PARALELO", "4"))
 # Seconds one specialist may take on one encargo, its requests to other specialists included; past it the report says
 # so and the specialist stops at its next model call. 0: no limit.
 CEREBRO_TIMEOUT_ENCARGO_S = float(os.environ.get("CEREBRO_TIMEOUT_ENCARGO_S", "180"))
+# Per-attempt HTTP timeout of the Anthropic client; empty = derived from CEREBRO_TIMEOUT_ENCARGO_S so that every
+# attempt together ends before the encargo's deadline.
+ANTHROPIC_TIMEOUT_S = os.environ.get("ANTHROPIC_TIMEOUT_S", "")
 # How deep a request between specialists may go (1: a specialist may ask another, which may not ask a third). Never
 # above the contract's MAX_PROFUNDIDAD_PETICIONES (2): a larger value is lowered to it.
 CEREBRO_MAX_PROFUNDIDAD_PETICIONES = int(os.environ.get("CEREBRO_MAX_PROFUNDIDAD_PETICIONES", "2"))
@@ -553,6 +496,8 @@ CONSEJO_ACTIVO = _env_bool("CONSEJO_ACTIVO", default=True)
 CONSEJO_FAMILIAS = os.environ.get("CONSEJO_FAMILIAS", "")
 # Members working at the same time in one phase (1 = one after another).
 CONSEJO_MAX_PARALELO = int(os.environ.get("CONSEJO_MAX_PARALELO", "3"))
+# Deadline of one deliberation phase (all its members together); a member still running is left out.
+CONSEJO_PLAZO_FASE_S = float(os.environ.get("CONSEJO_PLAZO_FASE_S", "600"))
 # Hard cap of a session = the estimate shown to the user × this factor, never above CONSEJO_TOPE_MAX_USD (an estimate
 # above that maximum cannot be convened). Past the cap no further model call is made: the engine rules with what it has
 # (a partial ruling written by code, labelled «Dictamen parcial») or the session ends «fallida»; nothing is invented.

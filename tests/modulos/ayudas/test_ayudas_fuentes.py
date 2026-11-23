@@ -91,7 +91,9 @@ def test_a_quote_that_is_not_in_the_law_is_caught() -> None:
 def test_a_wrong_date_and_a_figure_without_quote_are_caught() -> None:
     raw = _raw()
     raw["bono_social_electrico"]["descuentos_hasta"] = "2027-06-30"  # type: ignore[index]
-    raw["nacimiento"]["evidencia"] = [e for e in raw["nacimiento"]["evidencia"] if "prescripcion_anios" not in e.get("cifras", {})]  # type: ignore[index]
+    raw["nacimiento"]["evidencia"] = [
+        e for e in raw["nacimiento"]["evidencia"] if "prescripcion_anios" not in e.get("cifras", {})
+    ]  # type: ignore[index]
     problemas = comprobar_evidencias(PrestacionesParams.model_validate(raw))
     assert any("descuentos_hasta" in x for x in problemas)
     assert any("prescripcion_anios: dato sin evidencia" in x for x in problemas)

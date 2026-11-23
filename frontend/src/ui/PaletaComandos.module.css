@@ -1,0 +1,48 @@
+.lista {
+  max-height: min(60vh, 28rem);
+  margin: 0;
+  padding: var(--base-size-8);
+  overflow-y: auto;
+  list-style: none;
+}
+.grupo {
+  padding: var(--base-size-6) var(--base-size-8) var(--base-size-4);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+}
+.opcion {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  padding: var(--base-size-6) var(--base-size-8);
+  border-radius: var(--borderRadius-medium);
+  color: var(--fgColor-default);
+  cursor: pointer;
+}
+.opcion[aria-selected="true"] {
+  background: var(--control-transparent-bgColor-selected, var(--bgColor-neutral-muted));
+  box-shadow: inset 2px 0 0 var(--borderColor-accent-emphasis);
+}
+.icono {
+  display: flex;
+  margin-top: 2px;
+  color: var(--fgColor-muted);
+}
+.texto {
+  min-width: 0;
+  flex: 1;
+}
+.descripcion {
+  display: block;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+.vacio {
+  padding: var(--base-size-16);
+  color: var(--fgColor-muted);
+  text-align: center;
+}
+.campo {
+  padding: var(--base-size-8) var(--base-size-8) 0;
+}

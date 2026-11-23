@@ -187,7 +187,7 @@ one-sided.
 
 ### Validating the harness
 
-`python -m asistente.nucleo.evaluacion.consejo_eval validar-sesgos` (every pull request) runs each test on a scripted
+`python -m asistente.nucleo.evaluacion.consejo_eval validar-sesgos` (run by hand) runs each test on a scripted
 fake that HAS the bias and on its twin without it; 26 checks:
 
 | Test | Fake that must be caught | Twin that must pass |
@@ -221,10 +221,11 @@ EVALUACION_CONSEJO=true uv run python -m asistente.plataforma.cli.evaluacion pro
 A real-model harness run uses the council's seat-to-family assignment (`CONSEJO_FAMILIAS`) and meters every call into
 its own usage store; once the spend reaches the cap no new session starts (the sessions not run are reported).
 
-CI (`.github/workflows/evaluacion.yml`): the deterministic job validates the harness and runs every council case with
-its reference ruling, on every pull request; the opt-in `consejo` job (Run workflow → «consejo», with
-`consejo_presupuesto_usd`, default 10) runs the real-model harness and the comparison when the `ANTHROPIC_API_KEY`
-secret exists, and uploads both reports.
+No CI or scheduled job runs these. Before merging a change to the council, run `consejo_eval validar-sesgos` and
+`consejo_eval guiones --consumo-dir reports/evaluacion/consejo` (every council case with its reference ruling, no
+model). With `ANTHROPIC_API_KEY` set, the real-model runs are `consejo_eval sesgos --modelo-real --presupuesto-usd 10
+--max-casos 12 --out reports/evaluacion/consejo/sesgos.json` and `consejo_eval comparar --yes --presupuesto-usd 10
+--out reports/evaluacion/consejo`.
 
 ## Limits (said plainly)
 

@@ -595,10 +595,11 @@ def _proxima(fecha: date, periodicidad_meses: int | None, hoy: date) -> tuple[da
     """Roll a renewal date forward by its period until it is today or later; returns (date, periods rolled)."""
     if not periodicidad_meses:
         return fecha, 0
-    n = 0
+    # Always counted from the original date: chaining 31 Jan → 28 Feb → 28 Mar would drift off month end.
+    original, n = fecha, 0
     while fecha < hoy and n < 1200:
         n += 1
-        fecha = sumar_meses(fecha, periodicidad_meses)
+        fecha = sumar_meses(original, n * periodicidad_meses)
     return fecha, n
 
 

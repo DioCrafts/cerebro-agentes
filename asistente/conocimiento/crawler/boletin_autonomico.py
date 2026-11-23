@@ -30,6 +30,7 @@ import scrapy
 from scrapy.http import Response
 
 from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.middlewares import peticion_fallida
 
 
 @dataclass(frozen=True)
@@ -207,7 +208,7 @@ class RegionalBoletinCrawler(scrapy.Spider):
     def start_requests(self) -> Generator[scrapy.Request]:
         yield from self._build_search_requests()
 
-    async def start(self):  # type: ignore[override]
+    async def start(self):
         for request in self._build_search_requests():
             yield request
 
@@ -281,6 +282,7 @@ class RegionalBoletinCrawler(scrapy.Spider):
             json.dump(metadata, fj, ensure_ascii=False, indent=2)
 
     def handle_error(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
         request = failure.request if hasattr(failure, "request") else None
         url = request.url if request else "unknown"
         self.logger.warning("Boletin fetch failed for %s: %s", url, failure)

@@ -19,7 +19,7 @@ The schema is the ``navegador`` owner of the migrations (``plataforma/migracione
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -35,6 +35,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import uuid4
 
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 if TYPE_CHECKING:
     from asistente.capacidades.navegador.tareas import Tarea
@@ -107,9 +108,7 @@ class AlmacenTareas:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False, isolation_level=None)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, isolation_level=None, filas=True)
             # A prepared task's parameters are overwritten in the file when they are dropped.
             conn.execute("PRAGMA secure_delete=ON;")
             asegurar_esquema(conn, "navegador")
@@ -117,7 +116,7 @@ class AlmacenTareas:
         return self._conn
 
     @contextmanager
-    def _transaccion(self) -> Iterator[sqlite3.Connection]:
+    def _transaccion(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             conn = self._get()
             conn.execute("BEGIN IMMEDIATE")
@@ -172,7 +171,7 @@ class AlmacenTareas:
         if fila["parametros_json"]:
             try:
                 parametros = validar_parametros(guion_activo(fila["clave"]).reglas, json.loads(fila["parametros_json"]))
-            except (GuionError, ValueError):
+            except GuionError, ValueError:
                 parametros = {}
         return Tarea(
             id=fila["id"],

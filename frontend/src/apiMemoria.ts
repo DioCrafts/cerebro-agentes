@@ -4,19 +4,19 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
+import type { Esquemas, Peticion, Respuesta } from "./api/tipos";
 
-export type TipoDecision = "rechazo" | "aceptacion" | "preferencia" | "restriccion";
+// The bodies come from the backend's OpenAPI schema (src/api/esquema.d.ts). The decision itself and its history
+// travel as plain dicts (`dict[str, Any]` in the schema), so Decision and EventoHistorial are typed here by hand,
+// after asistente/nucleo/memoria (Decision.to_dict).
+export type NuevaDecision = Peticion<"/cases/{case_id}/decisiones", "post">;
+export type CambiosDecision = Peticion<"/cases/{case_id}/decisiones/{decision_id}", "put">;
+export type RespuestaAviso = Peticion<"/cases/{case_id}/decisiones/aviso/{notification_id}", "post">;
+export type TipoDecision = NonNullable<NuevaDecision["tipo"]>;
+export type BotonAviso = RespuestaAviso["boton"];
+export type Condicion = Esquemas["Condicion"];
 export type EstadoDecision = "vigente" | "reabrible" | "caducada" | "reabierta" | "sustituida";
-export type BotonAviso = "no_me_interesa" | "ya_lo_hice" | "recuerdamelo";
-
-export interface Condicion {
-  tipo: "fecha" | "hecho" | "mejora";
-  fecha?: string | null;
-  hecho?: string | null;
-  factor?: string | number | null;
-  importe_referencia?: string | number | null;
-  descripcion?: string;
-}
 
 export interface Decision {
   id: string;
@@ -50,20 +50,12 @@ export interface EventoHistorial {
   razon: string;
 }
 
-export interface DecisionesResponse {
-  case_id: string;
-  hoy: string;
+export type DecisionesResponse = Omit<Respuesta<"/cases/{case_id}/decisiones", "get">, "decisiones" | "historial"> & {
   decisiones: Decision[];
-  catalogo: Array<{ ambito: string; etiqueta: string }>;
   historial: EventoHistorial[];
-}
+};
 
-export interface DecisionResponse {
-  decision: Decision;
-  avisos_retirados: number;
-  plan_recalculado: boolean;
-  resumen_recalculado: boolean;
-}
+export type DecisionResponse = Omit<Respuesta<"/cases/{case_id}/decisiones", "post">, "decision"> & { decision: Decision };
 
 export const TIPO_LABEL: Record<TipoDecision, string> = {
   rechazo: "No me interesa",
@@ -79,10 +71,6 @@ export const ESTADO_LABEL: Record<EstadoDecision, string> = {
   reabierta: "Ya se volvió a proponer",
   sustituida: "Sustituida por otra",
 };
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isDecisiones(value: unknown): value is DecisionesResponse {
   return isRecord(value) && Array.isArray(value.decisiones) && Array.isArray(value.catalogo);
@@ -102,18 +90,6 @@ export function getDecisiones(caseId: string, signal?: AbortSignal): Promise<Dec
   return request(base(caseId), undefined, isDecisiones, { signal, method: "GET" });
 }
 
-export interface NuevaDecision {
-  ambito?: string;
-  palanca?: string;
-  opcion?: string | null;
-  tipo?: TipoDecision;
-  razon?: string;
-  caducidad?: string | null;
-  condiciones_de_reapertura?: Condicion[];
-  propuesta?: { titulo?: string; importe?: string | null };
-  boton?: "no_me_interesa" | "ya_lo_hice";
-}
-
 export function crearDecision(caseId: string, body: NuevaDecision): Promise<DecisionResponse> {
   return request(base(caseId), body, isDecisionResponse);
 }
@@ -121,7 +97,7 @@ export function crearDecision(caseId: string, body: NuevaDecision): Promise<Deci
 export function editarDecision(
   caseId: string,
   id: string,
-  cambios: { tipo?: TipoDecision; razon?: string; caducidad?: string | null },
+  cambios: CambiosDecision,
 ): Promise<DecisionResponse> {
   return request(`${base(caseId)}/${encodeURIComponent(id)}`, cambios, isDecisionResponse, { method: "PUT" });
 }
@@ -134,7 +110,7 @@ export function borrarDecision(caseId: string, id: string): Promise<null> {
 export function responderAviso(
   caseId: string,
   notificationId: string,
-  body: { boton: BotonAviso; razon?: string; hasta?: string },
+  body: RespuestaAviso,
 ): Promise<DecisionResponse> {
   return request(`${base(caseId)}/aviso/${encodeURIComponent(notificationId)}`, body, isDecisionResponse);
 }

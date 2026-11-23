@@ -29,9 +29,9 @@ import random
 import re
 from typing import Any
 
-from langchain_core.documents import Document
 from pydantic import BaseModel, ConfigDict, Field
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.providers.base import LLMProvider
 from asistente.nucleo.agent.search import CorpusSearcher, SearchFilters
 
@@ -199,14 +199,14 @@ class ExcludingSearcher:
         self._inner = inner
         self._needle = consulta_id.lower()
 
-    def _is_excluded(self, doc: Document) -> bool:
-        metadata = doc.metadata or {}
+    def _is_excluded(self, doc: FragmentoRecuperado) -> bool:
+        metadata = doc.metadatos or {}
         haystack = " ".join(
             str(metadata.get(key) or "") for key in ("source_url", "source", "source_file", "num_consulta", "title")
         )
         return self._needle in haystack.lower()
 
-    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[FragmentoRecuperado]:
         # Over-fetch by one so dropping the excluded consulta still fills k.
         docs = self._inner.search(query, k=k + 3, filters=filters)
         return [doc for doc in docs if not self._is_excluded(doc)][:k]

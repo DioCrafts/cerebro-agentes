@@ -46,7 +46,14 @@ from asistente.plataforma import settings
 logger = logging.getLogger(__name__)
 
 DIAS_DIAGNOSTICO = 30
-_CASE_ID = re.compile(r"^[A-Za-z0-9_.-]{1,120}$")
+_CASE_ID = re.compile(r"[A-Za-z0-9_.-]{1,120}")
+
+
+def _id_valido(valor: str) -> bool:
+    """A case or task id usable as ONE path component: «.» and «..» would name the diagnosis folder itself or
+    its parent (``borrar_de_caso("..")`` erased the whole browser folder); ``fullmatch`` so a trailing newline
+    does not slip through ``$``."""
+    return bool(_CASE_ID.fullmatch(valor)) and valor not in {".", ".."}
 
 
 # --------------------------------------------------------------------------- #
@@ -114,7 +121,7 @@ def registrar_fuentes() -> None:
     for clave in claves_incorporadas():
         try:
             spec = guion_incorporado(clave)
-        except (ValueError, ValidationError):
+        except ValueError, ValidationError:
             logger.exception("Bundled browser script %s is invalid", clave)
             continue
 
@@ -265,7 +272,7 @@ def guardar_diagnostico(
     base: str | Path | None = None,
 ) -> Path | None:
     """Keep the REDACTED skeleton of a failed step for diagnosis. Nothing typed, nothing unmasked."""
-    if not _CASE_ID.match(case_id) or not _CASE_ID.match(tarea_id):
+    if not _id_valido(case_id) or not _id_valido(tarea_id):
         return None
     ruta = _dir_diagnostico(base) / case_id / f"{tarea_id}.json"
     ruta.parent.mkdir(parents=True, exist_ok=True)
@@ -275,20 +282,20 @@ def guardar_diagnostico(
 
 
 def diagnosticos_de(case_id: str, *, base: str | Path | None = None) -> list[dict[str, Any]]:
-    if not _CASE_ID.match(case_id):
+    if not _id_valido(case_id):
         return []
     out: list[dict[str, Any]] = []
     for ruta in sorted((_dir_diagnostico(base) / case_id).glob("*.json")):
         try:
             out.append(json.loads(ruta.read_text(encoding="utf-8")))
-        except (OSError, ValueError):
+        except OSError, ValueError:
             continue
     return out
 
 
 def borrar_de_caso(case_id: str, *, base: str | Path | None = None) -> int:
     """Erase everything the browser agent kept for a case (call it when the case or the account is erased)."""
-    if not _CASE_ID.match(case_id):
+    if not _id_valido(case_id):
         return 0
     carpeta = _dir_diagnostico(base) / case_id
     n = len(list(carpeta.glob("*.json"))) if carpeta.is_dir() else 0

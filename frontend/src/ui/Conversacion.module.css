@@ -1,0 +1,131 @@
+/* A GitHub conversation: avatars on the left, bordered comments, and the timeline line behind them. */
+.conversacion {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--base-size-16);
+}
+.conversacion::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: var(--base-size-16);
+  width: var(--borderWidth-thick);
+  background: var(--borderColor-muted);
+}
+@media (min-width: 768px) {
+  .conversacion {
+    margin-left: calc(var(--base-size-40) + var(--base-size-16));
+  }
+}
+
+.comentario {
+  position: relative;
+}
+.avatar {
+  display: none;
+}
+@media (min-width: 768px) {
+  .avatar {
+    display: block;
+    position: absolute;
+    top: 0;
+    left: calc((var(--base-size-40) + var(--base-size-16)) * -1);
+  }
+}
+.avatarEnLinea {
+  display: inline-flex;
+}
+@media (min-width: 768px) {
+  .avatarEnLinea {
+    display: none;
+  }
+}
+
+.caja {
+  position: relative;
+  background: var(--bgColor-default);
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-medium);
+}
+.cabecera {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--base-size-4) var(--base-size-8);
+  min-height: var(--base-size-40);
+  padding: var(--base-size-4) var(--base-size-8) var(--base-size-4) var(--base-size-16);
+  color: var(--fgColor-muted);
+  background: var(--bgColor-muted);
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-top-left-radius: var(--borderRadius-medium);
+  border-top-right-radius: var(--borderRadius-medium);
+}
+.propio {
+  border-color: var(--borderColor-accent-muted);
+}
+.propio .cabecera {
+  background: var(--bgColor-accent-muted);
+  border-bottom-color: var(--borderColor-accent-muted);
+}
+.error {
+  border-color: var(--borderColor-danger-muted);
+}
+.error .cabecera {
+  background: var(--bgColor-danger-muted);
+  border-bottom-color: var(--borderColor-danger-muted);
+}
+.autor {
+  color: var(--fgColor-default);
+  font-weight: var(--base-text-weight-semibold);
+}
+.encabezado {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-body-size-medium);
+  font-weight: var(--base-text-weight-normal);
+}
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  margin-left: auto;
+}
+.cuerpo {
+  padding: var(--base-size-16);
+}
+.pie {
+  padding: var(--base-size-8) var(--base-size-16);
+  border-top: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+
+/* A small event on the line (no box): a badge and a sentence. */
+.evento {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin-left: calc(var(--base-size-16) - var(--base-size-12) + 1px);
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-medium);
+}
+.insignia {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: var(--base-size-24);
+  height: var(--base-size-24);
+  color: var(--fgColor-muted);
+  background: var(--timelineBadge-bgColor);
+  border: var(--borderWidth-thick) solid var(--bgColor-default);
+  border-radius: var(--borderRadius-full);
+}
+.insigniaAcento {
+  color: var(--fgColor-onEmphasis);
+  background: var(--bgColor-accent-emphasis);
+}

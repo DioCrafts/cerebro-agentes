@@ -1,15 +1,13 @@
-"""Qwen3-Reranker cross-encoder on MLX, wrapped as a LangChain compressor.
+"""Qwen3-Reranker cross-encoder on MLX: reorders the fragments the first-stage search found.
 
 The reranker scores ``(query, document)`` pairs directly (cross-encoder),
 unlike the embedder which compares two independent embeddings (bi-encoder).
 The score comes from the next-token logits for ``"yes"`` vs ``"no"`` in a
 specific instruction-following prompt — see the Qwen3-Reranker model card.
 
-This module slots into the retrieval chain as a
-:class:`langchain_core.documents.compressor.BaseDocumentCompressor`: given a
-list of retrieved documents and the original query, it re-orders them by
-relevance and returns the top-K. A regular ``ContextualCompressionRetriever``
-wraps it transparently, so the rest of the chain doesn't need to know.
+Both corpus searchers (``nucleo/agent/search.py`` and ``conocimiento/indice/buscador.py``) call
+:meth:`MLXReranker.reordenar` after the first stage: given the retrieved fragments and the original
+query, it re-orders them by relevance and returns the top-K.
 
 **Why MLX bf16, no quantization**: matches the project's embedder backend
 (same hardware path, same precision policy). Latency ~1s for 20 documents on
@@ -19,13 +17,11 @@ M-series; cheap enough to add to every ``/qa`` request.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from dataclasses import dataclass
 import threading
 from typing import Any
 
-from langchain_core.callbacks import Callbacks
-from langchain_core.documents import Document
-from langchain_core.documents.compressor import BaseDocumentCompressor
-from pydantic import ConfigDict
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 # Qwen3-Reranker scoring protocol — verbatim from the model card.
 # https://huggingface.co/Qwen/Qwen3-Reranker-0.6B
@@ -67,55 +63,32 @@ def _get_model(model_path: str) -> tuple[Any, Any, int, int]:
             return cached
         from mlx_lm import load
 
-        model, tokenizer = load(model_path)
+        model, tokenizer = load(model_path)[:2]
         yes_id = tokenizer.encode("yes", add_special_tokens=False)[0]
         no_id = tokenizer.encode("no", add_special_tokens=False)[0]
         _MODEL_CACHE[model_path] = (model, tokenizer, yes_id, no_id)
         return _MODEL_CACHE[model_path]
 
 
-class MLXReranker(BaseDocumentCompressor):
-    """Score ``(query, doc)`` pairs with Qwen3-Reranker on MLX, keep top-K.
-
-    Pydantic v2 model — picked up by the LangChain
-    ``ContextualCompressionRetriever`` without further glue.
-    """
-
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+@dataclass(frozen=True)
+class MLXReranker:
+    """Score ``(query, fragment)`` pairs with Qwen3-Reranker on MLX, keep top-K."""
 
     model_path: str
     top_k: int = 5
     instruction: str = _DEFAULT_INSTRUCTION
 
-    def compress_documents(
-        self,
-        documents: Sequence[Document],
-        query: str,
-        callbacks: Callbacks | None = None,
-    ) -> Sequence[Document]:
-        if not documents:
+    def reordenar(self, fragmentos: Sequence[FragmentoRecuperado], consulta: str) -> list[FragmentoRecuperado]:
+        if not fragmentos:
             return []
-        scores = self._score(query, [d.page_content for d in documents])
+        scores = self._score(consulta, [f.texto for f in fragmentos])
         # Sort by relevance descending, keep the top-K and stamp the score on
-        # metadata so downstream callers (logs, UI) can audit ranking.
-        ranked = sorted(zip(documents, scores), key=lambda pair: pair[1], reverse=True)
-        result: list[Document] = []
-        for doc, score in ranked[: self.top_k]:
-            metadata = dict(doc.metadata or {})
-            metadata["_rerank_score"] = float(score)
-            result.append(doc.model_copy(update={"metadata": metadata}))
-        return result
-
-    async def acompress_documents(
-        self,
-        documents: Sequence[Document],
-        query: str,
-        callbacks: Callbacks | None = None,
-    ) -> Sequence[Document]:
-        # The MLX scoring path is synchronous; there's no async win for
-        # in-process MLX inference. Delegating to the sync method keeps the
-        # interface complete without pretending to be async.
-        return self.compress_documents(documents, query, callbacks=callbacks)
+        # the metadata so downstream callers (logs, UI) can audit ranking.
+        ranked = sorted(zip(fragmentos, scores, strict=True), key=lambda pair: pair[1], reverse=True)
+        return [
+            fragmento.con(metadatos={**fragmento.metadatos, "_rerank_score": float(score)})
+            for fragmento, score in ranked[: self.top_k]
+        ]
 
     # ------------------- internals --------------------------------------- #
 
@@ -170,5 +143,5 @@ class MLXReranker(BaseDocumentCompressor):
         no_logits = mx.stack([logits[i, int(last_pos[i]), no_id] for i in range(len(docs))])
         paired = mx.stack([no_logits, yes_logits], axis=1)  # (B, 2)
         probs = mx.softmax(paired, axis=1)  # (B, 2)
-        scores: list[float] = probs[:, 1].tolist()
+        scores = [float(x) for x in probs[:, 1].tolist()]  # ty: ignore[invalid-argument-type, not-iterable]  # mlx stubs: tolist() of a 1-D array is a list of floats
         return scores

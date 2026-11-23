@@ -2,7 +2,22 @@
 # (docker-compose.yml elige la orden). Ejemplo: revísalo antes de usarlo en producción (docs/despliegue.md).
 #
 #   docker build -f docs/despliegue/Dockerfile -t haciendagpt-backend .
-FROM python:3.13-slim
+#
+# Desde la raíz del repositorio: /.dockerignore deja fuera .git, los entornos virtuales, data/, los
+# modelos y los secretos (.env), así el contexto es pequeño y no se cuela nada privado en una capa.
+#
+# Linux no tiene el embedder MLX: los modelos *-mlx (EMBEDDING_MODEL, RERANKER_MODEL,
+# CONTEXTUAL_MODEL_PATH…) solo funcionan en Apple Silicon. En esta imagen la búsqueda funciona sin ellos
+# (léxica) y MEMORIA_EMBEDDINGS debe quedarse en false; la indexación con embeddings se hace en un Mac.
+#
+# Datos actualizables dentro del código: hipoteca-indices escribe en asistente/ambitos/hipoteca/data
+# (ruta fija en asistente/ambitos/hipoteca/indices.py, DATA_DIR). Dentro del contenedor esa escritura se
+# pierde al reconstruir la imagen. Sacarla a un volumen exige que indices.py lea el directorio de una
+# variable de entorno (pendiente en Python); hasta entonces la actualización llega con la imagen nueva.
+#
+# Imagen fijada a una versión exacta. Para fijarla además por digest (recomendado en producción):
+#   docker buildx imagetools inspect python:3.14.10-slim     → FROM python:3.14.10-slim@sha256:…
+FROM python:3.14.10-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \

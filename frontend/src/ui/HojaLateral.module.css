@@ -1,0 +1,93 @@
+/* A side sheet, like Primer's Dialog with position="right": full screen on a phone. */
+.fondo {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  justify-content: flex-end;
+  background: var(--overlay-backdrop-bgColor);
+}
+.fondo[hidden] {
+  display: none;
+}
+.cerrarFondo {
+  position: absolute;
+  inset: 0;
+}
+.hoja {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  background: var(--overlay-bgColor);
+  box-shadow: var(--shadow-floating-large);
+  animation: entrar 200ms cubic-bezier(0.33, 1, 0.68, 1);
+}
+@media (min-width: 768px) {
+  .hoja {
+    border-top-left-radius: var(--borderRadius-large);
+    border-bottom-left-radius: var(--borderRadius-large);
+  }
+  .medium {
+    width: 480px;
+  }
+  .large {
+    width: 640px;
+  }
+  .xlarge {
+    width: 960px;
+    max-width: calc(100vw - var(--base-size-64));
+  }
+}
+@keyframes entrar {
+  from {
+    transform: translateX(var(--base-size-24));
+    opacity: 0;
+  }
+}
+.cabecera {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--base-size-8);
+  padding: var(--base-size-8);
+  padding-left: var(--base-size-16);
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-default);
+}
+.titulos {
+  flex: 1;
+  min-width: 0;
+  padding-top: var(--base-size-6);
+  padding-bottom: var(--base-size-6);
+}
+.titulo {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  margin: 0;
+  font: var(--text-title-shorthand-small);
+  font-weight: var(--base-text-weight-semibold);
+  color: var(--fgColor-default);
+}
+.titulo:focus {
+  outline: none;
+}
+.subtitulo {
+  margin: var(--base-size-4) 0 0;
+  color: var(--fgColor-muted);
+  font-size: var(--text-body-size-small);
+}
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-4);
+}
+.cuerpo {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--base-size-16);
+}
+.pie {
+  padding: var(--base-size-16);
+  border-top: var(--borderWidth-thin) solid var(--borderColor-default);
+  padding-bottom: max(env(safe-area-inset-bottom), var(--base-size-16));
+}

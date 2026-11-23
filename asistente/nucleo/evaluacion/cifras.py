@@ -20,8 +20,7 @@ import json
 import re
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.evidence import EvidenceLedger
 from asistente.nucleo.agent.providers.base import ToolCall
 from asistente.nucleo.agent.search import SearchFilters
@@ -40,7 +39,7 @@ class CalculoError(ValueError):
 class SinCorpus:
     """A searcher with nothing in it: the calculators never search."""
 
-    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[FragmentoRecuperado]:
         return []
 
 

@@ -78,11 +78,12 @@ pregunta al asesor, cuando sus herramientas leen el expediente (como cualquier o
 
 Además:
 
-- **Navegador del usuario** (`localStorage`): el texto de las conversaciones, el token de sesión y
-  el tema visual. Las conversaciones no se envían al servidor salvo como contexto de cada pregunta.
-  Al cerrar sesión o eliminar la cuenta la aplicación web las borra de ese navegador; si la sesión
-  simplemente caduca, permanecen hasta el siguiente inicio de sesión (y se descartan si entra otra
-  cuenta). El token en `localStorage` es legible por cualquier script que se ejecute en la página.
+- **Navegador del usuario** (`localStorage`): el texto de las conversaciones y el tema visual. El token
+  de sesión no está ahí: va en una *cookie* `HttpOnly` que ningún script de la página puede leer. Las
+  conversaciones no se envían al servidor salvo como contexto de cada pregunta. Con cuentas activadas
+  duran lo que la sesión: la aplicación web las borra de ese navegador al cerrar sesión, al eliminar la
+  cuenta, cuando el servidor da la sesión por caducada o revocada (también si caducó con la aplicación
+  cerrada) y al migrar una sesión antigua que guardaba el token en `localStorage`.
 - **Documentos subidos** (nóminas, certificados…): se procesan en memoria y **no se almacenan**. En
   el rastro de auditoría queda el nombre del fichero, el tipo de documento detectado y los nombres
   (no los valores) de los datos propuestos.
@@ -446,9 +447,7 @@ Lo que **no** alcanza ese borrado:
 - El límite de intentos vive en la memoria de un proceso. Con varios procesos, o detrás de un proxy
   sin `--proxy-headers`, deja de ser fiable: hace falta un limitador en el proxy.
 - **Los accesos que no pasan por la API no tienen control de acceso**: las tareas proactivas y los
-  CLI leen todos los expedientes (es necesario para que funcionen sin sesión), y la interfaz
-  Streamlit (`asistente/plataforma/ui`) abre la base de datos directamente. Con `AUTH_MODE=required` no
-  debe exponerse Streamlit a usuarios; con `UI_USE_API=true` tampoco funciona, porque no inicia sesión.
+  CLI leen todos los expedientes (es necesario para que funcionen sin sesión).
 - Quien tenga acceso al fichero SQLite o a sus copias lo lee todo.
 - Este diseño no ha pasado una auditoría de seguridad externa ni una prueba de intrusión (la revisión
   interna está en `docs/seguridad.md`).
@@ -486,8 +485,7 @@ Nada de esto lo resuelve el código. Sin ello, el despliegue no debería recibir
    - **Cifrado en reposo** del disco o volumen donde están el fichero SQLite y sus copias.
    - **Copias de seguridad** cifradas, con plazo de retención, y un procedimiento para que un
      borrado de cuenta se propague a ellas (o caduquen en un plazo que se comunique al usuario).
-   - Permisos del fichero SQLite, quién puede ejecutar los CLI y las tareas proactivas, y no
-     exponer la interfaz Streamlit.
+   - Permisos del fichero SQLite y quién puede ejecutar los CLI y las tareas proactivas.
    - `AUTH_MODE=required`, `HACIENDA_API_KEY` si procede, `API_RATE_LIMIT_PER_MIN` y un limitador
      en el proxy; orígenes CORS acordes con el dominio real (`_ALLOWED_ORIGINS` en `asistente/plataforma/api/api.py`).
    - Cabeceras de seguridad en el proxy (como mínimo una política de contenido que limite los

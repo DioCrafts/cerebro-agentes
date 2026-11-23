@@ -1,23 +1,22 @@
 """The agent with a doctrine graph: validity alerts, conflicts and "no firm criterion"."""
 
 from datetime import date
-import pickle
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 import pytest
 
 from asistente.conocimiento.doctrine.citas import Documento
 from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.agent import AgentMode, TaxAgent
 from asistente.nucleo.agent.evidence import EvidenceLedger
 from asistente.nucleo.agent.providers.base import ToolCall
 from asistente.nucleo.agent.tools import Toolbox
 from tests.agent.fakes import FakeSearcher, ScriptedProvider, text_turn, tool_turn, verdict
 
-OLD = Document(
-    page_content="No procede la exención por reinversión cuando se emplea financiación ajena.",
-    metadata={
+OLD = FragmentoRecuperado(
+    texto="No procede la exención por reinversión cuando se emplea financiación ajena.",
+    metadatos={
         "title": "Consulta V1234-19",
         "source": "dgt-vinculantes/2019/V1234-19.html",
         "num_consulta": "V1234-19",
@@ -26,9 +25,9 @@ OLD = Document(
         "chunk_id": "old",
     },
 )
-RULING = Document(
-    page_content="Procede la exención por reinversión aunque se emplee financiación ajena.",
-    metadata={
+RULING = FragmentoRecuperado(
+    texto="Procede la exención por reinversión aunque se emplee financiación ajena.",
+    metadatos={
         "title": "STS de 3 de junio de 2020",
         "source": "ts/STS_1500_2020.html",
         "source_authority": "TS_SALA_TERCERA",
@@ -38,9 +37,9 @@ RULING = Document(
         "chunk_id": "ruling",
     },
 )
-TEAC_A = Document(
-    page_content="La deducción exige factura completa.",
-    metadata={
+TEAC_A = FragmentoRecuperado(
+    texto="La deducción exige factura completa.",
+    metadatos={
         "title": "TEAC 00/100/2021",
         "source": "teac/a.html",
         "source_authority": "TEAC",
@@ -49,9 +48,9 @@ TEAC_A = Document(
         "chunk_id": "a",
     },
 )
-TEAC_B = Document(
-    page_content="La deducción no exige factura completa si el gasto se acredita por otros medios.",
-    metadata={
+TEAC_B = FragmentoRecuperado(
+    texto="La deducción no exige factura completa si el gasto se acredita por otros medios.",
+    metadatos={
         "title": "TEAC 00/200/2022",
         "source": "teac/b.html",
         "source_authority": "TEAC",
@@ -135,7 +134,7 @@ def test_validity_tool_explains_a_documents_status(graph: DoctrineGraph) -> None
     assert "estado: DISCUTIDA" in disputed.content
 
 
-def _agent(provider: ScriptedProvider, docs: list[Document], graph: DoctrineGraph, **kwargs) -> TaxAgent:
+def _agent(provider: ScriptedProvider, docs: list[FragmentoRecuperado], graph: DoctrineGraph, **kwargs) -> TaxAgent:
     return TaxAgent(provider=provider, searcher=FakeSearcher(docs), graph=graph, **kwargs)
 
 
@@ -196,19 +195,25 @@ def test_disputed_doctrine_must_be_presented_as_unsettled(graph: DoctrineGraph) 
 
 
 def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path, monkeypatch) -> None:
-    from langchain_community.docstore.in_memory import InMemoryDocstore
-
+    faiss_legado = pytest.importorskip("asistente.conocimiento.indice.faiss_legado")
     from asistente.plataforma import settings
     from asistente.plataforma.cli.doctrine_graph import cli
 
-    cites_missing = Document(
-        page_content="Conforme a la sentencia del Tribunal Supremo de 5 de mayo de 2021 (rec. 999/2020), procede.",
-        metadata={"source_file": "teac/c.html", "source_authority": "TEAC", "numero_resolucion": "00/300/2022"},
+    cites_missing = FragmentoRecuperado(
+        texto="Conforme a la sentencia del Tribunal Supremo de 5 de mayo de 2021 (rec. 999/2020), procede.",
+        metadatos={"source_file": "teac/c.html", "source_authority": "TEAC", "numero_resolucion": "00/300/2022"},
     )
+
+    class _Plano:
+        def embed_documents(self, textos):
+            return [[1.0, 0.0] for _ in textos]
+
+        def embed_query(self, texto):
+            return [1.0, 0.0]
+
     index = tmp_path / "faiss"
-    index.mkdir()
-    docstore = InMemoryDocstore({str(i): d for i, d in enumerate([OLD, RULING, cites_missing])})
-    (index / "index.pkl").write_bytes(pickle.dumps((docstore, {})))
+    corpus = [OLD, RULING, cites_missing]
+    faiss_legado.AlmacenFaissLegado.desde_fragmentos(corpus, _Plano(), [str(i) for i in range(3)]).save_local(index)
     graph_path = str(tmp_path / "g.sqlite3")
     runner = CliRunner()
 
@@ -253,8 +258,8 @@ def test_supreme_court_sidecar_feeds_the_graph_and_the_evidence_header() -> None
     assert doc.clave == "TS:ECLI:ES:TS:2020:1500" and "TS:REC:1234/2019" in doc.alias and doc.fija_doctrina
 
     g = DoctrineGraph(":memory:")
-    ruling_chunk = Document(
-        page_content=sentencia.doctrina, metadata={**sidecar, "title": "STS 3-6-2020", "source_file": "ts/a.html"}
+    ruling_chunk = FragmentoRecuperado(
+        texto=sentencia.doctrina, metadatos={**sidecar, "title": "STS 3-6-2020", "source_file": "ts/a.html"}
     )
     build_graph([OLD, ruling_chunk], g)
     assert g.vigencia("DGT:V1234-19").estado == "superada"

@@ -1,8 +1,10 @@
-// Composer: an auto-growing text box. Enter sends, Shift+Enter adds a line;
-// while a turn is running the send button becomes a stop button.
+// Composer: GitHub's new-comment form. A text box that grows (Enter sends, Shift+Enter adds a line) and a
+// footer with the hint and the primary button; while a turn is running the button stops it.
 
-import { ArrowUp, Square } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+
+import { Button, Textarea } from "../ui";
+import { PaperAirplaneIcon, SquareFillIcon } from "../ui/iconos";
 
 interface ComposerProps {
   onSubmit: (text: string) => void;
@@ -13,7 +15,7 @@ interface ComposerProps {
   initialValue?: string;
 }
 
-const MAX_HEIGHT_PX = 180;
+const MAX_HEIGHT_PX = 220;
 
 export function Composer({ onSubmit, onStop, busy, initialValue = "" }: ComposerProps) {
   const [value, setValue] = useState(initialValue);
@@ -38,17 +40,20 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
   }
 
   return (
-    <div>
-      <form
-        className="flex items-end gap-2 rounded-2xl border border-line bg-surface py-2 pl-4 pr-2 shadow-card transition focus-within:border-primary"
-        onSubmit={(e) => {
-          e.preventDefault();
-          submit();
-        }}
-      >
-        <textarea
+    <form
+      aria-label="Nueva consulta"
+      className="rounded-medium border border-border-default bg-canvas-default"
+      onSubmit={(e) => {
+        e.preventDefault();
+        submit();
+      }}
+    >
+      <div className="p-2">
+        <Textarea
           ref={ref}
-          rows={1}
+          block
+          rows={2}
+          resize="none"
           value={value}
           onChange={(e) => setValue(e.target.value)}
           onKeyDown={(e) => {
@@ -59,33 +64,25 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
           }}
           placeholder="Escribe tu consulta fiscal…"
           aria-label="Escribe tu consulta"
-          className="max-h-[180px] flex-1 resize-none self-center bg-transparent py-1.5 text-[16px] leading-snug sm:text-[15px] text-ink placeholder:text-muted focus:outline-none"
+          aria-describedby="composer-ayuda"
+          style={{ maxHeight: MAX_HEIGHT_PX }}
         />
+      </div>
+      <div className="flex items-center gap-2 px-2 pb-2">
+        <p id="composer-ayuda" className="m-0 min-w-0 flex-1 text-xs text-fg-muted">
+          <span className="hidden sm:inline">Intro para enviar · Mayús + Intro para salto de línea · </span>
+          Puede equivocarse: contrasta lo importante con un profesional.
+        </p>
         {busy ? (
-          <button
-            type="button"
-            onClick={onStop}
-            aria-label="Detener la respuesta"
-            title="Detener"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:opacity-80"
-          >
-            <Square size={13} fill="currentColor" />
-          </button>
+          <Button type="button" onClick={onStop} leadingVisual={SquareFillIcon}>
+            Detener
+          </Button>
         ) : (
-          <button
-            type="submit"
-            disabled={!value.trim()}
-            aria-label="Enviar"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
-          >
-            <ArrowUp size={18} />
-          </button>
+          <Button type="submit" variant="primary" disabled={!value.trim()} leadingVisual={PaperAirplaneIcon}>
+            Preguntar
+          </Button>
         )}
-      </form>
-      <p className="mt-2 text-center text-[11.5px] text-muted">
-        <span className="hidden sm:inline">Intro para enviar · Mayús + Intro para salto de línea · </span>
-        Puede equivocarse: contrasta lo importante con un profesional.
-      </p>
-    </div>
+      </div>
+    </form>
   );
 }

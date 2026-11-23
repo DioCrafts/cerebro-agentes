@@ -14,8 +14,9 @@ from pathlib import Path
 import sys
 import types
 
-from langchain_core.documents import Document
 import pytest
+
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 # --------------------------------------------------------------------------- #
 # Stub helpers
@@ -116,16 +117,16 @@ def test_clean_output_empty_input_returns_empty() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def test_contextualize_prepends_prefix_to_page_content(stub_mlx_lm) -> None:
+def test_contextualize_prepends_prefix_to_texto(stub_mlx_lm) -> None:
     from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     _, model_dir = stub_mlx_lm
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
 
     docs = [
-        Document(
-            page_content="El plazo es de 30 días hábiles.",
-            metadata={"title": "Modelo 651 ISD donaciones", "section": "Plazos"},
+        FragmentoRecuperado(
+            texto="El plazo es de 30 días hábiles.",
+            metadatos={"title": "Modelo 651 ISD donaciones", "section": "Plazos"},
         )
     ]
 
@@ -135,11 +136,11 @@ def test_contextualize_prepends_prefix_to_page_content(stub_mlx_lm) -> None:
     new = out[0]
     # The default fake generator returns a Beckham/IRPF prefix; the wrapper
     # prepends it with a "[Contexto: ...]" marker for auditability.
-    assert "[Contexto:" in new.page_content
-    assert new.page_content.endswith("El plazo es de 30 días hábiles.")
+    assert "[Contexto:" in new.texto
+    assert new.texto.endswith("El plazo es de 30 días hábiles.")
     # Original metadata preserved + ``contextual_prefix`` recorded.
-    assert new.metadata["title"] == "Modelo 651 ISD donaciones"
-    assert "contextual_prefix" in new.metadata
+    assert new.metadatos["title"] == "Modelo 651 ISD donaciones"
+    assert "contextual_prefix" in new.metadatos
 
 
 def test_contextualize_passes_through_on_generator_error(stub_mlx_lm) -> None:
@@ -156,14 +157,14 @@ def test_contextualize_passes_through_on_generator_error(stub_mlx_lm) -> None:
     from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
-    docs = [Document(page_content="x", metadata={"title": "t"})]
+    docs = [FragmentoRecuperado(texto="x", metadatos={"title": "t"})]
 
     out = ctx.contextualize(docs)
 
     # Pass-through — content unchanged, no prefix.
     assert len(out) == 1
-    assert out[0].page_content == "x"
-    assert "contextual_prefix" not in out[0].metadata
+    assert out[0].texto == "x"
+    assert "contextual_prefix" not in out[0].metadatos
 
 
 def test_contextualize_empty_generator_output_passes_through(stub_mlx_lm) -> None:
@@ -173,10 +174,10 @@ def test_contextualize_empty_generator_output_passes_through(stub_mlx_lm) -> Non
     from asistente.conocimiento.processor.contextualizer import MLXContextualizer
 
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
-    docs = [Document(page_content="x", metadata={"title": "t"})]
+    docs = [FragmentoRecuperado(texto="x", metadatos={"title": "t"})]
 
     out = ctx.contextualize(docs)
-    assert out[0].page_content == "x"
+    assert out[0].texto == "x"
 
 
 def test_missing_model_path_raises(stub_mlx_lm, tmp_path: Path) -> None:
@@ -194,7 +195,7 @@ def test_thinking_disabled_in_chat_template(stub_mlx_lm) -> None:
 
     _, model_dir = stub_mlx_lm
     ctx = MLXContextualizer(model_path=model_dir, max_tokens=80)
-    ctx.contextualize([Document(page_content="x", metadata={"title": "t"})])
+    ctx.contextualize([FragmentoRecuperado(texto="x", metadatos={"title": "t"})])
 
     template_call = ctx._tokenizer.calls[0]
     assert template_call["enable_thinking"] is False

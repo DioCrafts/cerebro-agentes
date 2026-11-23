@@ -353,12 +353,15 @@ def _categoria(facts: dict[str, Any]) -> str:
 # tag → does this profile belong to the group? (the reasons shown are in VOCABULARIO)
 CRITERIOS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "todos": lambda f: True,
-    "asalariados": lambda f: _categoria(f) == "asalariado"
-    or (_hay(f, "rendimiento_trabajo_bruto") and _categoria(f) != "pensionista"),
-    "autonomos": lambda f: f.get("alta_actividad_economica") is True
-    or _categoria(f) == "autonomo"
-    or f.get("regimen_cotizacion") == "RETA"
-    or _hay(f, "rendimiento_actividad_neto"),
+    "asalariados": lambda f: (
+        _categoria(f) == "asalariado" or (_hay(f, "rendimiento_trabajo_bruto") and _categoria(f) != "pensionista")
+    ),
+    "autonomos": lambda f: (
+        f.get("alta_actividad_economica") is True
+        or _categoria(f) == "autonomo"
+        or f.get("regimen_cotizacion") == "RETA"
+        or _hay(f, "rendimiento_actividad_neto")
+    ),
     "pensionistas": lambda f: _categoria(f) == "pensionista",
     "arrendadores": lambda f: _hay(f, "rendimiento_alquiler_neto", "rendimiento_alquiler_vivienda_sin_reducir"),
     "inquilinos": lambda f: _hay(f, "alquiler_vivienda_habitual"),
@@ -370,8 +373,9 @@ CRITERIOS: dict[str, Callable[[dict[str, Any]], bool]] = {
     "planes_de_pensiones": lambda f: _hay(f, "aportacion_plan_pensiones", "contribucion_empresa_plan_pensiones"),
     "bienes_en_el_extranjero": lambda f: f.get("bienes_en_el_extranjero") is True,
     # Nobody unless a fact says so.
-    "no_residentes": lambda f: isinstance(f.get("residencia_fiscal"), str)
-    and f["residencia_fiscal"].strip().upper() not in ("", "ES"),
+    "no_residentes": lambda f: (
+        isinstance(f.get("residencia_fiscal"), str) and f["residencia_fiscal"].strip().upper() not in ("", "ES")
+    ),
     "sociedades": lambda f: _categoria(f) == "sociedad",
 }
 
@@ -514,7 +518,7 @@ def preparar_eventos(eventos: Iterable[Mapping[str, Any]], html_por_boe_id: Html
         claves = [clave_evento(evento) for evento in grupo]
         desde = min(d for e in grupo if (d := parse_fecha_actualizacion(e.get("previous_actualizacion"))) is not None)
         ultimo = grupo[-1]
-        html = html_por_boe_id(boe_id) if callable(html_por_boe_id) else html_por_boe_id.get(boe_id)
+        html = html_por_boe_id.get(boe_id) if isinstance(html_por_boe_id, Mapping) else html_por_boe_id(boe_id)
         if not html:
             out.sin_html.extend(claves)
             continue

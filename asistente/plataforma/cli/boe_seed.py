@@ -19,24 +19,21 @@ import json
 import logging
 from pathlib import Path
 import time
-from urllib.error import HTTPError, URLError
-import urllib.request
 
 import click
+import httpx
 
-from asistente.conocimiento import formatos
+from asistente.conocimiento.boe import cliente as boe
 
 logger = logging.getLogger(__name__)
 
 
-_BOE_CONSOLIDATED_URL = "https://www.boe.es/buscar/act.php?id={id}"
 # Resource-relative default so the CLI can be run from anywhere, and so the
 # catalog never collides with `asistente.nucleo.decision.rules.load_rules_from_directory`
 # which globs every JSON in the top-level ``rules/`` folder.
 _DEFAULT_CATALOG = Path(__file__).resolve().parent / "boe_seed_catalog.json"
 _DEFAULT_OUTPUT = Path("./data/html")
 _DEFAULT_SUBDIR = "boe-seed"
-_USER_AGENT = "hacienda-asesor/0.1 (RAG corpus refresh; contacto@hacienda-asesor.local)"
 
 
 def load_catalog(catalog_path: Path) -> list[dict[str, str]]:
@@ -57,26 +54,20 @@ def load_catalog(catalog_path: Path) -> list[dict[str, str]]:
     return entries
 
 
-def fetch_document(boe_id: str, target_path: Path, retries: int = 2, backoff_s: float = 1.0) -> int:
-    """Download a single consolidated BOE document; return bytes written."""
-    url = _BOE_CONSOLIDATED_URL.format(id=boe_id)
-    last_exc: Exception | None = None
-    for attempt in range(retries + 1):
-        req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as response:
-                body = response.read()
-                target_path.parent.mkdir(parents=True, exist_ok=True)
-                target_path.write_bytes(body)
-                # Format watch (never raises): whatever arrives is saved; is it the norm that was asked for?
-                formatos.observar("boe_seed", body, contexto=boe_id)
-                return len(body)
-        except (HTTPError, URLError, TimeoutError) as exc:
-            last_exc = exc
-            logger.warning("Attempt %d for %s failed: %s", attempt + 1, boe_id, exc)
-            if attempt < retries:
-                time.sleep(backoff_s * (attempt + 1))
-    raise click.ClickException(f"Could not fetch {boe_id}: {last_exc}")
+def fetch_document(boe_id: str, target_path: Path) -> int:
+    """Download a single consolidated BOE document; return bytes written.
+
+    Retries and pauses are the shared HTTP client's (:mod:`asistente.plataforma.http`).
+    """
+    try:
+        # Format watch (never raises): whatever arrives is saved; is it the norm that was asked for?
+        body = boe.texto_consolidado(boe_id, timeout=30, observar="boe_seed")
+    except httpx.HTTPError as exc:
+        logger.warning("Download of %s failed: %s", boe_id, exc)
+        raise click.ClickException(f"Could not fetch {boe_id}: {exc}") from exc
+    target_path.parent.mkdir(parents=True, exist_ok=True)
+    target_path.write_bytes(body)
+    return len(body)
 
 
 @click.command()

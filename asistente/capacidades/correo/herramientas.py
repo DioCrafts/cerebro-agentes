@@ -89,7 +89,7 @@ def correo_buscar(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerr
     texto = normalizar(str(args.get("texto") or ""))
     try:
         limite = max(1, min(MAX_RESULTADOS, int(args.get("limite") or 20)))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return _error("«limite» debe ser un número.")
     vigentes = decisiones.vigentes(almacen.ruta_db(), ctx.case_id, ctx.hoy)
     encontrados = []

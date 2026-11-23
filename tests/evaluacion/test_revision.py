@@ -278,7 +278,12 @@ def test_without_consent_nothing_is_detected(env: Entornito) -> None:
 def _candidato(pregunta: str, tipo: str, *, case_id: str = "c", origen: str = "senal", respuesta: str | None = None):  # type: ignore[no-untyped-def]
     contenido = revision.ContenidoCandidato(pregunta=pregunta, respuesta=respuesta)
     return revision.nuevo_candidato(
-        contenido, tipo=tipo, origen=origen, case_id=case_id, user_id=None, referencia_turno=pregunta + case_id  # type: ignore[arg-type]
+        contenido,
+        tipo=tipo,
+        origen=origen,
+        case_id=case_id,
+        user_id=None,
+        referencia_turno=pregunta + case_id,  # type: ignore[arg-type]
     )
 
 

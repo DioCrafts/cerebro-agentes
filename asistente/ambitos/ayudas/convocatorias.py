@@ -372,9 +372,12 @@ def extraer_plazos(doc: Documento, publicacion: date) -> list[Plazo]:
                 if anio is None:
                     anio = publicacion.year + (1 if mes < publicacion.month else 0)
                 try:
-                    encontrados.append(("fecha", date(anio, mes, dia), False))
+                    fecha = date(anio, mes, dia)
                 except ValueError:
                     continue
+                if match.group(0).startswith("antes"):
+                    fecha -= timedelta(days=1)  # «antes del 15» ends on the 14th
+                encontrados.append(("fecha", fecha, False))
             if desde_publicacion:
                 for match in _RE_DIAS.finditer(p):
                     n = numero_texto(match.group(1))
@@ -629,7 +632,7 @@ def aceptar_respuesta_llm(
     if _compacto(cita) not in _compacto(texto):
         return None
     temas_validos = [t for t in temas if isinstance(t, str) and t in TEMAS]
-    return destinatario, temas_validos, _compacto(cita)  # type: ignore[return-value]
+    return destinatario, temas_validos, _compacto(cita)
 
 
 # --- The detected call -----------------------------------------------------------

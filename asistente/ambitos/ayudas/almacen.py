@@ -53,7 +53,7 @@ def cargar(dir_: Path | None = None) -> Almacen:
         return Almacen()
     try:
         return Almacen.model_validate_json(ruta.read_text(encoding="utf-8"))
-    except (ValidationError, ValueError, OSError):
+    except ValidationError, ValueError, OSError:
         # A damaged store is rebuilt from the BOE on the next run rather than breaking the tools.
         return Almacen()
 

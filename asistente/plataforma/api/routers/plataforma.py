@@ -7,7 +7,7 @@ operator's (aggregates only: migrations, worker heartbeats, scheduled jobs; no c
 
 # No ``from __future__ import annotations``: FastAPI must see the ``Depends`` of a provider that is local
 # to ``build_router``.
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import logging
 from typing import Annotated, Any
@@ -29,7 +29,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         return str(proveedor().db_path)
 
     @asynccontextmanager
-    async def ciclo_de_vida(app: Any) -> AsyncIterator[None]:
+    async def ciclo_de_vida(app: Any) -> AsyncGenerator[None]:
         if automaticas():
             try:
                 informe = migrar(_ruta(app))

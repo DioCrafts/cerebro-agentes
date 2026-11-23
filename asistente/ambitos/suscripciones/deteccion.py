@@ -36,14 +36,16 @@ from asistente.ambitos.suscripciones.modelos import (
     CambioPrecio,
     Duplicado,
     Extracto,
+    Medio,
     Movimiento,
+    Periodicidad,
     PruebaConvertida,
     ServicioGuardado,
 )
 from asistente.ambitos.suscripciones.normalizacion import Identidad, identificar
 
 # periodicity -> (nominal days, tolerance in days, months to add for the next charge)
-PERIODOS: dict[str, tuple[float, float, int]] = {
+PERIODOS: dict[Periodicidad, tuple[float, float, int]] = {
     "semanal": (7.0, 2.0, 0),
     "mensual": (30.44, 5.0, 1),
     "bimestral": (60.9, 8.0, 2),
@@ -81,7 +83,7 @@ class Cargo:
 class _Serie:
     identidad: Identidad
     paypal: bool
-    periodicidad: str
+    periodicidad: Periodicidad
     cargos: list[Cargo]
     regularidad: float
     variable: bool = False
@@ -112,7 +114,7 @@ class Analisis:
 # --- Periodicity ----------------------------------------------------------------------------------
 
 
-def ajustar_periodo(fechas: Sequence[date]) -> tuple[str, float] | None:
+def ajustar_periodo(fechas: Sequence[date]) -> tuple[Periodicidad, float] | None:
     """(periodicity, regularity 0..1) of a sorted list of dates, or None if not periodic."""
     intervalos = [(b - a).days for a, b in zip(fechas, fechas[1:], strict=False)]
     if not intervalos:
@@ -139,7 +141,7 @@ def sumar_meses(base: date, meses: int, dia: int | None = None) -> date:
     return date(ano, mes, min(dia or base.day, ultimo))
 
 
-def proxima_fecha(periodicidad: str, fechas: Sequence[date]) -> date:
+def proxima_fecha(periodicidad: Periodicidad, fechas: Sequence[date]) -> date:
     ultima = fechas[-1]
     _, _, meses = PERIODOS[periodicidad]
     if meses == 0:
@@ -188,7 +190,7 @@ def _clusters(cargos: list[Cargo]) -> list[list[Cargo]]:
     return grupos
 
 
-def _cerca(a: date, b: date, periodicidad: str) -> bool:
+def _cerca(a: date, b: date, periodicidad: Periodicidad) -> bool:
     dias, tolerancia, _ = PERIODOS[periodicidad]
     return abs((b - a).days - dias) <= tolerancia
 
@@ -275,7 +277,7 @@ def _series_del_grupo(
     return series
 
 
-def _encaja(a: date, b: date, periodicidad: str) -> bool:
+def _encaja(a: date, b: date, periodicidad: Periodicidad) -> bool:
     """``b`` follows ``a`` after one period, or two (one charge missing)."""
     dias, tolerancia, _ = PERIODOS[periodicidad]
     return any(abs((b - a).days - k * dias) <= tolerancia * k for k in (1, 2))
@@ -347,12 +349,12 @@ def nivel_confianza(confianza: Decimal) -> str:
     return "alta" if confianza >= Decimal("0.80") else "media" if confianza >= Decimal("0.60") else "baja"
 
 
-def _identificador(clave: str, paypal: bool, periodicidad: str, ordinal: int) -> str:
+def _identificador(clave: str, paypal: bool, periodicidad: Periodicidad, ordinal: int) -> str:
     base = f"{clave}|{'paypal' if paypal else ''}|{periodicidad}|{ordinal}"
     return "srv-" + hashlib.sha256(base.encode("utf-8")).hexdigest()[:10]
 
 
-def _medio(serie: _Serie) -> str:
+def _medio(serie: _Serie) -> Medio:
     medios = Counter(c.movimiento.medio for c in serie.cargos)
     return medios.most_common(1)[0][0]
 
@@ -364,7 +366,8 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
     if not movimientos or desde is None or hasta is None:
         return Analisis((), desde, hasta, 0, 0)
     span = (hasta - desde).days
-    grupos: dict[tuple[str, bool], tuple[Identidad, list[Cargo]]] = {}
+    # Grouped by currency too: a charge in USD is never averaged or totalled with charges in EUR.
+    grupos: dict[tuple[str, bool, str], tuple[Identidad, list[Cargo]]] = {}
     num_cargos = 0
     for movimiento in movimientos:
         if movimiento.importe >= 0 or movimiento.medio == "efectivo":
@@ -374,17 +377,21 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
         if not identidad.recurrente:
             continue
         paypal = identidad.canal == "paypal"
-        grupos.setdefault((identidad.clave, paypal), (identidad, []))[1].append(
-            Cargo(movimiento.fecha, (-movimiento.importe).quantize(CENTIMO), movimiento)
+        grupos.setdefault((identidad.clave, paypal, movimiento.divisa.upper()), (identidad, []))[1].append(
+            Cargo(movimiento.fecha, (-movimiento.importe).quantize(CENTIMO, rounding=ROUND_HALF_UP), movimiento)
         )
     series: list[_Serie] = []
-    for (_, paypal), (identidad, cargos) in sorted(grupos.items()):
+    for (_, paypal, _), (identidad, cargos) in sorted(grupos.items()):
         series.extend(_series_del_grupo(identidad, paypal, cargos, span, hasta))
 
     detectados: list[ServicioDetectado] = []
     ordinales: Counter[tuple[str, bool, str]] = Counter()
-    for serie in sorted(series, key=lambda s: (s.identidad.clave, s.paypal, s.periodicidad, s.cargos[0].importe)):
-        clave = (serie.identidad.clave, serie.paypal, serie.periodicidad)
+    for serie in sorted(
+        series, key=lambda s: (s.identidad.clave, s.paypal, _divisa(s), s.periodicidad, s.cargos[0].importe)
+    ):
+        divisa = _divisa(serie)
+        # EUR keeps the historical ids; another currency gets its own, so it never overwrites the EUR one.
+        clave = (serie.identidad.clave + ("" if divisa == "EUR" else f"|{divisa}"), serie.paypal, serie.periodicidad)
         identificador = _identificador(*clave, ordinales[clave])
         ordinales[clave] += 1
         detectados.append(_a_servicio(serie, identificador, hasta, usar_etiquetador))
@@ -393,11 +400,21 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
     return Analisis(tuple(detectados), desde, hasta, len(movimientos), num_cargos)
 
 
+def _divisa(serie: _Serie) -> str:
+    return serie.cargos[0].movimiento.divisa.upper()
+
+
+def sigue_activa(periodicidad: Periodicidad, ultima: date, referencia: date) -> bool:
+    """Whether a service last charged on ``ultima`` still counts as active on ``referencia``: at most
+    one and a half periods (plus the period's tolerance) without a charge."""
+    dias, tolerancia, _ = PERIODOS[periodicidad]
+    return (referencia - ultima).days <= dias * 1.5 + tolerancia
+
+
 def _a_servicio(serie: _Serie, identificador: str, hasta: date, usar_etiquetador: bool) -> ServicioDetectado:
     cargos = serie.cargos
     fechas = [c.fecha for c in cargos]
-    dias, tolerancia, _ = PERIODOS[serie.periodicidad]
-    activa = (hasta - fechas[-1]).days <= dias * 1.5 + tolerancia
+    activa = sigue_activa(serie.periodicidad, fechas[-1], hasta)
     cambios, atipicos = ([], 0) if serie.variable else cambios_de_precio(cargos)
     if not serie.variable and len(cambios) + atipicos > max(2, len(cargos) * 0.3):
         serie.variable, cambios = True, []
@@ -442,13 +459,14 @@ def _a_servicio(serie: _Serie, identificador: str, hasta: date, usar_etiquetador
     guardado = ServicioGuardado(
         id=identificador,
         etiqueta=identidad.etiqueta + (" (PayPal)" if serie.paypal else ""),
-        categoria=categoria,  # type: ignore[arg-type]
-        categoria_origen=origen,  # type: ignore[arg-type]
-        sector=identidad.sector,  # type: ignore[arg-type]
-        periodicidad=serie.periodicidad,  # type: ignore[arg-type]
+        categoria=categoria,
+        categoria_origen=origen,
+        sector=identidad.sector,
+        periodicidad=serie.periodicidad,
         importe=importe,
+        divisa=_divisa(serie),
         importe_variable=serie.variable,
-        medio=_medio(serie),  # type: ignore[arg-type]
+        medio=_medio(serie),
         primera_fecha=fechas[0],
         ultima_fecha=fechas[-1],
         proxima_fecha=proxima_fecha(serie.periodicidad, fechas) if activa else None,

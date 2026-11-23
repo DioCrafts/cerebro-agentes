@@ -108,7 +108,7 @@ def refinar(mensaje: Mensaje, actual: Clasificacion, *, permitido: bool, proveed
         logger.warning("Optional mail classifier failed; keeping the rules' category")
         return actual
     categoria = respuesta.get("categoria") if isinstance(respuesta, dict) else None
-    if categoria not in PERMITIDAS or categoria == "otro":
+    if not isinstance(categoria, str) or categoria not in PERMITIDAS or categoria == "otro":
         return actual
     campos: list[Extraido] = []
     for crudo in respuesta.get("campos") or []:

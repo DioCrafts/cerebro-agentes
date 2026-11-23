@@ -590,7 +590,7 @@ def _avisos(datos: Path, ejercicio: int = 2026) -> list[str]:
         bases,
         conjunta=False,
         norma="ley sintética",
-        linea=lambda c, i, r: lineas.append((c, i, r)),
+        linea=lambda c, i, r, **_: lineas.append((c, i, r)),
         aviso=avisos.append,
     )
     avisos.append(f"total {sum(i for _, i, _ in lineas)}")
@@ -629,7 +629,7 @@ def test_apply_writes_the_touched_years_marks_provenance_and_confirm_clears_it(d
         autonomicas.Bases(*([D("20000")] * 7), base_imponible_ahorro=D(0), resto_unidad_familiar=D(0)),
         conjunta=False,
         norma="ley",
-        linea=lambda *a: None,
+        linea=lambda *a, **k: None,
         aviso=rechazo.append,
     )
     assert any("no aplicada" in a for a in rechazo) and any("pendiente de revisión humana" in a for a in rechazo)

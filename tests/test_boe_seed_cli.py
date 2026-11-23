@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 
 from click.testing import CliRunner
+import httpx
 import pytest
 
 from asistente.plataforma.cli import boe_seed
@@ -55,30 +56,10 @@ def test_boe_seed_dry_run_lists_targets(catalog_path: Path, tmp_path: Path):
     assert not (tmp_path / "out" / "2026-01-15" / "boe-test").exists()
 
 
-def test_boe_seed_real_run_writes_files_and_manifest(
-    catalog_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
-    captured_urls: list[str] = []
-
-    class _FakeResponse:
-        def __init__(self, body: bytes) -> None:
-            self._body = body
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def read(self) -> bytes:
-            return self._body
-
-    def fake_urlopen(req, timeout):  # noqa: ANN001
-        captured_urls.append(req.full_url)
-        body = f"<html><title>{req.full_url}</title></html>".encode()
-        return _FakeResponse(body)
-
-    monkeypatch.setattr(boe_seed.urllib.request, "urlopen", fake_urlopen)
+def test_boe_seed_real_run_writes_files_and_manifest(catalog_path: Path, tmp_path: Path, red_falsa):
+    vistas = red_falsa(
+        lambda request: httpx.Response(200, content=f"<html><title>{request.url}</title></html>".encode())
+    )
 
     runner = CliRunner()
     result = runner.invoke(
@@ -110,30 +91,19 @@ def test_boe_seed_real_run_writes_files_and_manifest(
     # We must call BOE's act.php (consolidated) endpoint, not the original
     # diario_boe one — that contract is what guarantees the indexed text
     # reflects current law.
-    assert all("buscar/act.php?id=" in url for url in captured_urls)
+    assert vistas and all("buscar/act.php?id=" in str(r.url) for r in vistas)
 
 
-def test_boe_seed_retries_on_transient_failure(catalog_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+def test_boe_seed_retries_on_transient_failure(tmp_path: Path, red_falsa):
     attempts: list[int] = []
 
-    class _FakeResponse:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def read(self) -> bytes:
-            return b"<html><title>ok</title></html>"
-
-    def flaky_urlopen(req, timeout):  # noqa: ANN001
+    def responder(request: httpx.Request):
         attempts.append(1)
         if len(attempts) == 1:
-            raise TimeoutError("simulated network blip")
-        return _FakeResponse()
+            return httpx.ReadTimeout("simulated network blip")
+        return httpx.Response(200, content=b"<html><title>ok</title></html>")
 
-    monkeypatch.setattr(boe_seed.urllib.request, "urlopen", flaky_urlopen)
-    monkeypatch.setattr(boe_seed.time, "sleep", lambda _s: None)
+    red_falsa(responder)
 
     catalog_one = tmp_path / "single.json"
     catalog_one.write_text(
@@ -164,28 +134,15 @@ def test_boe_seed_retries_on_transient_failure(catalog_path: Path, tmp_path: Pat
     assert len(attempts) == 2, "expected one retry on the transient TimeoutError"
 
 
-def test_boe_seed_one_bad_id_does_not_abort_the_run(
-    catalog_path: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-):
+def test_boe_seed_one_bad_id_does_not_abort_the_run(catalog_path: Path, tmp_path: Path, red_falsa):
     """A withdrawn ID used to abort the loop before the manifest was written."""
 
-    class _FakeResponse:
-        def __enter__(self):
-            return self
+    def responder(request: httpx.Request):
+        if str(request.url).endswith("BOE-X-0001"):
+            return httpx.ConnectError("gone")
+        return httpx.Response(200, content=b"<html><title>ok</title></html>")
 
-        def __exit__(self, exc_type, exc, tb):
-            return None
-
-        def read(self) -> bytes:
-            return b"<html><title>ok</title></html>"
-
-    def urlopen(req, timeout):  # noqa: ANN001
-        if req.full_url.endswith("BOE-X-0001"):
-            raise boe_seed.URLError("gone")
-        return _FakeResponse()
-
-    monkeypatch.setattr(boe_seed.urllib.request, "urlopen", urlopen)
-    monkeypatch.setattr(boe_seed.time, "sleep", lambda _s: None)
+    red_falsa(responder)
 
     result = CliRunner().invoke(
         boe_seed.cli,

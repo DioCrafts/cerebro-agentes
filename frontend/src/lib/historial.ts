@@ -15,12 +15,12 @@ export interface HistoryMessage {
 export function trimHistory<T extends HistoryMessage>(history: readonly T[]): T[] {
   const kept: T[] = [];
   let total = 0;
-  for (let i = history.length - 1; i >= 0; i--) {
-    total += history[i].content.length;
+  for (const message of [...history].reverse()) {
+    total += message.content.length;
     if (kept.length >= MAX_HISTORY_MESSAGES || total > MAX_HISTORY_CHARS) break;
-    kept.push(history[i]);
+    kept.push(message);
   }
   kept.reverse();
-  while (kept.length > 0 && kept[0].role !== "user") kept.shift();
+  while (kept.length > 0 && kept[0]?.role !== "user") kept.shift();
   return kept;
 }

@@ -45,9 +45,13 @@ servicio.
 | Colaborador o PR desde un *fork* | Ejecutar código en CI | Leer secretos, escribir en el repositorio |
 | Quien obtiene el fichero SQLite o una copia | Leerlo todo | Todo |
 
-**Fronteras de confianza.** (1) Navegador ↔ API: la sesión es un *bearer token* en una cabecera
-(no hay *cookies*), así que CSRF no aplica; el token vive en `localStorage` y, por tanto, una XSS lo
-robaría. (2) API ↔ proveedor del modelo: lo que se envía y con qué consentimiento está en
+**Fronteras de confianza.** (1) Navegador ↔ API: la aplicación web lleva la sesión en la *cookie*
+`__Host-sesion` (`HttpOnly; Secure; SameSite=Strict; Path=/`), que su JavaScript no puede leer, así que
+una XSS no se lleva el token (aunque sí puede hacer peticiones mientras la página esté abierta). El
+servidor guarda solo el SHA-256 del token. Como la *cookie* viaja sola, una escritura autenticada por
+ella necesita además un `Origin` permitido o la cabecera `X-Requested-With`; si no, 403. Los clientes sin
+navegador siguen usando `Authorization: Bearer`, y solo ellos reciben el token en el cuerpo de
+`/auth/login` (una petición sin `Origin`). (2) API ↔ proveedor del modelo: lo que se envía y con qué consentimiento está en
 `docs/privacidad.md`. (3) Modelo ↔ herramientas: el modelo solo puede **leer**, **preparar** o
 proponer; una herramienta `efecto="actua"` nunca se ejecuta desde el modelo, solo se convierte en
 acción pendiente que confirma el dueño del expediente con su sesión (`POST /acciones/{id}/confirmar`).
@@ -80,7 +84,7 @@ usuarios se sostiene en todas las rutas probadas.
 | S-10 | media | **abierto** (producto) | El consentimiento «avisos por correo» envía los avisos del usuario al buzón o *webhook* **del operador** | `asistente/plataforma/cli/ops.py:85`, `proactive/entrega.py` |
 | S-11 | baja | corregido | Mensajes de error con el texto de la excepción | `api.py`, `routers/modulos.py`, `routers/consumo.py` |
 | S-12 | baja | corregido | `llm_usage` conservaba usuario y expediente tras borrar la cuenta y no estaba documentada | `asistente/plataforma/ops/consumo.py`, `routers/auth.py` |
-| S-13 | baja | corregido | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA | `.github/workflows/*.yml` |
+| S-13 | baja | corregido; ya no aplica | *Workflows* sin `permissions:` explícitos; acciones fijadas por etiqueta, no por SHA. Los *workflows* se eliminaron en noviembre de 2026 | `.github/workflows/*.yml` (eliminado) |
 | S-14 | media | corregido | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py`, `decision/fact_extractor.py` |
 | S-15 | media | corregido | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api/security.py`, `api.py`, `frontend/src/lib/historial.ts` |
 | S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `asistente/nucleo/agent/procedencia.py`, `agent/tools.py` |
@@ -238,7 +242,7 @@ anonimizaba con la cuenta y no figuraba en `docs/privacidad.md`. **Corrección**
 `anonimizar_consumo` deja las filas (los totales del operador) sin usuario ni expediente al
 eliminar la cuenta; tabla documentada. **Prueba**: `test_deleting_the_account_detaches_the_usage_log`.
 
-### S-13 (baja, corregido): *workflows* de GitHub
+### S-13 (baja, corregido; ya no aplica): *workflows* de GitHub
 
 `ci.yml`, `critical-regression.yml`, `evaluacion.yml` y `nightly-eval.yml` no declaraban
 `permissions:`, así que el `GITHUB_TOKEN` tenía los permisos por defecto del repositorio (de escritura
@@ -254,6 +258,11 @@ exacta con el mismo *commit*), no de memoria. Actualizarlas es ahora un cambio e
 con Dependabot para `github-actions`). **Prueba**: `tests/test_workflows_fijados.py` falla si una
 acción no está fijada por SHA con su versión.
 
+Ya no aplica. En noviembre de 2026 se eliminó `.github/workflows/` entero y, con él,
+`tests/test_workflows_fijados.py`. Las comprobaciones corren en local (`make quality`) y la vigilancia
+del BOE, en el worker (`docs/operacion.md`, apartado 4). Si vuelve un *workflow*, rigen las mismas
+reglas: `permissions:` explícitos y acciones fijadas por SHA.
+
 ### S-14 (media, corregido): llamadas al modelo sin medir
 
 `POST /qa` construye la cadena de LangChain con `ChatOpenAI` (`llm/chain.py:261`), que no pasa por
@@ -263,11 +272,11 @@ Lo mismo con `OpenAIFactExtractor` (`decision/fact_extractor.py:423`), que se us
 `DECISION_EXTRACTOR=openai` o solo hay `OPENAI_API_KEY`. **Propuesta**: retirar `/qa` cuando
 `AUTH_MODE=required` (o del todo) y pasar el extractor de OpenAI por el proveedor medido
 (`_provider_extractor`). **Corrección**: con `AUTH_MODE=required`, `POST /qa` responde 404 a todos
-(`require_qa_legado`, antes de mirar la clave, la sesión o construir la cadena); sin cuentas sigue
-como estaba. `default_fact_extractor` ya no devuelve nunca `OpenAIFactExtractor`: con
+antes de mirar la clave, la sesión o construir la cadena. En noviembre de 2026 se retiró del todo: `/qa`,
+la cadena y `langchain-openai` ya no existen, y `/agent` es la única vía de preguntas libres. `default_fact_extractor` ya no devuelve nunca `OpenAIFactExtractor`: con
 `DECISION_EXTRACTOR=openai` o solo `OPENAI_API_KEY` usa `ProviderFactExtractor` sobre el proveedor
 OpenAI envuelto en `medir(…, "hechos")` (registro de consumo y presupuestos), con el modelo propio del
-extractor (`DECISION_EXTRACTOR_MODEL` u `OPENAI_MODEL`). La clase queda para uso directo. **Pruebas**:
+extractor (`DECISION_EXTRACTOR_MODEL` u `OPENAI_AGENT_MODEL`). La clase queda para uso directo. **Pruebas**:
 `test_qa_is_gone_with_accounts_even_for_a_session_and_never_builds_the_chain`,
 `test_default_extractor_follows_llm_provider`.
 
@@ -329,7 +338,7 @@ un correo leído por el especialista de correo intenta que el asesor central reg
 
 ### S-17 (baja, corregido): pickle de FAISS en el indexador
 
-`agent/search.py` y `llm/chain.py` exigen `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
+`agent/search.py` exige `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
 el indexador incremental (`processor/document_loader.py:869`) no. Lo ejecuta el operador sobre su
 propio directorio de salida, así que solo es explotable si ese directorio lo puede escribir otro.
 **Corrección**: la misma guarda que `agent/search.py`; sin `FAISS_TRUSTED_INDEX=true` una ejecución
@@ -387,7 +396,7 @@ inventario de rutas.
 ## Endurecimiento: lo que tiene que hacer el operador
 
 1. **`AUTH_MODE=required`** siempre que haya más de una persona. Con `off` no hay control de acceso.
-   No exponer la interfaz Streamlit (`asistente/plataforma/ui`) ni los CLI.
+   No exponer los CLI.
 2. **Proxy inverso con TLS** (nginx, Caddy…) delante de uvicorn, que escuche solo en `127.0.0.1`:
    ```
    uvicorn asistente.plataforma.api.api:app --host 127.0.0.1 --port 8000 \
@@ -407,7 +416,8 @@ inventario de rutas.
    Permissions-Policy: camera=(), microphone=(), geolocation=()
    ```
    El *hash* es el del *script* del tema de `frontend/index.html`: si ese *script* cambia, hay que
-   recalcularlo. La política importa especialmente porque el token de sesión está en `localStorage`.
+   recalcularlo. Con la sesión en una *cookie* `HttpOnly`, una XSS ya no roba el token, pero puede usar la
+   sesión desde la página: la política sigue siendo la primera defensa.
 5. **Límites en el proxy**: `client_max_body_size 32m` (coherente con `API_MAX_BODY_BYTES`),
    limitación de peticiones por IP en `/api/auth/` y en las rutas del asesor, y tiempos de espera
    largos (y sin *buffering*) solo para `/api/agent/stream`. `/api/docs`, `/api/redoc` y
@@ -437,10 +447,10 @@ inventario de rutas.
     identificador del expediente): retención corta y acceso restringido.
 11. **Dependencias**: las versiones están fijadas en `pyproject.toml`/`uv.lock` y `package-lock.json`.
     Esta revisión no ha podido consultar bases de vulnerabilidades (sin red); hay que pasar
-    `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y en
-    CI de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
-12. **CI**: las acciones ya van fijadas por SHA (S-13); actualizarlas con revisión (Dependabot) y
-    restringir quién puede lanzar `workflow_dispatch`.
+    `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y
+    repetirlo de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
+12. No hay *workflows* de GitHub desde noviembre de 2026 (S-13). Si se añaden, fijar las acciones por
+    SHA y restringir quién puede lanzar `workflow_dispatch`.
 
 ## Lo que no se ha podido comprobar
 

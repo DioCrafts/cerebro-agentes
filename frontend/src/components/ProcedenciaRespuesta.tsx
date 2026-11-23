@@ -1,15 +1,19 @@
 // What the household brain did for one answer, in the user's terms:
-//   · «Consulté a: Hipoteca · Impuestos» — which specialists answered (and which could not);
+//   · «Consulté a: Hipoteca · Impuestos» — which specialists answered (and which could not), as Labels;
 //   · «¿De dónde sale cada cifra?» — every figure of the answer, whose it is and the source it was read from
-//     (the brain's figures gate attributed each one: a specialist's calculation, your own words, a cited source);
-//   · the live plan while the turn runs («Consulto a Hipoteca e Impuestos en paralelo», each one's progress).
+//     (the brain's figures gate attributed each one: a specialist's calculation, your own words, a cited source),
+//     in a folding Box;
+//   · the live plan while the turn runs («Consulto a Hipoteca e Impuestos en paralelo», each one's progress as a
+//     StateLabel).
 // Data: AgentResponse.cerebro (asistente/nucleo/cerebro/contrato.py -> InformeCerebro) and the brain's events.
-
-import { Calculator, CheckCircle2, ChevronDown, CircleDashed, Loader2, MessageSquareQuote, Network, ScrollText, TriangleAlert } from "lucide-react";
-import clsx from "clsx";
 
 import type { AtribucionCifraCerebro, Citation, InformeCerebro, ProgressEvent, ResumenInformeCerebro } from "../api";
 import type { ChatTurn } from "../lib/storage";
+import { Button, Label, Spinner } from "../ui";
+import type { Icon } from "../ui/iconos";
+import { AlertIcon, CheckCircleIcon, CircleIcon, CommentIcon, FileIcon, NumberIcon, PeopleIcon } from "../ui/iconos";
+import { DetallesCaja } from "./conversacion/DetallesCaja";
+import { EtiquetaEstado, type TonoEstado } from "./conversacion/EtiquetaEstado";
 
 /** A chat turn as kept in this browser, with the brain's report when the brain answered it. */
 export type TurnoConCerebro = ChatTurn & { cerebro?: InformeCerebro | null };
@@ -31,24 +35,25 @@ export function ConsultadosLinea({ cerebro }: { cerebro?: InformeCerebro | null 
   if (!cerebro || cerebro.informes.length === 0) return null;
   const unicos = nombres(cerebro.informes);
   return (
-    <p className="mt-2 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-[12.5px] text-muted">
-      <Network size={13} aria-hidden className="text-primary-dark" />
-      <span className="font-medium text-ink-soft">Consulté a:</span>
-      {unicos.map((informe, i) => (
-        <span key={informe.especialista} className="inline-flex items-center gap-1">
-          {i > 0 && <span aria-hidden>·</span>}
-          <span className={clsx(informe.estado !== "ok" && "text-risk-high-fg")}>
-            {informe.nombre}
-            {informe.estado !== "ok" && ` (${ESTADO_NO_OK[informe.estado] ?? informe.estado})`}
-          </span>
-        </span>
-      ))}
+    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-fg-muted">
+      <PeopleIcon size={12} />
+      <span className="font-semibold">Consulté a:</span>
+      <ul className="m-0 flex list-none flex-wrap gap-1 p-0" aria-label="Especialistas consultados">
+        {unicos.map((informe) => (
+          <li key={informe.especialista}>
+            <Label variant={informe.estado === "ok" ? "secondary" : "danger"}>
+              {informe.nombre}
+              {informe.estado !== "ok" && ` (${ESTADO_NO_OK[informe.estado] ?? informe.estado})`}
+            </Label>
+          </li>
+        ))}
+      </ul>
       {cerebro.revisiones_sintesis > 0 && (
-        <span className="ml-1 text-[12px]">
+        <span>
           · revisé la respuesta {cerebro.revisiones_sintesis === 1 ? "una vez" : `${cerebro.revisiones_sintesis} veces`} antes de enseñártela
         </span>
       )}
-    </p>
+    </div>
   );
 }
 
@@ -66,7 +71,7 @@ function filas(cerebro: InformeCerebro, citations: Citation[]): FilaProcedencia[
   const atribuciones: AtribucionCifraCerebro[] = cerebro.puerta?.atribuciones ?? [];
   const porClave = new Map(cerebro.informes.map((i) => [i.especialista, i.nombre]));
   const cifras = new Map(cerebro.informes.flatMap((i) => i.cifras.map((c) => [c.id, c] as const)));
-  const titulos = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id as string, c.title]));
+  const titulos = new Map(citations.filter((c) => c.fragment_id).map((c) => [c.fragment_id, c.title]));
   const vistos = new Set<string>();
   const salida: FilaProcedencia[] = [];
   for (const a of atribuciones) {
@@ -97,7 +102,7 @@ function filas(cerebro: InformeCerebro, citations: Citation[]): FilaProcedencia[
   return salida;
 }
 
-const ICONO = { calculo: Calculator, usuario: MessageSquareQuote, fuente: ScrollText } as const;
+const ICONO = { calculo: NumberIcon, usuario: CommentIcon, fuente: FileIcon } as const;
 
 /** «¿De dónde sale cada cifra?»: figure → who → source, collapsed by default. */
 export function ProcedenciaRespuesta({
@@ -113,44 +118,43 @@ export function ProcedenciaRespuesta({
   const lista = filas(cerebro, citations);
   if (lista.length === 0) return null;
   return (
-    <details className="group mt-3 rounded-lg border border-line bg-surface">
-      <summary className="flex cursor-pointer list-none items-center gap-1.5 px-3 py-2 text-[13px] font-semibold text-ink-soft hover:text-ink [&::-webkit-details-marker]:hidden">
-        <ChevronDown size={14} aria-hidden className="transition group-open:rotate-180" />
-        ¿De dónde sale cada cifra?
-        <span className="font-normal text-muted">({lista.length})</span>
-      </summary>
-      <ul className="divide-y divide-line border-t border-line">
+    <DetallesCaja className="mt-3" resumen="¿De dónde sale cada cifra?" contador={lista.length}>
+      <ul className="m-0 list-none divide-y divide-border-muted p-0">
         {lista.map((fila, i) => {
           const Icono = ICONO[fila.icono];
           return (
-            <li key={`${fila.literal}-${i}`} className="flex flex-col gap-0.5 px-3 py-2 text-[13px] sm:flex-row sm:items-baseline sm:gap-3">
-              <span className="font-mono text-[13px] font-semibold tabular-nums text-ink sm:w-36 sm:flex-shrink-0">{fila.literal}</span>
-              <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-ink-soft">
-                <Icono size={13} aria-hidden className="relative top-0.5 flex-shrink-0 text-primary-dark" />
-                <span className="font-medium">{fila.quien}</span>
-                {fila.concepto && <span className="text-muted">· {fila.concepto}</span>}
-                {fila.herramienta && <span className="text-muted">· cálculo «{fila.herramienta}»</span>}
-                {fila.fragmentId && (
-                  <button
-                    type="button"
-                    onClick={() => onCite?.(fila.fragmentId as string)}
-                    className="rounded px-1 font-mono text-[12px] text-primary-dark underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-                    aria-label={`Ver la fuente ${fila.fragmentId}${fila.fuente ? `: ${fila.fuente}` : ""}`}
-                  >
-                    [{fila.fragmentId}]
-                  </button>
-                )}
-                {fila.fuente && <span className="truncate text-[12px] text-muted">{fila.fuente}</span>}
+            <li key={`${fila.literal}-${i}`} className="flex flex-col gap-1 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3">
+              <span className="font-mono font-semibold tabular-nums text-fg-default sm:w-36 sm:shrink-0">{fila.literal}</span>
+              <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-1">
+                <Icono size={12} className="shrink-0 text-fg-muted" />
+                <span className="font-semibold">{fila.quien}</span>
+                {fila.concepto && <span className="text-fg-muted">· {fila.concepto}</span>}
+                {fila.herramienta && <span className="text-fg-muted">· cálculo «{fila.herramienta}»</span>}
+                {fila.fragmentId &&
+                  (onCite ? (
+                    <Button
+                      size="small"
+                      variant="invisible"
+                      className="font-mono"
+                      onClick={() => onCite(fila.fragmentId as string)}
+                      aria-label={`Ver la fuente ${fila.fragmentId}${fila.fuente ? `: ${fila.fuente}` : ""}`}
+                    >
+                      [{fila.fragmentId}]
+                    </Button>
+                  ) : (
+                    <span className="font-mono text-xs text-fg-accent">[{fila.fragmentId}]</span>
+                  ))}
+                {fila.fuente && <span className="truncate text-xs text-fg-muted">{fila.fuente}</span>}
               </span>
             </li>
           );
         })}
       </ul>
-      <p className="border-t border-line px-3 py-2 text-[12px] text-muted">
+      <p className="m-0 border-t border-border-muted px-3 py-2 text-xs text-fg-muted">
         Cada cifra se comprueba antes de enseñártela: sale de un cálculo de un especialista, de una fuente citada o de lo que
         tú me dijiste. Nunca sumo cifras de especialistas distintos si ninguna herramienta las ha combinado.
       </p>
-    </details>
+    </DetallesCaja>
   );
 }
 
@@ -191,12 +195,11 @@ function plan(eventos: ProgressEvent[]): { resumen: string; lineas: LineaPlan[];
   return { resumen, lineas: [...lineas.values()], fase };
 }
 
-const ICONO_ESTADO = { pendiente: CircleDashed, en_curso: Loader2, listo: CheckCircle2, fallo: TriangleAlert } as const;
-const TEXTO_ESTADO: Record<EstadoEncargo, string> = {
-  pendiente: "en espera",
-  en_curso: "consultando…",
-  listo: "listo",
-  fallo: "sin respuesta",
+const ESTADO_ENCARGO: Record<EstadoEncargo, { texto: string; tono: TonoEstado; icono: Icon | null }> = {
+  pendiente: { texto: "en espera", tono: "neutro", icono: CircleIcon },
+  en_curso: { texto: "consultando…", tono: "acento", icono: null },
+  listo: { texto: "listo", tono: "exito", icono: CheckCircleIcon },
+  fallo: { texto: "sin respuesta", tono: "peligro", icono: AlertIcon },
 };
 
 /** The live plan while the turn runs (nothing until the brain has one with specialists). */
@@ -204,35 +207,27 @@ export function PlanEnVivo({ eventos }: { eventos: ProgressEvent[] }) {
   const { resumen, lineas, fase } = plan(eventos);
   if (lineas.length === 0) return null;
   return (
-    <div className="mb-3 rounded-xl border border-line bg-surface px-4 py-3 shadow-card" aria-live="polite">
-      <p className="flex items-center gap-2 text-[13.5px] font-semibold text-ink">
-        <Network size={15} aria-hidden className="text-primary-dark" />
+    <div className="mb-3 flex flex-col gap-2 border-b border-border-muted pb-3" aria-live="polite">
+      <p className="m-0 flex items-center gap-2 font-semibold text-fg-default">
+        <PeopleIcon className="text-fg-muted" />
         {resumen || "Consulto a los especialistas"}
       </p>
-      <ul className="mt-2 flex flex-wrap gap-2">
+      <ul className="m-0 flex list-none flex-wrap gap-2 p-0" aria-label="Especialistas">
         {lineas.map((linea) => {
-          const Icono = ICONO_ESTADO[linea.estado];
+          const estado = ESTADO_ENCARGO[linea.estado];
+          const Icono = estado.icono;
           return (
-            <li
-              key={linea.id}
-              className={clsx(
-                "inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-[12.5px]",
-                linea.estado === "listo" && "border-grounding-cited-bd bg-grounding-cited-bg text-grounding-cited-fg",
-                linea.estado === "fallo" && "border-risk-high-fg/30 bg-risk-high-bg text-risk-high-fg",
-                (linea.estado === "pendiente" || linea.estado === "en_curso") && "border-line bg-paper text-ink-soft",
-              )}
-            >
-              <Icono size={13} aria-hidden className={clsx(linea.estado === "en_curso" && "animate-spin")} />
-              <span className="font-medium">{linea.nombre}</span>
-              <span className="text-[11.5px] opacity-80">
-                {TEXTO_ESTADO[linea.estado]}
-                {linea.estado === "pendiente" && linea.espera.length > 0 && " (espera a otro informe)"}
-              </span>
+            <li key={linea.id} className="flex items-center gap-1">
+              <span className="font-semibold">{linea.nombre}</span>
+              <EtiquetaEstado tono={estado.tono} visual={Icono ? <Icono size={12} /> : <Spinner size="small" srText={null} className="size-3" />}>
+                {estado.texto}
+              </EtiquetaEstado>
+              {linea.estado === "pendiente" && linea.espera.length > 0 && <span className="text-xs text-fg-muted">(espera a otro informe)</span>}
             </li>
           );
         })}
       </ul>
-      {fase && <p className="mt-2 text-[12px] text-muted">{fase}</p>}
+      {fase && <p className="m-0 text-xs text-fg-muted">{fase}</p>}
     </div>
   );
 }

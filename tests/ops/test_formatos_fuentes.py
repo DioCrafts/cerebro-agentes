@@ -16,7 +16,7 @@ from typing import Any
 
 from click.testing import CliRunner
 import formatos_util as util
-from langchain_core.documents import Document
+import httpx
 import legacy_parsers as legacy
 import pytest
 from scrapy.http import HtmlResponse, Request, Response
@@ -28,6 +28,7 @@ from asistente.conocimiento import formatos, formatos_agente, formatos_calendari
 from asistente.conocimiento.crawler import cendoj, crawlers, teac
 from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler
 from asistente.conocimiento.formatos_corpus import RecuentoCorpus
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.plataforma import settings
 from asistente.plataforma.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
 from asistente.plataforma.cli import formatos as cli_formatos
@@ -51,7 +52,6 @@ def vigilancia(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "FORMAT_AUTO_APPLY", False)
     monkeypatch.setattr(cli_formatos, "_canales", lambda: [])
     monkeypatch.setattr(cli_formatos, "_hoy", lambda: HOY)
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", lambda *_a, **_k: pytest.fail("no network in tests"))
     return tmp_path
 
 
@@ -233,7 +233,8 @@ def test_no_word_of_a_ruling_reaches_the_disk_or_the_model(vigilancia, monkeypat
     # Every word of the rulings outside the allow-list, except those our own code also writes (prompts,
     # expectations, canaries): what is left can only have come from a ruling.
     propio = " ".join(
-        Path(m.__file__).read_text(encoding="utf-8") for m in (formatos, formatos_agente, formatos_fuentes)  # type: ignore[arg-type]
+        Path(m.__file__).read_text(encoding="utf-8")
+        for m in (formatos, formatos_agente, formatos_fuentes)  # type: ignore[arg-type]
     ) + " ".join([*json.dumps(diagnostico, ensure_ascii=False).split(), "Bajo"])
     propias = {plano(p) for p in re.findall(r"[^\W\d_]+", propio)}
     ajenas = {
@@ -480,10 +481,12 @@ def _codigo(tmp_path: Path, ccaa: str = "madrid", kb: int = 10) -> str:
 
 def test_ccaa_text_canaries(vigilancia, tmp_path) -> None:
     recuento = RecuentoCorpus(tmp_path / "html")
-    recuento.anotar(_codigo(tmp_path, "madrid"), [Document(page_content=TEXTO_CODIGO)])
+    recuento.anotar(_codigo(tmp_path, "madrid"), [FragmentoRecuperado(texto=TEXTO_CODIGO)])
     recuento.anotar(_codigo(tmp_path, "galicia"), [])
-    recuento.anotar(_codigo(tmp_path, "murcia"), [Document(page_content="Texto corrido sin estructura alguna " * 20)])
-    recuento.anotar(str(tmp_path / "html" / "a.html"), [Document(page_content="x")])
+    recuento.anotar(
+        _codigo(tmp_path, "murcia"), [FragmentoRecuperado(texto="Texto corrido sin estructura alguna " * 20)]
+    )
+    recuento.anotar(str(tmp_path / "html" / "a.html"), [FragmentoRecuperado(texto="x")])
     recuento.informar("completa")
 
     fallos = {f.canario: f for f in _ultima("boe_ccaa_texto").fallos}
@@ -498,12 +501,12 @@ def test_ccaa_text_yield_drop_against_the_recent_median(vigilancia, tmp_path) ->
     texto = TEXTO_CODIGO + "\n" + "Artículo 2. Hecho imponible.\n" + "x" * 3000
     for _ in range(5):
         recuento = RecuentoCorpus()
-        recuento.anotar(_codigo(tmp_path), [Document(page_content=texto)])
+        recuento.anotar(_codigo(tmp_path), [FragmentoRecuperado(texto=texto)])
         recuento.informar()
     assert _estado("boe_ccaa_texto") == "ok"
 
     recuento = RecuentoCorpus()
-    recuento.anotar(_codigo(tmp_path), [Document(page_content=texto[:400])])
+    recuento.anotar(_codigo(tmp_path), [FragmentoRecuperado(texto=texto[:400])])
     recuento.informar()
 
     assert [f.canario for f in _ultima("boe_ccaa_texto").fallos] == ["caida_caracteres_por_kb"]
@@ -853,26 +856,10 @@ def test_dgt_canaries() -> None:
     assert _graves("dgt_documento", documento.replace('class="NUM-CONSULTA"', 'class="numero"'), "101:") == {"numero"}
 
 
-def test_boe_seed_reports_what_it_saved(vigilancia, tmp_path, monkeypatch) -> None:
+def test_boe_seed_reports_what_it_saved(vigilancia, tmp_path, red_falsa) -> None:
     cabecera = util.leer("boe_seed_BOE-A-2013-954_cabecera.html")
     respuestas = {"BOE-A-2013-954": cabecera, "BOE-A-2017-8345": "<html><title>Error 500</title></html>"}
-
-    class Respuesta:
-        def __init__(self, cuerpo: str) -> None:
-            self.cuerpo = cuerpo
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            return False
-
-        def read(self) -> bytes:
-            return self.cuerpo.encode()
-
-    monkeypatch.setattr(
-        boe_seed.urllib.request, "urlopen", lambda req, **_: Respuesta(respuestas[req.full_url.rsplit("=", 1)[1]])
-    )
+    red_falsa(lambda request: httpx.Response(200, content=respuestas[str(request.url).rsplit("=", 1)[1]].encode()))
 
     assert boe_seed.fetch_document("BOE-A-2013-954", tmp_path / "a.html") == len(cabecera.encode())
     assert _estado("boe_seed") == "ok"

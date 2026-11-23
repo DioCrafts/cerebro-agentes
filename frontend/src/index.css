@@ -1,8 +1,102 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+/* Primer (docs/ui/sistema-de-diseno.md): its sizes, type and motion, its light and dark themes, then the
+   app's colours on Primer's roles (ui/tema.css) and the Tailwind names for those roles (ui/tokens.css). */
+@import '@primer/primitives/dist/css/primitives.css';
+@import '@primer/primitives/dist/css/functional/themes/light.css';
+@import '@primer/primitives/dist/css/functional/themes/dark.css';
+@import './ui/tema.css';
+@import './ui/tokens.css';
+@import './ui/markdown.css';
 
-/* Design tokens as RGB triplets (consumed by tailwind.config.js). Text tokens
+@custom-variant dark (&:is(.dark *));
+
+@theme {
+  --color-paper: rgb(var(--paper));
+  --color-surface: rgb(var(--surface));
+  --color-ink: rgb(var(--ink));
+  --color-ink-soft: rgb(var(--ink-soft));
+  --color-muted: rgb(var(--muted));
+  --color-line: rgb(var(--line));
+
+  --color-primary: rgb(var(--primary));
+  --color-primary-hover: rgb(var(--primary-hover));
+  --color-primary-dark: rgb(var(--primary-dark));
+  --color-primary-soft: rgb(var(--primary-soft));
+
+  --color-navy: rgb(var(--navy));
+
+  --color-grounding-cited-bg: rgb(var(--cited-bg));
+  --color-grounding-cited-fg: rgb(var(--cited-fg));
+  --color-grounding-cited-bd: rgb(var(--cited-bd));
+  --color-grounding-uncited-bg: rgb(var(--uncited-bg));
+  --color-grounding-uncited-fg: rgb(var(--uncited-fg));
+  --color-grounding-uncited-bd: rgb(var(--uncited-bd));
+  --color-grounding-abstain-bg: rgb(var(--abstain-bg));
+  --color-grounding-abstain-fg: rgb(var(--abstain-fg));
+  --color-grounding-abstain-bd: rgb(var(--abstain-bd));
+
+  --color-risk-high-bg: rgb(var(--risk-high-bg));
+  --color-risk-high-fg: rgb(var(--risk-high-fg));
+  --color-risk-medium-bg: rgb(var(--uncited-bg));
+  --color-risk-medium-fg: rgb(var(--uncited-fg));
+  --color-risk-low-bg: rgb(var(--cited-bg));
+  --color-risk-low-fg: rgb(var(--cited-fg));
+
+  --font-sans:
+    ui-sans-serif, -apple-system, BlinkMacSystemFont, Segoe UI, Inter,
+    sans-serif;
+  --font-serif: Georgia, Cambria, Times New Roman, serif;
+  --font-mono: ui-monospace, SF Mono, Menlo, monospace;
+
+  --radius-pill: 999px;
+
+  --shadow-card:
+    0 1px 2px rgb(var(--shadow) / 0.05), 0 4px 12px rgb(var(--shadow) / 0.05);
+  --shadow-pop: 0 8px 30px rgb(var(--shadow) / 0.18);
+
+  --animate-fade-up: fade-up 220ms ease-out both;
+  --animate-flash: flash 1.8s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(6px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes flash {
+    0%,
+    60% {
+      box-shadow: 0 0 0 3px rgb(var(--primary) / 0.45);
+    }
+    100% {
+      box-shadow: 0 0 0 3px rgb(var(--primary) / 0);
+    }
+  }
+}
+
+/*
+  The default border color has changed to `currentcolor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+  *,
+  ::after,
+  ::before,
+  ::backdrop,
+  ::file-selector-button {
+    border-color: var(--borderColor-default, currentcolor);
+  }
+}
+
+/* Design tokens as RGB triplets (mapped to Tailwind colours in the @theme block above). Text tokens
    are chosen to keep ≥ 4.5:1 contrast on `paper` and `surface` in both themes. */
 :root {
   color-scheme: light;
@@ -29,6 +123,13 @@
   --abstain-bd: 214 219 226;
   --risk-high-bg: 250 232 228;
   --risk-high-fg: 178 56 38;
+  /* Solid colours under white text, the same in both themes (the light theme's foregrounds): Primer's
+     *-emphasis backgrounds (ui/tema.css). */
+  --enfasis-acento: 20 99 94;
+  --enfasis-exito: 24 106 70;
+  --enfasis-atencion: 140 90 4;
+  --enfasis-peligro: 178 56 38;
+  --enfasis-neutro: 76 89 107;
 }
 
 .dark {
@@ -59,24 +160,28 @@
 }
 
 html,
-body,
-#root {
-  height: 100%;
+body {
   margin: 0;
-  background: rgb(var(--paper));
-  color: rgb(var(--ink));
-  font-family: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+  background: var(--bgColor-default);
+  color: var(--fgColor-default);
+  /* Primer's body text: 14px / 1.5, system font stack. */
+  font: var(--text-body-shorthand-medium);
+  font-family: var(--fontStack-sansSerif);
   -webkit-font-smoothing: antialiased;
 }
-
-/* One consistent, clearly visible keyboard focus ring everywhere. */
-:focus-visible {
-  outline: 2px solid rgb(var(--primary));
-  outline-offset: 2px;
-  border-radius: 6px;
+html,
+body,
+#root {
+  min-height: 100%;
 }
-.dark :focus-visible {
-  outline-color: rgb(var(--primary-dark));
+
+/* Keyboard focus for the parts not yet on Primer (Primer components draw their own, the same colour).
+   In a layer, so it never overrides a Primer component. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--focus-outlineColor);
+    outline-offset: 2px;
+  }
 }
 
 ::-webkit-scrollbar {

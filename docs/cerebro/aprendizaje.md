@@ -137,9 +137,9 @@ uv run python -m asistente.plataforma.cli.evaluacion casos-reales reproducir --c
 uv run python -m asistente.plataforma.cli.evaluacion promote --config candidata.json   # suite + real cases
 ```
 
-CI (`.github/workflows/evaluacion.yml`): the deterministic job on every PR as before; the opt-in `casos-reales` job
-(workflow_dispatch) runs the same replay commands on **synthetic** real-shaped cases
-(`tests/evaluacion/datos/casos_reales_sinteticos.json`) — never user data.
+There is no CI. Run the deterministic suite by hand (`evaluacion validar`, `evaluacion run --reproduccion`). To try
+the replay commands without user data, point them at the synthetic real-shaped cases with
+`--desde tests/evaluacion/datos/casos_reales_sinteticos.json`.
 
 ## API
 

@@ -28,7 +28,7 @@ threshold, we **never feed the whole file to Docling**. Instead we:
    intelligible.
 4. Serialise each block / sub-table to a small temp HTML file (~tens of
    KB) and run the **default** Docling+HybridChunker on those fragments.
-5. Re-stamp every emitted ``Document`` so ``source_file`` and ``chunk_id``
+5. Re-stamp every emitted ``FragmentoRecuperado`` so ``source_file`` and ``chunk_id``
    point at the **parent** path, not the temp fragment — citations, the
    manifest, and FAISS deletion-by-id all stay coherent with the rest of
    the index.
@@ -55,8 +55,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 logger = logging.getLogger(__name__)
@@ -114,8 +113,8 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
             return False
         return bool(_BOE_TITLE_RE.search(head))
 
-    def parse(self, file_path: str) -> Sequence[Document]:
-        from lxml import etree
+    def parse(self, file_path: str) -> Sequence[FragmentoRecuperado]:
+        from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
         from lxml import html as lxml_html
 
         from asistente.conocimiento.processor.strategies.default import (
@@ -155,8 +154,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
                     del elem.getparent()[0]
         except etree.XMLSyntaxError as exc:
             logger.warning(
-                "BOE split: lxml could not stream-parse %s (%s) — "
-                "falling back to default Docling path for this file.",
+                "BOE split: lxml could not stream-parse %s (%s) — falling back to default Docling path for this file.",
                 file_path,
                 exc,
             )
@@ -166,7 +164,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
 
         if not bloque_html_fragments:
             logger.warning(
-                "BOE split: no <div class='bloque'> found in %s — " "falling back to default Docling path.",
+                "BOE split: no <div class='bloque'> found in %s — falling back to default Docling path.",
                 file_path,
             )
             from asistente.conocimiento.processor.strategies.default import parse_with_default
@@ -217,15 +215,15 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
             # deletion-by-id when the parent is modified, and
             # ``chunk_id`` must be deterministic per (parent, ordinal)
             # so re-ingesting the parent produces idempotent IDs.
-            output: list[Document] = []
+            output: list[FragmentoRecuperado] = []
             for idx, chunk in enumerate(sub_chunks):
-                meta = dict(chunk.metadata or {})
+                meta = dict(chunk.metadatos or {})
                 meta["source_file"] = file_path
                 meta["chunk_id"] = _stable_chunk_id_for(file_path, idx)
                 # Annotate which strategy emitted this chunk — useful for
                 # diagnostics and for the manifest's per-file strategy_id.
                 meta.setdefault("_strategy_id", self.strategy_id)
-                output.append(Document(page_content=chunk.page_content, metadata=meta))
+                output.append(FragmentoRecuperado(texto=chunk.texto, metadatos=meta))
             return output
         finally:
             # Best-effort cleanup. If we crash before cleanup, /tmp is
@@ -262,7 +260,7 @@ def _split_block_tables(block_html: str) -> list[str]:
     Implementation uses lxml DOM ops over **just the block's HTML** —
     safe because a block is at most a few MB even in pathological files.
     """
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     try:
@@ -305,7 +303,7 @@ def _split_table(table) -> list[str]:
     :data:`MAX_ROWS_PER_TABLE` rows each, each wrapped in a fresh
     ``<table>`` carrying the original ``<thead>`` so the sub-table is
     self-describing."""
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     thead = table.find(".//thead")
@@ -345,12 +343,7 @@ def _wrap_in_minimal_html(body_fragment: str) -> str:
     """Wrap a fragment in just enough HTML for Docling to parse it as a
     full document — without bringing in BOE's heavy CSS/JS preamble,
     which Docling doesn't need."""
-    return (
-        '<!DOCTYPE html><html lang="es"><head>'
-        '<meta charset="utf-8"/></head><body>'
-        f"{body_fragment}"
-        "</body></html>"
-    )
+    return f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/></head><body>{body_fragment}</body></html>'
 
 
 def _count_rows(table) -> int:
@@ -370,7 +363,7 @@ def _deepcopy(element):
     """Deep-copy an lxml element. ``copy.deepcopy`` doesn't preserve
     namespaces in some lxml builds — using ``fromstring(tostring(...))``
     is the canonical idiom."""
-    from lxml import etree
+    from lxml import etree  # ty: ignore[missing-module-member]  # compiled module without stubs
     from lxml import html as lxml_html
 
     return (

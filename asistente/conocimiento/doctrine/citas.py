@@ -156,11 +156,11 @@ def _sentence(text: str, start: int, end: int) -> str:
 
 def extract_citations(text: str, *, propias: set[str] | None = None) -> list[Cita]:
     """Citations in ``text``, deduplicated by key, skipping the document's own keys."""
-    propias = propias or set()
+    excluidas = propias or set()
     found: dict[str, Cita] = {}
 
     def add(cita: Cita) -> None:
-        if cita.clave in propias or any(alias in propias for alias in cita.alias):
+        if cita.clave in excluidas or any(alias in excluidas for alias in cita.alias):
             return
         found.setdefault(cita.clave, cita)
 
@@ -256,9 +256,8 @@ def identify_document(metadata: dict[str, Any], text: str = "") -> Documento | N
     locator = _str(metadata, "source_url", "source", "source_file") or ""
     vinculante = metadata.get("vinculante") if isinstance(metadata.get("vinculante"), bool) else None
 
-    consulta = _str(metadata, "num_consulta") or (
-        _DGT_RE.search(source).group(1) if "dgt" in source.lower() and _DGT_RE.search(source) else None  # type: ignore[union-attr]
-    )
+    en_fuente = _DGT_RE.search(source) if "dgt" in source.lower() else None
+    consulta = _str(metadata, "num_consulta") or (en_fuente.group(1) if en_fuente else None)
     if consulta and _DGT_RE.fullmatch(consulta):
         return Documento(
             f"DGT:{consulta}",

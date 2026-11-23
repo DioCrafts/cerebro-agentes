@@ -15,7 +15,7 @@ notify every month).
 from __future__ import annotations
 
 from datetime import date, timedelta
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 import os
 
 from asistente.ambitos.suscripciones import almacen
@@ -127,7 +127,9 @@ def _renovacion(s: ServicioGuardado, datos: DerechosConsumidor, hoy: date, marge
     claves = ["baja_tracto_sucesivo"] + (
         ["seguro_oposicion_prorroga"]
         if s.sector == "seguros"
-        else ["telecom_duracion_y_baja"] if s.sector == "telecomunicaciones" else ["aviso_renovacion"]
+        else ["telecom_duracion_y_baja"]
+        if s.sector == "telecomunicaciones"
+        else ["aviso_renovacion"]
     )
     return [
         AvisoModulo(
@@ -183,7 +185,7 @@ def _subida(s: ServicioGuardado, datos: DerechosConsumidor, hoy: date) -> list[A
             gravedad="aviso",
             acciones=("Preparar la baja", "Comparar alternativas"),
             fuentes=datos.citas(*claves),
-            importe=extra.quantize(Decimal("0.01")),
+            importe=extra.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP),
         )
     ]
 

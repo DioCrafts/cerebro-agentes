@@ -71,7 +71,7 @@ def periodo_de_hora(hora: int, zona: Zona = "peninsula") -> Periodo3:
     tabla = _tabla(zona)
     for periodo in ("p1", "p2", "p3"):
         if any(a <= hora < b for a, b in getattr(tabla, periodo)):
-            return periodo  # type: ignore[return-value]
+            return periodo
     raise ValueError(f"hora fuera de rango: {hora}")
 
 

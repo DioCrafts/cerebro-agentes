@@ -47,6 +47,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FuturesTimeout
 import contextvars
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -54,6 +55,7 @@ from decimal import Decimal
 import logging
 import re
 import threading
+import time
 from typing import Any, Literal, TypeVar
 
 from pydantic import ValidationError
@@ -180,9 +182,10 @@ def observar_usos(proveedor: Any) -> bool:
         previo(usage)
         _observar(usage)
 
-    ambos.observa_consejo = True  # type: ignore[attr-defined]
+    ambos.observa_consejo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     if getattr(previo, "__name__", "") == "_capturar" or getattr(previo, "captura_consumo", False):
-        ambos.captura_consumo = True  # type: ignore[attr-defined]  # the metering capture is inside ``previo``
+        # The metering capture is inside ``previo``.
+        ambos.captura_consumo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     real.on_usage = ambos
     return True
 
@@ -220,10 +223,11 @@ class Contabilidad:
         return self._precios
 
     def _coste(self, usage: Usage) -> Decimal | None:
-        from asistente.plataforma.ops.consumo import calcular_coste
+        from asistente.plataforma.ops.consumo import coste_prudente
 
         try:
-            return calcular_coste(usage, self._tabla())
+            # Same pricing as the run's ControlSesion: an unknown price counts at the dearest one of the table.
+            return coste_prudente(usage, self._tabla())
         except Exception:  # a broken price table never breaks the session
             logger.warning("could not price a council call", exc_info=True)
             return None
@@ -476,7 +480,7 @@ def validar_criticas(datos: Any, *, evaluador_id: str, etiquetas: Sequence[str])
                     f"tipo de error «{tipo}» no válido en {etiqueta}: usa {', '.join(TIPOS_ERROR)}."
                 )
             texto = _texto(error.get("texto"), "texto", 500, obligatorio=True, minimo=5)
-            errores.append(ErrorSenalado(tipo=tipo, texto=texto))  # type: ignore[arg-type]
+            errores.append(ErrorSenalado(tipo=tipo, texto=texto))
         puntuacion = cruda.get("puntuacion")
         if not isinstance(puntuacion, dict):
             raise SalidaInvalidaError(f"falta la «puntuacion» de {etiqueta} ({', '.join(EJES)}, de 1 a 5).")
@@ -550,6 +554,9 @@ class _Sesion:
     presupuesto: Exception | None = None
     proyeccion_desconocida: bool = False
     lock: threading.Lock = field(default_factory=threading.Lock)
+    # What is already paid for, kept as the phases finish: an unexpected error returns it instead of losing it.
+    parcial_propuestas: list[Propuesta] = field(default_factory=list)
+    parcial_fase: FaseConsejo | None = None
 
     def marcar_presupuesto(self, exc: Exception) -> None:
         with self.lock:
@@ -729,6 +736,9 @@ class Deliberacion:
             dictamen, error = salida["dictamen"], salida["error"]
         except Exception as exc:  # a bug here must not lose the session: it ends «fallida», logged
             logger.exception("council session %s failed", sesion_id)
+            # The proposals already paid for are kept with the failed session (never thrown away).
+            propuestas = list(sesion.parcial_propuestas)
+            fase = sesion.parcial_fase or fase
             error = f"Error interno del consejo ({type(exc).__name__}); no se ha podido terminar la deliberación."
         registro.coste_por_fase = sesion.contabilidad.por_fase()
         sesion.emitir(EVENTO_FASE, fase=fase, estado="terminada" if estado == "terminada" else "fallida")
@@ -785,6 +795,8 @@ class Deliberacion:
         for asiento, (propuesta, desconocidas) in r1.items():
             puertas_r1[asiento] = self._puerta(s, propuesta, desconocidas, con_preferencia=False)
         propuestas_r1 = {a: p for a, (p, _d) in r1.items()}
+        s.parcial_propuestas = [propuestas_r1[a] for a in self._orden_asientos(propuestas_r1)]
+        s.parcial_fase = "propuestas"
 
         criticas_por_evaluador: dict[str, list[Critica]] = {}
         rankings_por_evaluador: dict[str, Ranking] = {}
@@ -814,6 +826,8 @@ class Deliberacion:
                 if asiento in revisadas:
                     posiciones[asiento] = revisadas[asiento]
                     puertas_finales[asiento] = puertas_r2[asiento]
+            s.parcial_propuestas = s.parcial_propuestas + [revisadas[a] for a in self._orden_asientos(revisadas)]
+            s.parcial_fase = "revision"
             self._comprobar_presupuesto(s, "sintesis")
         except _ParadaError as exc:
             parada = exc
@@ -981,9 +995,24 @@ class Deliberacion:
         hilos = min(self._max_paralelo, len(tareas))
         if hilos == 1:
             return {clave: contextvars.copy_context().run(tarea) for clave, tarea in tareas}
-        with ThreadPoolExecutor(max_workers=hilos, thread_name_prefix="consejo") as pool:
+        # A phase has a deadline: a member whose call hangs is left out (with a reason) instead of holding the session
+        # (and its lease) forever. Its thread is not waited for; its late result is dropped.
+        plazo = float(getattr(settings, "CONSEJO_PLAZO_FASE_S", 600) or 600)
+        pool = ThreadPoolExecutor(max_workers=hilos, thread_name_prefix="consejo")
+        try:
             futuros = [(clave, pool.submit(contextvars.copy_context().run, tarea)) for clave, tarea in tareas]
-            return {clave: futuro.result() for clave, futuro in futuros}
+            limite = time.monotonic() + plazo
+            resultados: dict[str, Any] = {}
+            for clave, futuro in futuros:
+                try:
+                    resultados[clave] = futuro.result(timeout=max(0.0, limite - time.monotonic()))
+                except FuturesTimeout:
+                    futuro.cancel()
+                    logger.warning("council call %s exceeded the phase deadline (%.0f s)", clave, plazo)
+                    resultados[clave] = _Resultado(None, "error", f"sin respuesta en {plazo:.0f} s")
+            return resultados
+        finally:
+            pool.shutdown(wait=False, cancel_futures=True)
 
     # -- budget and cost cap -------------------------------------------------------------------------------------
 

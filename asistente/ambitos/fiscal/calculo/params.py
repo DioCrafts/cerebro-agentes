@@ -63,6 +63,23 @@ class Escala(_Model):
     tramos: list[Tramo] = Field(min_length=1)
     fuente: Fuente
 
+    @model_validator(mode="after")
+    def _tramos_coherentes(self) -> Escala:
+        """A scale a typo in the data would silently corrupt: upper bounds strictly increasing and positive,
+        only the last bracket open-ended, every rate in [0, 1)."""
+        anterior = Decimal(0)
+        for n, tramo in enumerate(self.tramos, start=1):
+            if not Decimal(0) <= tramo.tipo < 1:
+                raise ValueError(f"tramo {n}: el tipo {tramo.tipo} no está en [0, 1)")
+            if tramo.hasta is None:
+                if n != len(self.tramos):
+                    raise ValueError(f"tramo {n}: solo el último tramo puede no tener tope («en adelante»)")
+                continue
+            if tramo.hasta <= anterior:
+                raise ValueError(f"tramo {n}: el tope {tramo.hasta} no es mayor que el anterior ({anterior})")
+            anterior = tramo.hasta
+        return self
+
     def cuota(self, base: Decimal) -> Decimal:
         """Tax on ``base`` under this progressive scale (unrounded)."""
         total = Decimal(0)
@@ -860,11 +877,12 @@ class DeduccionCalculable(Condiciones):
                 if escala is None:
                     continue
                 topes = [t.hasta for t in escala]
+                intermedios = [t for t in topes[:-1] if t is not None]
                 if (
                     not escala
                     or topes[-1] is not None
-                    or any(t is None for t in topes[:-1])
-                    or topes[:-1] != sorted(topes[:-1])  # type: ignore[type-var]
+                    or len(intermedios) != len(topes) - 1
+                    or intermedios != sorted(intermedios)
                     or any(not 0 < t.porcentaje <= 1 for t in escala)
                 ):
                     raise ValueError("tramos_porcentaje: topes crecientes, el último sin tope, porcentajes en (0, 1]")
@@ -982,6 +1000,12 @@ class IRPFParams(_Model):
 
 class EjercicioNoDisponibleError(ValueError):
     """No parameter file exists for the requested fiscal year."""
+
+
+class TerritorioForalError(EjercicioNoDisponibleError):
+    """The taxpayer lives in Navarra or the Basque Country, whose IRPF is foral law with its own rates,
+    minimums and deductions: there are no parameters for it, so nothing is computed (subclass of the
+    unavailable-year error so every caller that reports "no parameters" reports this too)."""
 
 
 def ejercicios_disponibles() -> list[int]:

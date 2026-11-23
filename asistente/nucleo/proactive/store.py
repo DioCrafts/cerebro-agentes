@@ -7,10 +7,10 @@ refuses a second write for the same ``(case_id, key)``.
 
 from __future__ import annotations
 
+import builtins
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
-import sqlite3
 from threading import RLock
 from typing import Annotated, Literal
 from uuid import uuid4
@@ -18,6 +18,7 @@ from uuid import uuid4
 from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 # The tax module's kinds (unchanged since before the modules existed), the weekly digest, and one kind per
 # household module: ``modulo:<clave>``. The kind lives in the JSON payload, so rows written before the
@@ -75,10 +76,8 @@ class NotificationStore:
         self.db_path = str(Path(db_path))
         self._lock = RLock()
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
         with self._lock, self._conn:
-            self._conn.execute("PRAGMA journal_mode=WAL;")
             asegurar_esquema(self._conn, "proactive")  # migrations (asistente/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS notifications (
@@ -129,7 +128,7 @@ class NotificationStore:
             avisar_al_escribir(self.db_path, notification)
         return nueva
 
-    def list(self, case_id: str, *, unread_only: bool = False) -> list[Notification]:
+    def list(self, case_id: str, *, unread_only: bool = False) -> builtins.list[Notification]:
         """Notifications of a case, newest first."""
         query = "SELECT payload_json, read_at FROM notifications WHERE case_id = ?"
         if unread_only:

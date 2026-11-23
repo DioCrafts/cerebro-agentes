@@ -9,7 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
+from functools import wraps
 from typing import Any
 
 from pydantic import ValidationError
@@ -34,6 +35,7 @@ from asistente.ambitos.hipoteca.deduccion import pagos_del_ano
 from asistente.ambitos.hipoteca.indices import BOE_DOC_URL, INDICES, Dato, SerieIndices, cargar_serie
 from asistente.ambitos.hipoteca.modelo import AmortizacionRealizada, Prestamo
 from asistente.ambitos.hipoteca.normativa import Normativa, cargar_normativa
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.agent.providers.base import ToolSpec
 from asistente.nucleo.calculo.herramientas import herramientas_de_modulo
 from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
@@ -98,14 +100,10 @@ def _fecha(valor: Any, nombre: str) -> date | None:
 def _decimal(valor: Any, nombre: str, minimo: Decimal | None = None) -> Decimal | None:
     if valor in (None, ""):
         return None
-    try:
-        texto = str(valor).strip().replace("€", "").replace("%", "").replace(" ", "")
-        if "," in texto:
-            texto = texto.replace(".", "").replace(",", ".")
-        numero = Decimal(texto)
-    except InvalidOperation as exc:
-        raise DatosHipotecaError(f"{nombre} debe ser un número (recibido «{valor}»).") from exc
-    if not numero.is_finite() or (minimo is not None and numero < minimo):
+    numero = importe(valor)
+    if numero is None:
+        raise DatosHipotecaError(f"{nombre} debe ser un número (recibido «{valor}»).")
+    if minimo is not None and numero < minimo:
         raise DatosHipotecaError(f"{nombre} no es válido (recibido «{valor}»).")
     return numero
 
@@ -130,6 +128,7 @@ def _describe(p: Prestamo) -> str:
 def _ejecutar(
     funcion: Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta],
 ) -> Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta]:
+    @wraps(funcion)
     def envoltura(args: Mapping[str, Any], contexto: ContextoModulo) -> ResultadoHerramienta:
         try:
             return funcion(args, contexto)
@@ -142,7 +141,6 @@ def _ejecutar(
                 es_error=True,
             )
 
-    envoltura.__name__ = funcion.__name__
     return envoltura
 
 

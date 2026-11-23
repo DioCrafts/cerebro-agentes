@@ -31,6 +31,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.nucleo.evaluacion.modelos import CasoEvaluacion, PasoGuion
 from asistente.plataforma import settings
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -88,9 +89,7 @@ class CasosRealesStore:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
                 conn.execute(_TABLA)
@@ -175,9 +174,7 @@ class CasosRealesStore:
             conn = self._get()
             with conn:
                 marcas = ",".join("?" * len(borrados))
-                conn.execute(
-                    f"DELETE FROM evaluacion_casos_reales WHERE id IN ({marcas})", tuple(borrados)
-                )  # noqa: S608
+                conn.execute(f"DELETE FROM evaluacion_casos_reales WHERE id IN ({marcas})", tuple(borrados))  # noqa: S608
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return borrados
 

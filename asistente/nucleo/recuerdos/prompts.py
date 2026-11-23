@@ -83,7 +83,7 @@ def prompt_resumen() -> str:
         from asistente.nucleo.evaluacion import variantes
 
         if ROL_PROMPT in getattr(variantes, "ROLES", ()):
-            texto = variantes.prompt_activo(ROL_PROMPT)  # type: ignore[arg-type]
+            texto = variantes.prompt_activo(ROL_PROMPT)
             if isinstance(texto, str) and texto.strip():
                 return texto
     except Exception:  # the variants machinery must never stop the memory

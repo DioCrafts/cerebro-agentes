@@ -62,8 +62,12 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
 | `boe-novedades` | 06:50 | `asistente.plataforma.cli.proactive boe-novedades` | sí |
 | `params-autopilot` | 06:55 | `asistente.plataforma.cli.proactive params-autopilot --no-detect` | **no** (escribe en `asistente/ambitos/fiscal/data`) |
 | `run-daily` | 07:00 | `asistente.plataforma.cli.proactive run-daily` | sí |
+| `params-check` | 07:05 los lunes | `asistente.plataforma.cli.proactive params-check --fail-on-stale` | sí |
 | `deliver` | 07:15 | `asistente.plataforma.cli.ops deliver` (se registra sola) | sí |
+| `params-verify` | 07:15 los lunes | `asistente.plataforma.cli.proactive params-verify --fail-on-mismatch --no-anotar-lecturas` | sí (solo comprueba; las lecturas se anotan a mano, ver docs/operacion.md) |
+| `normas-check` | 07:25 los lunes | `asistente.plataforma.cli.proactive normas-check` | sí |
 | `run-weekly` | 07:30 los lunes | `asistente.plataforma.cli.proactive run-weekly` | sí |
+| `formatos-probe` | 07:45 de lunes a viernes | `asistente.plataforma.cli.ops formatos probe --fail-on-problem` | sí |
 | `doctor` | 09:00 | `asistente.plataforma.cli.ops doctor` | sí |
 | `correo-sincronizar` | cada 30 min | `asistente.capacidades.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
 | `indice-corpus` | 03:40 | `asistente.plataforma.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
@@ -319,8 +323,6 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `API_MAX_HISTORY_CHARS` | `60000` | Historial que se reenvía al modelo (caracteres). |
 | `API_MAX_HISTORY_MESSAGES` | `40` | Historial que se reenvía al modelo (mensajes). |
 | `API_DOCS_PUBLICAS` | vacío (= solo sin cuentas) | Servir `/docs`, `/redoc`, `/openapi.json`. |
-| `UI_USE_API` | `false` | La interfaz Streamlit antigua usa la API. |
-| `API_BASE_URL` | `http://127.0.0.1:8000` | Dirección de la API para esa interfaz. |
 | `VITE_API_BASE` | `/api` | (Compilación de la interfaz React) prefijo de la API. |
 | `VITE_API_PROXY` | `http://127.0.0.1:8000` | (Solo desarrollo con Vite) destino del proxy `/api`. |
 | `MEMORIA_CONVERSACIONES` | `true` | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): guardar las conversaciones, su resumen y «lo que sé de ti». Con `false` no se guarda ni se usa nada nuevo (lo guardado se puede seguir viendo, exportando y borrando). |
@@ -344,6 +346,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `CONSEJO_FACTOR_TOPE` / `CONSEJO_TOPE_MAX_USD` | `2.0` / `3.00` | Tope duro de una sesión = estimación × factor, nunca por encima del máximo; una sesión cuya estimación supera el máximo no se ofrece. Al llegar al tope no se hace ninguna llamada más: el consejo dictamina con lo que tiene (un dictamen parcial escrito por código, que lo dice) o la sesión termina como fallida y lo explica. |
 | `CONSEJO_MAX_LLAMADAS` | `150` | Llamadas al modelo de una sesión entera (incluidos los especialistas del expediente). |
 | `CONSEJO_EN_SEGUNDO_PLANO` | `true` | Despliegues de un solo proceso: al confirmar, la sesión empieza ya en un hilo de la API (la tarea `consejo` es la red de seguridad). |
+| `CONSEJO_PLAZO_FASE_S` | `600` | Segundos que tiene una fase de la deliberación para todos sus miembros a la vez; el miembro que no ha terminado se queda fuera de esa fase. Debe ser menor que `CONSEJO_ARRIENDO_S`. |
 | `CONSEJO_ARRIENDO_S` / `CONSEJO_MAX_INTENTOS` | `900` / `2` | Segundos que un trabajador retiene una sesión en marcha (se renuevan en cada fase) y ejecuciones como mucho de una sesión interrumpida. |
 | `CONSEJO_CADUCIDAD_HORAS` | `72` | Una convocatoria sin confirmar ni rechazar caduca a las tantas horas. |
 | `CONSEJO_RETENCION_DIAS` | `365` | Días que se guardan las sesiones terminadas (con su expediente y deliberación). |
@@ -359,9 +362,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `ANTHROPIC_EFFORT` | `high` | Esfuerzo de razonamiento. |
 | `ANTHROPIC_REFUSAL_FALLBACK` | `true` | Reintento en otro modelo si un clasificador rechaza la petición. |
 | `OPENAI_API_KEY` | vacío | **Secreto.** Credencial de OpenAI. |
-| `OPENAI_MODEL` | `gpt-4o-mini` | Modelo de OpenAI (y del extractor de hechos si no hay otro). |
-| `OPENAI_TEMPERATURE` | `0` | Temperatura de la cadena clásica. |
-| `OPENAI_AGENT_MODEL` | = `OPENAI_MODEL` | Modelo del agente con OpenAI. |
+| `OPENAI_AGENT_MODEL` | `gpt-4o-mini` | Modelo de OpenAI (agente y extractor de hechos si no hay otro). |
 | `LOCAL_LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | Servidor local compatible con OpenAI. |
 | `LOCAL_LLM_MODEL` | vacío | Modelo local. |
 | `LOCAL_LLM_API_KEY` | `local` | Clave del servidor local. |
@@ -412,20 +413,9 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `RERANKER_MODEL` | `data/models/qwen3-reranker-mlx-bf16` | Modelo de reordenación. |
 | `RERANKER_TOP_K` | `8` | Documentos tras reordenar. |
 | `RERANKER_FIRST_STAGE_K` | `30` | Candidatos de la primera fase. |
-| `BM25_ENABLED` | `false` | Búsqueda híbrida con BM25. |
-| `BM25_DENSE_WEIGHT` / `BM25_BM25_WEIGHT` | `0.6` / `0.4` | Pesos de la fusión. |
-| `BM25_K` | `20` | Candidatos de BM25. |
 | `CONTEXTUAL_EMBEDDINGS_ENABLED` | `false` | Prefijo contextual al indexar (invalida el índice). |
 | `CONTEXTUAL_MODEL_PATH` | `data/models/qwen3-1.7b-instruct-mlx-bf16` | Modelo del prefijo. |
 | `CONTEXTUAL_MAX_TOKENS` | `80` | Tokens del prefijo. |
-| `RAGAS_JUDGE_MODEL_PATH` | `data/models/qwen3-4b-instruct-2507-mlx-bf16` | Juez de la evaluación RAGAS. |
-| `RAGAS_JUDGE_MAX_TOKENS` | `1024` | Tokens del juez. |
-| `TOP_K` | `3` | Resultados de la cadena clásica. |
-| `MEMORY_KEY` | `chat_history` | Clave del historial en la cadena clásica. |
-| `RETRIEVAL_DECISION_THRESHOLD` | `0.55` | Umbral de similitud (decisión). |
-| `RETRIEVAL_EXPLAIN_THRESHOLD` | `0.525` | Umbral de similitud (explicación; el del módulo fiscal). Calibrado en `docs/cerebro/benchmark-recuperacion.md`. |
-| `GROUNDING_MIN_CITATIONS` | `1` | Citas mínimas para responder. |
-| `GROUNDING_SNIPPET_CHARS` | `240` | Longitud de los fragmentos citados. |
 
 ### 3.7 Avisos fuera de la aplicación
 
@@ -501,7 +491,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `NAVEGADOR_MAX_SIMULTANEAS` | `2` | Tareas a la vez en todo el servicio. |
 | `NAVEGADOR_REPARAR_SELECTORES` | `false` | Reparación de selectores con LLM. |
 | `NAVEGADOR_ORIGENES_SUSTITUTOS` | vacío | Solo pruebas y demostraciones. |
-| `NAVEGADOR_EXIGIR_CHROMIUM` | vacío | Solo CI: fallar si no hay Chromium. |
+| `NAVEGADOR_EXIGIR_CHROMIUM` | vacío | Solo pruebas: fallar si no hay Chromium. |
 
 ### 3.12 Recolección y mantenimiento del corpus
 
@@ -528,7 +518,8 @@ un proxy inverso termina TLS, sirve la interfaz y pasa `/api/*` quitando el pref
   porque el puerto 8000 no se publica (solo `expose`).
 - **Tamaño de las peticiones**: el proxy debe admitir algo más que `API_MAX_BODY_BYTES` (32 MB), para que
   sea la API la que responda 413 con su mensaje (`client_max_body_size 40m` / `max_size 40MB`).
-- **Streaming**: la respuesta del agente (`/agent/stream`) llega como `application/x-ndjson`: sin búfer en
+- **Streaming**: la respuesta del agente (`/agent/stream`) y el progreso del consejo y del navegador (`…/eventos`)
+  llegan como Server-Sent Events (`text/event-stream`): sin búfer en
   el proxy (`proxy_buffering off` / `flush_interval -1`) y un tiempo de lectura amplio.
 - **PWA**: `sw.js`, `index.html` y `manifest.webmanifest` con `Cache-Control: no-cache` (cada versión nueva
   se instala); `/assets/*` con caché larga (llevan *hash*).
@@ -655,9 +646,10 @@ docker compose -f docs/despliegue/docker-compose.yml exec worker python -m asist
   SQLite.
 - Las copias: `docker compose … exec worker python -m asistente.plataforma.cli.plataforma copia --destino
   /srv/hacienda-asesor/data/copias` y sácalas del volumen; o monta un volumen de copias.
-- Los datos legales del repositorio que actualizan `hipoteca-indices` y `params-autopilot` se escriben
-  dentro del contenedor y se pierden al reconstruir la imagen: en un despliegue con Docker esas
-  actualizaciones se suben al repositorio por los *workflows* de GitHub (ver [operacion.md](operacion.md)).
+- Los datos legales del repositorio que actualizan `hipoteca-indices` y `params-autopilot` (el trabajo
+  `params-verify` del worker solo comprueba) se escriben dentro del contenedor y se pierden al reconstruir la imagen. Nada los sube al repositorio:
+  ejecuta esas órdenes en una copia de trabajo, revisa el cambio (`params-lecturas` para las lecturas) y
+  súbelo a mano (ver [operacion.md](operacion.md), apartado 4).
 - El agente con navegador necesita Chromium en la imagen de la API (`playwright install --with-deps
   chromium`) y, en modo `ventana`, una pantalla: en un servidor, usa solo el modo `sesion`.
 

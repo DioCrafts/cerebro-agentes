@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import type { CaseState } from "../api";
-import { getCase } from "../api";
+import { ApiError, getCase } from "../api";
 import type { AccionPendiente, ModulosResponse } from "../apiModulos";
 import { confirmarAccion, getAcciones, getModulos, rechazarAccion, setModulo } from "../apiModulos";
 import { errorMessage } from "./errores";
@@ -53,7 +53,12 @@ export function useModulos(
     const controller = new AbortController();
     getAcciones(caseId, controller.signal).then(
       (items) => setAcciones({ caseId, items }),
-      () => undefined, // an older backend without modules: nothing pending
+      (err: unknown) => {
+        if (controller.signal.aborted) return;
+        // An older backend without modules answers 404: nothing pending. Anything else is said.
+        if (err instanceof ApiError && err.status === 404) setAcciones({ caseId, items: [] });
+        else setError(`No se pudieron cargar las acciones pendientes. ${errorMessage(err)}`);
+      },
     );
     return () => controller.abort();
   }, [caseId, accionesTick]);

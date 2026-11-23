@@ -40,19 +40,72 @@ class HerramientaWeb(Protocol):
     def buscar_y_leer(self, *, pregunta: str, consultas: Sequence[str], max_lecturas: int) -> list[Documento]: ...
 
 
-def _host_publico(url: str) -> bool:
+def _ip_publica(url: str) -> str | None:
+    """The one address the reader will connect to for ``url``: resolved ONCE, and only when every address of
+    the name is globally routable (``is_global``: no private, loopback, link-local, CGNAT 100.64/10, reserved,
+    documentation or IPv4-mapped tricks). None otherwise. Connecting to this very address (not resolving the
+    name again) closes the DNS-rebinding window between the check and the connection."""
     partes = urlparse(url)
     if partes.scheme not in {"http", "https"} or not partes.hostname:
-        return False
+        return None
     try:
-        direcciones = {info[4][0] for info in socket.getaddrinfo(partes.hostname, None)}
-    except OSError:
-        return False
+        direcciones = [str(info[4][0]) for info in socket.getaddrinfo(partes.hostname, partes.port or None)]
+    except OSError, UnicodeError, ValueError:
+        return None
+    elegida: str | None = None
     for d in direcciones:
-        ip = ipaddress.ip_address(d.split("%")[0])
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast:
-            return False
-    return bool(direcciones)
+        try:
+            ip = ipaddress.ip_address(d.split("%")[0])
+        except ValueError:
+            return None
+        if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+            ip = ip.ipv4_mapped
+        if not ip.is_global or ip.is_multicast:
+            return None
+        elegida = elegida or str(ip)
+    return elegida
+
+
+def _host_publico(url: str) -> bool:
+    return _ip_publica(url) is not None
+
+
+class _RespuestaFijada:
+    """The slice of ``requests.Response`` the reader uses, over a urllib3 response."""
+
+    def __init__(self, respuesta: Any):
+        self._r = respuesta
+        self.status_code = respuesta.status
+        self.headers = respuesta.headers
+
+    def iter_content(self, tamano: int) -> Any:
+        return self._r.stream(tamano)
+
+
+def _obtener_fijado(url: str, *, ip: str, timeout: float, headers: dict[str, str], **_: Any) -> _RespuestaFijada:
+    """GET ``url`` connecting to ``ip`` (TLS still verified against the URL's host name, sent as SNI)."""
+    import urllib3
+
+    partes = urlparse(url)
+    host = partes.hostname or ""
+    ruta = (partes.path or "/") + (f"?{partes.query}" if partes.query else "")
+    cabeceras = {**headers, "Host": partes.netloc.rpartition("@")[2]}
+    tiempo = urllib3.Timeout(connect=timeout, read=timeout)
+    pool: Any
+    if partes.scheme == "https":
+        pool = urllib3.HTTPSConnectionPool(
+            ip,
+            port=partes.port or 443,
+            timeout=tiempo,
+            server_hostname=host,
+            assert_hostname=host,
+            cert_reqs="CERT_REQUIRED",
+            retries=False,
+        )
+    else:
+        pool = urllib3.HTTPConnectionPool(ip, port=partes.port or 80, timeout=tiempo, retries=False)
+    respuesta = pool.urlopen("GET", ruta, headers=cabeceras, redirect=False, preload_content=False, retries=False)
+    return _RespuestaFijada(respuesta)
 
 
 def texto_de_html(html: str) -> tuple[str, str]:
@@ -87,25 +140,33 @@ class LectorLocal:
     """Reads one public HTML page; None when it is not public, not HTML, too big or unreachable."""
 
     def __init__(self, obtener: Callable[..., Any] | None = None):
-        if obtener is None:
-            import requests
-
-            obtener = requests.get
-        self._obtener = obtener
+        self._obtener = obtener or _obtener_fijado
 
     def leer(self, url: str, titulo: str = "") -> Documento | None:
         actual = url
         for _ in range(MAX_REDIRECCIONES + 1):
-            if not _host_publico(actual):
+            ip = _ip_publica(actual)  # every hop, redirects included, is checked again
+            if ip is None:
                 return None
             try:
-                r = self._obtener(actual, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
-                                  headers={"User-Agent": _AGENTE, "Accept": "text/html"})
+                r = self._obtener(
+                    actual,
+                    ip=ip,
+                    timeout=TIMEOUT_S,
+                    allow_redirects=False,
+                    stream=True,
+                    headers={"User-Agent": _AGENTE, "Accept": "text/html"},
+                )
             except Exception as exc:  # network errors: the page is simply not read
                 logger.info("local read of %s failed: %s", actual, type(exc).__name__)
                 return None
-            if r.status_code in {301, 302, 303, 307, 308} and r.headers.get("Location"):
-                actual = urljoin(actual, r.headers["Location"])
+            if r.status_code in {301, 302, 303, 307, 308}:
+                destino = r.headers.get("Location")
+                if not destino:
+                    return None
+                actual = urljoin(actual, destino)
+                if urlparse(actual).scheme not in {"http", "https"}:
+                    return None
                 continue
             if r.status_code != 200 or "html" not in r.headers.get("Content-Type", "").lower():
                 return None
@@ -127,8 +188,14 @@ class LectorLocal:
 class WebDeCapacidad:
     """Adapter over ``asistente.capacidades.investigacion.web.BuscadorWeb`` (``web_para(proveedor)``)."""
 
-    def __init__(self, buscador: Any, *, permitidos: Sequence[str] | None = None, bloqueados: Sequence[str] = (),
-                 lector: LectorLocal | None = None):
+    def __init__(
+        self,
+        buscador: Any,
+        *,
+        permitidos: Sequence[str] | None = None,
+        bloqueados: Sequence[str] = (),
+        lector: LectorLocal | None = None,
+    ):
         self.buscador = buscador
         self.permitidos = permitidos
         self.bloqueados = tuple(bloqueados)

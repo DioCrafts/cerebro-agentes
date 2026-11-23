@@ -1,8 +1,8 @@
 from pathlib import Path
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.search import SearchFilters
 from asistente.nucleo.evals.agent_eval import (
     CaseResult,
@@ -84,13 +84,16 @@ def test_build_case_keeps_usable_consultas_and_discards_the_rest(tmp_path: Path)
 
 
 def test_excluding_searcher_hides_the_source_consulta() -> None:
-    docs = [*corpus(), Document(page_content="otra", metadata={"title": "Consulta V0099-25", "source": "V0099-25"})]
+    docs = [
+        *corpus(),
+        FragmentoRecuperado(texto="otra", metadatos={"title": "Consulta V0099-25", "source": "V0099-25"}),
+    ]
     searcher = ExcludingSearcher(FakeSearcher(docs), "V0058-25")
 
     found = searcher.search("reinversión", k=3, filters=SearchFilters())
 
     assert len(found) == 3
-    assert all("V0058-25" not in str(doc.metadata) for doc in found)
+    assert all("V0058-25" not in str(doc.metadatos) for doc in found)
 
 
 def _system(answer: SystemAnswer | Exception):

@@ -497,7 +497,7 @@ def _canarios_teac_listado(ids: Any, muestra: str, contexto: str, reglas: Any) -
         try:
             desde, hasta = (date(*reversed([int(x) for x in parte.split("/")])) for parte in contexto.split(".."))
             dias = (hasta - desde).days
-        except (ValueError, TypeError):
+        except ValueError, TypeError:
             dias = 0
         detalle = (
             f"La primera página del listado ({contexto}) no enlaza ningún criterio: se da por terminado el rango "
@@ -622,7 +622,8 @@ _SIN_TEXTO = re.compile(r"(?is)<!--.*?-->|<(svg|noscript)\b.*?</\1\s*>")
 # The only words of a CENDOJ page the watch keeps (see formatos_esqueleto): the labels the reader and the
 # Supreme Court analysis rely on, court vocabulary, ordinals used as headings, months, and connectors.
 # Nothing here names a person, a party, a place or a matter.
-PALABRAS_CENDOJ = lista_permitida("""
+PALABRAS_CENDOJ = lista_permitida(
+    """
     roj ecli es ts sts ats id cendoj organo sede seccion ponente fecha sala tribunal supremo nº º ª num
     numero recurso resolucion procedimiento tipo casacion contencioso administrativo civil penal social militar
     primera segunda tercera cuarta quinta sexta septima octava sentencia auto fundamentos derecho juridicos
@@ -630,7 +631,8 @@ PALABRAS_CENDOJ = lista_permitida("""
     unificacion doctrina ley primero segundo tercero cuarto quinto sexto septimo octavo noveno decimo
     undecimo duodecimo vigesimo enero febrero marzo abril mayo junio julio agosto septiembre octubre
     noviembre diciembre de del la el lo los las y en a al para por
-    """.split())
+    """.split()
+)
 
 
 def _sin_ruido(crudo: str) -> str:

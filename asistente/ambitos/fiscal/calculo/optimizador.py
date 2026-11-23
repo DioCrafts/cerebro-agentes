@@ -52,7 +52,14 @@ from typing import Any, Literal
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
 
 from asistente.ambitos.fiscal.calculo.conjunta import _conjunta, hijos_comunes
-from asistente.ambitos.fiscal.calculo.irpf import IRPFInput, IRPFResult, _minimo_descendientes, calcular_irpf
+from asistente.ambitos.fiscal.calculo.irpf import (
+    IRPFInput,
+    IRPFResult,
+    _minimo_descendientes,
+    calcular_irpf,
+    importe_linea,
+)
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import (
     GASTOS_DESGLOSADOS,
     DeduccionCalculable,
@@ -95,6 +102,9 @@ Titular = Literal["contribuyente", "conyuge"]
 TipoActivo = Literal["valores_cotizados", "valores_no_cotizados", "otro_elemento"]
 Fase = Literal["antes_del_cierre", "solo_opciones_de_declaracion"]
 CausaNoDisponible = Literal["fecha", "restricciones", "faltan_datos", "sin_margen", "no_calculable"]
+# Who files each return of a scenario, and the kind of each lever the plan reports on.
+_Declarante = Literal["contribuyente", "conyuge", "conjunta"]
+_TipoPalanca = Literal["modo", "pension", "perdida", "donativo"]
 
 DESTINO_ESTATAL = "ley_49_2002"
 DESTINO_RECURRENTE = "ley_49_2002_recurrente"
@@ -464,10 +474,6 @@ def _alrededor(valor: Decimal) -> set[Decimal]:
     return {abajo - CENT, abajo, arriba, arriba + CENT}
 
 
-def _linea(result: IRPFResult, prefijo: str) -> Decimal:
-    return sum((line.importe for line in result.lineas if line.concepto.startswith(prefijo)), ZERO)
-
-
 def _fecha(dia: date) -> str:
     return dia.strftime("%d/%m/%Y")
 
@@ -505,7 +511,9 @@ def _valores_base(inp: IRPFInput, res: IRPFResult, p: IRPFParams) -> dict[str, D
     big, bia = res.base_imponible_general, res.base_imponible_ahorro
     blg, bla = res.base_liquidable_general, res.base_liquidable_ahorro
     bit, blt, minimo = big + bia, blg + bla, res.minimo_personal_familiar
-    alquiler = inp.rendimiento_alquiler_vivienda_sin_reducir + _linea(res, "Reducción por arrendamiento de vivienda")
+    alquiler = inp.rendimiento_alquiler_vivienda_sin_reducir + importe_linea(
+        res, ClaveLinea.REDUCCION_ARRENDAMIENTO_VIVIENDA
+    )
     otras = sum(
         (
             max(ZERO, v)
@@ -668,7 +676,7 @@ class _Punto:
 class _Evaluacion:
     total: Decimal
     # (label, input, result) per return.
-    declaraciones: tuple[tuple[str, IRPFInput, IRPFResult], ...]
+    declaraciones: tuple[tuple[_Declarante, IRPFInput, IRPFResult], ...]
 
 
 @dataclass(frozen=True)
@@ -925,8 +933,8 @@ class _Optimizador:
 
     def _rendimientos_para_limite(self, inp: IRPFInput, res: IRPFResult) -> Decimal:
         """Net work income before the art. 20 reduction plus net activity income, as calcular_irpf caps on."""
-        neto = _linea(res, "Rendimiento neto reducido del trabajo")
-        reduccion = -_linea(res, "Reducción por obtención de rendimientos del trabajo")
+        neto = importe_linea(res, ClaveLinea.RENDIMIENTO_NETO_TRABAJO)
+        reduccion = -importe_linea(res, ClaveLinea.REDUCCION_TRABAJO)
         return neto + reduccion + inp.rendimiento_actividad_neto
 
     def _max_pension(self, i: int) -> Decimal:
@@ -1224,7 +1232,7 @@ class _Optimizador:
         return hecha
 
     def _evaluar(self, punto: _Punto) -> _Evaluacion:
-        declaraciones: list[tuple[str, IRPFInput, IRPFResult]] = []
+        declaraciones: list[tuple[_Declarante, IRPFInput, IRPFResult]] = []
         don = punto.donativo
         if punto.conjunta:
             assert self._j0 is not None
@@ -1637,14 +1645,14 @@ class _Optimizador:
             tributacion = "conjunta_monoparental"
         return ResultadoHogar(
             tributacion=tributacion,
-            declaraciones=[Declaracion(titular=etiqueta, resultado=res) for etiqueta, _, res in ev.declaraciones],  # type: ignore[arg-type]
+            declaraciones=[Declaracion(titular=etiqueta, resultado=res) for etiqueta, _, res in ev.declaraciones],
             resultado_total=ev.total,
             cuota_liquida_total=sum((res.cuota_liquida for _, _, res in ev.declaraciones), ZERO),
         )
 
-    def _palancas(self) -> list[tuple[str, str, int | None]]:
+    def _palancas(self) -> list[tuple[str, _TipoPalanca, int | None]]:
         """(id, kind, spouse) of every lever the plan reports on."""
-        out: list[tuple[str, str, int | None]] = []
+        out: list[tuple[str, _TipoPalanca, int | None]] = []
         if len(self.modos) > 1:
             out.append(("tributacion", "modo", None))
         quien = ("contribuyente", "conyuge")
@@ -1660,7 +1668,7 @@ class _Optimizador:
             out.append(("donativo", "donativo", None))
         return out
 
-    def _usada(self, tipo: str, i: int | None, base: _Punto, punto: _Punto) -> bool:
+    def _usada(self, tipo: _TipoPalanca, i: int | None, base: _Punto, punto: _Punto) -> bool:
         if tipo == "modo":
             return punto.conjunta != base.conjunta
         if tipo == "pension":
@@ -1671,17 +1679,17 @@ class _Optimizador:
             return punto.perdida[i] > 0
         return punto.donativo is not None
 
-    def _sin(self, tipo: str, i: int | None, base: _Punto, punto: _Punto) -> _Punto:
+    def _sin(self, tipo: _TipoPalanca, i: int | None, base: _Punto, punto: _Punto) -> _Punto:
         """``punto`` without this lever (back to the current situation for it)."""
         if tipo == "modo":
             return replace(punto, conjunta=base.conjunta)
         if tipo == "donativo":
             return replace(punto, donativo=None)
         assert i is not None
-        c = _Coordenada(f"{tipo}_{i}", tipo, i)  # type: ignore[arg-type]
+        c = _Coordenada(f"{tipo}_{i}", tipo, i)
         return self.con(punto, c, ZERO)
 
-    def _solo(self, tipo: str, i: int | None, base: _Punto) -> _Punto:
+    def _solo(self, tipo: _TipoPalanca, i: int | None, base: _Punto) -> _Punto:
         """The best this lever does on its own, from the current situation."""
         if tipo == "modo":
             return replace(base, conjunta=not base.conjunta)
@@ -1690,7 +1698,7 @@ class _Optimizador:
             return self._mejor([replace(base, donativo=v) for v in opciones]) if opciones else base
         assert i is not None
         maximo = self.max_pension[i] if tipo == "pension" else self.max_perdida[i]
-        c = _Coordenada(f"{tipo}_{i}", tipo, i, ZERO, maximo)  # type: ignore[arg-type]
+        c = _Coordenada(f"{tipo}_{i}", tipo, i, ZERO, maximo)
         return self._mejor([base, *(self.con(base, c, v) for v in self.candidatos(base, c))])
 
     def _accion(self, tipo: str, i: int | None, punto: _Punto) -> str:
@@ -1965,13 +1973,15 @@ class _Optimizador:
                 PalancaElegida(
                     id=lever_id,
                     nombre=nombre,
-                    titular="hogar" if i is None else titulares[i],  # type: ignore[arg-type]
+                    titular="hogar" if i is None else titulares[i],
                     accion=accion,
                     importe=importe,
                     opcion=(
                         self._hogar(optimo).tributacion
                         if tipo == "modo"
-                        else optimo.donativo[0] if tipo == "donativo" and optimo.donativo else None
+                        else optimo.donativo[0]
+                        if tipo == "donativo" and optimo.donativo
+                        else None
                     ),
                     naturaleza=naturalezas[tipo],
                     compromiso=compromiso,

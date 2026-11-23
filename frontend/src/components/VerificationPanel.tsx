@@ -1,17 +1,21 @@
-// Claim-by-claim verification: what the independent checker concluded about
-// each normative statement in the answer, in plain language. Problems are
-// open by default; a fully verified answer keeps the detail one click away.
-
-import { AlertTriangle, CheckCircle2, ChevronDown, XCircle } from "lucide-react";
-import clsx from "clsx";
+// Claim-by-claim verification: what the independent checker concluded about each normative statement in the answer,
+// in plain language. Problems are open by default; a fully verified answer keeps the detail one click away.
+//
+// A folding Box (like a check run's details); each claim is a row with its verdict as a StateLabel and the sources
+// it was checked against as small buttons that jump to the source card.
 
 import type { ClaimCheck, ClaimVerdict } from "../api";
 import { VERDICT_LABEL } from "../lib/presentation";
+import { Button, Flash, Label } from "../ui";
+import type { Icon } from "../ui/iconos";
+import { AlertIcon, CheckCircleIcon, XCircleIcon } from "../ui/iconos";
+import { DetallesCaja } from "./conversacion/DetallesCaja";
+import { EtiquetaEstado, type TonoEstado } from "./conversacion/EtiquetaEstado";
 
-const VERDICT_STYLE: Record<ClaimVerdict, { icon: typeof CheckCircle2; tone: string }> = {
-  respaldada: { icon: CheckCircle2, tone: "text-grounding-cited-fg" },
-  parcial: { icon: AlertTriangle, tone: "text-grounding-uncited-fg" },
-  no_respaldada: { icon: XCircle, tone: "text-risk-high-fg" },
+const VERDICT_STYLE: Record<ClaimVerdict, { icon: Icon; tono: TonoEstado }> = {
+  respaldada: { icon: CheckCircleIcon, tono: "exito" },
+  parcial: { icon: AlertIcon, tono: "atencion" },
+  no_respaldada: { icon: XCircleIcon, tono: "peligro" },
 };
 
 interface VerificationPanelProps {
@@ -28,61 +32,44 @@ export function VerificationPanel({ claims, otherWarnings, onCite }: Verificatio
   const ordered = [...problems, ...claims.filter((c) => c.verdict === "respaldada")];
 
   return (
-    <div className="mt-3 space-y-2">
+    <div className="mt-3 flex flex-col gap-2">
       {otherWarnings.map((warning, i) => (
-        <p
-          key={`w-${i}`}
-          className="flex gap-2 rounded-lg border border-grounding-uncited-bd bg-grounding-uncited-bg px-3 py-2 text-[13px] text-ink-soft"
-        >
-          <AlertTriangle size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
-          {warning}
-        </p>
+        <Flash key={`w-${i}`} variant="warning">
+          <span className="flex gap-2">
+            <AlertIcon className="mt-0.5 shrink-0" />
+            {warning}
+          </span>
+        </Flash>
       ))}
       {claims.length > 0 && (
-        <details open={problems.length > 0} className="group rounded-xl border border-line bg-surface">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-2.5 text-[13px] font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
-            <span>
-              Comprobación afirmación por afirmación
-              {problems.length > 0 && (
-                <span className="ml-2 rounded-pill bg-risk-high-bg px-2 py-0.5 text-[11px] font-bold text-risk-high-fg">
-                  {problems.length === 1 ? "1 a revisar" : `${problems.length} a revisar`}
-                </span>
-              )}
-            </span>
-            <ChevronDown size={16} aria-hidden className="flex-shrink-0 text-muted transition group-open:rotate-180" />
-          </summary>
-          <ul className="divide-y divide-line border-t border-line">
+        <DetallesCaja
+          abierto={problems.length > 0}
+          resumen="Comprobación afirmación por afirmación"
+          extra={problems.length > 0 ? <Label variant="danger">{problems.length === 1 ? "1 a revisar" : `${problems.length} a revisar`}</Label> : undefined}
+        >
+          <ul className="m-0 list-none divide-y divide-border-muted p-0" aria-label="Afirmaciones comprobadas">
             {ordered.map((claim, i) => {
               const style = VERDICT_STYLE[claim.verdict];
-              const Icon = style.icon;
+              const Icono = style.icon;
               return (
-                <li key={i} className="flex gap-3 px-4 py-3">
-                  <Icon size={17} aria-hidden className={clsx("mt-0.5 flex-shrink-0", style.tone)} />
-                  <div className="min-w-0 text-[13.5px] leading-snug">
-                    <p className="text-ink">{claim.text}</p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
-                      <span className={clsx("font-semibold", style.tone)}>{VERDICT_LABEL[claim.verdict]}</span>
-                      {claim.fragment_ids.map((id) => (
-                        <button
-                          key={id}
-                          type="button"
-                          onClick={() => onCite(id)}
-                          aria-label={`Ver la fuente ${id}`}
-                          className="rounded bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
-                        >
-                          {id}
-                        </button>
-                      ))}
-                    </p>
-                    {claim.verdict !== "respaldada" && claim.reason && (
-                      <p className="mt-1 text-[12.5px] text-ink-soft">{claim.reason}</p>
-                    )}
-                  </div>
+                <li key={i} className="flex flex-col gap-1 px-4 py-3">
+                  <p className="m-0 text-fg-default">{claim.text}</p>
+                  <p className="m-0 flex flex-wrap items-center gap-2">
+                    <EtiquetaEstado tono={style.tono} visual={<Icono size={12} />}>
+                      {VERDICT_LABEL[claim.verdict]}
+                    </EtiquetaEstado>
+                    {claim.fragment_ids.map((id) => (
+                      <Button key={id} size="small" variant="invisible" onClick={() => onCite(id)} aria-label={`Ver la fuente ${id}`} className="font-mono">
+                        {id}
+                      </Button>
+                    ))}
+                  </p>
+                  {claim.verdict !== "respaldada" && claim.reason && <p className="m-0 text-xs text-fg-muted">{claim.reason}</p>}
                 </li>
               );
             })}
           </ul>
-        </details>
+        </DetallesCaja>
       )}
     </div>
   );

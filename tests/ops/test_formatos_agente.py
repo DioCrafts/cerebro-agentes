@@ -20,7 +20,6 @@ from asistente.nucleo.proactive import novedades
 from asistente.plataforma import settings
 from asistente.plataforma.cli import formatos as cli_formatos
 from asistente.plataforma.cli.ops import cli
-from asistente.plataforma.ops import vigia
 from asistente.plataforma.ops.consumo import PresupuestoAgotadoError
 
 SUMARIO = "boe_sumario_20261110.json"
@@ -44,7 +43,6 @@ def deriva(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "FORMAT_AUTO_APPLY", False)
     monkeypatch.setattr(settings, "FORMAT_MAX_ITER", 3)
     monkeypatch.setattr(cli_formatos, "_canales", lambda: [])
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", lambda *_a, **_k: pytest.fail("no network in tests"))
     bueno = util.leer(SUMARIO)
     nuevo = bueno.replace('"identificador"', '"id_disposicion"')
     assert formatos.observar("boe_sumario", bueno, contexto="2026-11-10", ahora=T0).ok
@@ -376,7 +374,14 @@ def lector_degradado(deriva, monkeypatch):
     monkeypatch.setattr(settings, "FORMAT_DOCUMENT_SKELETONS", True)
     for _ in range(5):
         lector = util.ProveedorGuionizado(
-            [{"tipo_documento": "Nómina mensual", "hechos": [{"name": "retenciones", "value": "329.28", "evidencia": "Retenciones practicadas 329,28"}]}]  # fmt: skip
+            [
+                {
+                    "tipo_documento": "Nómina mensual",
+                    "hechos": [
+                        {"name": "retenciones", "value": "329.28", "evidencia": "Retenciones practicadas 329,28"}
+                    ],
+                }
+            ]  # fmt: skip
         )
         documentos.analizar_documento(lector, filename="nomina_itziar.txt", data=NOMINA.encode())
     assert {e.fuente: e.estado for e in formatos.resumen()}["doc_nomina"] == "rota"

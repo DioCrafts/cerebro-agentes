@@ -27,18 +27,50 @@ import traceback
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 TURNOS: list[dict[str, str]] = [
-    {"id": "fiscal_alquiler", "tipo": "fiscal", "q": "¿Qué reducción tiene en el IRPF el rendimiento neto de alquilar una vivienda habitual a un inquilino?"},
-    {"id": "fiscal_donativos", "tipo": "fiscal", "q": "¿Cuánto me puedo deducir en el IRPF estatal por donativos a una ONG acogida a la Ley 49/2002?"},
-    {"id": "fiscal_plazo_renta", "tipo": "fiscal", "q": "¿Estoy obligado a declarar el IRPF si solo cobro un salario de 18.000 euros de un único pagador?"},
-    {"id": "fiscal_maternidad", "tipo": "fiscal", "q": "¿Cómo funciona la deducción por maternidad del IRPF y quién puede cobrarla por adelantado?"},
-    {"id": "multi_hipoteca_irpf", "tipo": "multi", "q": "Tengo una hipoteca de 150.000 € al 3 % a 25 años firmada en 2012 para mi vivienda habitual. ¿Cuánto pago de cuota y puedo deducirme algo en la renta?"},
-    {"id": "multi_luz_ayudas", "tipo": "multi", "q": "Pago mucho de luz y somos familia numerosa. ¿Qué tarifa me conviene y tengo derecho a algún bono o ayuda?"},
-    {"id": "multi_caducidades_fiscal", "tipo": "multi", "q": "¿Qué plazos tengo este año para la renta y qué documentos del hogar me caducan pronto?"},
+    {
+        "id": "fiscal_alquiler",
+        "tipo": "fiscal",
+        "q": "¿Qué reducción tiene en el IRPF el rendimiento neto de alquilar una vivienda habitual a un inquilino?",
+    },
+    {
+        "id": "fiscal_donativos",
+        "tipo": "fiscal",
+        "q": "¿Cuánto me puedo deducir en el IRPF estatal por donativos a una ONG acogida a la Ley 49/2002?",
+    },
+    {
+        "id": "fiscal_plazo_renta",
+        "tipo": "fiscal",
+        "q": "¿Estoy obligado a declarar el IRPF si solo cobro un salario de 18.000 euros de un único pagador?",
+    },
+    {
+        "id": "fiscal_maternidad",
+        "tipo": "fiscal",
+        "q": "¿Cómo funciona la deducción por maternidad del IRPF y quién puede cobrarla por adelantado?",
+    },
+    {
+        "id": "multi_hipoteca_irpf",
+        "tipo": "multi",
+        "q": "Tengo una hipoteca de 150.000 € al 3 % a 25 años firmada en 2012 para mi vivienda habitual. ¿Cuánto pago de cuota y puedo deducirme algo en la renta?",
+    },
+    {
+        "id": "multi_luz_ayudas",
+        "tipo": "multi",
+        "q": "Pago mucho de luz y somos familia numerosa. ¿Qué tarifa me conviene y tengo derecho a algún bono o ayuda?",
+    },
+    {
+        "id": "multi_caducidades_fiscal",
+        "tipo": "multi",
+        "q": "¿Qué plazos tengo este año para la renta y qué documentos del hogar me caducan pronto?",
+    },
     {"id": "abst_fuera", "tipo": "abstencion", "q": "¿Quién va a ganar la Champions este año?"},
     {"id": "abst_futuro", "tipo": "abstencion", "q": "¿Cuál será el tipo marginal máximo del IRPF en 2031?"},
     {"id": "accion_baja_suscripcion", "tipo": "accion", "q": "Da de baja mi suscripción a Netflix, ya no la uso."},
     {"id": "accion_luz_cambio", "tipo": "accion", "q": "Cámbiame a la tarifa de luz más barata que encuentres."},
-    {"id": "suscripciones_resumen", "tipo": "modulo", "q": "¿Cuánto me gasto al mes en suscripciones y cuáles podría quitar?"},
+    {
+        "id": "suscripciones_resumen",
+        "tipo": "modulo",
+        "q": "¿Cuánto me gasto al mes en suscripciones y cuáles podría quitar?",
+    },
 ]
 
 
@@ -103,7 +135,10 @@ def main() -> None:
         fila["latencia_s"] = round(time.monotonic() - inicio, 1)
         ultimo, coste, entrada, salida_t = coste_y_tokens(db, ultimo)
         fila.update(coste_usd=round(coste, 4), tokens_entrada=entrada, tokens_salida=salida_t)
-        print(json.dumps({k: v for k, v in fila.items() if k not in ("respuesta", "traza")}, ensure_ascii=False), flush=True)
+        print(
+            json.dumps({k: v for k, v in fila.items() if k not in ("respuesta", "traza")}, ensure_ascii=False),
+            flush=True,
+        )
         salida.append(fila)
         Path(args.out).write_text(json.dumps(salida, ensure_ascii=False, indent=2))
 

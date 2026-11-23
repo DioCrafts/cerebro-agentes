@@ -115,7 +115,7 @@ def escribir(valor: Decimal, unidad: str | None, decimales: int = 2) -> str:
 # --------------------------------------------------------------------------------------------------------------
 
 OPERACIONES = ("sumar", "restar", "multiplicar", "anualizar", "mensualizar", "porcentaje", "variacion")
-_UNIDAD_DE = {"mes": "EUR/mes", "año": "EUR/año", "unico": "EUR"}
+_UNIDAD_DE: dict[str, UnidadSalida] = {"mes": "EUR/mes", "año": "EUR/año", "unico": "EUR"}
 
 
 def _periodicidad(valor: Any) -> Periodicidad:
@@ -176,7 +176,7 @@ def calcular_importes(
         if periodos <= {"unico"} or len(periodos) == 1:
             unidad = _UNIDAD_DE[importes[0].periodicidad]
             total = sum((i.valor for i in importes), Decimal(0))
-            res.anadir("total", total, unidad, decimales)  # type: ignore[arg-type]
+            res.anadir("total", total, unidad, decimales)
             if periodos == {"mes"}:
                 res.anadir("total al año (×12)", total * 12, "EUR/año", decimales)
                 res.supuestos.append("Al año = importe mensual × 12 (todos los meses se paga lo mismo).")
@@ -194,10 +194,12 @@ def calcular_importes(
             res.anadir("total al año", anual, "EUR/año", decimales)
             res.supuestos.append("Mensual ↔ anual con el factor 12 (prorrateo lineal).")
             for i in importes:
-                otro = (i.valor * 12, "EUR/año") if i.periodicidad == "mes" else (i.valor / 12, "EUR/mes")
+                otro: tuple[Decimal, UnidadSalida] = (
+                    (i.valor * 12, "EUR/año") if i.periodicidad == "mes" else (i.valor / 12, "EUR/mes")
+                )
                 res.anadir(
                     f"{i.concepto} ({'al año' if otro[1] == 'EUR/año' else 'al mes'})", otro[0], otro[1], decimales
-                )  # type: ignore[arg-type]
+                )
         if periodos == {"mes"} and len(importes) > 1:
             for i in importes:
                 res.anadir(f"{i.concepto} al año", i.valor * 12, "EUR/año", decimales)
@@ -209,7 +211,7 @@ def calcular_importes(
         if len({i.periodicidad for i in importes}) > 1:
             raise CalculoError("Para restar, todos los importes deben tener la misma periodicidad.")
         total = importes[0].valor - sum((i.valor for i in importes[1:]), Decimal(0))
-        res.anadir("diferencia", total, _UNIDAD_DE[importes[0].periodicidad], decimales)  # type: ignore[arg-type]
+        res.anadir("diferencia", total, _UNIDAD_DE[importes[0].periodicidad], decimales)
         return res
 
     if operacion == "multiplicar":
@@ -221,7 +223,7 @@ def calcular_importes(
                 i.valor * factor,
                 _UNIDAD_DE[i.periodicidad],
                 decimales,
-            )  # type: ignore[arg-type]
+            )
         return res
 
     if operacion in ("anualizar", "mensualizar"):
@@ -235,7 +237,7 @@ def calcular_importes(
                 valor = i.valor / 12
             res.anadir(
                 f"{i.concepto} {'al año' if destino == 'año' else 'al mes'}", valor, _UNIDAD_DE[destino], decimales
-            )  # type: ignore[arg-type]
+            )
         res.supuestos.append("Mensual ↔ anual con el factor 12 (prorrateo lineal, sin pagas extra ni meses distintos).")
         return res
 
@@ -246,9 +248,9 @@ def calcular_importes(
             parte = i.valor * porcentaje / 100
             pct = escribir(porcentaje, "%", _decimales_de(porcentaje))
             unidad = _UNIDAD_DE[i.periodicidad]
-            res.anadir(f"{pct} de {i.concepto}", parte, unidad, decimales)  # type: ignore[arg-type]
-            res.anadir(f"{i.concepto} + {pct}", i.valor + parte, unidad, decimales)  # type: ignore[arg-type]
-            res.anadir(f"{i.concepto} − {pct}", i.valor - parte, unidad, decimales)  # type: ignore[arg-type]
+            res.anadir(f"{pct} de {i.concepto}", parte, unidad, decimales)
+            res.anadir(f"{i.concepto} + {pct}", i.valor + parte, unidad, decimales)
+            res.anadir(f"{i.concepto} − {pct}", i.valor - parte, unidad, decimales)
         return res
 
     # variacion: from the first amount to the second
@@ -257,7 +259,7 @@ def calcular_importes(
     inicial, final = importes
     if inicial.valor == 0:
         raise CalculoError("El importe inicial es 0: no hay variación porcentual.")
-    res.anadir("diferencia", final.valor - inicial.valor, _UNIDAD_DE[inicial.periodicidad], decimales)  # type: ignore[arg-type]
+    res.anadir("diferencia", final.valor - inicial.valor, _UNIDAD_DE[inicial.periodicidad], decimales)
     res.anadir("variación porcentual", (final.valor - inicial.valor) / abs(inicial.valor) * 100, "%", decimales)
     return res
 

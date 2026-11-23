@@ -1,0 +1,48 @@
+# Contexto de las imágenes de docs/despliegue/ (Dockerfile y Dockerfile.web se construyen desde la raíz).
+# Solo entra lo que copian; todo lo demás (historial, entornos, datos, modelos, secretos) se queda fuera.
+
+# Control de versiones y herramientas
+.git
+.github
+.claude
+.direnv
+.envrc
+.vscode
+.idea
+
+# Secretos y entornos
+.env
+.env.*
+**/.env
+**/.env.*
+!docs/despliegue/entorno.ejemplo
+*.pem
+*.key
+
+# Entornos de Python y cachés
+.venv
+.venv-*
+**/__pycache__
+**/*.pyc
+.pytest_cache
+.mypy_cache
+.ruff_cache
+.coverage
+htmlcov
+
+# Datos locales, modelos e índices (van en volúmenes, nunca en la imagen)
+data
+**/data/models
+eval_data
+dashboards
+
+# Frontend: se instala y compila dentro de la imagen
+frontend/node_modules
+frontend/dist
+frontend/coverage
+**/node_modules
+
+# Documentación y pruebas que la imagen no necesita
+tests
+*.md
+!README.md

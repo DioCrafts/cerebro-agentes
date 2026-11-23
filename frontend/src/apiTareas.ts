@@ -1,60 +1,25 @@
 // Client for the long-running tasks (asistente/plataforma/api/routers/tareas.py): goals of several steps over several days.
 //
-// Shapes mirror asistente/nucleo/tareas/modelo.py (Tarea, Paso) and servicio.resumen. A pending ACTION is never
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts). A pending ACTION is never
 // confirmed here: it goes through POST /acciones/{id}/confirmar (apiModulos.ts), its own button.
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
+import type { Peticion, Respuesta } from "./api/tipos";
 
-export type EstadoTarea =
-  | "propuesta"
-  | "activa"
-  | "pausada"
-  | "esperando_usuario"
-  | "esperando_evento"
-  | "completada"
-  | "cancelada"
-  | "fallida";
-export type TipoPaso = "calculo" | "consulta" | "capacidad" | "espera" | "confirmacion_usuario" | "accion" | "nota";
-export type EstadoPaso = "pendiente" | "esperando" | "hecho" | "omitido" | "fallido" | "cancelado";
-export type MotivoEspera = "usuario" | "fecha" | "evento" | "accion" | "modulo";
-
-export interface Paso {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  tipo: TipoPaso;
-  depende_de: string[];
-  opcional: boolean;
-  estado: EstadoPaso;
-  espera_actual: {
-    motivo: MotivoEspera;
-    desde: string;
-    hasta: string | null;
-    accion_id: string | null;
-    detalle: string;
-    reintentar: boolean;
-  } | null;
-  resultado: { resumen: string; evidencias: string[]; fecha: string | null; borrador: string | null } | null;
-  intentos: number;
-  error: string | null;
-  terminado: string | null;
-}
-
-export interface Tarea {
-  id: string;
-  case_id: string;
-  titulo: string;
-  objetivo: string;
-  origen: "plantilla" | "plan";
-  plantilla: string | null;
-  estado: EstadoTarea;
-  creada: string;
-  vence: string | null;
-  proxima_revision: string | null;
-  pasos: Paso[];
-  motivo_cancelacion: string | null;
-}
+// The task and its history come from the backend's OpenAPI schema (src/api/esquema.d.ts). The summary
+// (asistente/nucleo/tareas/servicio.py -> resumen), the list of tasks and the templates travel as plain dicts
+// (`dict[str, Any]` in the schema), so ResumenTarea, Espera and Plantilla are typed here by hand.
+type TareaDetalleEsquema = Respuesta<"/tareas/{tarea_id}", "get">;
+export type Tarea = TareaDetalleEsquema["tarea"];
+export type Paso = Tarea["pasos"][number];
+export type EntradaHistorial = TareaDetalleEsquema["historial"][number];
+export type EstadoTarea = Tarea["estado"];
+export type TipoPaso = Paso["tipo"];
+export type EstadoPaso = Paso["estado"];
+export type MotivoEspera = NonNullable<Paso["espera_actual"]>["motivo"];
+export type NuevaTarea = Peticion<"/tareas", "post">;
 
 export interface Espera {
   paso: string;
@@ -82,19 +47,8 @@ export interface ResumenTarea {
   creada: string;
 }
 
-export interface EntradaHistorial {
-  seq: number;
-  momento: string;
-  evento: string;
-  paso_id: string | null;
-}
-
-export interface TareaDetalle {
-  tarea: Tarea;
-  resumen: ResumenTarea;
-  historial: EntradaHistorial[];
-  avisos: string[];
-}
+export type TareaDetalle = Omit<TareaDetalleEsquema, "resumen"> & { resumen: ResumenTarea };
+export type ListadoTareas = Omit<Respuesta<"/tareas", "get">, "tareas"> & { tareas: ResumenTarea[] };
 
 export interface Plantilla {
   id: string;
@@ -104,25 +58,27 @@ export interface Plantilla {
   pasos: Array<{ id: string; titulo: string; tipo: TipoPaso }>;
 }
 
-const esObjeto = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null;
+export interface PlantillasResponse {
+  plantillas: Plantilla[];
+}
 
 function esDetalle(v: unknown): v is TareaDetalle {
-  return esObjeto(v) && esObjeto(v.tarea) && Array.isArray((v.tarea as Record<string, unknown>).pasos) && esObjeto(v.resumen);
+  return isRecord(v) && isRecord(v.tarea) && Array.isArray((v.tarea).pasos) && isRecord(v.resumen);
 }
 
-function esListado(v: unknown): v is { case_id: string; tareas: ResumenTarea[] } {
-  return esObjeto(v) && Array.isArray(v.tareas);
+function esListado(v: unknown): v is ListadoTareas {
+  return isRecord(v) && Array.isArray(v.tareas);
 }
 
-function esPlantillas(v: unknown): v is { plantillas: Plantilla[] } {
-  return esObjeto(v) && Array.isArray(v.plantillas);
+function esPlantillas(v: unknown): v is PlantillasResponse {
+  return isRecord(v) && Array.isArray(v.plantillas);
 }
 
-export function getPlantillas(signal?: AbortSignal): Promise<{ plantillas: Plantilla[] }> {
+export function getPlantillas(signal?: AbortSignal): Promise<PlantillasResponse> {
   return request("/tareas/plantillas", undefined, esPlantillas, { method: "GET", signal });
 }
 
-export function getTareas(caseId: string, signal?: AbortSignal): Promise<{ case_id: string; tareas: ResumenTarea[] }> {
+export function getTareas(caseId: string, signal?: AbortSignal): Promise<ListadoTareas> {
   return request(`/tareas?case_id=${encodeURIComponent(caseId)}`, undefined, esListado, { method: "GET", signal });
 }
 
@@ -130,13 +86,7 @@ export function getTarea(id: string, signal?: AbortSignal): Promise<TareaDetalle
   return request(`/tareas/${encodeURIComponent(id)}`, undefined, esDetalle, { method: "GET", signal });
 }
 
-export function crearTarea(body: {
-  case_id: string;
-  plantilla: string;
-  objetivo: string;
-  parametros?: Record<string, unknown>;
-  aceptar?: boolean;
-}): Promise<TareaDetalle> {
+export function crearTarea(body: NuevaTarea): Promise<TareaDetalle> {
   return request("/tareas", body, esDetalle);
 }
 

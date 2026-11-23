@@ -1,94 +1,32 @@
-# React + TypeScript + Vite
+# Interfaz web de HaciendaGPT
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación de una página en React 19, TypeScript y Vite. Habla con la API de FastAPI bajo `/api`: en desarrollo, Vite reenvía `/api/*` a `http://127.0.0.1:8000` (cámbialo con `VITE_API_PROXY`); en producción lo hace Caddy (`docs/despliegue/Caddyfile`). Es instalable como PWA: el service worker sale de `pwa/sw.js` al compilar.
 
-Currently, two official plugins are available:
+Necesita Node 22.12 o posterior.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm ci
+npm run dev         # http://localhost:5173
+npm run typecheck   # tsc -b
+npm run lint        # eslint con reglas que usan tipos y jsx-a11y
+npm test            # vitest (jsdom + Testing Library)
+npm run build       # dist/
+npm run tipos       # src/api/esquema.d.ts a partir de openapi.json
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Los tipos de las respuestas salen del OpenAPI de la API. `make tipos` (desde la raíz) vuelca el esquema a `openapi.json` con `python -m asistente.plataforma.cli.openapi` y regenera `src/api/esquema.d.ts`; `make tipos-check`, que forma parte de `make quality`, falla si alguno de los dos ficheros versionados no coincide con lo que produce el backend. Los clientes los nombran con los alias de `src/api/tipos.ts` (`Esquemas["AgentResponse"]`, `Respuesta<"/simulate", "post">`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Dónde está cada cosa
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+- `src/App.tsx`: la puerta de cuentas (con `AUTH_MODE=required` pide iniciar sesión) alrededor de `src/shell/Asesor.tsx`.
+- `src/shell/`: el estado de la aplicación en hooks. `useConsulta.ts` lleva las conversaciones y el turno en curso; ese turno vive en un almacén externo (`turnoEnCurso.ts`) para que cada token repinte solo su burbuja.
+- `src/paneles/`: el registro de paneles laterales (`registro.ts`) y un fichero por panel; `components/PanelHost.tsx` los monta.
+- `src/api*.ts`: un cliente por router del backend. Todos validan la respuesta con los guardas de `src/lib/guards.ts` antes de usarla. Donde el backend devuelve un `dict` sin modelo (el resumen del correo, las decisiones recordadas, el resumen de una tarea), el tipo sigue escrito a mano en el cliente.
+- `src/lib/`: funciones puras, cada una con sus tests al lado (`*.test.ts`). `formulario.ts` lee las cifras escritas («1.500,50») y lo comparten el simulador y el optimizador; `lib/optimizador/` construye la petición a `/optimize` y lo que se guarda en el expediente; `lib/simulador/` tiene las casillas y el detalle de cada hijo.
+- `src/components/optimizador/` y `src/components/simulador/`: las piezas de esos dos paneles y sus hooks (`useOptimizador`, `useSimulacion`).
 
+## Notas
 
-## Qué hace la interfaz
-
-- **Una llamada por turno a `/agent/stream`** (NDJSON): mientras el agente trabaja se muestran en vivo sus
-  búsquedas, la verificación y las correcciones; el botón de enviar pasa a ser *Detener*.
-- **Citas navegables**: cada `[F#]` de la respuesta es un chip que salta a su tarjeta de fuente (autoridad,
-  referencia, fecha, carácter vinculante y pasaje literal).
-- **Veredicto y comprobación afirmación por afirmación**, con el motivo cuando algo no queda respaldado.
-- **Borrador en vivo**: la respuesta se ve escribirse token a token, marcada como *sin verificar* hasta que
-  pasa la comprobación; si el agente la reescribe, el borrador se reinicia.
-- **Tu expediente**: panel con los datos que el asesor ha anotado del usuario; cada uno se puede corregir en
-  el sitio (`PUT /cases/{id}/facts/{name}`) o eliminar con confirmación (`DELETE`).
-- **Historial real** en `localStorage` (`src/lib/storage.ts`): sobrevive a recargas y se puede borrar.
-- **Tema claro/oscuro** con tokens CSS (`src/index.css` + `tailwind.config.js`) y diseño adaptado a móvil.
-- **Simulador** (botón de la barra superior): calculadora determinista (`POST /simulate`, sin modelo) que
-  recalcula mientras se teclea, compara con el expediente guardado, lista las formas de pagar menos con su
-  ahorro y permite guardar las cifras en el expediente.
-- **Próximos plazos** en el expediente (`GET /cases/{id}/calendar`), según el perfil.
-- **Leer un documento** (`POST /cases/{id}/documents`): propone datos con el pasaje literal del que salen y solo
-  guarda los que el usuario confirma.
+- La sesión va en una cookie `HttpOnly` que pone el servidor; el cliente no guarda el token. Las peticiones usan `credentials: "same-origin"` y llevan `X-Requested-With`, que el servidor exige a las escrituras autenticadas por la cookie.
+- El progreso del agente, del consejo y de las tareas del navegador llega por Server-Sent Events (`src/lib/sse.ts`), con reconexión por `Last-Event-ID` y espera creciente.
+- La CSP de producción es `script-src 'self'`: no añadas scripts en línea a `index.html` (el tema se aplica desde `public/tema.js`).

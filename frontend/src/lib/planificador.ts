@@ -2,7 +2,8 @@
 // error wording. No React here, so the component file only exports components.
 
 import type { Componente, PalancaId, PalancaNoUsada, PlanificarRequest, VistaPensiones } from "../apiPlanificador";
-import { parseAmount } from "./optimizador";
+import { parseAmount } from "./formulario";
+import type { VarianteEtiqueta } from "./optimizador/textos";
 
 export const PALANCAS: Array<{ id: PalancaId; label: string }> = [
   { id: "amortizar_hipoteca", label: "Amortizar la hipoteca" },
@@ -120,12 +121,13 @@ export function peticion(f: FormularioPlan, caseId: string | null | undefined, e
   return body;
 }
 
-export const NATURALEZA_COMPONENTE: Record<Componente["naturaleza"], { label: string; cls: string }> = {
-  definitivo: { label: "Ahorro definitivo", cls: "border-grounding-cited-bd bg-grounding-cited-bg text-grounding-cited-fg" },
-  diferimiento: { label: "Diferimiento", cls: "border-grounding-uncited-bd bg-grounding-uncited-bg text-grounding-uncited-fg" },
-  coste: { label: "Coste", cls: "border-risk-high-fg/30 bg-risk-high-bg text-risk-high-fg" },
-  rendimiento: { label: "Rendimiento", cls: "border-line bg-surface text-ink-soft" },
-  penalizacion: { label: "Penalización", cls: "border-risk-high-fg/30 bg-risk-high-bg text-risk-high-fg" },
+/** Each component of the plan with the Primer `Label` variant it is shown with. */
+export const NATURALEZA_COMPONENTE: Record<Componente["naturaleza"], { label: string; variante: VarianteEtiqueta }> = {
+  definitivo: { label: "Ahorro definitivo", variante: "success" },
+  diferimiento: { label: "Diferimiento", variante: "attention" },
+  coste: { label: "Coste", variante: "danger" },
+  rendimiento: { label: "Rendimiento", variante: "secondary" },
+  penalizacion: { label: "Penalización", variante: "danger" },
 };
 
 export const CAUSA_NO_USADA: Record<PalancaNoUsada["causa"], string> = {

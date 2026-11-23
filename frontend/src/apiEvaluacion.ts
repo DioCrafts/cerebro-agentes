@@ -7,34 +7,36 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-export type TipoCorreccion =
-  | "cifra_erronea"
-  | "modulo_erroneo"
-  | "hecho_omitido"
-  | "afirmacion_inventada"
-  | "suma_indebida"
-  | "memoria_erronea"
-  | "otro";
+// The kinds of correction the user can pick. The schema sends them as plain strings
+// (`ConsentimientoEvaluacion.tipos[].clave`); getConsentimientoEvaluacion drops any this client does not know.
+const TIPOS_CORRECCION = [
+  "cifra_erronea",
+  "modulo_erroneo",
+  "hecho_omitido",
+  "afirmacion_inventada",
+  "suma_indebida",
+  "memoria_erronea",
+  "otro",
+] as const;
+export type TipoCorreccion = (typeof TIPOS_CORRECCION)[number];
 
-export interface ConsentimientoEvaluacion {
-  version: string;
-  texto: string;
+function esTipoCorreccion(clave: string): clave is TipoCorreccion {
+  return (TIPOS_CORRECCION as readonly string[]).includes(clave);
+}
+
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts). POST /evaluacion/feedback and the
+// review's «aceptar» take a plain dict, so their bodies (FeedbackPayload, EdicionCaso) are typed here by hand,
+// and so are the masked report and traces a candidate stores as dicts (see ContenidoCandidato below).
+// `aprendizaje_*`: the per-case consent to learn from detected mistakes.
+type ConsentimientoEsquema = Respuesta<"/evaluacion/consentimiento", "get">;
+export type ConsentimientoEvaluacion = Omit<ConsentimientoEsquema, "tipos"> & {
   tipos: Array<{ clave: TipoCorreccion; etiqueta: string }>;
-  // The per-case consent to learn from detected mistakes (older backends do not send it).
-  aprendizaje_version?: string;
-  aprendizaje_texto?: string;
-}
-
-export interface FeedbackRespuesta {
-  id: string;
-  guardado_para_evaluacion: boolean;
-  estado: string;
-  etiquetas: string[];
-  mensaje: string;
-  // A candidate case of the review queue was made from it.
-  candidato?: boolean;
-}
+};
+// `candidato`: a candidate case of the review queue was made from it.
+export type FeedbackRespuesta = Respuesta<"/evaluacion/feedback", "post">;
 
 export interface FeedbackPayload {
   caseId: string | null;
@@ -49,11 +51,7 @@ export interface FeedbackPayload {
   versionConsentimiento?: string | null;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
-
-function isConsentimiento(value: unknown): value is ConsentimientoEvaluacion {
+function isConsentimiento(value: unknown): value is ConsentimientoEsquema {
   return isRecord(value) && typeof value.version === "string" && typeof value.texto === "string" && Array.isArray(value.tipos);
 }
 
@@ -66,7 +64,10 @@ function isNull(value: unknown): value is null {
 }
 
 export function getConsentimientoEvaluacion(signal?: AbortSignal): Promise<ConsentimientoEvaluacion> {
-  return request("/evaluacion/consentimiento", undefined, isConsentimiento, { signal, method: "GET" });
+  return request("/evaluacion/consentimiento", undefined, isConsentimiento, { signal, method: "GET" }).then((c) => ({
+    ...c,
+    tipos: c.tipos.flatMap((t) => (isRecord(t) && esTipoCorreccion(t.clave) ? [{ clave: t.clave, etiqueta: t.etiqueta }] : [])),
+  }));
 }
 
 function vacioANull(texto: string | undefined): string | null {
@@ -100,14 +101,7 @@ export function retirarFeedback(id: string): Promise<null> {
 
 // --- «Aprender de los fallos» (per case) -------------------------------------------------------------------
 
-export interface EstadoAprendizaje {
-  case_id: string;
-  activo: boolean;
-  version: string;
-  texto: string;
-  otorgado_el: string | null;
-  candidatos_pendientes: number;
-}
+export type EstadoAprendizaje = Respuesta<"/evaluacion/aprendizaje", "get">;
 
 function isEstadoAprendizaje(value: unknown): value is EstadoAprendizaje {
   return isRecord(value) && typeof value.activo === "boolean" && typeof value.texto === "string";
@@ -128,44 +122,12 @@ export function cambiarAprendizaje(caseId: string, activo: boolean, version: str
 
 // --- The review queue ----------------------------------------------------------------------------------------
 
-export type EstadoCandidato = "pendiente" | "aceptado" | "rechazado";
-
-export interface CategoriaInfo {
-  clave: string;
-  descripcion: string;
-  critica: boolean;
-}
-
-export interface GrupoResumen {
-  id: string;
-  grupo: string;
-  pregunta: string;
-  tipo_fallo: string;
-  etiqueta_fallo: string;
-  categoria_sugerida: string;
-  critica: boolean;
-  origen: "valoracion" | "voto" | "senal";
-  frecuencia: number;
-  prioridad: number;
-  motivos_prioridad: string[];
-  importe_en_juego: string | null;
-  creado_el: string;
-  estado: EstadoCandidato;
-}
-
-export interface ColaRevision {
-  grupos: GrupoResumen[];
-  operador: boolean;
-  categorias: CategoriaInfo[];
-  detectados: number;
-}
-
-export interface CambioRedaccion {
-  campo: string;
-  tipo: string;
-  sustituto: string;
-  vista: string;
-}
+export type ColaRevision = Respuesta<"/evaluacion/revision", "get">;
+export type GrupoResumen = ColaRevision["grupos"][number];
+export type CategoriaInfo = ColaRevision["categorias"][number];
+type DetalleCandidatoEsquema = Respuesta<"/evaluacion/revision/{candidato_id}", "get">;
+export type EstadoCandidato = DetalleCandidatoEsquema["candidato"]["estado"];
+export type CambioRedaccion = Esquemas["CambioRedaccion"];
 
 /** The brain's report as stored in a candidate (masked); only what the panel shows is typed. */
 export interface CerebroCandidato {
@@ -190,50 +152,22 @@ export interface CerebroCandidato {
   recuerdos_usados: string[];
 }
 
-export interface ContenidoCandidato {
-  pregunta: string;
-  respuesta: string | null;
-  respuesta_parcial: boolean;
-  siguiente_pregunta: string | null;
-  correccion: Record<string, string | null>;
-  modo: string | null;
+/** A candidate's stored content. The backend keeps the brain's report, the signals, the tool trace and the snapshot
+ * as plain dicts (`dict[str, Any]` in the schema); only the fields the panel reads are typed here. */
+export type ContenidoCandidato = Omit<
+  Esquemas["ContenidoCandidato"],
+  "cerebro" | "cerebro_resumen" | "senales" | "tool_trace" | "instantanea"
+> & {
   cerebro: CerebroCandidato | null;
   // Only the summary the audit trail kept, when there is no full report.
-  cerebro_resumen?: { ruta?: string; tipo?: string; especialistas?: string[]; violaciones_cifras?: number } | null;
-  modos_especialistas: Record<string, string | null>;
-  variante: string | null;
-  modelos: Record<string, string>;
-  modelos_origen: "turno" | "configuracion";
+  cerebro_resumen: { ruta?: string; tipo?: string; especialistas?: string[]; violaciones_cifras?: number } | null;
   senales: Array<{ tipo: string; detalle: string }>;
   tool_trace: Array<{ tool: string; agent?: string; is_error?: boolean }>;
   instantanea: { hechos?: Record<string, unknown> };
-  enmascarado: CambioRedaccion[];
-}
+};
 
-export interface Candidato {
-  id: string;
-  grupo: string;
-  origen: "valoracion" | "voto" | "senal";
-  tipo_fallo: string;
-  categoria_sugerida: string;
-  critica: boolean;
-  importe_en_juego: string | null;
-  prioridad: number;
-  motivos_prioridad: string[];
-  estado: EstadoCandidato;
-  creado_el: string;
-  motivo_rechazo: string | null;
-  caso_aceptado: string | null;
-  contenido: ContenidoCandidato;
-}
-
-export interface DetalleCandidato {
-  candidato: Candidato;
-  etiqueta_fallo: string;
-  frecuencia: number;
-  duplicados: string[];
-  categorias: CategoriaInfo[];
-}
+export type Candidato = Omit<DetalleCandidatoEsquema["candidato"], "contenido"> & { contenido: ContenidoCandidato };
+export type DetalleCandidato = Omit<DetalleCandidatoEsquema, "candidato"> & { candidato: Candidato };
 
 export interface CifraEsperadaEdicion {
   herramienta: string;
@@ -263,16 +197,7 @@ export interface EdicionCaso {
   aunque_no_reproduzca: boolean;
 }
 
-export interface Aceptado {
-  id: string;
-  categoria: string;
-  descripcion: string;
-  expectativas: Array<Record<string, unknown>>;
-  avisos: string[];
-  aceptado_el: string;
-  vigente: boolean;
-  motivo_baja: string | null;
-}
+export type Aceptado = Respuesta<"/evaluacion/revision/{candidato_id}/aceptar", "post">;
 
 function isCola(value: unknown): value is ColaRevision {
   return isRecord(value) && Array.isArray(value.grupos) && Array.isArray(value.categorias);
@@ -286,11 +211,11 @@ function isAceptado(value: unknown): value is Aceptado {
   return isRecord(value) && typeof value.id === "string" && Array.isArray(value.expectativas);
 }
 
-function isAceptados(value: unknown): value is { casos: Aceptado[] } {
+function isAceptados(value: unknown): value is Respuesta<"/evaluacion/revision/aceptados", "get"> {
   return isRecord(value) && Array.isArray(value.casos);
 }
 
-function isRechazo(value: unknown): value is { rechazados: number } {
+function isRechazo(value: unknown): value is Respuesta<"/evaluacion/revision/{candidato_id}/rechazar", "post"> & { rechazados: number } {
   return isRecord(value) && typeof value.rechazados === "number";
 }
 

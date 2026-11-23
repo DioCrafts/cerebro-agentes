@@ -379,6 +379,9 @@ class ContextoTurno:
     memoria: BloqueMemoria = field(default_factory=BloqueMemoria)
     acciones: AccionesDelTurno = field(default_factory=AccionesDelTurno)
     chat_history: Sequence[dict[str, Any]] = ()
+    # Set once any specialist of the turn read third-party data (an e-mail, a web page): from then on a
+    # ``prepara`` tool's writes wait for the user's confirmation (``colaboracion/modulos.py``).
+    leyo_no_confiable: bool = False
 
 
 @runtime_checkable

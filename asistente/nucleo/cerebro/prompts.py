@@ -203,9 +203,9 @@ def prompt(rol: str, por_defecto: str) -> str:
     try:
         from asistente.nucleo.evaluacion import variantes
 
-        if rol not in getattr(variantes, "ROLES", ()):
+        if not variantes.es_rol(rol):
             return por_defecto
-        texto = variantes.prompt_activo(rol)  # type: ignore[arg-type]
+        texto = variantes.prompt_activo(rol)
     except Exception:  # the brain never fails because of the prompt registry
         logger.exception("could not read the active prompt %s: using the built-in one", rol)
         return por_defecto

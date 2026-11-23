@@ -30,7 +30,7 @@ as before the migrations existed); ``python -m asistente.plataforma.cli.platafor
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable, Generator, Iterable
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -42,6 +42,8 @@ import threading
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from asistente.plataforma.sqlite import abrir_sqlite
 
 BASE_CASOS = "casos"
 BASE_DOCTRINA = "doctrina"
@@ -71,7 +73,9 @@ def nombre_de_funcion(funcion: Callable[..., Any]) -> str:
         if modulo.startswith(actual):
             modulo = historico + modulo[len(actual) :]
             break
-    return f"{modulo}.{funcion.__qualname__}"
+    # A callable object (not a function) has no ``__qualname__`` of its own: its class names it.
+    qualname = getattr(funcion, "__qualname__", None) or type(funcion).__qualname__
+    return f"{modulo}.{qualname}"
 
 
 class MigracionError(RuntimeError):
@@ -385,14 +389,11 @@ def _abrir(ruta: str, *, solo_lectura: bool) -> sqlite3.Connection | None:
         return sqlite3.connect(f"file:{Path(ruta).resolve()}?mode=ro", uri=True, timeout=30.0)
     if ruta != ":memory:":
         Path(ruta).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(ruta, timeout=30.0)
-    if ruta != ":memory:":
-        conn.execute("PRAGMA journal_mode=WAL;")
-    return conn
+    return abrir_sqlite(ruta, timeout=30.0)
 
 
 @contextmanager
-def _conexion(destino: str | sqlite3.Connection, *, solo_lectura: bool) -> Iterator[sqlite3.Connection | None]:
+def _conexion(destino: str | sqlite3.Connection, *, solo_lectura: bool) -> Generator[sqlite3.Connection | None]:
     if isinstance(destino, sqlite3.Connection):
         yield destino
         return

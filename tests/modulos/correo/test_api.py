@@ -220,3 +220,36 @@ def test_url_de_consentimiento_desde_la_api(env: Env, google: GoogleFalso) -> No
     url = env.client.post("/correo/conexion", json={"case_id": case_id}, headers=ana).json()["url"]
     params = parse_qs(urlsplit(url).query)
     assert params["scope"] == ["https://www.googleapis.com/auth/gmail.readonly"] and params["prompt"] == ["consent"]
+
+
+def test_callback_solo_en_el_navegador_que_inicio(env: Env, google: GoogleFalso) -> None:
+    """Login CSRF: a callback link with a valid state and code, opened in ANOTHER browser (no cookie), connects
+    nothing and does not spend the state; the browser that started the flow still completes it."""
+    ana = env.register("ana@example.com")
+    case_id = env.new_case(ana)
+    env.activar(ana, "correo")
+    r = env.client.post("/correo/conexion", json={"case_id": case_id}, headers=ana)
+    cookie = r.headers["set-cookie"].lower()
+    assert "httponly" in cookie and "samesite=lax" in cookie and "max-age=600" in cookie
+    estado, codigo = google.autorizar(r.json()["url"])
+    otro = TestClient(env.client.app)
+    ajeno = otro.get("/correo/oauth/callback", params={"state": estado, "code": codigo}, follow_redirects=False)
+    assert ajeno.headers["location"].endswith("correo=error")
+    otro.cookies.set("correo_oauth_estado", "otro-valor")
+    ajeno = otro.get("/correo/oauth/callback", params={"state": estado, "code": codigo}, follow_redirects=False)
+    assert ajeno.headers["location"].endswith("correo=error")
+    assert not env.client.get("/correo/estado", params={"case_id": case_id}, headers=ana).json()["conectado"]
+    propio = env.client.get("/correo/oauth/callback", params={"state": estado, "code": codigo}, follow_redirects=False)
+    assert propio.headers["location"].endswith("correo=conectado")
+    assert "correo_oauth_estado" not in env.client.cookies  # spent
+
+
+def test_estado_oauth_se_consume_una_sola_vez(env: Env) -> None:
+    from concurrent.futures import ThreadPoolExecutor
+
+    from asistente.capacidades.correo import almacen
+
+    almacen.guardar_estado_oauth("e1", case_id="c", user_id=None, verificador_cifrado="v", db_path=env.db_path)
+    with ThreadPoolExecutor(8) as pool:
+        resultados = list(pool.map(lambda _: almacen.consumir_estado_oauth("e1", env.db_path), range(8)))
+    assert sum(r is not None for r in resultados) == 1

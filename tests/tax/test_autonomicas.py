@@ -118,7 +118,7 @@ def test_apply_writes_lines_and_repeats_unchecked_requirements() -> None:
         _bases(),
         conjunta=False,
         norma="Ley X",
-        linea=lambda c, i, f: lineas.append((c, i, f)),
+        linea=lambda c, i, f, **_: lineas.append((c, i, f)),
         aviso=avisos.append,
     )
     assert total == D(200)
@@ -220,10 +220,10 @@ def test_incompatible_deductions_and_disability_ranges() -> None:
     edad = _fija(unidad=None, edad_min=75, titulo="Mayores de 75", articulo="art. 6", incompatible_con=["art. 4"])
     avisos: list[str] = []
     total = aplicar([discapacidad, edad], _inp(edad=80, grado_discapacidad=65), _bases(), conjunta=False, norma="Ley X",
-                    linea=lambda *a: None, aviso=avisos.append)  # fmt: skip
+                    linea=lambda *a, **k: None, aviso=avisos.append)  # fmt: skip
     assert total == D(200) and any("incompatible con art. 4" in a for a in avisos)
     solo_edad = aplicar([discapacidad, edad], _inp(edad=80), _bases(), conjunta=False, norma="Ley X",
-                        linea=lambda *a: None, aviso=avisos.append)  # fmt: skip
+                        linea=lambda *a, **k: None, aviso=avisos.append)  # fmt: skip
     assert solo_edad == D(200)
     tramo = _fija(unidad=None, discapacidad_min=33, discapacidad_max=64, titulo="Discapacidad media")
     assert evaluar(tramo, _inp(grado_discapacidad=50), _bases(), conjunta=False).importe == D(200)
@@ -254,7 +254,7 @@ def _aplicar(deducciones: list[DeduccionCalculable], inp: IRPFInput, bases: (
     lineas: dict[str, D] = {}
     avisos: list[str] = []
     total = aplicar(deducciones, inp, bases or _bases(), conjunta=conjunta, norma="Ley X",
-                    linea=lambda c, i, f: lineas.__setitem__(f.removesuffix(" Ley X"), -i), aviso=avisos.append)  # fmt: skip
+                    linea=lambda c, i, f, **_: lineas.__setitem__(f.removesuffix(" Ley X"), -i), aviso=avisos.append)  # fmt: skip
     return total, lineas, avisos
 
 

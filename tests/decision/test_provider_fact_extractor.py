@@ -91,7 +91,7 @@ def test_default_extractor_follows_llm_provider(monkeypatch: pytest.MonkeyPatch)
     solo_openai = default_fact_extractor()
     assert isinstance(solo_openai, ProviderFactExtractor) and not isinstance(solo_openai, OpenAIFactExtractor)
     assert solo_openai._provider.name == "openai" and isinstance(solo_openai._provider, MeteredProvider)
-    assert solo_openai._provider.model == settings.OPENAI_MODEL
+    assert solo_openai._provider.model == settings.OPENAI_AGENT_MODEL
     monkeypatch.setenv("DECISION_EXTRACTOR", "openai")
     forzado = default_fact_extractor()
     assert isinstance(forzado, ProviderFactExtractor) and isinstance(forzado._provider, MeteredProvider)

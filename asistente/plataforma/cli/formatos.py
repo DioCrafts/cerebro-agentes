@@ -16,8 +16,6 @@ import json
 import logging
 from pathlib import Path
 from typing import Any
-from urllib.error import HTTPError
-import urllib.request
 
 import click
 
@@ -195,20 +193,15 @@ def check(diagnose: bool, notify: bool, fail_on_problem: bool) -> None:
 
 
 SONDA_NORMA = "BOE-A-2006-20764"  # Ley 35/2006 (IRPF): the law most parameters come from
-_AGENTE = "hacienda-asesor/0.1 (vigilancia de formatos)"
 _FALLO: Any = object()
 
 
 def _descargar(url: str, accept: str) -> str | None:
-    """GET ``url``; None on 404. Other errors propagate (the probe reports them)."""
-    request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": _AGENTE})
-    try:
-        with urllib.request.urlopen(request, timeout=60) as response:
-            return str(response.read().decode("utf-8", errors="replace"))
-    except HTTPError as exc:
-        if exc.code == 404:
-            return None
-        raise
+    """GET a www.boe.es ``url``; None on 404. Other errors propagate (the probe reports them)."""
+    from asistente.conocimiento.boe import cliente as boe
+
+    raw = boe.descargar(url, accept)
+    return None if raw is None else raw.decode("utf-8", errors="replace")
 
 
 def sondear(hoy: date, descargar: Any = _descargar) -> list[str]:
@@ -316,7 +309,7 @@ def probe(fail_on_problem: bool) -> None:
 
     Comprueba además el calendario fiscal: su coherencia y que los artículos del
     BOE que fijan sus plazos siguen diciendo lo mismo. Para ejecutarlo donde no
-    corren las tareas diarias (GitHub Actions) o para comprobar un cambio de
+    corren las tareas diarias (el worker: `formatos-probe`) o para comprobar un cambio de
     spec. Solo necesita acceso a www.boe.es.
     """
     from asistente.conocimiento.formatos_calendario import sondear_calendario

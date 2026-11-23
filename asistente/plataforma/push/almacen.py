@@ -30,6 +30,7 @@ from pydantic import BaseModel, ConfigDict
 
 from asistente.plataforma import settings
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 # The owner of everything when there are no accounts.
 OPERADOR = "operador"
@@ -85,10 +86,8 @@ class PushStore:
                 cuentas.owner_of("")
             finally:
                 cuentas.close()
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
         with self._lock, self._conn:
-            self._conn.execute("PRAGMA journal_mode=WAL;")
             asegurar_esquema(self._conn, "push")  # migrations (asistente/plataforma)
             self._conn.execute("""
                 CREATE TABLE IF NOT EXISTS push_suscripciones (

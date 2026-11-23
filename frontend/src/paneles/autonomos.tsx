@@ -1,14 +1,13 @@
-// «Autónomos»: models 130/303 and the activity's figures.
+// «Autónomos»: models 130/303 and the activity's figures, shown as a page.
 
 import { AutonomosPanel } from "../components/AutonomosPanel";
 import type { PropsPanel } from "./tipos";
 
-export default function PanelAutonomos({ ctx, open, onClose }: PropsPanel) {
+export default function PanelAutonomos({ ctx, open }: PropsPanel) {
   return (
     <AutonomosPanel
       key={`autonomos-${ctx.conversacionId}`}
       open={open}
-      onClose={onClose}
       taxPeriod={ctx.caso.taxPeriod}
       caseId={ctx.caso.id}
       facts={ctx.caso.facts}

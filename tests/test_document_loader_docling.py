@@ -9,8 +9,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.document_loader import (
     SUPPORTED_SUFFIXES,
     DocumentProcessor,
@@ -31,9 +30,9 @@ def _processor(content_dir: str = ".") -> DocumentProcessor:
 
 
 def test_docling_metadata_maps_headings_source_and_page() -> None:
-    chunk = Document(
-        page_content="Artículo 96. Obligación de declarar...",
-        metadata={
+    chunk = FragmentoRecuperado(
+        texto="Artículo 96. Obligación de declarar...",
+        metadatos={
             "source": "/data/boe/BOE-A-2006-20764.pdf",
             "dl_meta": {
                 "headings": ["Título III", "Artículo 96"],
@@ -50,9 +49,9 @@ def test_docling_metadata_maps_headings_source_and_page() -> None:
 
 
 def test_docling_metadata_falls_back_to_filename_without_headings() -> None:
-    chunk = Document(
-        page_content="texto",
-        metadata={"source": "", "dl_meta": {"origin": {"filename": "manual-renta.pdf"}}},
+    chunk = FragmentoRecuperado(
+        texto="texto",
+        metadatos={"source": "", "dl_meta": {"origin": {"filename": "manual-renta.pdf"}}},
     )
     meta = docling_chunk_metadata(chunk)
     assert meta["title"] == "manual-renta.pdf"
@@ -64,7 +63,7 @@ def test_docling_metadata_falls_back_to_filename_without_headings() -> None:
 def test_docling_metadata_always_has_title_and_locator_keys() -> None:
     # title + locator must always be present so the grounding gate can decide
     # citability deterministically, even on a degenerate empty chunk.
-    meta = docling_chunk_metadata(Document(page_content="x", metadata={}))
+    meta = docling_chunk_metadata(FragmentoRecuperado(texto="x", metadatos={}))
     assert meta["title"] == "sin_titulo"
     assert meta["source_url"] == ""
     assert meta["section"] == "general"
@@ -89,12 +88,12 @@ def test_load_chunks_maps_loader_output(monkeypatch, tmp_path: Path) -> None:
     class _FakeLoader:
         def load(self):
             return [
-                Document(
-                    page_content="Tipo de IVA general 21%.",
+                FragmentoRecuperado(
+                    texto="Tipo de IVA general 21%.",
                     # ``origin.filename`` is what the streaming wrapper uses to
                     # bucket chunks back to their source file — the real
                     # Docling output always sets it.
-                    metadata={
+                    metadatos={
                         "source": str(tmp_path / "doc.pdf"),
                         "dl_meta": {
                             "headings": ["IVA"],
@@ -114,16 +113,16 @@ def test_load_chunks_maps_loader_output(monkeypatch, tmp_path: Path) -> None:
 
     def fake_parse_paths(paths):
         raw = _FakeLoader().load()
-        return [Document(page_content=c.page_content, metadata=dl.docling_chunk_metadata(c)) for c in raw]
+        return [FragmentoRecuperado(texto=c.texto, metadatos=dl.docling_chunk_metadata(c)) for c in raw]
 
     monkeypatch.setattr(dl, "_docling_parse_paths", fake_parse_paths)
     monkeypatch.setattr(dl, "_init_worker", lambda max_tokens: None)
 
     chunks = processor.load_chunks()
     assert len(chunks) == 1
-    assert chunks[0].metadata["title"] == "IVA"
-    assert chunks[0].metadata["source_url"].endswith("doc.pdf")
-    assert chunks[0].page_content.startswith("Tipo de IVA")
+    assert chunks[0].metadatos["title"] == "IVA"
+    assert chunks[0].metadatos["source_url"].endswith("doc.pdf")
+    assert chunks[0].texto.startswith("Tipo de IVA")
 
 
 def test_load_chunks_empty_when_no_files(tmp_path: Path) -> None:
@@ -131,8 +130,7 @@ def test_load_chunks_empty_when_no_files(tmp_path: Path) -> None:
 
 
 def test_sin_banner_boe_quita_la_cabecera_del_boe_de_titulos_y_texto():
-    from langchain_core.documents import Document
-
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.processor.document_loader import docling_chunk_metadata, sin_banner_boe
 
     banner = [
@@ -142,8 +140,8 @@ def test_sin_banner_boe_quita_la_cabecera_del_boe_de_titulos_y_texto():
     ]
     titulos = banner + ["Pagos a cuenta", "Artículo 101. Importe de los pagos a cuenta."]
     texto = "\n".join(titulos) + "\nNo obstante, en los términos que reglamentariamente se establezcan..."
-    limpio = sin_banner_boe(Document(page_content=texto, metadata={"dl_meta": {"headings": titulos}}))
-    assert limpio.page_content.startswith("Pagos a cuenta\nArtículo 101.")
+    limpio = sin_banner_boe(FragmentoRecuperado(texto=texto, metadatos={"dl_meta": {"headings": titulos}}))
+    assert limpio.texto.startswith("Pagos a cuenta\nArtículo 101.")
     assert docling_chunk_metadata(limpio)["section"] == "Pagos a cuenta — Artículo 101. Importe de los pagos a cuenta."
-    otro = Document(page_content="Renta 2025\nTexto", metadata={"dl_meta": {"headings": ["Renta 2025"]}})
+    otro = FragmentoRecuperado(texto="Renta 2025\nTexto", metadatos={"dl_meta": {"headings": ["Renta 2025"]}})
     assert sin_banner_boe(otro) is otro

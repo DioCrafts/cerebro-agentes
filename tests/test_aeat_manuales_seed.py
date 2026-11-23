@@ -4,8 +4,10 @@ import json
 from pathlib import Path
 
 from click.testing import CliRunner
+import httpx
 import pytest
 
+from asistente.plataforma import http
 from asistente.plataforma.cli import aeat_manuales_seed as seed
 
 PREFIJO = seed.MANUALES["irpf-2025"].prefijo
@@ -37,30 +39,25 @@ def test_ruta_local_aplana_la_ruta_bajo_el_prefijo(tmp_path: Path):
     assert destino == tmp_path / "aeat-manuales" / "irpf-2025" / "c01__borrador__intro.html"
 
 
-class _Respuesta:
-    def __init__(self, texto: str, status: int = 200) -> None:
-        self.text = texto
-        self.status_code = status
-        self.ok = status == 200
-        self.headers = {"Content-Type": "text/html; charset=utf-8"}
-        self.encoding = "utf-8"
+ROBOTS = "User-agent: *\nDisallow: /Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/NoIx/"
 
 
 class _Sesion:
+    """The pages of a fake AEAT site behind the shared HTTP client (MockTransport: no network)."""
+
     def __init__(self, paginas: dict[str, str]) -> None:
         self.paginas = paginas
-        self.headers: dict[str, str] = {}
         self.pedidas: list[str] = []
+        self.cliente = http.Cliente(transport=httpx.MockTransport(self._responder), dormir=lambda _s: None)
 
-    def get(self, url: str, timeout: float) -> _Respuesta:
+    def _responder(self, request: httpx.Request) -> httpx.Response:
+        url = str(request.url)
         self.pedidas.append(url)
         if url.endswith("/robots.txt"):
-            return _Respuesta(
-                "User-agent: *\nDisallow: /Sede/ayuda/manuales-videos-folletos/manuales-practicos/irpf-2025/NoIx/"
-            )
+            return httpx.Response(200, text=ROBOTS)
         if url in self.paginas:
-            return _Respuesta(self.paginas[url])
-        return _Respuesta("no", status=404)
+            return httpx.Response(200, text=self.paginas[url], headers={"Content-Type": "text/html; charset=utf-8"})
+        return httpx.Response(404, text="no")
 
 
 @pytest.fixture
@@ -76,7 +73,7 @@ def sesion() -> _Sesion:
 
 
 def test_descargar_manual_respeta_robots_no_guarda_indice_y_escribe_sidecar(tmp_path: Path, sesion: _Sesion):
-    descargador = seed.Descargador(delay=0, session=sesion)  # type: ignore[arg-type]
+    descargador = seed.Descargador(delay=0, cliente=sesion.cliente)
     descargador.cargar_robots()
     cuenta = seed.descargar_manual(seed.MANUALES["irpf-2025"], tmp_path, descargador, max_paginas=50)
 
@@ -92,7 +89,7 @@ def test_descargar_manual_respeta_robots_no_guarda_indice_y_escribe_sidecar(tmp_
 
 def test_descargar_manual_reanuda_sin_volver_a_pedir_lo_guardado(tmp_path: Path, sesion: _Sesion):
     manual = seed.MANUALES["irpf-2025"]
-    descargador = seed.Descargador(delay=0, session=sesion)  # type: ignore[arg-type]
+    descargador = seed.Descargador(delay=0, cliente=sesion.cliente)
     descargador.cargar_robots()
     seed.descargar_manual(manual, tmp_path, descargador, max_paginas=50)
     sesion.pedidas.clear()
@@ -104,7 +101,7 @@ def test_descargar_manual_reanuda_sin_volver_a_pedir_lo_guardado(tmp_path: Path,
 
 
 def test_cli_dry_run_no_escribe(tmp_path: Path, sesion: _Sesion, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(seed.requests, "Session", lambda: sesion)
+    monkeypatch.setattr(http, "_por_defecto", [sesion.cliente])
     resultado = CliRunner().invoke(
         seed.cli,
         [

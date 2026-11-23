@@ -22,7 +22,7 @@ strategy's responsibility.
 Stability contract for chunks returned by a strategy
 ----------------------------------------------------
 
-Every ``Document`` a strategy emits **must** carry:
+Every ``FragmentoRecuperado`` a strategy emits **must** carry:
 
 * ``metadata["source_file"]`` — absolute path of the **parent** file. If the
   strategy internally splits the file into temp fragments, those temp paths
@@ -44,11 +44,11 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 
-from langchain_core.documents import Document
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 
 class IngestStrategy(ABC):
-    """How to turn a file path into citation-ready ``Document`` chunks.
+    """How to turn a file path into citation-ready ``FragmentoRecuperado`` chunks.
 
     Implementations are stateless: workers may share a single instance
     across files. Any per-process resource (tokenizer, chunker) should be
@@ -72,7 +72,7 @@ class IngestStrategy(ABC):
         """
 
     @abstractmethod
-    def parse(self, file_path: str) -> Sequence[Document]:
+    def parse(self, file_path: str) -> Sequence[FragmentoRecuperado]:
         """Return the chunks for ``file_path``.
 
         Every returned chunk must carry the metadata contract documented

@@ -631,9 +631,9 @@ def datos_is(tmp_path: Path) -> Path:
 def test_sociedades_converge_with_cases_run_through_the_real_calculator(datos_is: Path, tmp_path: Path) -> None:
     lector = Guion(lectura(IS_VALOR, IS_CITAS, EFECTOS_IS))
     propuesta = _correr(otros.SOCIEDADES, datos_is, LEY_IS, TIPOS, lector, Guion(revision(C_IS, EFECTOS_IS)))
-    assert (
-        propuesta.tipo == "sociedades:TiposGravamen" and propuesta.estado == "propuesta"
-    ), propuesta.objeciones_abiertas
+    assert propuesta.tipo == "sociedades:TiposGravamen" and propuesta.estado == "propuesta", (
+        propuesta.objeciones_abiertas
+    )
     assert propuesta.ejercicios == [2026] and propuesta.aplicable_sin_persona
     assert [c.obtenido for c in propuesta.casos] == [D("6000.00"), D("17500.00"), D("24000.00"), D("25000.00")]
     almacen = _aplicar_y_confirmar(datos_is, tmp_path, propuesta, LEY_IS)

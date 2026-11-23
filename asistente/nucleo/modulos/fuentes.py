@@ -12,6 +12,11 @@ Every :class:`FuenteModulo` whose identifier (or URL) names a BOE document joins
   seen, kept as a baseline in ``MODULOS_FUENTES_STATE_PATH``; a ``consultado_el`` attribute on the source, when a
   module provides one, takes precedence over both.
 
+A source whose URL is the BOE's daily text (``diario_boe/…``, ``tipo_texto: "diario"`` in the module's data) has
+no consolidated version: the BOE answers 404 when asked for its update date, and the text it names never changes.
+``params-check`` leaves it out (:attr:`FuenteVigilada.consolidada`) instead of reporting an error every run;
+``boe-novedades`` still watches it.
+
 Sources outside the BOE (REE, Banco de España…) are listed for the operator; their formats are watched by
 each module's own adapter, since the core cannot know how to parse them.
 """
@@ -34,6 +39,7 @@ from asistente.plataforma import settings
 logger = logging.getLogger(__name__)
 
 _BOE_ID = re.compile(r"BOE-[A-Z]-\d{4}-\d+")
+_TEXTO_DIARIO = "boe.es/diario_boe/"
 
 
 @dataclass(frozen=True)
@@ -47,6 +53,8 @@ class FuenteVigilada:
     # Where that reading date comes from: "datos" (the module's legal data file), "fuente" (an attribute of the
     # source) or "" (none: the state file's baseline is used).
     origen_lectura: str = ""
+    # False when the source is the BOE's daily text (no consolidated version to ask about).
+    consolidada: bool = True
 
 
 def _fecha(valor: Any) -> date | None:
@@ -103,6 +111,7 @@ def fuentes_de_modulos(reg: Registro | None = None) -> list[FuenteVigilada]:
                     boe_id=boe_id,
                     consultado_el=propia or de_datos,
                     origen_lectura="fuente" if propia else "datos" if de_datos else "",
+                    consolidada=_TEXTO_DIARIO not in (fuente.url or ""),
                 )
             )
     return out
@@ -118,7 +127,7 @@ def leer_estado(path: str | Path | None = None) -> dict[str, Any]:
         return {"fuentes": {}}
     try:
         datos = json.loads(ruta.read_text(encoding="utf-8"))
-    except (OSError, ValueError):
+    except OSError, ValueError:
         return {"fuentes": {}}
     return datos if isinstance(datos, dict) and isinstance(datos.get("fuentes"), dict) else {"fuentes": {}}
 

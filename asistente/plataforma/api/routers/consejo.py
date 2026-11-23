@@ -10,6 +10,10 @@
   the dossier (including what was anonymised), the proposals, the critiques and the rankings. Who wrote each
   proposal and who reviewed whom is revealed ONLY once the session is ``terminada`` (before, members show as
   «miembro_a», «miembro_b»…).
+* ``GET /cases/{case_id}/consejo/{sesion_id}/eventos`` — the same session as Server-Sent Events: an event
+  ``sesion`` (the view above) each time it changes, read from the store on the server, then ``fin`` once it is no
+  longer running (or was erased). Each event's ``id`` is a digest of its content: a client that reconnects with
+  ``Last-Event-ID`` is not sent again the state it already has. Replaces the client's polling.
 * ``POST …/{sesion_id}/confirmar`` (the user accepts the estimate: queued once, started in the background),
   ``…/rechazar``, ``…/cancelar``; ``DELETE …/{sesion_id}``.
 
@@ -23,8 +27,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
 from asistente.nucleo.consejo.almacen import PasoProgreso, Registro
 from asistente.nucleo.consejo.contrato import (
@@ -38,8 +44,15 @@ from asistente.nucleo.consejo.contrato import (
 )
 from asistente.nucleo.consejo.deteccion import Deteccion
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
+from asistente.plataforma.api import sse
 from asistente.plataforma.api.security import require_api_key
 from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_case_access
+
+# While the session is in one of these states it keeps changing on its own; any other state waits for the user
+# (``pendiente_confirmacion``) or is final.
+EN_MARCHA: frozenset[str] = frozenset({"en_cola", "instruyendo", "deliberando", "sintetizando"})
+# How often the stream reads the session from the store (the council's steps take seconds to minutes).
+INTERVALO_FLUJO_SEGUNDOS = 1.0
 
 _HTTP = {"no_encontrada": 404, "estado": 409, "desactivado": 503, "invalida": 422, "tope": 422}
 
@@ -255,6 +268,36 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         except ConsejoError as exc:
             raise _error(exc) from exc
         return vista(registro)
+
+    @router.get("/cases/{case_id}/consejo/{sesion_id}/eventos", dependencies=guarded)
+    async def get_eventos_sesion(
+        case_id: str, sesion_id: str, request: Request, cases: case_store_dep, access: access_dep
+    ) -> StreamingResponse:
+        from asistente.nucleo.consejo.servicio import ConsejoError
+
+        servicio = _servicio(cases)
+        user_id = _usuario(access)
+
+        def leer() -> sse.Instantanea | None:
+            try:
+                registro = servicio.obtener(sesion_id, case_id=case_id, user_id=user_id)
+            except ConsejoError:
+                return None
+            datos = vista(registro).model_dump(mode="json")
+            return sse.Instantanea(datos=datos, final=registro.sesion.estado not in EN_MARCHA)
+
+        def comprobar() -> None:
+            _caso(case_id, cases, access)
+            try:
+                servicio.obtener(sesion_id, case_id=case_id, user_id=user_id)
+            except ConsejoError as exc:
+                raise _error(exc) from exc
+
+        # A case or a session that is not there is a plain 404 (as on ``GET``) before any streaming starts.
+        await run_in_threadpool(comprobar)
+        return sse.respuesta_sse(
+            sse.flujo_de_instantaneas(request, leer, nombre="sesion", intervalo=INTERVALO_FLUJO_SEGUNDOS)
+        )
 
     @router.post("/cases/{case_id}/consejo/{sesion_id}/confirmar", response_model=SesionVista, dependencies=guarded)
     def post_confirmar(case_id: str, sesion_id: str, cases: case_store_dep, access: access_dep) -> SesionVista:

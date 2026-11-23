@@ -71,8 +71,8 @@ def especialistas_del_hogar(modulos: Sequence[Modulo]) -> Mapping[str, Especiali
 def _construir(clase: Any, modulo: Modulo) -> Especialista:
     parametros = inspect.signature(clase).parameters
     if "modulo" in parametros:
-        return clase(modulo=modulo)  # type: ignore[no-any-return]
-    return clase(modulo)  # type: ignore[no-any-return]
+        return clase(modulo=modulo)
+    return clase(modulo)
 
 
 def construir_cerebro() -> Cerebro:

@@ -18,7 +18,7 @@ When a case is erased (``SQLiteCaseStateStore.delete_case``, e.g. ``DELETE /me``
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Generator, Mapping, Sequence
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 import json
@@ -29,6 +29,7 @@ from typing import Any
 
 from asistente.nucleo.tareas.modelo import EN_MARCHA, EntradaHistorial, Tarea, ahora
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 TABLAS = ("tareas", "tareas_historial", "tareas_senales")
 
@@ -150,9 +151,7 @@ class TareaStore:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             # Erased tasks are overwritten in the file, not just unlinked.
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:
@@ -164,7 +163,7 @@ class TareaStore:
         return self._conn
 
     @contextmanager
-    def _tx(self) -> Iterator[sqlite3.Connection]:
+    def _tx(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             conn = self._get()
             with conn:

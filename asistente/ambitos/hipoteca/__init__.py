@@ -13,6 +13,7 @@ from asistente.ambitos.hipoteca.avisos import avisos_hipoteca
 from asistente.ambitos.hipoteca.herramientas import HERRAMIENTAS, pagos_del_ejercicio
 from asistente.ambitos.hipoteca.modelo import validar_prestamo
 from asistente.ambitos.hipoteca.normativa import cargar_normativa
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.calculo.herramientas import instrucciones_calculo
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, INDICE_PUBLICADO, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo, FuenteModulo, HechoModulo, ModuloBase
@@ -22,10 +23,10 @@ __all__ = ["MODULO", "pagos_del_ejercicio"]
 
 
 def _validar_umbral(valor: object) -> float:
-    try:
-        numero = float(str(valor).replace(",", "."))
-    except ValueError as exc:
-        raise ValueError("El umbral de aviso debe ser un importe en euros.") from exc
+    leido = importe(valor)
+    if leido is None:
+        raise ValueError("El umbral de aviso debe ser un importe en euros.")
+    numero = float(leido)
     if not 0 <= numero <= 10000:
         raise ValueError("El umbral de aviso debe estar entre 0 y 10.000 euros.")
     return numero

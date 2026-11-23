@@ -27,7 +27,7 @@ the account erasure (it also checkpoints the WAL). Retention: :meth:`purgar` dro
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -53,6 +53,7 @@ from asistente.nucleo.consejo.contrato import (
 )
 from asistente.plataforma.migraciones import asegurar_esquema
 from asistente.plataforma.migraciones.catalogo import consejo as esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 EN_MARCHA: tuple[EstadoSesion, ...] = ("instruyendo", "deliberando", "sintetizando")
 TERMINALES: tuple[EstadoSesion, ...] = ("terminada", "fallida", "cancelada", "rechazada")
@@ -165,12 +166,10 @@ class AlmacenConsejo:
     # -- connection -----------------------------------------------------------------------------------------
 
     @contextmanager
-    def _conectar(self) -> Iterator[sqlite3.Connection]:
+    def _conectar(self) -> Generator[sqlite3.Connection]:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
-        conn.row_factory = sqlite3.Row
+        conn = abrir_sqlite(self.db_path, timeout=30.0, isolation_level=None, filas=True)
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             # Erased deliberations are overwritten in the file, not just unlinked.
             conn.execute("PRAGMA secure_delete=ON;")
             conn.execute("BEGIN")
@@ -192,7 +191,7 @@ class AlmacenConsejo:
             conn.close()
 
     @contextmanager
-    def _transaccion(self, *, inmediata: bool = False) -> Iterator[sqlite3.Connection]:
+    def _transaccion(self, *, inmediata: bool = False) -> Generator[sqlite3.Connection]:
         with self._lock, self._conectar() as conn:
             conn.execute("BEGIN IMMEDIATE" if inmediata else "BEGIN")
             try:

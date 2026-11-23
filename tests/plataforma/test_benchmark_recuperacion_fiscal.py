@@ -8,12 +8,10 @@ import os
 from pathlib import Path
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 import pytest
 
-pytest.importorskip("rank_bm25")
-
-from asistente.plataforma.cli import benchmark_recuperacion_fiscal as bench  # noqa: E402
+from asistente.conocimiento.fragmento import FragmentoRecuperado
+from asistente.plataforma.cli import benchmark_recuperacion_fiscal as bench
 
 MANIFIESTO = bench.RAIZ / "eval_data" / "recuperacion" / "citas_indice.json"
 
@@ -42,14 +40,17 @@ def test_toda_cita_esperada_existe_en_el_indice_real() -> None:
     """Contra el manifiesto versionado de ``data/faiss`` (si no, el benchmark mediría ruido)."""
     manifiesto = json.loads(MANIFIESTO.read_text(encoding="utf-8"))
     faltan = [
-        q["id"] for q in bench.cargar_consultas(bench.CONSULTAS_POR_DEFECTO)
+        q["id"]
+        for q in bench.cargar_consultas(bench.CONSULTAS_POR_DEFECTO)
         if q["tipo"] == "cita" and not bench.cita_en_manifiesto(q["espera"], manifiesto)
     ]
     assert faltan == []
 
 
-@pytest.mark.skipif(not (bench.RAIZ / "data/faiss/index.pkl").exists() and not os.environ.get("FAISS_INDEX_PATH"),
-                    reason="sin índice local")
+@pytest.mark.skipif(
+    not (bench.RAIZ / "data/faiss/index.pkl").exists() and not os.environ.get("FAISS_INDEX_PATH"),
+    reason="sin índice local",
+)
 def test_manifiesto_coincide_con_el_indice_local() -> None:
     ruta = bench.RAIZ / "data/faiss"
     if not (ruta / "index.pkl").exists():
@@ -62,8 +63,10 @@ def test_manifiesto_coincide_con_el_indice_local() -> None:
     assert set(guardado["aeat"]) <= set(real["aeat"])
 
 
-def _doc(source: str, headings: list[str], norma: str) -> Document:
-    return Document(page_content=headings[-1], metadata={"source_file": source, "norma": norma, "headings": headings})
+def _doc(source: str, headings: list[str], norma: str) -> FragmentoRecuperado:
+    return FragmentoRecuperado(
+        texto=headings[-1], metadatos={"source_file": source, "norma": norma, "headings": headings}
+    )
 
 
 def test_puntuacion_de_paginas_aeat_y_de_normas() -> None:
@@ -77,23 +80,37 @@ def test_puntuacion_de_paginas_aeat_y_de_normas() -> None:
     lisd = _doc("BOE-A-1987-28141.html", ["Capítulo V", "Artículo 21. Tarifa."], "LISD")
     assert not bench.es_cita_correcta(lisd, {"norma": "LIS", "articulo": "21"})
     assert bench.es_cita_correcta(lisd, {"norma": "LISD", "articulo": "21"})
-    assert bench.es_cita_correcta(lisd, {"norma": "LIS", "articulo": "9", "alternativas": [{"norma": "LISD", "articulo": "21"}]})
+    assert bench.es_cita_correcta(
+        lisd, {"norma": "LIS", "articulo": "9", "alternativas": [{"norma": "LISD", "articulo": "21"}]}
+    )
     m = bench.manifiesto_de_corpus([pagina, lisd])
     assert m == {"normas": {"LISD": ["21"]}, "aeat": {h: "Quiero un certificado de mi declaración de renta"}}
 
 
-def test_filtro_como_embeddings_filter_de_produccion() -> None:
-    """Todo candidato bajo el umbral coseno se descarta, también los que trae BM25; sin supervivientes, []."""
+def test_la_variante_faiss_es_el_buscador_del_agente() -> None:
+    """La base es FaissCorpusSearcher: los k vecinos más parecidos, saneados y sin abstención propia."""
+    from asistente.nucleo.agent.search import FaissCorpusSearcher
+
     corpus = bench.cargar_corpus(bench.CORPUS_POR_DEFECTO)
-    base = bench.construir_base(corpus, bench.EmbeddingsHash(), k=3, umbral=0.0, bm25=True, primera_etapa=5)
+    base = bench.construir_base(corpus, bench.EmbeddingsHash(), k=3, primera_etapa=5)
+    assert isinstance(base.buscador, FaissCorpusSearcher)
     consulta = "¿Qué tipo de IVA se aplica al pan?"
-    sims = base.similitudes(consulta)
-    assert len(base.invoke(consulta)) == 3
-    base.umbral = 1.01
-    assert base.invoke(consulta) == []
-    base.umbral = float(sorted(sims)[-2])  # solo sobreviven los dos más parecidos
-    assert len(base.invoke(consulta)) == 2
-    assert all(sims[corpus.index(d)] >= base.umbral for d in base.invoke(consulta))
+    sims = base.buscador._vectorstore.similitudes(consulta)
+    docs = base.invoke(consulta)
+    assert len(docs) == 3
+    assert [sims[corpus.index(d)] for d in docs] == sorted(sims, reverse=True)[:3]
+
+
+def test_la_variante_faiss_pasa_por_el_reranker() -> None:
+    class _Invierte:
+        def reordenar(self, docs, consulta):
+            return list(reversed(docs))
+
+    corpus = bench.cargar_corpus(bench.CORPUS_POR_DEFECTO)
+    sin = bench.construir_base(corpus, bench.EmbeddingsHash(), k=5, primera_etapa=5)
+    con = bench.construir_base(corpus, bench.EmbeddingsHash(), k=5, primera_etapa=5, reranker=_Invierte())
+    consulta = "¿Qué tipo de IVA se aplica al pan?"
+    assert con.invoke(consulta) == list(reversed(sin.invoke(consulta)))
 
 
 def test_wilson() -> None:
@@ -105,9 +122,12 @@ def test_wilson() -> None:
 
 
 def test_ejecutar_es_reproducible_y_mide_todas_las_metricas() -> None:
-    a = bench.ejecutar(umbrales=[0.1, 0.9])
+    a = bench.ejecutar()
     b = bench.ejecutar()
-    resumen = lambda r: {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia" not in k} for v in r["variantes"]}  # noqa: E731
+
+    def resumen(r: dict) -> dict:
+        return {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia" not in k} for v in r["variantes"]}
+
     assert resumen(a) == resumen(b)
     assert [v["variante"] for v in a["variantes"]] == ["faiss", "pageindex"]
     faiss, pageindex = (v["resumen"] for v in a["variantes"])
@@ -116,15 +136,13 @@ def test_ejecutar_es_reproducible_y_mide_todas_las_metricas() -> None:
     assert set(faiss["por_estilo"]) == {"original", "cuerpo", "aeat"}
     for r in (faiss, pageindex):
         assert 0 <= r["cita_top1"] <= r["cita_en_k"] <= 1
-    bajo, alto = a["barrido"]
-    assert bajo["abstencion_correcta"] <= alto["abstencion_correcta"]
-    assert bajo["falsa_abstencion"] <= alto["falsa_abstencion"]
+    assert faiss["falsa_abstencion"] == 0  # the agent's searcher never abstains by itself
 
 
 def test_cli_imprime_tabla_y_guarda_json(tmp_path) -> None:
     salida = tmp_path / "r.json"
-    res = CliRunner().invoke(bench.cli, ["--variantes", "faiss,pageindex", "--umbrales", "0.3,0.5", "--salida", str(salida)])
+    res = CliRunner().invoke(bench.cli, ["--variantes", "faiss,pageindex", "--salida", str(salida)])
     assert res.exit_code == 0, res.output
-    assert "| pageindex |" in res.output and "| 0.5 |" in res.output
+    assert "| pageindex |" in res.output and "| faiss |" in res.output
     datos = json.loads(salida.read_text())
-    assert datos["modo"] == "simulado" and len(datos["variantes"]) == 2 and len(datos["barrido"]) == 2
+    assert datos["modo"] == "simulado" and len(datos["variantes"]) == 2 and datos["reranker"] is False

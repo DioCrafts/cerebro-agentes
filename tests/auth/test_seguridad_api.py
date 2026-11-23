@@ -8,6 +8,7 @@ import base64
 import sqlite3
 from typing import Any
 
+from fastapi.routing import iter_route_contexts
 import pytest
 
 from asistente.nucleo.agent.providers.base import ProviderError
@@ -37,14 +38,13 @@ PUBLIC = {
 }
 # Service-wide figures: the operator's, never a user's (404 without the operator key).
 OPERATOR = {"/usage", "/eventos/salud", "/plataforma/salud"}
-# Gone with accounts on (404 to everyone): the API's documentation (S-18, unless API_DOCS_PUBLICAS=true) and the
-# legacy /qa chain, which calls the model unmetered (S-14).
-DISABLED = {"/openapi.json", "/docs", "/redoc", "/qa"}
+# Gone with accounts on (404 to everyone): the API's documentation (S-18, unless API_DOCS_PUBLICAS=true).
+DISABLED = {"/openapi.json", "/docs", "/redoc"}
 
 
 def _routes() -> list[tuple[str, str]]:
     out = []
-    for route in app.routes:
+    for route in iter_route_contexts(app.routes):  # FastAPI ≥0.16x agrupa los routers incluidos
         methods = getattr(route, "methods", None) or set()
         for method in sorted(methods - {"HEAD"}):
             out.append((method, route.path))

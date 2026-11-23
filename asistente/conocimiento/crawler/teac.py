@@ -36,6 +36,7 @@ import scrapy
 from scrapy.http import Response
 
 from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.middlewares import peticion_fallida
 
 DYCTEA_BASE_URL = "https://serviciostelematicosext.hacienda.gob.es/TEAC/DYCTEA"
 DYCTEA_NOT_FOUND_MARKER = "El criterio no existe"
@@ -295,13 +296,20 @@ class TEACCrawler(scrapy.Spider):
         # Legacy entry point for scrapy < 2.13.
         for criterio_id in range(self.start_id, self.end_id + 1):
             url = f"{self.base_url}/criterio.aspx?{urlencode({'id': criterio_id})}"
-            yield scrapy.Request(url, callback=self.parse_criterio, cb_kwargs={"criterio_id": criterio_id})
+            yield scrapy.Request(
+                url, callback=self.parse_criterio, cb_kwargs={"criterio_id": criterio_id}, errback=self._fallida
+            )
 
-    async def start(self):  # type: ignore[override]
+    def _fallida(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
+
+    async def start(self):
         # Required entry point for scrapy >= 2.13.
         for criterio_id in range(self.start_id, self.end_id + 1):
             url = f"{self.base_url}/criterio.aspx?{urlencode({'id': criterio_id})}"
-            yield scrapy.Request(url, callback=self.parse_criterio, cb_kwargs={"criterio_id": criterio_id})
+            yield scrapy.Request(
+                url, callback=self.parse_criterio, cb_kwargs={"criterio_id": criterio_id}, errback=self._fallida
+            )
 
     def parse_criterio(self, response: Response, criterio_id: int) -> None:
         html = response.text

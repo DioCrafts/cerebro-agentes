@@ -15,7 +15,7 @@ from pathlib import Path
 import re
 
 from asistente.ambitos.suscripciones.lectura import sin_acentos
-from asistente.ambitos.suscripciones.modelos import Movimiento
+from asistente.ambitos.suscripciones.modelos import Categoria, Movimiento, Sector, es_categoria, es_sector
 
 DATA = Path(__file__).parent / "data" / "comercios.json"
 
@@ -135,8 +135,8 @@ _FECHA = re.compile(r"\b\d{1,4}[/\-.]\d{1,2}(?:[/\-.]\d{1,4})?\b")
 class Comercio:
     patron: re.Pattern[str]
     etiqueta: str
-    categoria: str
-    sector: str
+    categoria: Categoria
+    sector: Sector
     recurrente: bool
 
 
@@ -144,8 +144,8 @@ class Comercio:
 class Identidad:
     clave: str  # merchant key that groups charges
     etiqueta: str  # label for the user
-    categoria: str
-    sector: str
+    categoria: Categoria
+    sector: Sector
     recurrente: bool  # False: a merchant whose charges are never a subscription (supermarket, ATM…)
     en_catalogo: bool
     canal: str  # "paypal" or the payment means; separates the same service paid twice
@@ -154,10 +154,13 @@ class Identidad:
 @lru_cache(maxsize=1)
 def catalogo() -> tuple[Comercio, ...]:
     datos = json.loads(DATA.read_text(encoding="utf-8"))
-    return tuple(
-        Comercio(re.compile(c["patron"]), c["etiqueta"], c["categoria"], c["sector"], bool(c["recurrente"]))
-        for c in datos["comercios"]
-    )
+    comercios: list[Comercio] = []
+    for c in datos["comercios"]:
+        categoria, sector = c["categoria"], c["sector"]
+        if not es_categoria(categoria) or not es_sector(sector):
+            raise ValueError(f"catálogo de comercios: {c['etiqueta']!r} tiene categoría o sector desconocidos")
+        comercios.append(Comercio(re.compile(c["patron"]), c["etiqueta"], categoria, sector, bool(c["recurrente"])))
+    return tuple(comercios)
 
 
 def texto_ligero(texto: str) -> str:
@@ -205,8 +208,9 @@ def identificar(movimiento: Movimiento) -> Identidad:
     if movimiento.medio == "adeudo" and movimiento.contraparte:
         candidatos.reverse()
     clave = next((k for t in candidatos if t and (k := clave_comercio(t))), "") or "SIN CONCEPTO"
-    categoria = {"prestamo": "prestamos", "comision": "banca_comisiones"}.get(movimiento.medio, "otros")
-    sector = {"prestamos": "financiero", "banca_comisiones": "financiero"}.get(categoria, "general")
+    categorias: dict[str, Categoria] = {"prestamo": "prestamos", "comision": "banca_comisiones"}
+    categoria = categorias.get(movimiento.medio, "otros")
+    sector: Sector = "financiero" if categoria in {"prestamos", "banca_comisiones"} else "general"
     if movimiento.medio in {"transferencia", "efectivo"}:
         sector = "no_aplica"
     return Identidad(

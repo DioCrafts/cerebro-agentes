@@ -3,19 +3,23 @@
 // What the user agrees to is spelled out before the switch: the notification only says «Tienes un aviso…:
 // abre la app» — no figure, no date, nothing about them — and it travels through their browser's push service
 // (Google, Apple, Mozilla or Microsoft). The details stay in the app, behind their session.
+//
+// Shown in a side sheet (registro.ts: presentacion "dialogo"); `open` only triggers reading the state again.
 
-import { BellRing, Check, Download, X } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 
 import { ApiError } from "../api";
 import { getPushConfig, pruebaPush, type PushConfig } from "../apiPush";
 import { activarPush, desactivarPush, PushNoDisponibleError, retirarPush, suscripcionActual } from "../lib/push";
 import { admitePush, enModoApp, esIOS, instalar, usePwa } from "../lib/pwa";
+import { Button, Caja, CargandoTexto, Checkbox, Flash, FormControl } from "../ui";
+import { BellIcon, CheckCircleIcon, DownloadIcon } from "../ui/iconos";
 import { InstruccionesIOS } from "./AvisoInstalar";
+import { FilaPeligro, ZonaPeligro } from "./ZonaPeligro";
+import { useConfirmar } from "./useConfirmar";
 
 interface AvisosMovilPanelProps {
   open: boolean;
-  onClose: () => void;
 }
 
 function mensaje(err: unknown): string {
@@ -24,7 +28,7 @@ function mensaje(err: unknown): string {
   return "No se ha podido completar. Inténtalo de nuevo.";
 }
 
-export function AvisosMovilPanel({ open, onClose }: AvisosMovilPanelProps) {
+export function AvisosMovilPanel({ open }: AvisosMovilPanelProps) {
   const { instalable } = usePwa();
   const [config, setConfig] = useState<PushConfig | null>(null);
   const [errorConfig, setErrorConfig] = useState<string | null>(null);
@@ -35,13 +39,7 @@ export function AvisosMovilPanel({ open, onClose }: AvisosMovilPanelProps) {
   const [aviso, setAviso] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
   const recargar = useCallback(() => setTick((n) => n + 1), []);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
+  const confirmar = useConfirmar();
 
   useEffect(() => {
     if (!open) return;
@@ -76,7 +74,18 @@ export function AvisosMovilPanel({ open, onClose }: AvisosMovilPanelProps) {
     }
   }
 
-  if (!open) return null;
+  async function retirar() {
+    const si = await confirmar(
+      "¿Retirar tu consentimiento?",
+      "Ningún dispositivo tuyo recibirá avisos. Seguirás viéndolos dentro de la app, en «Avisos».",
+      "Retirar el consentimiento",
+    );
+    if (si)
+      await hacer(async () => {
+        await retirarPush();
+        return "Consentimiento retirado: ningún dispositivo recibirá avisos.";
+      });
+  }
 
   const ios = esIOS();
   // iOS/iPadOS: Web Push exists only for an app opened from the home screen (16.4+), never in a Safari tab.
@@ -85,151 +94,138 @@ export function AvisosMovilPanel({ open, onClose }: AvisosMovilPanelProps) {
   const activo = esteDispositivo && (config?.consentimiento ?? false);
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar los avisos en el móvil" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-labelledby="movil-titulo" className="relative flex h-full w-full max-w-[440px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h2 id="movil-titulo" className="font-serif text-[19px] font-bold text-ink">
-              Avisos en el móvil
-            </h2>
-            <p className="text-[12.5px] text-muted">Te avisamos en este dispositivo cuando haya algo urgente</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 py-5 text-[13.5px] leading-relaxed text-ink-soft">
-          {!enModoApp() && (ios || instalable) && (
-            <section className="rounded-xl border border-line bg-surface px-4 py-3">
-              <h3 className="flex items-center gap-2 font-semibold text-ink">
-                <Download size={15} aria-hidden /> Instala la aplicación
-              </h3>
-              <p className="mt-1">{ios ? <InstruccionesIOS /> : "Se abre como una aplicación, sin la barra del navegador."}</p>
-              {!ios && instalable && (
-                <button
-                  type="button"
-                  onClick={() => void instalar()}
-                  className="mt-2 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white hover:bg-primary-hover"
-                >
-                  Instalar
-                </button>
-              )}
-            </section>
-          )}
-
-          {errorConfig && (
-            <p role="alert" className="rounded-lg bg-risk-high-bg px-3 py-2 text-risk-high-fg">
-              {errorConfig}
-            </p>
-          )}
-
-          {!puede ? (
-            <p>
-              {ios && !enModoApp()
-                ? "Para recibir avisos en el iPhone o el iPad, primero añade la app a la pantalla de inicio y ábrela desde allí."
-                : "Este navegador no puede recibir avisos aquí. Prueba con Chrome, Edge, Firefox o Safari, y con una conexión segura (https)."}
-            </p>
-          ) : config && !config.disponible ? (
-            <p>Este servicio no tiene activados los avisos en el móvil. Seguirás viéndolos en «Avisos» dentro de la app.</p>
-          ) : permisoDenegado ? (
-            <p>
-              Has bloqueado las notificaciones de esta web en el navegador. Para recibir avisos, permítelas en los ajustes del sitio y vuelve
-              aquí.
-            </p>
-          ) : config === null ? (
-            !errorConfig && <p role="status">Comprobando…</p>
-          ) : activo ? (
-            <section className="space-y-3">
-              <p className="flex items-center gap-2 font-semibold text-ink">
-                <Check size={16} aria-hidden className="text-cited-fg" /> Activados en este dispositivo
-              </p>
-              <p>
-                Recibirás «Tienes un aviso urgente: abre la app» o «Tienes un aviso nuevo: abre la app». Nunca cifras, fechas ni datos tuyos:
-                los detalles están dentro de la app.
-                {config.dispositivos > 1 && ` Tienes los avisos activados en ${config.dispositivos} dispositivos.`}
-              </p>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() =>
-                    void hacer(async () => {
-                      const r = await pruebaPush();
-                      return r.enviadas > 0 ? "Prueba enviada. Debería llegarte en unos segundos." : "No se ha podido entregar la prueba.";
-                    })
-                  }
-                  className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:border-primary hover:text-primary-dark disabled:opacity-50"
-                >
-                  Enviar una prueba
-                </button>
-                <button
-                  type="button"
-                  disabled={ocupado}
-                  onClick={() =>
-                    void hacer(async () => {
-                      await desactivarPush();
-                      return "Desactivados en este dispositivo.";
-                    })
-                  }
-                  className="rounded-lg border border-line bg-surface px-3 py-1.5 text-[13px] font-semibold text-ink-soft hover:border-primary hover:text-primary-dark disabled:opacity-50"
-                >
-                  Desactivar en este dispositivo
-                </button>
+    <div className="flex flex-col gap-4">
+      {!enModoApp() && (ios || instalable) && (
+        <Caja as="section" aria-label="Instala la aplicación">
+          <Caja.Cabecera
+            titulo={
+              <span className="inline-flex items-center gap-2">
+                <DownloadIcon />
+                Instala la aplicación
+              </span>
+            }
+          />
+          <Caja.Cuerpo className="flex flex-col gap-3">
+            <p className="m-0">{ios ? <InstruccionesIOS /> : "Se abre como una aplicación, sin la barra del navegador."}</p>
+            {!ios && instalable && (
+              <div>
+                <Button onClick={() => void instalar()}>Instalar</Button>
               </div>
-            </section>
-          ) : (
-            <section className="space-y-3">
-              <label className="flex items-start gap-2.5 rounded-xl border border-line bg-surface px-4 py-3">
-                <input type="checkbox" checked={acepto} onChange={(e) => setAcepto(e.target.checked)} className="mt-1 h-4 w-4 accent-[rgb(var(--primary))]" />
-                <span>
-                  Acepto recibir avisos en este dispositivo. El aviso solo dirá «Tienes un aviso urgente: abre la app» (o «un aviso nuevo»),
-                  sin cifras ni datos míos, y pasará por el servicio de notificaciones de mi navegador (Google, Apple, Mozilla o Microsoft).
-                  Puedo retirarlo cuando quiera.
-                </span>
-              </label>
-              <button
-                type="button"
+            )}
+          </Caja.Cuerpo>
+        </Caja>
+      )}
+
+      {errorConfig && <Flash variant="danger">{errorConfig}</Flash>}
+
+      {!puede ? (
+        <Flash variant="warning">
+          {ios && !enModoApp()
+            ? "Para recibir avisos en el iPhone o el iPad, primero añade la app a la pantalla de inicio y ábrela desde allí."
+            : "Este navegador no puede recibir avisos aquí. Prueba con Chrome, Edge, Firefox o Safari, y con una conexión segura (https)."}
+        </Flash>
+      ) : config && !config.disponible ? (
+        <Flash>Este servicio no tiene activados los avisos en el móvil. Seguirás viéndolos en «Avisos» dentro de la app.</Flash>
+      ) : permisoDenegado ? (
+        <Flash variant="warning">
+          Has bloqueado las notificaciones de esta web en el navegador. Para recibir avisos, permítelas en los ajustes del sitio y vuelve
+          aquí.
+        </Flash>
+      ) : config === null ? (
+        !errorConfig && <CargandoTexto lineas={2} etiqueta="Comprobando…" />
+      ) : activo ? (
+        <Caja as="section" aria-label="Avisos en este dispositivo">
+          <Caja.Cabecera
+            titulo={
+              <span className="inline-flex items-center gap-2 text-fg-success">
+                <CheckCircleIcon />
+                Activados en este dispositivo
+              </span>
+            }
+          />
+          <Caja.Cuerpo className="flex flex-col gap-3">
+            <p className="m-0">
+              Recibirás «Tienes un aviso urgente: abre la app» o «Tienes un aviso nuevo: abre la app». Nunca cifras, fechas ni datos tuyos:
+              los detalles están dentro de la app.
+              {config.dispositivos > 1 && ` Tienes los avisos activados en ${config.dispositivos} dispositivos.`}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                disabled={ocupado}
+                onClick={() =>
+                  void hacer(async () => {
+                    const r = await pruebaPush();
+                    return r.enviadas > 0 ? "Prueba enviada. Debería llegarte en unos segundos." : "No se ha podido entregar la prueba.";
+                  })
+                }
+              >
+                Enviar una prueba
+              </Button>
+              <Button
+                disabled={ocupado}
+                onClick={() =>
+                  void hacer(async () => {
+                    await desactivarPush();
+                    return "Desactivados en este dispositivo.";
+                  })
+                }
+              >
+                Desactivar en este dispositivo
+              </Button>
+            </div>
+          </Caja.Cuerpo>
+        </Caja>
+      ) : (
+        <Caja as="section" aria-label="Activar los avisos en este dispositivo">
+          <Caja.Cuerpo className="flex flex-col gap-3">
+            <FormControl>
+              <Checkbox checked={acepto} onChange={(e) => setAcepto(e.target.checked)} />
+              <FormControl.Label>Acepto recibir avisos en este dispositivo</FormControl.Label>
+              <FormControl.Caption>
+                El aviso solo dirá «Tienes un aviso urgente: abre la app» (o «un aviso nuevo»), sin cifras ni datos míos, y pasará por el
+                servicio de notificaciones de mi navegador (Google, Apple, Mozilla o Microsoft). Puedo retirarlo cuando quiera.
+              </FormControl.Caption>
+            </FormControl>
+            <div>
+              <Button
+                variant="primary"
+                leadingVisual={BellIcon}
                 disabled={!acepto || ocupado || !config.clave_publica}
+                loading={ocupado}
                 onClick={() =>
                   void hacer(async () => {
                     await activarPush(config.clave_publica ?? "");
                     return "Avisos activados en este dispositivo.";
                   })
                 }
-                className="inline-flex items-center gap-2 rounded-lg bg-primary px-3 py-2 text-[13.5px] font-semibold text-white hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <BellRing size={15} aria-hidden /> Activar en este dispositivo
-              </button>
-            </section>
-          )}
+                Activar en este dispositivo
+              </Button>
+            </div>
+          </Caja.Cuerpo>
+        </Caja>
+      )}
 
-          {config?.consentimiento && (
-            <section className="border-t border-line pt-4">
-              <button
-                type="button"
-                disabled={ocupado}
-                onClick={() =>
-                  void hacer(async () => {
-                    await retirarPush();
-                    return "Consentimiento retirado: ningún dispositivo recibirá avisos.";
-                  })
-                }
-                className="text-[13px] font-semibold text-risk-high-fg underline-offset-2 hover:underline disabled:opacity-50"
-              >
-                Retirar mi consentimiento en todos mis dispositivos
-              </button>
-            </section>
-          )}
+      {error && <Flash variant="danger">{error}</Flash>}
+      {aviso && !error && (
+        <Flash variant="success" role="status">
+          {aviso}
+        </Flash>
+      )}
 
-          {(aviso || error) && (
-            <p role={error ? "alert" : "status"} className={error ? "rounded-lg bg-risk-high-bg px-3 py-2 text-risk-high-fg" : "text-ink"}>
-              {error ?? aviso}
-            </p>
-          )}
-        </div>
-      </aside>
+      {config?.consentimiento && (
+        <ZonaPeligro>
+          <FilaPeligro
+            titulo="Retirar mi consentimiento"
+            descripcion="En todos tus dispositivos: ninguno volverá a recibir avisos hasta que lo aceptes de nuevo."
+            accion={
+              <Button variant="danger" disabled={ocupado} onClick={() => void retirar()}>
+                Retirar
+              </Button>
+            }
+          />
+        </ZonaPeligro>
+      )}
     </div>
   );
 }

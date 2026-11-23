@@ -302,8 +302,15 @@ class Ejecutor:
             contexto.route("**/*", self._ruta)
             try:
                 contexto.route_web_socket("**/*", self._ruta_ws)
-            except (AttributeError, PlaywrightError):  # older Playwright: websockets stay behind the page CSP
-                pass
+            except AttributeError, PlaywrightError:
+                # Without the filter a page could open a websocket to any host and carry data out of the
+                # allowed origins: the task does not run (Playwright >= 1.48 is required).
+                resultado.estado = "fallido"
+                resultado.mensaje = (
+                    "No se ha podido activar el filtro de conexiones del navegador (websockets); "
+                    "la tarea no se ejecuta. Actualiza Playwright."
+                )
+                return
 
             def nueva_pagina(pagina: Any) -> None:
                 # The agent drives one tab; any other one opened while it works is closed at once.
@@ -451,10 +458,11 @@ class Ejecutor:
         info = localizador.first.evaluate(JS_ELEMENTO) if cuantos == 1 else None
         return localizador, cuantos, info
 
-    def _elemento(self, pagina: Any, paso: Paso, resultado: ResultadoEjecucion) -> tuple[Any, dict[str, Any], bool]:
+    def _elemento(
+        self, pagina: Any, paso: PasoEsperar | PasoRellenar | PasoPulsar, resultado: ResultadoEjecucion
+    ) -> tuple[Any, dict[str, Any], bool]:
         """(locator, element facts, repaired?) of a step's element, or :class:`_FalloPasoError`."""
-        selector: str = paso.selector  # type: ignore[union-attr]
-        localizador, cuantos, info = self._localizar(pagina, selector)
+        localizador, cuantos, info = self._localizar(pagina, paso.selector)
         if cuantos == 1 and info is not None:
             return localizador, info, False
         if cuantos > 1:

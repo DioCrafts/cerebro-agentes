@@ -20,12 +20,12 @@ from collections.abc import Callable
 import os
 import re
 
-from asistente.ambitos.suscripciones.modelos import CATEGORIAS
+from asistente.ambitos.suscripciones.modelos import CATEGORIAS, Categoria, es_categoria
 
 Etiquetador = Callable[[str, tuple[str, ...]], str | None]
 
 _etiquetador: Etiquetador | None = None
-_cache: dict[str, str | None] = {}
+_cache: dict[str, Categoria | None] = {}
 _CLAVE_SEGURA = re.compile(r"^[A-Z][A-Z &]{1,39}$")
 
 
@@ -40,7 +40,7 @@ def activo() -> bool:
     return os.environ.get("SUSCRIPCIONES_ETIQUETADOR_LLM", "").strip() == "1" and _etiquetador is not None
 
 
-def etiquetar(clave: str) -> str | None:
+def etiquetar(clave: str) -> Categoria | None:
     if not activo() or not _CLAVE_SEGURA.match(clave):
         return None
     if clave not in _cache:
@@ -49,5 +49,5 @@ def etiquetar(clave: str) -> str | None:
         except Exception:  # noqa: BLE001 - an optional helper must never break the analysis
             respuesta = None
         respuesta = (respuesta or "").strip().lower()
-        _cache[clave] = respuesta if respuesta in CATEGORIAS and respuesta != "otros" else None
+        _cache[clave] = respuesta if es_categoria(respuesta) and respuesta != "otros" else None
     return _cache[clave]

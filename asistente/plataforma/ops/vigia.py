@@ -17,7 +17,7 @@ when it does not arrive covers that case.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import ContextDecorator, contextmanager
 from datetime import UTC, datetime
 import fcntl
@@ -29,9 +29,8 @@ import re
 from types import TracebackType
 from typing import Any
 from urllib.parse import urlsplit
-import urllib.request
 
-from asistente.plataforma import settings
+from asistente.plataforma import http, settings
 
 logger = logging.getLogger(__name__)
 
@@ -71,7 +70,7 @@ def leer_estado(path: str | Path | None = None) -> dict[str, dict[str, Any]]:
 
 
 @contextmanager
-def _locked(target: Path) -> Iterator[None]:
+def _locked(target: Path) -> Generator[None]:
     """Serialise read-modify-write across processes (several cron jobs may finish at once)."""
     with open(target.with_name(target.name + ".lock"), "w") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)
@@ -146,9 +145,11 @@ def avisar_healthcheck(nombre: str, *, ok: bool, detalle: str = "") -> bool:
         if not ok:
             url = url.rstrip("/") + "/fail"
         data = detalle[:_MAX_DETAIL_CHARS].encode("utf-8") if detalle and not ok else None
-        request = urllib.request.Request(url, data=data, method="POST" if data else "GET")
-        with urllib.request.urlopen(request, timeout=_PING_TIMEOUT_SECONDS) as response:
-            response.read()
+        if data:
+            respuesta = http.cliente().post(url, content=data, timeout=_PING_TIMEOUT_SECONDS)
+        else:
+            respuesta = http.cliente().get(url, timeout=_PING_TIMEOUT_SECONDS)
+        respuesta.raise_for_status()
     except Exception as exc:  # the ping is best effort: it must never break the job
         # The URL is a secret of sorts (anyone holding it can fake a ping): do not log it.
         logger.warning("Healthcheck ping for %s failed: %s: %s", nombre, type(exc).__name__, exc)
@@ -209,7 +210,7 @@ class vigilado(ContextDecorator):  # noqa: N801 - used as a decorator, like cont
 def _parse(value: Any) -> datetime | None:
     try:
         return _aware(datetime.fromisoformat(value))
-    except (TypeError, ValueError):
+    except TypeError, ValueError:
         return None
 
 

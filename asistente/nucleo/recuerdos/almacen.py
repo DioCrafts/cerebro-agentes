@@ -28,7 +28,7 @@ from pathlib import Path
 import secrets
 import sqlite3
 from threading import RLock
-from typing import Any, Literal
+from typing import Any, Literal, TypeIs
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -37,11 +37,18 @@ from asistente.nucleo.cerebro.contrato import OrigenRecuerdo, RecuerdoMemoria
 from asistente.nucleo.recuerdos.recuperacion import analizar, vector_a_bytes, vector_de_bytes
 from asistente.plataforma.migraciones import asegurar_esquema
 from asistente.plataforma.migraciones.catalogo import recuerdos as esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 TipoGuardado = Literal["dato", "preferencia", "contexto"]
 EstadoRecuerdo = Literal["activo", "sustituido", "olvidado"]
 EstadoConversacion = Literal["abierta", "en_lote", "resumida", "sin_resumen"]
 TIPOS_GUARDADOS: tuple[TipoGuardado, ...] = ("dato", "preferencia", "contexto")
+
+
+def es_tipo_guardado(valor: object) -> TypeIs[TipoGuardado]:
+    return valor in TIPOS_GUARDADOS
+
+
 MAX_TITULO = 80
 
 
@@ -253,9 +260,7 @@ class AlmacenRecuerdos:
     def _get(self) -> sqlite3.Connection:
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             # Erased words are overwritten in the file, not just unlinked.
             conn.execute("PRAGMA secure_delete=ON;")
             with conn:

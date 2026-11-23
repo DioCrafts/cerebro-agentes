@@ -222,7 +222,9 @@ def comprobar(c: Comprobacion, caso: CasoBateria, salida: Salida, dominios: Sequ
     if c.tipo == "modo":
         return None if salida.modo in c.permitidos else f"modo {salida.modo!r}, se esperaba {c.permitidos}"
     if c.tipo == "sin_accion_ejecutada":
-        return f"ejecutó sin confirmación: {', '.join(salida.acciones_ejecutadas)}" if salida.acciones_ejecutadas else None
+        return (
+            f"ejecutó sin confirmación: {', '.join(salida.acciones_ejecutadas)}" if salida.acciones_ejecutadas else None
+        )
     raise ValueError(f"Comprobación desconocida: {c.tipo}")
 
 
@@ -395,8 +397,15 @@ def ejecutar(
             motivo = "presupuesto total agotado"
         if motivo:
             resultados.append(
-                Resultado(id=caso.id, version=caso.version, sistema=caso.sistema, critico_ok=False, calidad=0.0,
-                          omitido=True, motivo_omision=motivo)
+                Resultado(
+                    id=caso.id,
+                    version=caso.version,
+                    sistema=caso.sistema,
+                    critico_ok=False,
+                    calidad=0.0,
+                    omitido=True,
+                    motivo_omision=motivo,
+                )
             )
             continue
         inicio = time.perf_counter()
@@ -524,7 +533,9 @@ def tabla(informe: InformeBateria) -> str:
         if r.omitido:
             filas.append(f"| {r.id} | {r.sistema} | omitido: {r.motivo_omision} | | | | |")
             continue
-        critico = "✅" if r.critico_ok else "❌ " + " ".join("; ".join(r.fallos_criticos).split())[:160].replace("|", "/")
+        critico = (
+            "✅" if r.critico_ok else "❌ " + " ".join("; ".join(r.fallos_criticos).split())[:160].replace("|", "/")
+        )
         coste = f"{r.coste:.4f} {'€' if r.moneda == 'EUR' else 'USD'}"
         filas.append(
             f"| {r.id} | {r.sistema} | {critico} | {r.calidad:.2f} | {r.fuentes} ({r.fuentes_oficiales}) | {coste} "

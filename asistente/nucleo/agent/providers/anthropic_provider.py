@@ -29,6 +29,24 @@ from asistente.nucleo.agent.providers.base import (
 # the SDK's HTTP timeout. Streamed requests have no such ceiling, so they get
 # room to finish a long answer instead of being cut off mid-thought.
 _MAX_TOKENS = 16000
+
+# HTTP retries of the SDK on a failed call: each one may wait up to the timeout again.
+_REINTENTOS = 1
+
+
+def limites_cliente() -> tuple[float, int]:
+    """(timeout per attempt in seconds, retries) of the HTTP client: every attempt together stays under the brain's
+    per-encargo deadline (``CEREBRO_TIMEOUT_ENCARGO_S``), so a hung call is cut before its encargo is abandoned
+    (and keeps spending in the background). ``ANTHROPIC_TIMEOUT_S`` overrides the per-attempt timeout."""
+    from asistente.plataforma import settings
+
+    explicito = str(getattr(settings, "ANTHROPIC_TIMEOUT_S", "") or "").strip()
+    if explicito:
+        return float(explicito), _REINTENTOS
+    encargo = float(getattr(settings, "CEREBRO_TIMEOUT_ENCARGO_S", 180) or 180)
+    return max(10.0, encargo / (_REINTENTOS + 1) - 5.0), _REINTENTOS
+
+
 _MAX_TOKENS_STREAMING = 64000
 
 # Models whose safety classifiers can decline a request with
@@ -171,7 +189,8 @@ class AnthropicProvider:
 
                 # Zero-arg: resolves ANTHROPIC_API_KEY / ANTHROPIC_AUTH_TOKEN / an
                 # `ant auth login` profile, in that order.
-                self._client = anthropic.Anthropic()
+                timeout_s, reintentos = limites_cliente()
+                self._client = anthropic.Anthropic(timeout=timeout_s, max_retries=reintentos)
         return self._client
 
     def _cache_control(self) -> dict[str, str]:

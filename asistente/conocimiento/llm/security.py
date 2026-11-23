@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 import re
+
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 MALICIOUS_PATTERNS = [
     # English
@@ -108,3 +111,17 @@ def parece_inyeccion(text: str) -> bool:
 def neutralizar_inyeccion(text: str, redaccion: str = _REDACTION) -> str:
     """``text`` without invisible characters and with the broader injection patterns replaced by ``redaccion``."""
     return INYECCION_AMPLIA.sub(redaccion, quitar_invisibles(text))
+
+
+def sanitize_context_documents(docs: Sequence[FragmentoRecuperado]) -> list[FragmentoRecuperado]:
+    """Return ``docs`` with prompt-injection fragments redacted.
+
+    The searcher is cached for the process lifetime and fragments are immutable, so a fragment is copied
+    (``con``) only when sanitizing actually changed its text: the index keeps the original and each request
+    sees a clean view.
+    """
+    sanitized = []
+    for doc in docs:
+        cleaned = sanitize_retrieved_context(doc.texto)
+        sanitized.append(doc if cleaned == doc.texto else doc.con(texto=cleaned))
+    return sanitized

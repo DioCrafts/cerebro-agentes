@@ -278,3 +278,14 @@ def test_calculated_figures_are_cited_and_verified_like_any_other_source() -> No
     # The verifier receives the full breakdown, including the comparison base figures.
     assert "Reducción por aportaciones a sistemas de previsión social: -1.500,00 €" in provider.json_requests[0]["user"]
     assert "ahorra 555,00 €" in provider.tool_results[0].content
+
+
+def test_an_answer_cut_by_max_tokens_is_never_fully_verified() -> None:
+    cortada = ModelTurn(text=GOOD_ANSWER, tool_calls=[], stop_reason="max_tokens", usage={"input_tokens": 10})
+    provider = ScriptedProvider(
+        [tool_turn(SEARCH), cortada],
+        [verdict("respuesta", ("Exención", ["F1"], "respaldada"), ("Plazo", ["F2"], "respaldada"))],
+    )
+    result = _agent(provider).run(QUESTION)
+    assert result.mode is AgentMode.PARTIALLY_VERIFIED
+    assert any("límite de longitud" in w for w in result.warnings)

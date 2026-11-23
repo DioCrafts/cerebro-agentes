@@ -49,6 +49,7 @@ from typing import Any
 from asistente.conocimiento.llm.security import neutralizar_inyeccion
 from asistente.nucleo.agent import enrutado
 from asistente.nucleo.agent.agent import (
+    TRUNCATED_WARNING,
     AgentMode,
     AgentResult,
     TaxAgent,
@@ -121,6 +122,7 @@ _RANGO = {
     AgentMode.ABSTAINED: 0,
 }
 MARCA_RETIRADA = "[cifra retirada: no sale de ningún cálculo]"
+AVISO_PUERTA_CAIDA = "No se pudo comprobar que las cifras de la respuesta salgan de los cálculos; revísalas."
 REFUSAL = "El modelo ha declinado responder a esta consulta."
 
 FabricaEspecialistas = Callable[[Sequence[Modulo]], Mapping[str, Especialista]]
@@ -387,6 +389,8 @@ class _Turno:
     uso: dict[str, int] = field(default_factory=dict)
     # Figures of the brain's own tools (the planner…): a report of the brain itself for the figures gate.
     cifras_propias: list[Cifra] = field(default_factory=list)
+    # The final draft was cut by max_tokens: the answer is capped at partially verified and says so.
+    truncada: bool = False
 
     def textos_usuario(self) -> list[str]:
         """The user's own words for the figures gate: this conversation's messages and, from the conversation memory,
@@ -857,7 +861,7 @@ class Cerebro:
             conversacion = proveedor.start(
                 system=self._sistema(turno, "" if charla else herramientas.addendum),
                 tools=specs,
-                history=turno.historial,  # type: ignore[arg-type]  # normalised by the provider
+                history=turno.historial,  # normalised by the provider
                 user_message=self._mensaje(turno, herramientas.contexto),
             )
         except ProviderError as exc:
@@ -935,6 +939,7 @@ class Cerebro:
                 continue
 
             respuesta = turno_modelo.text.strip()
+            turno.truncada = bool(respuesta) and turno_modelo.stop_reason == "max_tokens"
             if not respuesta:
                 return self._por_partes(
                     turno, ruta, proveedor, pasos, revisiones, puerta, "El modelo no devolvió texto."
@@ -1035,6 +1040,13 @@ class Cerebro:
         todos_los_avisos = [*avisos, *campos.pop("warnings", [])]
         if violaciones:
             modo = _peor(modo, AgentMode.PARTIALLY_VERIFIED)
+        if puerta is None and turno.informes and modo not in (AgentMode.CLARIFICATION, AgentMode.ABSTAINED):
+            # The figures gate did not run (unavailable or crashed): it never fails open.
+            modo = _peor(modo, AgentMode.PARTIALLY_VERIFIED)
+            todos_los_avisos.append(AVISO_PUERTA_CAIDA)
+        if turno.truncada and modo not in (AgentMode.CLARIFICATION, AgentMode.ABSTAINED):
+            modo = _peor(modo, AgentMode.PARTIALLY_VERIFIED)
+            todos_los_avisos.append(TRUNCATED_WARNING)
         return self._final(
             turno, ruta, texto, modo, proveedor, pasos, revisiones, puerta, avisos=todos_los_avisos, **campos
         )

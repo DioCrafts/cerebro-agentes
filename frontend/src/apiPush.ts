@@ -2,40 +2,24 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
+import type { Respuesta } from "./api/tipos";
 
-export interface PushConfig {
-  disponible: boolean;
-  clave_publica: string | null;
-  consentimiento: boolean;
-  dispositivos: number;
-  version_texto: string;
-}
-
-export interface EstadoPush {
-  consentimiento: boolean;
-  dispositivos: number;
-}
-
-export interface PruebaPush {
-  enviadas: number;
-  errores: number;
-  caducadas: number;
-}
-
-function esObjeto(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
-}
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts).
+export type PushConfig = Respuesta<"/push/config", "get">;
+export type EstadoPush = Respuesta<"/push/suscripciones/baja", "post">;
+export type PruebaPush = Respuesta<"/push/prueba", "post">;
 
 function esConfig(v: unknown): v is PushConfig {
-  return esObjeto(v) && typeof v.disponible === "boolean" && typeof v.consentimiento === "boolean" && typeof v.dispositivos === "number";
+  return isRecord(v) && typeof v.disponible === "boolean" && typeof v.consentimiento === "boolean" && typeof v.dispositivos === "number";
 }
 
 function esEstado(v: unknown): v is EstadoPush {
-  return esObjeto(v) && typeof v.consentimiento === "boolean" && typeof v.dispositivos === "number";
+  return isRecord(v) && typeof v.consentimiento === "boolean" && typeof v.dispositivos === "number";
 }
 
 function esPrueba(v: unknown): v is PruebaPush {
-  return esObjeto(v) && typeof v.enviadas === "number" && typeof v.errores === "number";
+  return isRecord(v) && typeof v.enviadas === "number" && typeof v.errores === "number";
 }
 
 export function getPushConfig(signal?: AbortSignal): Promise<PushConfig> {

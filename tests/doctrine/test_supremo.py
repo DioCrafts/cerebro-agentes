@@ -11,6 +11,7 @@ import json
 from pathlib import Path
 
 from click.testing import CliRunner
+import httpx
 import pytest
 
 from asistente.conocimiento.crawler.cendoj import parse_cendoj_document
@@ -24,6 +25,7 @@ from asistente.conocimiento.doctrine.supremo import (
     es_objetivo_prioritario,
     sidecar_metadata,
 )
+from asistente.plataforma import http
 from asistente.plataforma.cli import supremo_seed
 
 CUESTION = (
@@ -508,7 +510,6 @@ def sin_red(monkeypatch: pytest.MonkeyPatch) -> list[float]:
     pausas: list[float] = []
     monkeypatch.setattr(supremo_seed, "_http_get", _prohibido)
     monkeypatch.setattr(supremo_seed, "_pausa", pausas.append)
-    monkeypatch.setattr(supremo_seed.requests, "get", lambda *args, **kwargs: _prohibido(str(args)))
     return pausas
 
 
@@ -809,37 +810,22 @@ def test_cli_error_de_descarga_y_bloqueo_del_portal(
     assert "Error de descarga" in manifest["documentos"][0]["motivos"][0]
 
 
-def test_http_get_usa_user_agent_generico_y_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    llamadas: list[dict[str, object]] = []
-
-    class _Respuesta:
-        status_code = 200
-        content = b"<html></html>"
-
-    def _fake_requests_get(url: str, **kwargs: object) -> _Respuesta:
-        llamadas.append({"url": url, **kwargs})
-        return _Respuesta()
-
-    monkeypatch.setattr(supremo_seed.requests, "get", _fake_requests_get)
+def test_http_get_usa_user_agent_generico_y_timeout(red_falsa) -> None:
+    vistas = red_falsa(lambda request: httpx.Response(200, content=b"<html></html>"))
 
     assert supremo_seed._http_get("https://www.poderjudicial.es/search/doc") == b"<html></html>"
-    assert llamadas[0]["timeout"] == 30
-    headers = llamadas[0]["headers"]
-    assert isinstance(headers, dict)
-    assert "hacienda-asesor" in headers["User-Agent"]
-    assert "@" not in headers["User-Agent"]
+    assert vistas[0].extensions["timeout"]["read"] == 30
+    assert vistas[0].headers["User-Agent"] == http.USER_AGENT
+    assert "@" not in vistas[0].headers["User-Agent"]
 
 
-def test_http_get_convierte_los_estados_de_bloqueo(monkeypatch: pytest.MonkeyPatch) -> None:
-    class _Respuesta:
-        status_code = 429
-        content = b""
-
-    monkeypatch.setattr(supremo_seed.requests, "get", lambda url, **kwargs: _Respuesta())
+def test_http_get_convierte_los_estados_de_bloqueo(red_falsa) -> None:
+    vistas = red_falsa(lambda request: httpx.Response(429, headers={"Retry-After": "1"}))
 
     with pytest.raises(supremo_seed.DescargaError) as excinfo:
         supremo_seed._http_get("https://www.poderjudicial.es/search/doc")
     assert excinfo.value.bloqueo is True
+    assert len(vistas) == 1  # a throttle is respected, not retried through
 
 
 @pytest.mark.parametrize(

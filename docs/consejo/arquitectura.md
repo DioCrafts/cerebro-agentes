@@ -203,6 +203,7 @@ API key, session and ownership as every `/cases/{id}/…` endpoint; a session of
 | `CONSEJO_FACTOR_TOPE` / `CONSEJO_TOPE_MAX_USD` | `2.0` / `3.00` | the hard cap |
 | `CONSEJO_MAX_LLAMADAS` | `150` | calls of one session in all |
 | `CONSEJO_EN_SEGUNDO_PLANO` | `true` | start at once in a thread of the API process (single-process deployments) |
+| `CONSEJO_PLAZO_FASE_S` | `600` | deadline of one deliberation phase for all its members together; a member still running is left out of that phase (keep it below `CONSEJO_ARRIENDO_S`) |
 | `CONSEJO_ARRIENDO_S` / `CONSEJO_MAX_INTENTOS` | `900` / `2` | the lease, renewed on every phase; runs of a crashed session |
 | `CONSEJO_CADUCIDAD_HORAS` / `CONSEJO_RETENCION_DIAS` | `72` / `365` | expiry of unconfirmed convocations; retention |
 | `CONSEJO_IMPORTE_GRANDE_EUR` | `10000` | «large amount» for the detector |

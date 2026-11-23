@@ -4,7 +4,8 @@
   sync, error) and how many items and pending proposals there are.
 * ``POST /correo/conexion`` — start the OAuth flow (PKCE): returns Google's consent URL.
 * ``GET /correo/oauth/callback`` — Google's redirect. No session header is possible here: the single-use
-  ``state`` issued to the case owner is the credential. Redirects to ``CORREO_URL_RETORNO``.
+  ``state`` issued to the case owner is the credential, and it must match the HttpOnly cookie (SameSite=Lax,
+  10 min) set in the browser that started the flow. Redirects to ``CORREO_URL_RETORNO``.
 * ``POST /correo/desconectar`` — revoke at Google and delete the token (optionally the derived data too).
 * ``POST /correo/sincronizar`` — incremental sync now.
 * ``GET /correo/resumen?case_id=&periodo=hoy|semana`` — the summary (derived items only).
@@ -21,11 +22,12 @@ with the stores passed in (see ``api.py``). No ``from __future__ import annotati
 
 from collections.abc import Callable
 from datetime import UTC, datetime
+import hmac
 import logging
 from typing import Annotated, Any, Final, Literal
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Cookie, Depends, HTTPException, Request, Response
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -46,7 +48,18 @@ from asistente.plataforma.auth.deps import CaseAccess, get_case_access
 
 logger = logging.getLogger(__name__)
 
+
+def _redirigir(url: str) -> RedirectResponse:
+    """The callback's answer: back to the app, with the binding cookie spent."""
+    respuesta = RedirectResponse(url, status_code=303)
+    respuesta.delete_cookie(COOKIE_OAUTH)
+    return respuesta
+
+
 CLAVE = "correo"
+# HttpOnly cookie that ties Google's callback to the browser that pressed «Conectar Gmail» (10 min, as the state).
+COOKIE_OAUTH: Final = "correo_oauth_estado"
+VIDA_COOKIE_OAUTH: Final = 600
 CONSENTIMIENTO_LLM: Final = "envio_documentos_a_proveedor_llm"
 
 
@@ -165,37 +178,60 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
         )
 
     @router.post("/correo/conexion", response_model=ConexionResponse, dependencies=guarded)
-    def post_conexion(payload: CasoRequest, cases: case_store_dep, access: access_dep) -> ConexionResponse:
+    def post_conexion(
+        payload: CasoRequest, cases: case_store_dep, access: access_dep, request: Request, response: Response
+    ) -> ConexionResponse:
         _caso(payload.case_id, access, cases)
         _exigir_activo(payload.case_id, access)
         try:
-            url = oauth.iniciar(payload.case_id, _user_id(access), db_path=cases.db_path)
+            url, estado = oauth.iniciar_flujo(payload.case_id, _user_id(access), db_path=cases.db_path)
         except (CorreoError, cifrado.CifradoNoDisponibleError) as exc:
             raise HTTPException(status_code=503, detail=str(exc)) from exc
         cases.append_audit_event(
             payload.case_id, {"event_type": "correo_conexion_iniciada", "alcance": list(SCOPES_FASE_1)}
         )
+        response.set_cookie(
+            COOKIE_OAUTH,
+            estado,
+            max_age=VIDA_COOKIE_OAUTH,
+            httponly=True,
+            samesite="lax",
+            secure=request.url.scheme == "https",
+        )
         return ConexionResponse(url=url)
 
     @router.get("/correo/oauth/callback", include_in_schema=False)
-    def get_callback(cases: case_store_dep, state: str = "", code: str = "", error: str = "") -> RedirectResponse:
-        """Google's redirect. Authenticated by the single-use ``state`` (no session header on a redirect)."""
+    def get_callback(
+        cases: case_store_dep,
+        state: str = "",
+        code: str = "",
+        error: str = "",
+        ligadura: Annotated[str | None, Cookie(alias=COOKIE_OAUTH)] = None,
+    ) -> RedirectResponse:
+        """Google's redirect. Authenticated by the single-use ``state`` AND the HttpOnly cookie set in the browser
+        that started the flow: a callback link with someone else's ``state`` and ``code`` (login CSRF, which
+        would connect the attacker's mailbox to the victim's case) is refused without consuming anything."""
         if not state:  # the state IS the credential of this endpoint: without it, nobody is asking
             raise HTTPException(status_code=401, detail="Falta la autorización (state) de la solicitud de conexión.")
         conf = configuracion()
         destino = conf.url_retorno
         separador = "&" if "?" in destino else "?"
+        mismo_navegador = bool(ligadura) and hmac.compare_digest((ligadura or "").encode(), state[:200].encode())
         if error or not code:
-            almacen.consumir_estado_oauth(state[:200], cases.db_path)  # the request is used up either way
+            if mismo_navegador:  # the request is used up either way
+                almacen.consumir_estado_oauth(state[:200], cases.db_path)
             motivo = "cancelado" if error == "access_denied" else "error"
-            return RedirectResponse(f"{destino}{separador}{urlencode({'correo': motivo})}", status_code=303)
+            return _redirigir(f"{destino}{separador}{urlencode({'correo': motivo})}")
+        if not mismo_navegador:
+            logger.warning("Gmail callback refused: not the browser that started the connection")
+            return _redirigir(f"{destino}{separador}{urlencode({'correo': 'error'})}")
         try:
             conexion = oauth.completar(state[:200], code[:2000], db_path=cases.db_path)
         except (CorreoError, cifrado.CifradoNoDisponibleError) as exc:
             logger.warning("Gmail connection could not be completed: %s", type(exc).__name__)
-            return RedirectResponse(f"{destino}{separador}{urlencode({'correo': 'error'})}", status_code=303)
+            return _redirigir(f"{destino}{separador}{urlencode({'correo': 'error'})}")
         cases.append_audit_event(conexion.case_id, {"event_type": "correo_conectado", "alcance": conexion.alcance})
-        return RedirectResponse(f"{destino}{separador}{urlencode({'correo': 'conectado'})}", status_code=303)
+        return _redirigir(f"{destino}{separador}{urlencode({'correo': 'conectado'})}")
 
     @router.post("/correo/desconectar", response_model=DesconectarResponse, dependencies=guarded)
     def post_desconectar(payload: DesconectarRequest, cases: case_store_dep, access: access_dep) -> DesconectarResponse:

@@ -8,8 +8,10 @@
 //     did not take to the council (the deterministic detector, no model), a quiet offer to do it.
 // Data: asistente/plataforma/api/routers/consejo.py.
 
-import clsx from "clsx";
-import { ChevronDown, Loader2, ShieldCheck, UsersRound, X } from "lucide-react";
+//
+// Design system: a session is a Box with its state as a StateLabel in the header (it sits in the conversation's
+// column, between the comments); the offer is a timeline event, like GitHub's «suggested reviewers».
+
 import { useEffect, useState } from "react";
 
 import {
@@ -22,18 +24,16 @@ import {
   listarSesiones,
   rechazarSesion,
   usd,
-  useSesionConsejo,
   type Deteccion,
   type ResumenSesion,
   type SesionConsejo,
 } from "../apiConsejo";
 import { errorMessage } from "../lib/memoria";
+import { useSesionConsejo } from "../shell/useSesionConsejo";
+import { Button, Caja, EventoConversacion, Flash } from "../ui";
+import { ChevronDownIcon, ChevronUpIcon, PeopleIcon, ShieldCheckIcon, XIcon } from "../ui/iconos";
+import { EstadoSesionLabel } from "./conversacion/EstadoSesion";
 import { DictamenConsejo, ProgresoConsejo } from "./DictamenConsejo";
-
-const PRIMARIO =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
-const SECUNDARIO =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[13px] font-semibold text-ink-soft transition hover:border-primary hover:text-ink disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 interface ConvocarConsejoProps {
   caseId: string;
@@ -65,162 +65,162 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
 
   if (!sesion) {
     return errorCarga ? (
-      <p role="alert" className="text-[13px] text-risk-high-fg">
+      <Flash variant="danger" role="alert">
         {errorCarga}
-      </p>
+      </Flash>
     ) : null;
   }
   const pendiente = sesion.estado === "pendiente_confirmacion";
   const trabajando = EN_MARCHA.has(sesion.estado);
+  const titulo = pendiente
+    ? "¿Lo consultamos con el consejo?"
+    : sesion.estado === "terminada"
+      ? sesion.parcial
+        ? "Dictamen parcial del consejo"
+        : "Dictamen del consejo listo"
+      : "Tu decisión, en el consejo";
   return (
-    <article aria-label="Consejo del hogar" className={clsx("rounded-xl border bg-surface px-4 py-3.5 shadow-card", pendiente ? "border-primary/60" : "border-line")}>
-      <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-[11.5px] font-semibold uppercase tracking-[0.08em] text-primary-dark">
-        <UsersRound size={14} aria-hidden />
-        Consejo del hogar
-        <span className="rounded-pill bg-line/70 px-2 py-px normal-case tracking-normal text-ink-soft">{ESTADO_LABEL[sesion.estado]}</span>
-      </p>
-      <h4 className="mt-1.5 text-[15px] font-bold leading-snug text-ink">
-        {pendiente
-          ? "¿Lo consultamos con el consejo?"
-          : sesion.estado === "terminada"
-            ? sesion.parcial
-              ? "Dictamen parcial del consejo"
-              : "Dictamen del consejo listo"
-            : "Tu decisión, en el consejo"}
-      </h4>
-      <p className="mt-1 text-[13.5px] leading-snug text-ink-soft">«{sesion.pregunta_usuario}»</p>
+    <Caja as="article" aria-label="Consejo del hogar" variante={pendiente ? "acento" : "normal"}>
+      <Caja.Cabecera className="flex-wrap">
+        <PeopleIcon className="shrink-0 text-fg-muted" />
+        <h4 className="m-0 min-w-0 flex-1 text-sm font-semibold">
+          <span className="text-fg-muted">Consejo del hogar · </span>
+          {titulo}
+        </h4>
+        <EstadoSesionLabel estado={sesion.estado} />
+      </Caja.Cabecera>
+      <Caja.Cuerpo className="flex flex-col gap-3">
+        <blockquote className="m-0 border-l-4 border-border-default pl-3 text-fg-default">{sesion.pregunta_usuario}</blockquote>
 
-      {pendiente && (
-        <>
-          <p className="mt-2 text-[13px] leading-snug text-ink-soft">
-            Varias IA la estudian por separado, se critican sin saber de quién es cada propuesta y emiten un dictamen con el
-            consenso y el desacuerdo. Trabajan con las cifras de los especialistas y sin tus datos personales.
-          </p>
-          {sesion.motivo && <p className="mt-1 text-[12.5px] text-muted">Por qué te lo propongo: {sesion.motivo}</p>}
-          <dl className="mt-3 grid grid-cols-1 gap-x-4 gap-y-1 text-[13px] sm:grid-cols-3">
-            <div>
-              <dt className="text-[11.5px] uppercase tracking-[0.06em] text-muted">Coste estimado</dt>
-              <dd className="font-semibold text-ink">{usd(sesion.estimacion_usd)}</dd>
-            </div>
-            <div>
-              <dt className="text-[11.5px] uppercase tracking-[0.06em] text-muted">Tope</dt>
-              <dd className="font-semibold text-ink">{usd(sesion.tope_usd)}</dd>
-            </div>
-            <div>
-              <dt className="text-[11.5px] uppercase tracking-[0.06em] text-muted">Tiempo</dt>
-              <dd className="font-semibold text-ink">unos {sesion.minutos_estimados} min</dd>
-            </div>
-          </dl>
-          {!sesion.precios_conocidos && (
-            <p className="mt-1 text-[12px] text-muted">Algún modelo no tiene precio publicado: la estimación es un máximo.</p>
-          )}
-          {sesion.miembros.length > 0 && (
-            <p className="mt-2 text-[12.5px] text-ink-soft">
-              <span className="font-semibold text-ink">Miembros:</span> {sesion.miembros.join(" · ")}
+        {pendiente && (
+          <>
+            <p className="m-0">
+              Varias IA la estudian por separado, se critican sin saber de quién es cada propuesta y emiten un dictamen con el
+              consenso y el desacuerdo. Trabajan con las cifras de los especialistas y sin tus datos personales.
             </p>
-          )}
-          <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-snug text-muted">
-            <ShieldCheck size={13} aria-hidden className="mt-0.5 flex-shrink-0 text-primary-dark" />
-            Nunca gasta más del tope: si llega a él, para y te lo dice. Corre en segundo plano y te aviso al terminar.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button type="button" disabled={ocupado} onClick={() => void decidir(() => confirmarSesion(caseId, sesion.id))} className={PRIMARIO}>
-              {ocupado ? <Loader2 size={14} aria-hidden className="animate-spin" /> : <UsersRound size={14} aria-hidden />}
-              Confirmar
-            </button>
-            <button type="button" disabled={ocupado} onClick={() => void decidir(() => rechazarSesion(caseId, sesion.id))} className={SECUNDARIO}>
-              No, gracias
-            </button>
-          </div>
-        </>
-      )}
+            {sesion.motivo && <p className="m-0 text-xs text-fg-muted">Por qué te lo propongo: {sesion.motivo}</p>}
+            <dl className="m-0 grid grid-cols-1 gap-x-4 gap-y-2 sm:grid-cols-3">
+              <div>
+                <dt className="text-xs text-fg-muted">Coste estimado</dt>
+                <dd className="m-0 font-semibold">{usd(sesion.estimacion_usd)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-fg-muted">Tope</dt>
+                <dd className="m-0 font-semibold">{usd(sesion.tope_usd)}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-fg-muted">Tiempo</dt>
+                <dd className="m-0 font-semibold">unos {sesion.minutos_estimados} min</dd>
+              </div>
+            </dl>
+            {!sesion.precios_conocidos && <p className="m-0 text-xs text-fg-muted">Algún modelo no tiene precio publicado: la estimación es un máximo.</p>}
+            {sesion.miembros.length > 0 && (
+              <p className="m-0">
+                <span className="font-semibold">Miembros:</span> {sesion.miembros.join(" · ")}
+              </p>
+            )}
+            <p className="m-0 flex items-start gap-2 text-xs text-fg-muted">
+              <ShieldCheckIcon size={12} className="mt-0.5 shrink-0" />
+              Nunca gasta más del tope: si llega a él, para y te lo dice. Corre en segundo plano y te aviso al terminar.
+            </p>
+          </>
+        )}
 
-      {trabajando && (
-        <>
-          <ProgresoConsejo sesion={sesion} />
-          <div className="mt-3">
-            <button type="button" disabled={ocupado} onClick={() => void decidir(() => cancelarSesion(caseId, sesion.id))} className={SECUNDARIO}>
-              <X size={14} aria-hidden />
+        {trabajando && <ProgresoConsejo sesion={sesion} />}
+
+        {sesion.estado === "terminada" && (
+          <>
+            {sesion.parcial && <p className="m-0 text-fg-attention">Parcial: {sesion.parcial}</p>}
+            {sesion.recomendacion && (
+              <p className="m-0">
+                <span className="font-semibold">Recomendación:</span> {sesion.recomendacion}
+                {sesion.consenso ? <span className="text-fg-muted"> ({sesion.consenso})</span> : null}
+              </p>
+            )}
+            {verDictamen && (
+              <div className="border-t border-border-muted pt-3">
+                <DictamenConsejo sesion={sesion} />
+              </div>
+            )}
+          </>
+        )}
+
+        {(sesion.estado === "fallida" || sesion.estado === "cancelada") && <p className="m-0">{sesion.error ?? ESTADO_LABEL[sesion.estado]}</p>}
+        {sesion.estado === "rechazada" && <p className="m-0 text-fg-muted">De acuerdo, no lo consulto con el consejo.</p>}
+        {error && (
+          <Flash variant="danger" role="alert">
+            {error}
+          </Flash>
+        )}
+      </Caja.Cuerpo>
+      {(pendiente || trabajando || sesion.estado === "terminada") && (
+        <Caja.Pie className="flex flex-wrap gap-2">
+          {pendiente && (
+            <>
+              <Button variant="primary" leadingVisual={PeopleIcon} disabled={ocupado} loading={ocupado} onClick={() => void decidir(() => confirmarSesion(caseId, sesion.id))}>
+                Confirmar
+              </Button>
+              <Button disabled={ocupado} onClick={() => void decidir(() => rechazarSesion(caseId, sesion.id))}>
+                No, gracias
+              </Button>
+            </>
+          )}
+          {trabajando && (
+            <Button leadingVisual={XIcon} disabled={ocupado} onClick={() => void decidir(() => cancelarSesion(caseId, sesion.id))}>
               Cancelar
-            </button>
-          </div>
-        </>
-      )}
-
-      {sesion.estado === "terminada" && (
-        <>
-          {sesion.parcial && <p className="mt-2 text-[12.5px] text-grounding-abstain-fg">Parcial: {sesion.parcial}</p>}
-          {sesion.recomendacion && (
-            <p className="mt-2 text-[13.5px] text-ink">
-              <span className="font-semibold">Recomendación:</span> {sesion.recomendacion}
-              {sesion.consenso ? <span className="text-muted"> ({sesion.consenso})</span> : null}
-            </p>
+            </Button>
           )}
-          <button type="button" onClick={() => setVerDictamen((v) => !v)} aria-expanded={verDictamen} className={clsx(SECUNDARIO, "mt-3")}>
-            <ChevronDown size={14} aria-hidden className={clsx("transition", verDictamen && "rotate-180")} />
-            {verDictamen ? "Ocultar el dictamen" : "Ver el dictamen"}
-          </button>
-          {verDictamen && (
-            <div className="mt-3 border-t border-line pt-3">
-              <DictamenConsejo sesion={sesion} />
-            </div>
+          {sesion.estado === "terminada" && (
+            <Button onClick={() => setVerDictamen((v) => !v)} aria-expanded={verDictamen} trailingVisual={verDictamen ? ChevronUpIcon : ChevronDownIcon}>
+              {verDictamen ? "Ocultar el dictamen" : "Ver el dictamen"}
+            </Button>
           )}
-        </>
+        </Caja.Pie>
       )}
-
-      {(sesion.estado === "fallida" || sesion.estado === "cancelada") && (
-        <p className="mt-2 text-[13px] text-ink-soft">{sesion.error ?? ESTADO_LABEL[sesion.estado]}</p>
-      )}
-      {sesion.estado === "rechazada" && <p className="mt-2 text-[13px] text-muted">De acuerdo, no lo consulto con el consejo.</p>}
-      {error && (
-        <p role="alert" className="mt-2 text-[13px] text-risk-high-fg">
-          {error}
-        </p>
-      )}
-    </article>
+    </Caja>
   );
 }
 
-/** The quiet offer under an answer that looks like a hard decision (no session for it yet). */
+/** The quiet offer under an answer that looks like a hard decision (no session for it yet): a timeline event. */
 function Sugerencia({ caseId, pregunta, deteccion, onConvocada, onDescartar }: { caseId: string; pregunta: string; deteccion: Deteccion; onConvocada: (id: string) => void; onDescartar: () => void }) {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
   return (
-    <aside aria-label="Propuesta de consultar al consejo" className="rounded-xl border border-dashed border-primary/50 bg-paper px-4 py-3">
-      <p className="flex items-center gap-1.5 text-[13.5px] font-semibold text-ink">
-        <UsersRound size={15} aria-hidden className="text-primary-dark" />
-        Parece una decisión difícil
-      </p>
-      <p className="mt-1 text-[12.5px] leading-snug text-ink-soft">
-        {deteccion.motivos.slice(0, 3).join(" · ")}. Si quieres, el consejo la estudia aparte; antes te digo cuánto costaría.
-      </p>
-      <div className="mt-2 flex flex-wrap gap-2">
-        <button
-          type="button"
-          disabled={ocupado}
-          className={SECUNDARIO}
-          onClick={() => {
-            setOcupado(true);
-            setError(null);
-            convocarConsejo(caseId, { pregunta, opciones: deteccion.opciones_detectadas })
-              .then((s) => onConvocada(s.id))
-              .catch((err: unknown) => setError(errorMessage(err)))
-              .finally(() => setOcupado(false));
-          }}
-        >
-          {ocupado && <Loader2 size={14} aria-hidden className="animate-spin" />}
-          Consultarlo con el consejo
-        </button>
-        <button type="button" onClick={onDescartar} className="rounded-lg px-3 py-1.5 text-[13px] font-semibold text-muted hover:bg-line/60">
-          No hace falta
-        </button>
-      </div>
-      {error && (
-        <p role="alert" className="mt-2 text-[12.5px] text-risk-high-fg">
-          {error}
-        </p>
-      )}
-    </aside>
+    <section aria-label="Propuesta de consultar al consejo">
+      <EventoConversacion icono={PeopleIcon}>
+        <div className="flex flex-col gap-2 py-1">
+          <p className="m-0">
+            <span className="font-semibold text-fg-default">Parece una decisión difícil.</span> {deteccion.motivos.slice(0, 3).join(" · ")}. Si
+            quieres, el consejo la estudia aparte; antes te digo cuánto costaría.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              size="small"
+              disabled={ocupado}
+              loading={ocupado}
+              onClick={() => {
+                setOcupado(true);
+                setError(null);
+                convocarConsejo(caseId, { pregunta, opciones: deteccion.opciones_detectadas })
+                  .then((s) => onConvocada(s.id))
+                  .catch((err: unknown) => setError(errorMessage(err)))
+                  .finally(() => setOcupado(false));
+              }}
+            >
+              Consultarlo con el consejo
+            </Button>
+            <Button size="small" variant="invisible" onClick={onDescartar}>
+              No hace falta
+            </Button>
+          </div>
+          {error && (
+            <Flash variant="danger" role="alert">
+              {error}
+            </Flash>
+          )}
+        </div>
+      </EventoConversacion>
+    </section>
   );
 }
 
@@ -281,7 +281,7 @@ export function ConsejoEnHilo({ caseId, turnos, ultimaPregunta, ocupado }: Conse
   const sugerencia = deteccion && !ocultas.has(deteccion.pregunta) ? deteccion : null;
   if (visibles.length === 0 && !sugerencia) return null;
   return (
-    <section aria-label="Consejo del hogar" className="flex flex-col gap-3">
+    <section aria-label="Consejo del hogar" className="flex flex-col gap-4">
       {visibles.map((s) => (
         <ConvocarConsejo key={s.id} caseId={caseId} sesionId={s.id} onCambio={() => setTick((n) => n + 1)} />
       ))}

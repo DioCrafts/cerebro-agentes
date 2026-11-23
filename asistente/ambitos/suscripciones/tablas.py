@@ -326,7 +326,7 @@ def tabla_a_extracto(
             f"{campo}: " + ", ".join(f"«{cabecera[c]}»" for c in cols) for campo, cols in ambiguos.items()
         )
         raise ImportacionError(
-            f"Hay columnas ambiguas ({lista}). Indica cuál usar con mapeo_columnas, p. ej. " '{"importe": "Importe"}.'
+            f'Hay columnas ambiguas ({lista}). Indica cuál usar con mapeo_columnas, p. ej. {{"importe": "Importe"}}.'
         )
     if "fecha" not in columnas:
         if "fecha_valor" not in columnas:

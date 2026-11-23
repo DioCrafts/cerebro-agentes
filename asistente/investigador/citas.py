@@ -5,9 +5,9 @@ Also figures: every number in a claim must appear in one of its quotes (a model 
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import re
 import unicodedata
-from collections.abc import Mapping, Sequence
 
 from asistente.investigador.modelo import Fuente
 
@@ -29,7 +29,7 @@ def cita_literal(cita: str, fuente: Fuente, minimo: int = 12) -> bool:
     """Literal quote check. A quote elided with «…» / «[…]» counts only if every piece is at least ``minimo``
     characters and the pieces appear literally, in order, in the source (models elide long passages)."""
     texto = normalizar(fuente.texto)
-    trozos = [t.strip(' ."\'') for t in _ELISION.split(normalizar(cita))]
+    trozos = [t.strip(" .\"'") for t in _ELISION.split(normalizar(cita))]
     trozos = [t for t in trozos if t]
     if not trozos or any(len(t) < minimo for t in trozos):
         return False
@@ -51,7 +51,9 @@ def cifras_respaldadas(afirmacion: str, citas: Sequence[str]) -> bool:
     return _cifras(afirmacion) <= respaldo
 
 
-def motivo_invalida(texto: str, fuentes_ids: Sequence[str], citas: Sequence[str], fuentes: Mapping[str, Fuente]) -> str | None:
+def motivo_invalida(
+    texto: str, fuentes_ids: Sequence[str], citas: Sequence[str], fuentes: Mapping[str, Fuente]
+) -> str | None:
     """None if the claim is backed: every cited source was read, every quote is literal in a cited source, and its
     figures appear in the quotes. Otherwise, why not."""
     if not fuentes_ids or not citas:

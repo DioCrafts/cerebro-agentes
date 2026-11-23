@@ -3,7 +3,7 @@
 Los manuales de la sede son HTML estático: un índice enorme con la tabla de
 contenidos completa y una página corta por epígrafe. No hace falta Playwright
 (el crawler ``web`` lo usa para toda la sede y además saca capturas), así que
-este seed va con ``requests``:
+este seed va con el cliente HTTP común (``asistente.plataforma.http``):
 
 * lee ``robots.txt`` de la sede y no pide nada que prohíba;
 * parte del índice de cada manual y sigue solo enlaces bajo su prefijo, en
@@ -27,17 +27,17 @@ import json
 import logging
 from pathlib import Path
 import re
-import time
 from urllib import robotparser
 from urllib.parse import urldefrag, urljoin, urlparse
 
 import click
-import requests
+import httpx
+
+from asistente.plataforma import http
 
 logger = logging.getLogger(__name__)
 
 SEDE = "https://sede.agenciatributaria.gob.es"
-_USER_AGENT = "hacienda-asesor/0.1 (corpus RAG; descarga respetuosa)"
 _HREF_RE = re.compile(r"""href\s*=\s*["']([^"'#]+)""", re.IGNORECASE)
 _RAIZ_MANUALES = "/Sede/ayuda/manuales-videos-folletos/manuales-practicos/"
 
@@ -125,38 +125,36 @@ def sidecar(manual: Manual, url: str) -> dict[str, str]:
 
 
 class Descargador:
-    """Sesión HTTP con robots.txt y pausa entre peticiones."""
+    """Cliente HTTP común con robots.txt y pausa mínima entre peticiones a la sede."""
 
-    def __init__(self, delay: float, session: requests.Session | None = None) -> None:
+    def __init__(self, delay: float, cliente: http.Cliente | None = None) -> None:
         self.delay = delay
-        self.session = session or requests.Session()
-        self.session.headers["User-Agent"] = _USER_AGENT
+        self.cliente = cliente or http.cliente()
         self.robots = robotparser.RobotFileParser()
-        self._ultima = 0.0
         self.peticiones = 0
 
     def cargar_robots(self) -> None:
-        respuesta = self.session.get(f"{SEDE}/robots.txt", timeout=30)
-        self.robots.parse(respuesta.text.splitlines() if respuesta.ok else [])
+        try:
+            respuesta = self.cliente.get(f"{SEDE}/robots.txt", timeout=30, pausa_host=self.delay)
+            lineas = respuesta.text.splitlines() if respuesta.is_success else []
+        except httpx.HTTPError as exc:
+            logger.warning("No se pudo leer robots.txt: %s", exc)
+            lineas = []
+        self.robots.parse(lineas)
 
     def permitido(self, url: str) -> bool:
-        return self.robots.can_fetch(_USER_AGENT, url)
+        return self.robots.can_fetch(http.USER_AGENT, url)
 
     def get(self, url: str) -> str | None:
-        espera = self.delay - (time.monotonic() - self._ultima)
-        if espera > 0:
-            time.sleep(espera)
-        self._ultima = time.monotonic()
         self.peticiones += 1
         try:
-            respuesta = self.session.get(url, timeout=30)
-        except requests.RequestException as exc:
+            respuesta = self.cliente.get(url, timeout=30, pausa_host=self.delay)
+        except httpx.HTTPError as exc:
             logger.warning("Fallo de red en %s: %s", url, exc)
             return None
         if respuesta.status_code != 200 or "html" not in respuesta.headers.get("Content-Type", "html"):
             logger.warning("HTTP %s en %s", respuesta.status_code, url)
             return None
-        respuesta.encoding = respuesta.encoding or "utf-8"
         return respuesta.text
 
 
@@ -181,10 +179,11 @@ def descargar_manual(
             cuenta["existentes"] += 1
             html = destino.read_text(encoding="utf-8", errors="replace")
         else:
-            html = descargador.get(url)
-            if html is None:
+            descargado = descargador.get(url)
+            if descargado is None:
                 cuenta["fallidas"] += 1
                 continue
+            html = descargado
             # El índice solo se usa para descubrir enlaces: es la tabla de contenidos
             # entera (cientos de KB de títulos) y metería ruido en la recuperación.
             if not es_indice and not dry_run:

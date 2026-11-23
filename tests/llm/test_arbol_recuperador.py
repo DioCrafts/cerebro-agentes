@@ -1,12 +1,10 @@
-"""Recuperador en árbol estilo PageIndex (FISCAL_RECUPERADOR=pageindex)."""
+"""Recuperador en árbol estilo PageIndex (variante pageindex del benchmark fiscal)."""
 
 from __future__ import annotations
 
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.retrievers import BaseRetriever
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.llm import arbol
 from asistente.conocimiento.llm.arbol import (
     Consumo,
@@ -20,40 +18,59 @@ from asistente.conocimiento.llm.arbol import (
 )
 
 
-def _chunk(fuente: str, headings: list[str], texto: str, *, via: str = "headings") -> Document:
-    meta: dict = {"source_file": fuente, "norma": fuente.split("/")[-1].split(".")[0], "chunk_id": f"{fuente}{headings}"}
+def _chunk(fuente: str, headings: list[str], texto: str, *, via: str = "headings") -> FragmentoRecuperado:
+    meta: dict = {
+        "source_file": fuente,
+        "norma": fuente.split("/")[-1].split(".")[0],
+        "chunk_id": f"{fuente}{headings}",
+    }
     if via == "dl_meta":
         meta["dl_meta"] = {"headings": headings}
     elif via == "section":
         meta["section"] = " — ".join(headings)
     else:
         meta["headings"] = headings
-    return Document(page_content=texto, metadata=meta)
+    return FragmentoRecuperado(texto=texto, metadatos=meta)
 
 
 CORPUS = [
-    _chunk("boe/LIVA.xml", ["Título VIII. Deducciones", "Artículo 99. Ejercicio del derecho a la deducción"],
-           "Los sujetos pasivos deducirán las cuotas soportadas de las devengadas en cada periodo."),
-    _chunk("boe/LIVA.xml", ["Título VI. Tipos", "Artículo 91. Tipos reducidos"],
-           "Tipo del 4 por ciento al pan, libros y medicamentos.", via="dl_meta"),
-    _chunk("boe/LGT.xml", ["Título III. Aplicación", "Artículo 66. Plazos de prescripción"],
-           "Prescribe a los cuatro años el derecho a liquidar la deuda tributaria.", via="section"),
-    _chunk("boe/LGT.xml", ["Título IV. Sanciones", "Artículo 191. Dejar de ingresar"],
-           "Infracción por dejar de ingresar la deuda de la autoliquidación."),
+    _chunk(
+        "boe/LIVA.xml",
+        ["Título VIII. Deducciones", "Artículo 99. Ejercicio del derecho a la deducción"],
+        "Los sujetos pasivos deducirán las cuotas soportadas de las devengadas en cada periodo.",
+    ),
+    _chunk(
+        "boe/LIVA.xml",
+        ["Título VI. Tipos", "Artículo 91. Tipos reducidos"],
+        "Tipo del 4 por ciento al pan, libros y medicamentos.",
+        via="dl_meta",
+    ),
+    _chunk(
+        "boe/LGT.xml",
+        ["Título III. Aplicación", "Artículo 66. Plazos de prescripción"],
+        "Prescribe a los cuatro años el derecho a liquidar la deuda tributaria.",
+        via="section",
+    ),
+    _chunk(
+        "boe/LGT.xml",
+        ["Título IV. Sanciones", "Artículo 191. Dejar de ingresar"],
+        "Infracción por dejar de ingresar la deuda de la autoliquidación.",
+    ),
 ]
 
 
-class _Fijo(BaseRetriever):
-    docs: list
+class _Fijo:
+    def __init__(self, docs: list[FragmentoRecuperado]) -> None:
+        self.docs = docs
 
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+    def invoke(self, consulta: str) -> list[FragmentoRecuperado]:
         return list(self.docs)
 
 
 def test_ruta_headings_lee_dl_meta_headings_y_section() -> None:
     assert ruta_headings(CORPUS[1])[-1].startswith("Artículo 91")
     assert ruta_headings(CORPUS[2]) == ["Título III. Aplicación", "Artículo 66. Plazos de prescripción"]
-    assert ruta_headings(Document(page_content="x", metadata={"section": "general"})) == []
+    assert ruta_headings(FragmentoRecuperado(texto="x", metadatos={"section": "general"})) == []
 
 
 def test_construir_arboles_un_arbol_por_documento_con_esquema_pageindex() -> None:
@@ -69,8 +86,13 @@ def test_construir_arboles_un_arbol_por_documento_con_esquema_pageindex() -> Non
 
 def test_navegar_baja_hasta_el_articulo_y_cuenta_llamadas() -> None:
     consumo = Consumo()
-    docs = navegar("¿Cuál es el plazo de prescripción de la deuda tributaria?", construir_arboles(CORPUS), SelectorLexico(), consumo)
-    assert docs and "cuatro años" in docs[0].page_content
+    docs = navegar(
+        "¿Cuál es el plazo de prescripción de la deuda tributaria?",
+        construir_arboles(CORPUS),
+        SelectorLexico(),
+        consumo,
+    )
+    assert docs and "cuatro años" in docs[0].texto
     assert consumo.llamadas >= 2 and consumo.tokens_entrada > 0
 
 
@@ -99,7 +121,7 @@ def test_envolver_recuperador_respeta_el_flag() -> None:
     base = _Fijo(docs=[])
     assert envolver_recuperador("faiss", base, CORPUS, SelectorLexico()) is base
     assert isinstance(envolver_recuperador("PageIndex", base, CORPUS, SelectorLexico()), RecuperadorArbol)
-    with pytest.raises(ValueError, match="FISCAL_RECUPERADOR"):
+    with pytest.raises(ValueError, match="Recuperador desconocido"):
         envolver_recuperador("bm42", base, CORPUS, SelectorLexico())
 
 
@@ -108,16 +130,20 @@ def test_valores_del_flag() -> None:
 
 
 def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
-    from langchain_core.documents import Document
-
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.llm.arbol import Consumo, construir_arboles, navegar
 
-    preambulo = [Document(page_content=f"Preámbulo {i}", metadata={"source_file": "ley", "headings": []})
-                 for i in range(5)]
-    art = Document(page_content="Exención por reinversión", metadata={
-        "source_file": "ley", "headings": ["Ganancias patrimoniales", "Artículo 38. Reinversión"]})
-    otro = Document(page_content="Rentas exentas", metadata={
-        "source_file": "ley", "headings": ["Rentas exentas", "Artículo 7. Rentas exentas"]})
+    preambulo = [
+        FragmentoRecuperado(texto=f"Preámbulo {i}", metadatos={"source_file": "ley", "headings": []}) for i in range(5)
+    ]
+    art = FragmentoRecuperado(
+        texto="Exención por reinversión",
+        metadatos={"source_file": "ley", "headings": ["Ganancias patrimoniales", "Artículo 38. Reinversión"]},
+    )
+    otro = FragmentoRecuperado(
+        texto="Rentas exentas",
+        metadatos={"source_file": "ley", "headings": ["Rentas exentas", "Artículo 7. Rentas exentas"]},
+    )
     raices = construir_arboles(preambulo + [art, otro])
 
     def elige_ganancias(consulta, candidatos, consumo):
@@ -128,14 +154,15 @@ def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
 
 
 def test_raiz_de_pagina_sin_documento_usa_su_primer_titulo() -> None:
-    from langchain_core.documents import Document
-
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.llm.arbol import construir_arboles
 
     meta = {"source_file": "data/html/x/" + "a" * 32 + ".html", "norma": "AEAT"}
     docs = [
-        Document(page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal", "Cómo pedirlo"]}),
-        Document(page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal"]}),
+        FragmentoRecuperado(
+            texto="t", metadatos={**meta, "headings": ["Certificados de residencia fiscal", "Cómo pedirlo"]}
+        ),
+        FragmentoRecuperado(texto="t", metadatos={**meta, "headings": ["Certificados de residencia fiscal"]}),
     ]
     (raiz,) = construir_arboles(docs)
     assert raiz.title == "AEAT: Certificados de residencia fiscal"

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.llm.grounding import (
     DEFAULT_ABSTAIN_MESSAGE,
     AnswerMode,
@@ -12,14 +11,14 @@ from asistente.conocimiento.llm.grounding import (
 
 def _doc(
     title: str | None = None, source_url: str | None = None, content: str = "contenido", **extra: object
-) -> Document:
+) -> FragmentoRecuperado:
     metadata: dict[str, object] = {}
     if title is not None:
         metadata["title"] = title
     if source_url is not None:
         metadata["source_url"] = source_url
     metadata.update(extra)
-    return Document(page_content=content, metadata=metadata)
+    return FragmentoRecuperado(texto=content, metadatos=metadata)
 
 
 def test_evaluate_returns_cited_when_metadata_is_complete() -> None:
@@ -296,3 +295,14 @@ def test_abstain_message_backwards_compatible_when_query_omitted() -> None:
     assert envelope.answer.startswith(DEFAULT_ABSTAIN_MESSAGE)
     # No "missing entity" line when we don't know what the user asked.
     assert "No encontré información específica sobre" not in envelope.answer
+
+
+def test_an_answer_naming_a_law_nothing_retrieved_contains_is_uncited() -> None:
+    docs = [_doc(title="Manual IRPF", source_url="https://sede.agenciatributaria.gob.es/y", content="Ley 35/2006")]
+    gate = GroundingGate(min_citations=1)
+
+    respaldada = gate.evaluate(answer="Lo regula la Ley 35/2006.", documents=docs)
+    inventada = gate.evaluate(answer="Lo regula la Ley 35/2006 y el Real Decreto 999/2031.", documents=docs)
+
+    assert respaldada.mode is AnswerMode.CITED
+    assert inventada.mode is AnswerMode.UNCITED and "Real Decreto 999/2031" in (inventada.reason or "")

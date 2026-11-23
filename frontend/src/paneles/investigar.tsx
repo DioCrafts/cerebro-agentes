@@ -3,6 +3,6 @@
 import { InvestigarPanel } from "../components/InvestigarPanel";
 import type { PropsPanel } from "./tipos";
 
-export default function PanelInvestigar({ ctx, open, onClose }: PropsPanel) {
-  return <InvestigarPanel key={`investigar-${ctx.conversacionId}`} open={open} onClose={onClose} caseId={ctx.caso.id} />;
+export default function PanelInvestigar({ ctx, open }: PropsPanel) {
+  return <InvestigarPanel key={`investigar-${ctx.conversacionId}`} open={open} caseId={ctx.caso.id} />;
 }

@@ -438,10 +438,11 @@ class OpenAIFactExtractor:
     layer, so :func:`default_fact_extractor` never returns it (docs/seguridad.md, S-14)."""
 
     def __init__(self, client: Any | None = None, model: str | None = None) -> None:
+        from asistente.plataforma import settings
+
         self._client = client
-        self._model = (
-            model or os.environ.get("DECISION_EXTRACTOR_MODEL") or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-        )
+        self._model = model or os.environ.get("DECISION_EXTRACTOR_MODEL") or settings.OPENAI_AGENT_MODEL
+        self._api_style = settings.OPENAI_API_STYLE or None
         # A single hung request used to stall a whole turn indefinitely (no
         # timeout) and a transient 5xx/rate-limit tumbled it straight to a 500.
         # Bound both: the OpenAI SDK applies exponential backoff that honours
@@ -463,19 +464,38 @@ class OpenAIFactExtractor:
         chat_history: list[dict[str, str]] | list[str],
         current_case_state: CaseState | None,
     ) -> ExtractionPayload:
+        from asistente.nucleo.agent.providers.openai_provider import (
+            is_reasoning_model,
+            output_text,
+            resolve_api_style,
+        )
+
         client = self._ensure_client()
         messages = self._build_messages(user_input, chat_history, current_case_state)
+        # Reasoning models reject a sampling temperature.
+        sampling: dict[str, Any] = {} if is_reasoning_model(self._model) else {"temperature": 0}
         try:
-            response = client.chat.completions.create(
-                model=self._model,
-                messages=messages,
-                response_format={"type": "json_schema", "json_schema": _RESPONSE_SCHEMA},
-                temperature=0,
-            )
+            if resolve_api_style(name="openai", api_style=self._api_style) == "responses":
+                response = client.responses.create(
+                    model=self._model,
+                    instructions=messages[0]["content"],
+                    input=[messages[1]],
+                    text={"format": {"type": "json_schema", **_RESPONSE_SCHEMA}},
+                    store=False,
+                    **sampling,
+                )
+                content = output_text(response) or "{}"
+            else:
+                response = client.chat.completions.create(
+                    model=self._model,
+                    messages=messages,
+                    response_format={"type": "json_schema", "json_schema": _RESPONSE_SCHEMA},
+                    **sampling,
+                )
+                content = response.choices[0].message.content or "{}"
         except Exception as exc:  # network, auth, quota, etc.
             raise OpenAIExtractionError(f"OpenAI extraction failed: {exc}") from exc
 
-        content = response.choices[0].message.content or "{}"
         try:
             data = json.loads(content)
         except json.JSONDecodeError as exc:
@@ -492,7 +512,7 @@ class OpenAIFactExtractor:
         # clamp in `_materialize_facts`.
         try:
             confidence = float(data.get("intent_confidence", 0.0))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             confidence = 0.0
         confidence = max(0.0, min(1.0, confidence))
 
@@ -562,7 +582,7 @@ class OpenAIFactExtractor:
 
             try:
                 confidence = float(raw.get("confidence", 0.5))
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 confidence = 0.5
             confidence = max(0.0, min(1.0, confidence))
 
@@ -662,7 +682,7 @@ class ProviderFactExtractor:
             intent = "unknown"
         try:
             confidence = float(data.get("intent_confidence", 0.0))
-        except (TypeError, ValueError):
+        except TypeError, ValueError:
             confidence = 0.0
         confidence = max(0.0, min(1.0, confidence))
 
@@ -825,7 +845,7 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
     """The extractor on the provider layer, metered (usage log and daily budgets) as purpose «hechos».
 
     ``name`` "openai" builds it on OpenAI whatever ``LLM_PROVIDER`` says (``DECISION_EXTRACTOR=openai``, or only
-    an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_MODEL``).
+    an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_AGENT_MODEL``).
     """
     from asistente.nucleo.agent.providers import create_provider
     from asistente.plataforma import settings
@@ -833,7 +853,7 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
 
     model = os.environ.get("DECISION_EXTRACTOR_MODEL") or None
     if name == "openai":
-        model = model or settings.OPENAI_MODEL
+        model = model or settings.OPENAI_AGENT_MODEL
     # Metered (and routed) as purpose "hechos"; DECISION_EXTRACTOR_MODEL, when set, is kept by the routing.
     return ProviderFactExtractor(
         medir(

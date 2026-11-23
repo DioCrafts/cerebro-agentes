@@ -21,7 +21,7 @@ Every function is deterministic (seeded bootstrap) and never calls a model.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 import math
 import random
@@ -195,13 +195,18 @@ class Calibracion(_Modelo):
 
 
 def _bootstrap(
-    puntos: Sequence[PuntoCalibracion], funcion: object, *, remuestras: int, semilla: int, nivel: float
+    puntos: Sequence[PuntoCalibracion],
+    funcion: Callable[[Sequence[PuntoCalibracion]], float | None],
+    *,
+    remuestras: int,
+    semilla: int,
+    nivel: float,
 ) -> tuple[float | None, float | None]:
     rng = random.Random(semilla)
     valores: list[float] = []
     for _ in range(remuestras):
         muestra = rng.choices(list(puntos), k=len(puntos))
-        valor = funcion(muestra)  # type: ignore[operator]
+        valor = funcion(muestra)
         if valor is not None:
             valores.append(float(valor))
     if len(valores) < remuestras // 2:

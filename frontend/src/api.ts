@@ -1,44 +1,29 @@
-// Client + types for the HaciendaGPT FastAPI backend.
+// Client for the HaciendaGPT FastAPI backend.
 //
-// These shapes mirror the Pydantic models in
-//   asistente/conocimiento/llm/grounding.py        -> AnswerEnvelope, Citation
-//   asistente/nucleo/decision/schemas.py     -> ObligationCandidate, RiskLevel
-//   asistente/plataforma/api/api.py              -> QARequest, TurnResponse
-// so if the backend grows a new field, only this file changes.
+// The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts, `npm run tipos`); this file only
+// gives them readable names. What the schema cannot describe (the SSE progress events) is typed here by hand.
 
 import { trimHistory } from "./lib/historial";
-import { type AuthMode, getSessionToken } from "./lib/session";
+import { type AuthMode } from "./lib/session";
+import { leerCuerpoSse } from "./lib/sse";
+import { isRecord } from "./lib/guards";
+import type { Esquemas, Respuesta } from "./api/tipos";
 
-// "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
-// the /agent verdicts (asistente/nucleo/agent/agent.py -> AgentMode).
-export type AnswerMode =
-  | "cited"
-  | "uncited"
-  | "abstained"
-  | "verified"
-  | "partially_verified"
-  | "unverified"
-  | "clarification";
-export type RiskLevel = "low" | "medium" | "high" | "critical";
+// The /agent verdicts, plus "cited" / "uncited" from the legacy /qa grounding gate (older chats kept in
+// localStorage still carry them).
+export type AnswerMode = Esquemas["AgentMode"] | "cited" | "uncited";
+export type RiskLevel = Esquemas["RiskLevel"];
 
-export interface Citation {
-  title: string;
-  locator: string;
-  document_type?: string | null;
-  section?: string | null;
-  snippet?: string | null;
-  // /agent only: the id the answer cites inline ("F2") and source provenance.
-  fragment_id?: string | null;
-  authority?: string | null;
-  source_type?: string | null;
-  binding?: boolean | null;
-  date?: string | null;
-  reference?: string | null;
-  // Validity per the doctrine graph: vigente | matizada | superada | discutida.
-  vigencia?: string | null;
-  vigencia_resumen?: string | null;
-}
+// A source the answer cites (/agent): the id it cites inline ("F2"), its provenance and its validity per the
+// doctrine graph (vigente | matizada | superada | discutida).
+export type Citation = Esquemas["AgentCitation"];
+export type ClaimCheck = Esquemas["ClaimCheck"];
+export type ClaimVerdict = ClaimCheck["verdict"];
+export type ToolTraceEntry = Esquemas["ToolTraceEntry"];
+export type AgentResponse = Respuesta<"/agent", "post">;
 
+// What a chat turn keeps of the answer (lib/storage.ts): built by the client from an AgentResponse, so it has no
+// schema of its own.
 export interface AnswerEnvelope {
   answer: string;
   mode: AnswerMode;
@@ -46,7 +31,7 @@ export interface AnswerEnvelope {
   raw_answer?: string | null;
   reason?: string | null;
   min_citations_required?: number;
-  // /agent only: claims the verifier could not back with the cited fragment.
+  // Claims the verifier could not back with the cited fragment.
   warnings?: string[];
   // Cited sources whose validity is in question, and whether the answer itself
   // tells the user that the question has no settled criterion.
@@ -54,115 +39,14 @@ export interface AnswerEnvelope {
   sinCriterioFirme?: boolean;
 }
 
-export type ClaimVerdict = "respaldada" | "parcial" | "no_respaldada";
-
-export interface ClaimCheck {
-  text: string;
-  fragment_ids: string[];
-  verdict: ClaimVerdict;
-  reason: string;
-}
-
-export interface ToolTraceEntry {
-  step: number;
-  tool: string;
-  arguments: Record<string, unknown>;
-  summary: string;
-  is_error: boolean;
-}
-
-// Mirrors asistente/plataforma/api/api.py -> AgentResponse.
-export interface AgentResponse {
-  answer: string;
-  mode: AnswerMode;
-  citations: Citation[];
-  claims: ClaimCheck[];
-  warnings: string[];
-  conflicts?: string[];
-  sin_criterio_firme?: boolean;
-  raw_answer?: string | null;
-  tool_trace: ToolTraceEntry[];
-  obligations: ObligationCandidate[];
-  facts: Fact[];
-  tax_period?: string | null;
-  case_id?: string | null;
-  case_updated: boolean;
-  provider: string;
-  model: string;
-  // Actions a module specialist prepared in this turn; they wait for the user's confirmation.
-  pending_actions?: Array<{ id: string; modulo: string; herramienta: string; resumen: string; estado: string }>;
-  // What the household brain did on this turn (null from the legacy single advisor).
-  cerebro?: InformeCerebro | null;
-}
-
 // ---- The household brain's report (asistente/nucleo/cerebro/contrato.py -> InformeCerebro) ----
-export interface EncargoCerebro {
-  id: string;
-  especialista: string;
-  pregunta: string;
-  depende_de: string[];
-  motivo: string;
-}
-
-export interface IntencionCerebro {
-  tipo: "charla" | "memoria" | "ambito" | "cruzada" | "accion" | "fuera_de_ambito";
-  encargos: EncargoCerebro[];
-  necesita_memoria: boolean;
-  confianza: number;
-  origen: "reglas" | "modelo" | "mixto" | "respaldo";
-  resumen: string;
-  aclaracion?: string | null;
-}
-
-export interface CifraCerebro {
-  id: string;
-  especialista: string;
-  concepto: string;
-  valor: string; // Decimal, as JSON text
-  unidad?: string | null;
-  fragment_id?: string | null;
-  herramienta?: string | null;
-  ejercicio?: number | null;
-  literal: string;
-}
-
-export interface ResumenInformeCerebro {
-  encargo_id: string;
-  especialista: string;
-  nombre: string;
-  estado: "ok" | "sin_respuesta" | "error" | "denegado" | "presupuesto";
-  modo?: string | null;
-  cifras: CifraCerebro[];
-  fragment_ids: string[];
-  duracion_ms: number;
-}
-
-export interface AtribucionCifraCerebro {
-  literal: string;
-  valor: string;
-  cifra_id?: string | null;
-  especialista?: string | null;
-  fragment_id?: string | null;
-  del_usuario: boolean;
-}
-
-export interface PuertaCerebro {
-  violaciones: Array<{ tipo: string; literal: string; detalle: string; cifras: string[] }>;
-  atribuciones: AtribucionCifraCerebro[];
-  ignorados: string[];
-}
-
-export interface InformeCerebro {
-  intencion: IntencionCerebro;
-  ruta: "directa" | "paso_directo" | "sintesis";
-  informes: ResumenInformeCerebro[];
-  peticiones: Array<{ id: string; solicitante: string; destinatario: string; dato: string; motivo: string; profundidad: number }>;
-  puerta?: PuertaCerebro | null;
-  recuerdos_usados: string[];
-  conversacion_id?: string | null;
-  revisiones_sintesis: number;
-  duracion_ms: number;
-}
+export type EncargoCerebro = Esquemas["Encargo"];
+export type IntencionCerebro = Esquemas["Intencion"];
+export type CifraCerebro = Esquemas["Cifra"];
+export type ResumenInformeCerebro = Esquemas["ResumenInforme"];
+export type AtribucionCifraCerebro = Esquemas["AtribucionCifra"];
+export type PuertaCerebro = Esquemas["ResultadoPuerta"];
+export type InformeCerebro = Esquemas["InformeCerebro"];
 
 // Live progress of a running agent turn (asistente/nucleo/agent/agent.py -> emit).
 export type ProgressEvent =
@@ -193,63 +77,11 @@ export class ApiError extends Error {
   }
 }
 
-export interface ObligationCandidate {
-  obligation_id: string;
-  title: string;
-  description: string;
-  risk_level: RiskLevel;
-  confidence: number;
-  blocking_missing_facts: string[];
-  trigger_facts: string[];
-  evidence_refs: Array<{ title?: string; locator?: string }>;
-  // Filing deadline declared by the rule (ISO date) and its caveat, if any.
-  due_date?: string | null;
-  due_date_note?: string | null;
-}
-
-// Decision-engine shapes. These mirror asistente/nucleo/decision/schemas.py
-// (Fact, MissingFact, CaseState) and the /cases/{id}/turn response in
-// asistente/plataforma/api/api.py (TurnResponse). We only declare the fields the
-// web UI reads; the backend may send more (extra keys are ignored).
-export type CaseStatus = "open" | "in_review" | "closed";
-
-export interface Fact {
-  fact_id: string;
-  name: string;
-  value: string | number | boolean | Record<string, unknown> | unknown[];
-  value_type: string;
-  source: string;
-  confidence: number;
-  updated_at: string;
-}
-
-export interface MissingFact {
-  fact_name: string;
-  reason: string;
-  priority: RiskLevel;
-}
-
-export interface CaseState {
-  case_id: string;
-  user_id: string;
-  status: CaseStatus;
-  jurisdiction: string;
-  tax_period: string;
-  facts: Fact[];
-  missing_facts: MissingFact[];
-  obligation_candidates: ObligationCandidate[];
-}
-
-export interface TurnResponse {
-  case_id: string;
-  facts: Fact[];
-  missing_facts: MissingFact[];
-  candidate_obligation_ids: string[];
-  obligations: ObligationCandidate[];
-  next_questions: string[];
-  degraded: boolean;
-  degraded_facts: string[];
-}
+export type ObligationCandidate = Esquemas["ObligationCandidate"];
+export type CaseStatus = Esquemas["CaseStatus"];
+export type Fact = Esquemas["Fact"];
+export type MissingFact = Esquemas["MissingFact"];
+export type CaseState = Respuesta<"/cases/{case_id}", "get">;
 
 // The FastAPI default is http://127.0.0.1:8000; Vite proxies /api/* to
 // avoid CORS in dev. In production both should be served under the same
@@ -259,28 +91,21 @@ const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api";
 // Abort any single request that outlives this budget, so a hung backend
 // surfaces a clear timeout instead of leaving the UI stuck on "Consultando…".
 const DEFAULT_TIMEOUT_MS = 30_000;
-// The agent runs several search → reason → verify rounds per question; a
-// thorough answer legitimately takes a few minutes.
-const AGENT_TIMEOUT_MS = 300_000;
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
+// With accounts on (AUTH_MODE=required) the session travels in an HttpOnly cookie that this script
+// never sees (`credentials: "same-origin"`). `X-Requested-With` marks the request as ours: a write the
+// cookie authenticates needs it (or an Origin of ours) to pass the server's CSRF check.
+const CREDENTIALS: RequestCredentials = "same-origin";
 
-// With accounts on (AUTH_MODE=required) every request carries the session
-// token. With accounts off there is no token and the headers are as before.
-function requestHeaders(hasBody: boolean): Record<string, string> | undefined {
-  const token = getSessionToken();
-  if (!hasBody && !token) return undefined;
-  const headers: Record<string, string> = {};
+function requestHeaders(hasBody: boolean): Record<string, string> {
+  const headers: Record<string, string> = { "X-Requested-With": "cerebro" };
   if (hasBody) headers["Content-Type"] = "application/json";
-  if (token) headers.Authorization = `Bearer ${token}`;
   return headers;
 }
 
 let sessionExpiredHandler: (() => void) | null = null;
 
-/** Called when the server rejects the session token (expired, revoked, account deleted). */
+/** Called when the server rejects the session (expired, revoked, account deleted). */
 export function onSessionExpired(handler: (() => void) | null): void {
   sessionExpiredHandler = handler;
 }
@@ -289,16 +114,6 @@ export function onSessionExpired(handler: (() => void) | null): void {
 // blindly to the typed interface — that would defer the failure to a confusing
 // `undefined.map` deep in render. We validate the fields the UI actually reads
 // (extra keys are ignored) and throw a clear error otherwise.
-function isAnswerEnvelope(value: unknown): value is AnswerEnvelope {
-  return (
-    isRecord(value) &&
-    typeof value.answer === "string" &&
-    (value.mode === "cited" || value.mode === "uncited" || value.mode === "abstained") &&
-    Array.isArray(value.citations) &&
-    typeof value.min_citations_required === "number"
-  );
-}
-
 const AGENT_MODES: ReadonlySet<string> = new Set([
   "verified",
   "partially_verified",
@@ -319,16 +134,6 @@ function isAgentResponse(value: unknown): value is AgentResponse {
     Array.isArray(value.tool_trace) &&
     Array.isArray(value.obligations) &&
     Array.isArray(value.facts)
-  );
-}
-
-function isTurnResponse(value: unknown): value is TurnResponse {
-  return (
-    isRecord(value) &&
-    typeof value.case_id === "string" &&
-    Array.isArray(value.obligations) &&
-    Array.isArray(value.next_questions) &&
-    Array.isArray(value.candidate_obligation_ids)
   );
 }
 
@@ -366,7 +171,7 @@ async function errorFromResponse(path: string, resp: Response): Promise<ApiError
   return new ApiError(detail || `${path}: error ${resp.status}`, resp.status);
 }
 
-/** Shared by the other API modules (apiAutonomos.ts): same base URL, session token, timeout and errors. */
+/** Shared by the other API modules (apiAutonomos.ts): same base URL, session cookie, timeout and errors. */
 export async function request<T>(
   path: string,
   body: unknown,
@@ -384,6 +189,7 @@ export async function request<T>(
       method,
       headers: requestHeaders(body !== undefined),
       body: body === undefined ? undefined : JSON.stringify(body),
+      credentials: CREDENTIALS,
       signal: combined,
     });
   } catch (err) {
@@ -403,16 +209,6 @@ export async function request<T>(
   return data;
 }
 
-interface QAOptions {
-  query: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  signal?: AbortSignal;
-}
-
-export function postQA({ query, chatHistory = [], signal }: QAOptions): Promise<AnswerEnvelope> {
-  return request("/qa", { query, chat_history: trimHistory(chatHistory) }, isAnswerEnvelope, { signal });
-}
-
 export function createCase(opts: {
   userId: string;
   taxPeriod: string;
@@ -427,41 +223,11 @@ export function createCase(opts: {
   );
 }
 
-export function postTurn(opts: {
-  caseId: string;
-  userInput: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  signal?: AbortSignal;
-}): Promise<TurnResponse> {
-  return request(
-    `/cases/${encodeURIComponent(opts.caseId)}/turn`,
-    { user_input: opts.userInput, chat_history: trimHistory(opts.chatHistory ?? []) },
-    isTurnResponse,
-    { signal: opts.signal },
-  );
-}
-
-export function postAgent(opts: {
-  query: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  // Attach the case so the agent can read/record the user's facts and run the
-  // rules engine; omit to get a search-only answer.
-  caseId?: string | null;
-  // This chat's id (one per conversation): the household brain's conversation memory.
-  conversacionId?: string | null;
-  signal?: AbortSignal;
-}): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
-  if (opts.caseId) body.case_id = opts.caseId;
-  if (opts.conversacionId && CONVERSACION_ID.test(opts.conversacionId)) body.conversacion_id = opts.conversacionId;
-  return request("/agent", body, isAgentResponse, { signal: opts.signal, timeoutMs: AGENT_TIMEOUT_MS });
-}
-
 // The shape the backend accepts for a chat's id (AgentRequest.conversacion_id); anything else is not sent.
 const CONVERSACION_ID = /^[A-Za-z0-9_-]{8,64}$/;
 
 // If the stream goes silent for this long the connection is dead: the server
-// sends a keep-alive line every ~10 s even while the model is thinking.
+// sends a keep-alive comment every ~10 s even while the model is thinking.
 const STREAM_IDLE_TIMEOUT_MS = 60_000;
 
 const PROGRESS_TYPES: ReadonlySet<string> = new Set([
@@ -485,7 +251,11 @@ function isProgressEvent(value: unknown): value is ProgressEvent {
 }
 
 /**
- * Run one agent turn over the NDJSON stream, reporting live progress.
+ * Run one agent turn over its Server-Sent Events stream, reporting live progress.
+ *
+ * Events: `progress` (data: the agent's event), `cola` (the server waits for a free slot), then one
+ * terminal `result` (data: AgentResponse) or `error` (data: {status, detail}); `: ping` comments keep
+ * the connection alive. Aborting `signal` closes the stream, and the server then stops the turn.
  *
  * Resolves with the final AgentResponse; rejects with ApiError on a server
  * error (HTTP or in-stream), a dead connection, or a malformed stream.
@@ -515,43 +285,46 @@ export async function streamAgent(
   try {
     const resp = await fetch(`${API_BASE}/agent/stream`, {
       method: "POST",
-      headers: requestHeaders(true),
+      headers: { ...requestHeaders(true), Accept: "text/event-stream" },
       body: JSON.stringify(body),
+      credentials: CREDENTIALS,
       signal: combined,
     });
     if (!resp.ok) throw await errorFromResponse("/agent/stream", resp);
     if (!resp.body) throw new ApiError("El servidor no devolvió ninguna respuesta.", resp.status);
 
-    const reader = resp.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = "";
-    for (;;) {
-      const { done, value } = await reader.read();
-      touch();
-      buffer += decoder.decode(value ?? new Uint8Array(), { stream: !done });
-      const lines = buffer.split("\n");
-      buffer = lines.pop() ?? "";
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        const message: unknown = JSON.parse(line);
-        if (!isRecord(message)) continue;
-        if (message.event === "progress" && isProgressEvent(message.data)) onProgress(message.data);
-        if (message.event === "error") {
-          const data = isRecord(message.data) ? message.data : {};
+    // Set from the event callback (a holder, so the compiler does not narrow it to null).
+    const salida: { result: AgentResponse | null } = { result: null };
+    await leerCuerpoSse(
+      resp.body,
+      ({ event, data }) => {
+        if (event === "progress") {
+          const parsed: unknown = JSON.parse(data);
+          if (isProgressEvent(parsed)) onProgress(parsed);
+          return "seguir";
+        }
+        if (event === "error") {
+          const parsed: unknown = JSON.parse(data);
+          const detail = isRecord(parsed) ? parsed : {};
           throw new ApiError(
-            typeof data.detail === "string" ? data.detail : "El servicio no pudo procesar la consulta.",
-            typeof data.status === "number" ? data.status : null,
+            typeof detail.detail === "string" ? detail.detail : "El servicio no pudo procesar la consulta.",
+            typeof detail.status === "number" ? detail.status : null,
           );
         }
-        if (message.event === "result") {
-          if (!isAgentResponse(message.data)) {
+        if (event === "result") {
+          const parsed: unknown = JSON.parse(data);
+          if (!isAgentResponse(parsed)) {
             throw new ApiError("El servidor devolvió una respuesta con un formato inesperado.");
           }
-          return message.data;
+          salida.result = parsed;
+          return "fin";
         }
-      }
-      if (done) throw new ApiError("La conexión se cerró antes de recibir la respuesta.");
-    }
+        return "seguir"; // `cola` and anything newer: nothing to show yet
+      },
+      touch,
+    );
+    if (salida.result === null) throw new ApiError("La conexión se cerró antes de recibir la respuesta.");
+    return salida.result;
   } catch (err) {
     if (idle.signal.aborted && !opts.signal?.aborted) {
       throw new ApiError("Se perdió la conexión con el servicio mientras preparaba la respuesta.", null, {
@@ -565,6 +338,19 @@ export async function streamAgent(
   } finally {
     clearTimeout(idleTimer);
   }
+}
+
+/**
+ * Open a GET Server-Sent Events stream of the API (the council's session, a browser task), resuming
+ * after `ultimoId` when there is one. Rejects with ApiError when the server refuses it.
+ */
+export async function abrirFlujo(path: string, ultimoId: string | null, signal: AbortSignal): Promise<ReadableStream<Uint8Array>> {
+  const headers: Record<string, string> = { ...requestHeaders(false), Accept: "text/event-stream" };
+  if (ultimoId) headers["Last-Event-ID"] = ultimoId;
+  const resp = await fetch(`${API_BASE}${path}`, { method: "GET", headers, credentials: CREDENTIALS, cache: "no-store", signal });
+  if (!resp.ok) throw await errorFromResponse(path, resp);
+  if (!resp.body) throw new ApiError("El servidor no devolvió ninguna respuesta.", resp.status);
+  return resp.body;
 }
 
 /** The case as stored now. */
@@ -599,44 +385,11 @@ export function updateCaseFact(opts: {
 
 // ---- Step 4: simulator, calendar, documents --------------------------------
 
-export interface CalcLine {
-  concepto: string;
-  importe: string; // decimal as string, e.g. "-1500.00"
-  referencia?: string | null;
-}
-
-export interface IRPFResult {
-  ejercicio: number;
-  tributacion: string;
-  cuota_liquida: string;
-  retenciones: string;
-  resultado: string; // positive: to pay; negative: refund
-  tipo_medio_efectivo: string;
-  lineas: CalcLine[];
-  avisos: string[];
-  fuente: string;
-}
-
-export type BenefitState = "aplicado" | "disponible" | "por_confirmar" | "no_aplica";
-
-export interface Benefit {
-  id: string;
-  nombre: string;
-  estado: BenefitState;
-  detalle: string;
-  requisitos: string[];
-  referencia: string;
-  verificado: boolean;
-  ahorro_estimado?: string | null;
-  datos_que_faltan: string[];
-}
-
-export interface Simulation {
-  ejercicio: number;
-  escenarios: Array<{ nombre: string; resultado: IRPFResult; ahorro_frente_a_base: string }>;
-  beneficios: Benefit[];
-  datos_no_aportados: string[];
-}
+export type CalcLine = Esquemas["Linea"];
+export type IRPFResult = Esquemas["IRPFResult"];
+export type Benefit = Esquemas["Beneficio"];
+export type BenefitState = Benefit["estado"];
+export type Simulation = Respuesta<"/simulate", "post">;
 
 function isSimulation(value: unknown): value is Simulation {
   return (
@@ -666,26 +419,8 @@ export function simulate(opts: {
   return request("/simulate", body, isSimulation, { signal: opts.signal });
 }
 
-export interface Deadline {
-  id: string;
-  modelo?: string | null;
-  titulo: string;
-  periodo: string;
-  fecha: string; // ISO date
-  ajustada: boolean;
-  dias_restantes: number;
-  detalle: string;
-  referencia: string;
-  verificado: boolean;
-  nota?: string | null;
-}
-
-export interface CalendarResponse {
-  case_id: string;
-  hoy: string;
-  vencimientos: Deadline[];
-  aviso: string;
-}
+export type Deadline = Esquemas["Vencimiento"];
+export type CalendarResponse = Respuesta<"/cases/{case_id}/calendar", "get">;
 
 function isCalendar(value: unknown): value is CalendarResponse {
   return isRecord(value) && Array.isArray(value.vencimientos) && typeof value.aviso === "string";
@@ -700,23 +435,9 @@ export function getCalendar(opts: { caseId: string; dias?: number; signal?: Abor
   );
 }
 
-export interface ProposedFact {
-  name: string;
-  value: string | number | boolean;
-  evidencia: string;
-  // "imagen": read from a scan or photo (two readings agreed); it cannot be checked against text.
-  origen?: "texto" | "imagen";
-}
-
-export interface DocumentAnalysis {
-  filename: string;
-  tipo_documento: string;
-  paginas: number;
-  caracteres: number;
-  lectura?: "texto" | "imagen";
-  hechos_propuestos: ProposedFact[];
-  avisos: string[];
-}
+// `origen: "imagen"`: read from a scan or photo (two readings agreed); it cannot be checked against text.
+export type ProposedFact = Esquemas["HechoPropuesto"];
+export type DocumentAnalysis = Respuesta<"/cases/{case_id}/documents", "post">;
 
 function isDocumentAnalysis(value: unknown): value is DocumentAnalysis {
   return isRecord(value) && Array.isArray(value.hechos_propuestos) && Array.isArray(value.avisos);
@@ -742,31 +463,12 @@ export function analyzeDocument(opts: {
 
 // ---- Proactive notifications -------------------------------------------------
 
-// The tax kinds, the weekly digest, and one kind per household module ("modulo:<clave>").
-export type NotificationKind = "plazo" | "fin_de_ejercicio" | "cambio_normativo" | "resumen_semanal" | `modulo:${string}`;
-export type NotificationSeverity = "info" | "aviso" | "urgente";
-
-// Mirrors asistente/nucleo/proactive/store.py -> Notification.
-export interface AdvisorNotification {
-  id: string;
-  case_id: string;
-  kind: NotificationKind;
-  title: string;
-  body: string;
-  severity: NotificationSeverity;
-  actions: string[];
-  sources: string[];
-  amount?: string | null; // estimated saving in euros, as a decimal string
-  due_date?: string | null;
-  created_at: string;
-  read_at?: string | null;
-}
-
-export interface NotificationsResponse {
-  case_id: string;
-  unread: number;
-  notifications: AdvisorNotification[];
-}
+// `kind`: the tax kinds (plazo, fin_de_ejercicio, cambio_normativo), the weekly digest (resumen_semanal) and one
+// kind per household module ("modulo:<clave>").
+export type AdvisorNotification = Esquemas["Notification"];
+export type NotificationKind = AdvisorNotification["kind"];
+export type NotificationSeverity = AdvisorNotification["severity"];
+export type NotificationsResponse = Respuesta<"/cases/{case_id}/notifications", "get">;
 
 function isNotifications(value: unknown): value is NotificationsResponse {
   return isRecord(value) && typeof value.unread === "number" && Array.isArray(value.notifications);
@@ -796,62 +498,17 @@ export function runProactive(opts: { caseId: string; signal?: AbortSignal }): Pr
 // The structured weekly/daily digest behind a `resumen_semanal` notification. Its proposals are answered through
 // their own endpoints (acciones, tareas, correo); this endpoint never acts.
 
-export type TipoPropuestaRepaso = "accion" | "tarea" | "paso" | "correo" | "plantilla";
+export type Repaso = Respuesta<"/cases/{case_id}/repaso", "get">["repaso"];
+export type PuntoRepaso = Repaso["puntos"][number];
+export type FuenteRepaso = PuntoRepaso["fuentes"][number];
+export type PropuestaRepaso = PuntoRepaso["propuestas"][number];
+// accion | tarea | paso | correo | plantilla
+export type TipoPropuestaRepaso = PropuestaRepaso["tipo"];
 // Read now from the layer that owns the proposal: decided elsewhere since → no buttons.
-export type EstadoPropuestaRepaso = "pendiente" | "decidida" | "desconocido";
+export type EstadoPropuestaRepaso = PropuestaRepaso["estado"];
 
-export interface PropuestaRepaso {
-  id: string;
-  tipo: TipoPropuestaRepaso;
-  ref: string; // the id its own endpoint takes (acc_…, tar_…, prop_…, or a template id)
-  paso?: string | null;
-  parametros: Record<string, string | number | boolean | null>;
-  objetivo?: string | null;
-  etiqueta: string;
-  resumen: string;
-  estado: EstadoPropuestaRepaso;
-}
-
-export interface FuenteRepaso {
-  tipo: string;
-  id: string;
-  modulo?: string | null;
-  nombre_modulo?: string | null;
-  titulo: string;
-  fecha?: string | null;
-  notification_id?: string | null;
-}
-
-export interface PuntoRepaso {
-  id: string;
-  rango: number;
-  titulo: string;
-  texto: string;
-  por_que: string;
-  motivos: string[]; // the reasons code computed (the deterministic priority)
-  urgente: boolean;
-  gravedad: NotificationSeverity;
-  vence?: string | null;
-  ambitos: Array<{ clave: string; nombre: string }>;
-  fuentes: FuenteRepaso[];
-  propuestas: PropuestaRepaso[];
-  origen: "modelo" | "determinista";
-}
-
-export interface Repaso {
-  case_id: string;
-  notification_id: string | null;
-  periodo: string;
-  frecuencia: "semanal" | "diaria";
-  origen: "modelo" | "mixto" | "determinista" | null;
-  titular: string;
-  puntos: PuntoRepaso[];
-  restantes: number;
-  actualizado: string;
-}
-
-function isRepaso(value: unknown): value is { repaso: Repaso } {
-  return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso as Record<string, unknown>).puntos);
+function isRepaso(value: unknown): value is Respuesta<"/cases/{case_id}/repaso", "get"> {
+  return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso).puntos);
 }
 
 /** The structured digest of a `resumen_semanal` notification (404 when the brain did not write it). */
@@ -865,39 +522,15 @@ export function getRepaso(opts: { caseId: string; notificationId?: string; signa
 
 // ---- Accounts and privacy (asistente/plataforma/api/routers/auth.py) -----------------
 
-export interface AuthConfig {
-  auth_mode: AuthMode;
-  password_min_length: number;
-  consent_text_version: string;
-  // Empty when the operator has not published a privacy notice.
-  privacy_notice_url: string;
-}
-
-export interface SessionUser {
-  id: string;
-  email: string;
-  created_at: string;
-}
-
-export interface SessionResponse {
-  token: string;
-  expires_at: string;
-  user: SessionUser;
-}
-
-export type ConsentType = "tratamiento_datos" | "envio_documentos_a_proveedor_llm" | "avisos_por_correo";
-
-export interface ConsentState {
-  type: ConsentType;
-  granted: boolean;
-  timestamp: string | null;
-  text_version: string | null;
-}
-
-export interface ConsentsResponse {
-  text_version: string;
-  consents: ConsentState[];
-}
+// `privacy_notice_url` is empty when the operator has not published a privacy notice. The schema says
+// `auth_mode: string`; isAuthConfig only lets the two modes this client knows through.
+export type AuthConfig = Omit<Respuesta<"/auth/config", "get">, "auth_mode"> & { auth_mode: AuthMode };
+export type SessionUser = Respuesta<"/auth/me", "get">;
+// `token` is only for a client without a browser; the web client gets the HttpOnly cookie and null here.
+export type SessionResponse = Respuesta<"/auth/login", "post">;
+export type ConsentState = Esquemas["ConsentState"];
+export type ConsentType = ConsentState["type"];
+export type ConsentsResponse = Respuesta<"/me/consents", "get">;
 
 function isAuthConfig(value: unknown): value is AuthConfig {
   return isRecord(value) && (value.auth_mode === "off" || value.auth_mode === "required");
@@ -908,7 +541,7 @@ function isSessionUser(value: unknown): value is SessionUser {
 }
 
 function isSessionResponse(value: unknown): value is SessionResponse {
-  return isRecord(value) && typeof value.token === "string" && value.token.length > 0 && isSessionUser(value.user);
+  return isRecord(value) && (value.token === null || value.token === undefined || typeof value.token === "string") && isSessionUser(value.user);
 }
 
 function isConsents(value: unknown): value is ConsentsResponse {
@@ -948,6 +581,24 @@ export function login(opts: { email: string; password: string }): Promise<Sessio
 
 export function logout(): Promise<null> {
   return request("/auth/logout", {}, isEmpty);
+}
+
+/**
+ * Revoke a session token kept by an older version of this app in localStorage (sent once, as Bearer,
+ * and then forgotten). Best effort: a token the server no longer knows is simply gone already.
+ */
+export async function revocarTokenAntiguo(token: string): Promise<void> {
+  try {
+    await fetch(`${API_BASE}/auth/logout`, {
+      method: "POST",
+      headers: { ...requestHeaders(true), Authorization: `Bearer ${token}` },
+      body: "{}",
+      credentials: "omit",
+      signal: AbortSignal.timeout(DEFAULT_TIMEOUT_MS),
+    });
+  } catch {
+    // offline or refused: nothing else to do
+  }
 }
 
 export function getMe(signal?: AbortSignal): Promise<SessionUser> {

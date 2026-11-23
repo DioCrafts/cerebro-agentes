@@ -1,13 +1,19 @@
 // The user's privacy controls: consents, a copy of everything stored about
 // them, and erasing the account. Only exists when the backend has accounts.
+//
+// Migrated to the design system (docs/ui/sistema-de-diseno.md): a side sheet (HojaLateral) with the sections of
+// GitHub's account settings: one box per section and, last, the «danger zone» to delete the account. App.tsx
+// opens it outside the panel registry and mounts it only while open, so the typed password never outlives it;
+// when it goes, focus goes back to whatever opened it.
 
-import { Download, ShieldCheck, Trash2, X } from "lucide-react";
 import { type FormEvent, useEffect, useState } from "react";
 
 import type { ConsentState, ConsentType } from "../api";
 import { ApiError, deleteMyAccount, exportMyData, getConsents, updateConsents } from "../api";
 import { formatDate } from "../lib/presentation";
 import { loadConversations } from "../lib/storage";
+import { Button, Caja, CargandoLista, Checkbox, Flash, FormControl, HojaLateral, Link, TextInput, useConfirm } from "../ui";
+import { DownloadIcon, ShieldCheckIcon, TrashIcon } from "../ui/iconos";
 import { AuthPrivacyNotice } from "./AuthPrivacyNotice";
 
 interface PrivacyPanelProps {
@@ -65,14 +71,17 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [noticeOpen, setNoticeOpen] = useState(false);
+  const confirmar = useConfirm();
 
-  useEffect(() => {
-    // While the privacy summary is on top, Escape closes that one, not the panel.
-    if (!open || noticeOpen) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, noticeOpen, onClose]);
+  // Focus goes back to what opened the sheet once it goes away (the shell does this for registry panels). Read
+  // while rendering: by the time this component's effects run, the sheet has already taken the focus.
+  const [antes] = useState(() => document.activeElement);
+  useEffect(
+    () => () => {
+      if (antes instanceof HTMLElement && antes.isConnected) antes.focus();
+    },
+    [antes],
+  );
 
   useEffect(() => {
     if (!open) return;
@@ -88,8 +97,6 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
     );
     return () => controller.abort();
   }, [open]);
-
-  if (!open) return null;
 
   function handleToggle(type: ConsentType, granted: boolean) {
     if (savingConsent) return;
@@ -122,10 +129,17 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
       .finally(() => setExporting(false));
   }
 
-  function handleDelete(event: FormEvent) {
+  async function handleDelete(event: FormEvent) {
     event.preventDefault();
     if (deleting || !password || !understood) return;
-    if (!window.confirm("Se borrarán tu cuenta, tu expediente y tus avisos. No se puede deshacer. ¿Eliminar definitivamente?")) return;
+    const si = await confirmar({
+      title: "¿Eliminar tu cuenta definitivamente?",
+      content: "Se borrarán tu cuenta, tu expediente y tus avisos. No se puede deshacer.",
+      confirmButtonContent: "Eliminar definitivamente",
+      cancelButtonContent: "Cancelar",
+      confirmButtonType: "danger",
+    });
+    if (!si) return;
     setDeleting(true);
     setDeleteError(null);
     deleteMyAccount(password).then(
@@ -140,159 +154,131 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
   const byType = new Map((consents ?? []).map((c) => [c.type, c]));
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar privacidad y datos" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label="Privacidad y datos" className="relative flex h-full w-full max-w-[440px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div className="min-w-0">
-            <h2 className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <ShieldCheck size={18} aria-hidden className="text-primary-dark" />
-              Privacidad y datos
-            </h2>
-            <p className="truncate text-[12.5px] text-muted">{email}</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
-          <section aria-labelledby="privacy-consents">
-            <h3 id="privacy-consents" className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-              Consentimientos
-            </h3>
-            {consentsError && (
-              <p role="alert" className="mt-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
+    <HojaLateral
+      open={open}
+      onClose={onClose}
+      titulo="Privacidad y datos"
+      subtitulo={email}
+      icono={ShieldCheckIcon}
+      pie={
+        <p className="m-0 text-xs text-fg-muted">
+          <Link as="button" type="button" onClick={() => setNoticeOpen(true)}>
+            Qué hacemos con tus datos
+          </Link>
+          {noticeUrl && (
+            <>
+              {" · "}
+              <Link href={noticeUrl} target="_blank" rel="noreferrer">
+                Aviso de privacidad
+              </Link>
+            </>
+          )}
+        </p>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <Caja as="section" aria-label="Consentimientos">
+          <Caja.Cabecera titulo="Consentimientos" />
+          {consentsError && (
+            <Caja.Cuerpo>
+              <Flash variant="danger" role="alert">
                 {consentsError}
-              </p>
-            )}
-            {!consents && !consentsError && <p className="mt-2 text-[13.5px] text-muted">Cargando…</p>}
-            {consents && (
-              <ul className="mt-2 space-y-2.5">
-                {ORDER.map((type) => {
-                  const state = byType.get(type);
-                  const granted = state?.granted ?? false;
-                  const locked = type === "tratamiento_datos";
-                  return (
-                    <li key={type} className="rounded-xl border border-line bg-surface px-4 py-3 shadow-card">
-                      <label className="flex items-start gap-3">
-                        <input
-                          type="checkbox"
-                          name={type}
-                          checked={granted}
-                          disabled={locked || savingConsent !== null}
-                          onChange={(e) => handleToggle(type, e.target.checked)}
-                          className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                        />
-                        <span className="min-w-0">
-                          <span className="block text-[14px] font-bold leading-snug text-ink">{CONSENT_TEXT[type].title}</span>
-                          <span className="mt-0.5 block text-[12.5px] leading-snug text-ink-soft">{CONSENT_TEXT[type].detail}</span>
-                          <span className="mt-1 block text-[11.5px] text-muted">
-                            {state?.timestamp
-                              ? `${granted ? "Concedido" : "No concedido"} el ${formatDate(state.timestamp.slice(0, 10))}`
-                              : "Todavía no has decidido"}
-                          </span>
-                        </span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </section>
+              </Flash>
+            </Caja.Cuerpo>
+          )}
+          {!consents && !consentsError && (
+            <Caja.Cuerpo>
+              <CargandoLista filas={3} etiqueta="Cargando tus consentimientos" />
+            </Caja.Cuerpo>
+          )}
+          {consents && (
+            <Caja.Lista>
+              {ORDER.map((type) => {
+                const state = byType.get(type);
+                const granted = state?.granted ?? false;
+                const locked = type === "tratamiento_datos";
+                return (
+                  <Caja.Fila key={type}>
+                    <FormControl disabled={locked || savingConsent !== null}>
+                      <Checkbox name={type} checked={granted} onChange={(e) => handleToggle(type, e.target.checked)} />
+                      <FormControl.Label>{CONSENT_TEXT[type].title}</FormControl.Label>
+                      <FormControl.Caption>
+                        {CONSENT_TEXT[type].detail}{" "}
+                        {state?.timestamp
+                          ? `${granted ? "Concedido" : "No concedido"} el ${formatDate(state.timestamp.slice(0, 10))}.`
+                          : "Todavía no has decidido."}
+                      </FormControl.Caption>
+                    </FormControl>
+                  </Caja.Fila>
+                );
+              })}
+            </Caja.Lista>
+          )}
+        </Caja>
 
-          <section aria-labelledby="privacy-export">
-            <h3 id="privacy-export" className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-              Una copia de mis datos
-            </h3>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
+        <Caja as="section" aria-label="Una copia de mis datos">
+          <Caja.Cabecera titulo="Una copia de mis datos" />
+          <Caja.Cuerpo className="flex flex-col gap-3">
+            <p className="m-0">
               Descarga en un archivo JSON todo lo que hay guardado sobre ti: tu perfil, tus expedientes con su historial, tus avisos y tus
               consentimientos, más las conversaciones guardadas en este navegador.
             </p>
-            <button
-              type="button"
-              onClick={handleExport}
-              disabled={exporting}
-              className="mt-2.5 inline-flex items-center gap-2 rounded-lg border border-line bg-surface px-3 py-2 text-[13.5px] font-semibold text-ink-soft transition hover:border-primary hover:text-primary-dark disabled:opacity-50"
-            >
-              <Download size={15} aria-hidden />
-              {exporting ? "Preparando…" : "Exportar mis datos"}
-            </button>
-            {exportMessage && (
-              <p
-                role={exportMessage.ok ? "status" : "alert"}
-                className={
-                  exportMessage.ok
-                    ? "mt-2 text-[12.5px] text-muted"
-                    : "mt-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft"
-                }
-              >
-                {exportMessage.text}
-              </p>
-            )}
-          </section>
+            <div>
+              <Button leadingVisual={DownloadIcon} onClick={handleExport} loading={exporting}>
+                Exportar mis datos
+              </Button>
+            </div>
+            {exportMessage &&
+              (exportMessage.ok ? (
+                <p role="status" className="m-0 text-xs text-fg-muted">
+                  {exportMessage.text}
+                </p>
+              ) : (
+                <Flash variant="danger" role="alert">
+                  {exportMessage.text}
+                </Flash>
+              ))}
+          </Caja.Cuerpo>
+        </Caja>
 
-          <section aria-labelledby="privacy-delete">
-            <h3 id="privacy-delete" className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-muted">
-              Eliminar mi cuenta
-            </h3>
-            <p className="mt-2 text-[13.5px] leading-relaxed text-ink-soft">
-              Se borran del servidor tu cuenta, tus expedientes con su historial, tus avisos, tus consentimientos y tus sesiones, y de este
-              navegador tus conversaciones. <strong className="text-ink">No se puede deshacer.</strong>
-            </p>
-            <form onSubmit={handleDelete} className="mt-2.5 space-y-2.5">
-              <label className="block text-[13px] font-semibold text-ink-soft">
-                Confirma tu contraseña
-                <input
+        <Caja as="section" aria-label="Eliminar mi cuenta" variante="peligro">
+          <Caja.Cabecera titulo="Eliminar mi cuenta" />
+          <Caja.Cuerpo>
+            <form onSubmit={(e) => void handleDelete(e)} className="flex flex-col gap-3">
+              <p className="m-0">
+                Se borran del servidor tu cuenta, tus expedientes con su historial, tus avisos, tus consentimientos y tus sesiones, y de este
+                navegador tus conversaciones. <strong>No se puede deshacer.</strong>
+              </p>
+              <FormControl>
+                <FormControl.Label>Confirma tu contraseña</FormControl.Label>
+                <TextInput
+                  block
                   type="password"
                   name="delete-password"
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-none transition focus:border-primary"
                 />
-              </label>
-              <label className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-soft">
-                <input
-                  type="checkbox"
-                  name="delete-understood"
-                  checked={understood}
-                  onChange={(e) => setUnderstood(e.target.checked)}
-                  className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                />
-                Entiendo que mis datos se borrarán y no podré recuperarlos.
-              </label>
+              </FormControl>
+              <FormControl>
+                <Checkbox name="delete-understood" checked={understood} onChange={(e) => setUnderstood(e.target.checked)} />
+                <FormControl.Label>Entiendo que mis datos se borrarán y no podré recuperarlos.</FormControl.Label>
+              </FormControl>
               {deleteError && (
-                <p role="alert" className="rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
+                <Flash variant="danger" role="alert">
                   {deleteError}
-                </p>
+                </Flash>
               )}
-              <button
-                type="submit"
-                disabled={deleting || !password || !understood}
-                className="inline-flex items-center gap-2 rounded-lg border border-risk-high-fg/40 bg-risk-high-bg px-3 py-2 text-[13.5px] font-semibold text-risk-high-fg transition hover:border-risk-high-fg disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <Trash2 size={15} aria-hidden />
-                {deleting ? "Eliminando…" : "Eliminar mi cuenta y mis datos"}
-              </button>
+              <div>
+                <Button type="submit" variant="danger" leadingVisual={TrashIcon} loading={deleting} disabled={!password || !understood}>
+                  Eliminar mi cuenta y mis datos
+                </Button>
+              </div>
             </form>
-          </section>
-        </div>
-        <footer className="border-t border-line px-5 py-3 text-[11.5px] leading-relaxed text-muted">
-          <button type="button" onClick={() => setNoticeOpen(true)} className="font-semibold text-primary-dark underline">
-            Qué hacemos con tus datos
-          </button>
-          {noticeUrl && (
-            <>
-              {" · "}
-              <a href={noticeUrl} target="_blank" rel="noreferrer" className="font-semibold text-primary-dark underline">
-                Aviso de privacidad
-              </a>
-            </>
-          )}
-        </footer>
-      </aside>
+          </Caja.Cuerpo>
+        </Caja>
+      </div>
       <AuthPrivacyNotice open={noticeOpen} onClose={() => setNoticeOpen(false)} noticeUrl={noticeUrl} />
-    </div>
+    </HojaLateral>
   );
 }

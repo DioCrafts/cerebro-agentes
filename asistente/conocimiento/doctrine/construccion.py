@@ -28,11 +28,11 @@ def _group_by_document(chunks: Iterable[Any]) -> dict[str, tuple[dict[str, Any],
     """Reassemble documents from their chunks (keyed by source file)."""
     docs: dict[str, tuple[dict[str, Any], list[str]]] = {}
     for chunk in chunks:
-        metadata = dict(getattr(chunk, "metadata", None) or {})
+        metadata = dict(getattr(chunk, "metadatos", None) or {})
         key = str(metadata.get("source_file") or metadata.get("source_url") or metadata.get("source") or "")
         if not key:
             continue
-        docs.setdefault(key, (metadata, []))[1].append(getattr(chunk, "page_content", "") or "")
+        docs.setdefault(key, (metadata, []))[1].append(getattr(chunk, "texto", "") or "")
     return docs
 
 

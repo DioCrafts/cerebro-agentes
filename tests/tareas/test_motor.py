@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 import sqlite3
 import time
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -341,3 +342,49 @@ def test_the_platform_worker_runs_the_engine_as_a_service(entorno: Entorno, monk
     assert not hilo.is_alive()
     # Advanced by the service alone (with its default module switches the water module may be off: then it waits).
     assert motor.store.get(tarea.id).paso("leer").estado in ("hecho", "esperando")
+
+
+class _Caida(BaseException):
+    """A crash the step's error handling does not catch (the process dying mid-pass)."""
+
+
+def test_a_finished_consultation_is_saved_before_the_next_step(entorno: Entorno) -> None:
+    case_id = entorno.caso()
+    api = entorno.motor(ejecutar_consultas=False)
+    tarea, _ = servicio.proponer_plan(
+        api.store,
+        case_id=case_id,
+        user_id=None,
+        titulo="Dos preguntas",
+        objetivo="quiero saber si me compensa",
+        pasos=[
+            {"id": "q1", "titulo": "Pregunta 1", "tipo": "consulta", "modulo": "luz", "pregunta": "¿Uno?"},
+            {"id": "q2", "titulo": "Pregunta 2", "tipo": "consulta", "modulo": "luz", "pregunta": "¿Dos?"},
+        ],
+    )
+    servicio.aceptar(api, tarea.id, fuente="boton")
+
+    def consultor(modulo: Any, pregunta: str, case: Any) -> tuple[str, tuple[str, ...]]:
+        if pregunta == "¿Dos?":
+            raise _Caida()
+        return entorno.consultor(modulo, pregunta, case)
+
+    worker = entorno.motor(consultor=consultor)
+    with pytest.raises(_Caida):
+        worker.avanzar(tarea.id)
+    guardada = worker.store.get(tarea.id)
+    assert guardada.paso("q1").estado == "hecho" and entorno.consultas == [("luz", "¿Uno?")]
+
+
+def test_the_default_consultant_meters_its_model(monkeypatch: pytest.MonkeyPatch) -> None:
+    from asistente.nucleo.agent import especialistas, providers
+    from asistente.nucleo.tareas import motor as motor_mod
+    from asistente.plataforma.ops import consumo
+
+    medidos: list[str] = []
+    monkeypatch.setattr(providers, "create_provider", lambda: object())
+    monkeypatch.setattr(consumo, "medir", lambda proveedor, proposito, **_k: medidos.append(proposito) or proveedor)
+    monkeypatch.setattr(especialistas.Coordinador, "para", classmethod(lambda cls, *a, **k: None))
+    with pytest.raises(RuntimeError):
+        motor_mod.consultor_por_defecto(SimpleNamespace(clave="luz"), "¿?", SimpleNamespace(user_id="u", case_id="c"))
+    assert medidos == ["tareas:consulta"]

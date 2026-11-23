@@ -49,8 +49,6 @@ def cifras(texto: str) -> list[str]:
 
 
 def _cifra_respaldada(token: str, citas: str) -> bool:
-    if token in citas:
-        return True
     valor = _cifra(token)
     return valor is not None and aparece(citas, valor)
 
