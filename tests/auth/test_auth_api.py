@@ -242,6 +242,7 @@ def _case_requests(case_id: str, notification_id: str) -> list[tuple[str, str, d
         ("post", f"/cases/{case_id}/consejo", {"pregunta": "¿Me conviene amortizar la hipoteca o invertir?"}),
         ("post", f"/cases/{case_id}/consejo/detectar", {"pregunta": "¿Acepto la herencia o renuncio?"}),
         ("get", f"/cases/{case_id}/consejo/{{sesion_id}}", None),
+        ("get", f"/cases/{case_id}/consejo/{{sesion_id}}/eventos", None),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/confirmar", {}),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/rechazar", {}),
         ("post", f"/cases/{case_id}/consejo/{{sesion_id}}/cancelar", {}),

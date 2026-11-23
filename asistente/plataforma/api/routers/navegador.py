@@ -7,6 +7,9 @@
 * ``POST /navegador/tareas/{id}/iniciar`` — start a prepared task (e.g. one the chat prepared).
 * ``GET /navegador/tareas?case_id=…`` / ``GET /navegador/tareas/{id}`` — live state: events and steps (no
   values), the summary of what would be sent, the import result, the pending action.
+* ``GET /navegador/tareas/{id}/eventos`` — the same task as Server-Sent Events: an event ``tarea`` each time it
+  changes (read from the task manager on the server), then ``fin`` once it stops running (or was discarded). The
+  ``id`` of each event is a digest of its content, so a reconnection with ``Last-Event-ID`` does not repeat it.
 * ``GET /navegador/tareas/{id}/captura`` — the latest screenshot (base64), ``Cache-Control: no-store``.
 * ``POST /navegador/tareas/{id}/detener`` / ``/cerrar`` — stop; discard (window, screenshot, summary).
 
@@ -24,12 +27,15 @@ from datetime import datetime
 import logging
 from typing import Annotated, Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
+from starlette.concurrency import run_in_threadpool
 
 from asistente.capacidades.navegador import vigilancia
 from asistente.capacidades.navegador.reparacion import Reparador
 from asistente.capacidades.navegador.tareas import (
+    ACTIVOS,
     TEXTO_CONSENTIMIENTO,
     TEXTO_CONSENTIMIENTO_VERSION,
     GestorTareas,
@@ -45,12 +51,16 @@ from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.modulos.acciones import AccionStore
 from asistente.nucleo.proactive.jobs import hoy_en_espana
 from asistente.plataforma import settings
+from asistente.plataforma.api import sse
 from asistente.plataforma.api.security import require_api_key
 from asistente.plataforma.auth.deps import CaseAccess, get_case_access, require_session
 
 logger = logging.getLogger(__name__)
 
 Modo = Literal["ventana", "sesion"]
+
+# How often the stream of a task reads it (the steps of a browser task take about a second).
+INTERVALO_FLUJO_SEGUNDOS = 0.5
 
 
 class _M(BaseModel):
@@ -381,6 +391,24 @@ def build_router(
     @router.get("/navegador/tareas/{tarea_id}", response_model=TareaInfo, dependencies=activo_dep)
     def get_tarea(tarea_id: str, access: access_dep, gestor_: gestor_dep) -> TareaInfo:
         return _info(_tarea(tarea_id, access, gestor_))
+
+    @router.get("/navegador/tareas/{tarea_id}/eventos", dependencies=activo_dep)
+    async def get_eventos_tarea(
+        tarea_id: str, request: Request, access: access_dep, gestor_: gestor_dep
+    ) -> StreamingResponse:
+        await run_in_threadpool(_tarea, tarea_id, access, gestor_)  # a 404 before any streaming starts
+
+        def leer() -> sse.Instantanea | None:
+            # Read again each time: a task run by another process comes from the shared store as a new object.
+            actual = gestor_.get(tarea_id)
+            if actual is None:
+                return None
+            info = _info(actual)
+            return sse.Instantanea(datos=info.model_dump(mode="json"), final=info.estado not in ACTIVOS)
+
+        return sse.respuesta_sse(
+            sse.flujo_de_instantaneas(request, leer, nombre="tarea", intervalo=INTERVALO_FLUJO_SEGUNDOS)
+        )
 
     @router.get("/navegador/tareas/{tarea_id}/captura", response_model=CapturaResponse, dependencies=activo_dep)
     def get_captura(tarea_id: str, response: Response, access: access_dep, gestor_: gestor_dep) -> CapturaResponse:

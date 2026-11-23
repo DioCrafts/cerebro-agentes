@@ -3,6 +3,7 @@ from fastapi.testclient import TestClient
 from asistente.nucleo.agent.agent import TaxAgent
 from asistente.nucleo.agent.providers.base import ProviderError
 from asistente.plataforma.api.api import app, get_agent
+from asistente.plataforma.api.sse import leer_eventos
 from .fakes import FakeSearcher, ScriptedProvider, corpus, text_turn, tool_turn, verdict
 
 client = TestClient(app)
@@ -125,12 +126,10 @@ def test_agent_endpoint_returns_case_obligations_after_rules_run() -> None:
 
 
 def _stream(payload: dict) -> list[dict]:
-    import json
-
     response = client.post("/agent/stream", json=payload)
     assert response.status_code == 200
-    assert response.headers["content-type"].startswith("application/x-ndjson")
-    return [json.loads(line) for line in response.text.splitlines() if line]
+    assert response.headers["content-type"].startswith("text/event-stream")
+    return leer_eventos(response.text)
 
 
 def test_agent_stream_emits_progress_then_one_result() -> None:

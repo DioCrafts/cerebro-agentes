@@ -1,9 +1,13 @@
-// The signed-in session on this browser (only used when the backend runs with
-// AUTH_MODE=required). The token is an opaque bearer credential: it lives in
-// localStorage so a reload or a second tab stays signed in, and it is dropped
-// on logout, on account deletion and as soon as the server rejects it.
+// The signed-in session on this browser (only used when the backend runs with AUTH_MODE=required).
+//
+// The session token lives in an HttpOnly cookie set by the server: this script never reads, stores or
+// sends it by hand, so an injected script cannot steal it either. What stays in localStorage is not
+// secret: whose conversation history this is, and the last auth mode the backend reported.
+//
+// Older versions kept the token itself in localStorage: `tomarTokenAntiguo` takes it out (once) so the
+// app can revoke it and ask the user to sign in again, which sets the cookie.
 
-const TOKEN_KEY = "haciendagpt_session_token";
+const LEGACY_TOKEN_KEY = "haciendagpt_session_token";
 const OWNER_KEY = "haciendagpt_history_owner";
 const MODE_KEY = "haciendagpt_auth_mode";
 
@@ -22,20 +26,15 @@ function write(key: string, value: string | null): void {
     if (value === null) localStorage.removeItem(key);
     else localStorage.setItem(key, value);
   } catch {
-    // Storage disabled: the session then lasts until the page is reloaded.
+    // Storage disabled: nothing is remembered between reloads.
   }
 }
 
-// Kept in memory too, so the app keeps working when localStorage is unavailable.
-let currentToken: string | null = read(TOKEN_KEY);
-
-export function getSessionToken(): string | null {
-  return currentToken;
-}
-
-export function setSessionToken(token: string | null): void {
-  currentToken = token;
-  write(TOKEN_KEY, token);
+/** The token an older version left in localStorage, removed from there now; null when there was none. */
+export function tomarTokenAntiguo(): string | null {
+  const token = read(LEGACY_TOKEN_KEY);
+  if (token !== null) write(LEGACY_TOKEN_KEY, null);
+  return token && token.trim() ? token.trim() : null;
 }
 
 /**

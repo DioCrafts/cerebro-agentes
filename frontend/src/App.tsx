@@ -10,14 +10,14 @@
 import { useEffect, useRef, useState } from "react";
 
 import type { AuthConfig, SessionResponse, SessionUser } from "./api";
-import { ApiError, getAuthConfig, getMe, logout, onSessionExpired } from "./api";
+import { ApiError, getAuthConfig, getMe, logout, onSessionExpired, revocarTokenAntiguo } from "./api";
 import { AuthScreen } from "./components/AuthScreen";
 import { AvisoActualizacion } from "./components/AvisoActualizacion";
 import { PrivacyPanel } from "./components/PrivacyPanel";
 import { abrirPanel, cerrarPanel, usePanelUrl } from "./lib/panelUrl";
 import { olvidarDispositivo } from "./lib/push";
-import { cacheAuthMode, cachedAuthMode, getSessionToken, historyOwner, setHistoryOwner, setSessionToken } from "./lib/session";
-import { loadConversations, saveConversations } from "./lib/storage";
+import { cacheAuthMode, cachedAuthMode, historyOwner, setHistoryOwner, tomarTokenAntiguo } from "./lib/session";
+import { borrarConversaciones, loadConversations, saveConversations } from "./lib/storage";
 import { useTheme } from "./lib/theme";
 import { Asesor } from "./shell/Asesor";
 
@@ -45,6 +45,22 @@ function adoptLocalHistory(userId: string): void {
   setHistoryOwner(userId);
 }
 
+/** The conversation history in this browser goes with the session that owned it (see lib/storage.ts). */
+function borrarHistorialLocal(): void {
+  borrarConversaciones();
+  setHistoryOwner(null);
+}
+
+// A session token an older version kept in localStorage: taken out once per page load (idempotent, so
+// React's double-invoked initialisers in development see the same answer).
+let migracion: { token: string | null; revocado: boolean } | null = null;
+function tokenAntiguo(): string | null {
+  migracion ??= { token: tomarTokenAntiguo(), revocado: false };
+  return migracion.token;
+}
+
+const AVISO_MIGRACION = "Hemos reforzado la seguridad de las sesiones. Vuelve a iniciar sesión.";
+
 const CONFIG_RETRY_MS = 5_000;
 
 export default function App() {
@@ -64,13 +80,28 @@ function Puerta() {
   const [configFailed, setConfigFailed] = useState(false);
   const [configAttempt, setConfigAttempt] = useState(0);
   const [user, setUser] = useState<SessionUser | null>(null);
-  // A stored token must be checked with the server before it is trusted.
-  const [sessionChecked, setSessionChecked] = useState(() => getSessionToken() === null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // The session cookie cannot be read from here: the server says whether there is a live session.
+  const [sessionChecked, setSessionChecked] = useState(false);
+  const [notice, setNotice] = useState<string | null>(() => (tokenAntiguo() !== null ? AVISO_MIGRACION : null));
+  // Read by the session-expired handler, which must know whether somebody was signed in.
+  const userRef = useRef<SessionUser | null>(null);
+  useEffect(() => {
+    userRef.current = user;
+  }, [user]);
   const [panel] = usePanelUrl();
   const privacyOpen = panel === "privacidad";
   // Set by an explicit sign-out or an account deletion: the history in this browser must go.
   const wipeHistoryRef = useRef(false);
+
+  // An old-style session: revoke its token on the server (it sat in localStorage), drop the history it
+  // owned, and ask for a new sign-in, which sets the cookie.
+  useEffect(() => {
+    const token = tokenAntiguo();
+    if (token === null || migracion === null || migracion.revocado) return;
+    migracion.revocado = true;
+    borrarHistorialLocal();
+    void revocarTokenAntiguo(token);
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -98,11 +129,14 @@ function Puerta() {
 
   useEffect(() => {
     onSessionExpired(() => {
-      setSessionToken(null);
+      // Somebody was signed in: their session ended under them, and their history goes with it.
+      if (userRef.current !== null) {
+        wipeHistoryRef.current = true;
+        setNotice("Tu sesión ha caducado. Vuelve a iniciar sesión.");
+      }
       setUser(null);
       if (privacyOpen) cerrarPanel();
       setSessionChecked(true);
-      setNotice("Tu sesión ha caducado. Vuelve a iniciar sesión.");
       // If we believed accounts were off, the backend has changed: ask again.
       if (!required) setConfigAttempt((n) => n + 1);
     });
@@ -120,8 +154,11 @@ function Puerta() {
       },
       (err: unknown) => {
         if (controller.signal.aborted) return;
-        // A rejected token was already dropped by the session-expired handler.
-        if (!(err instanceof ApiError && err.status === 401)) {
+        if (err instanceof ApiError && err.status === 401) {
+          // No live session (never signed in, or it expired while the app was closed): a history left by
+          // a past session must not outlive it.
+          if (historyOwner() !== null) borrarHistorialLocal();
+        } else {
           setNotice("No se pudo comprobar tu sesión. Inicia sesión de nuevo.");
         }
         setSessionChecked(true);
@@ -134,12 +171,11 @@ function Puerta() {
   useEffect(() => {
     if (user !== null || !wipeHistoryRef.current) return;
     wipeHistoryRef.current = false;
-    saveConversations([]);
-    setHistoryOwner(null);
+    borrarHistorialLocal();
   }, [user]);
 
   function handleSignedIn(session: SessionResponse) {
-    setSessionToken(session.token);
+    // The server set the session cookie; `session.token` is null for the web client.
     adoptLocalHistory(session.user.id);
     setNotice(null);
     setUser(session.user);
@@ -147,7 +183,6 @@ function Puerta() {
 
   /** Forget the session on this browser, and the conversations with it. */
   function signOutLocally(message: string | null) {
-    setSessionToken(null);
     wipeHistoryRef.current = true;
     if (privacyOpen) cerrarPanel();
     setUser(null);

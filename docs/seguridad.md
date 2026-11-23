@@ -45,9 +45,13 @@ servicio.
 | Colaborador o PR desde un *fork* | Ejecutar código en CI | Leer secretos, escribir en el repositorio |
 | Quien obtiene el fichero SQLite o una copia | Leerlo todo | Todo |
 
-**Fronteras de confianza.** (1) Navegador ↔ API: la sesión es un *bearer token* en una cabecera
-(no hay *cookies*), así que CSRF no aplica; el token vive en `localStorage` y, por tanto, una XSS lo
-robaría. (2) API ↔ proveedor del modelo: lo que se envía y con qué consentimiento está en
+**Fronteras de confianza.** (1) Navegador ↔ API: la aplicación web lleva la sesión en la *cookie*
+`__Host-sesion` (`HttpOnly; Secure; SameSite=Strict; Path=/`), que su JavaScript no puede leer, así que
+una XSS no se lleva el token (aunque sí puede hacer peticiones mientras la página esté abierta). El
+servidor guarda solo el SHA-256 del token. Como la *cookie* viaja sola, una escritura autenticada por
+ella necesita además un `Origin` permitido o la cabecera `X-Requested-With`; si no, 403. Los clientes sin
+navegador siguen usando `Authorization: Bearer`, y solo ellos reciben el token en el cuerpo de
+`/auth/login` (una petición sin `Origin`). (2) API ↔ proveedor del modelo: lo que se envía y con qué consentimiento está en
 `docs/privacidad.md`. (3) Modelo ↔ herramientas: el modelo solo puede **leer**, **preparar** o
 proponer; una herramienta `efecto="actua"` nunca se ejecuta desde el modelo, solo se convierte en
 acción pendiente que confirma el dueño del expediente con su sesión (`POST /acciones/{id}/confirmar`).
@@ -407,7 +411,8 @@ inventario de rutas.
    Permissions-Policy: camera=(), microphone=(), geolocation=()
    ```
    El *hash* es el del *script* del tema de `frontend/index.html`: si ese *script* cambia, hay que
-   recalcularlo. La política importa especialmente porque el token de sesión está en `localStorage`.
+   recalcularlo. Con la sesión en una *cookie* `HttpOnly`, una XSS ya no roba el token, pero puede usar la
+   sesión desde la página: la política sigue siendo la primera defensa.
 5. **Límites en el proxy**: `client_max_body_size 32m` (coherente con `API_MAX_BODY_BYTES`),
    limitación de peticiones por IP en `/api/auth/` y en las rutas del asesor, y tiempos de espera
    largos (y sin *buffering*) solo para `/api/agent/stream`. `/api/docs`, `/api/redoc` y

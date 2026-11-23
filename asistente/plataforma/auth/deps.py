@@ -2,6 +2,10 @@
 
 Everything here reads ``settings.AUTH_MODE`` per request. With ``off`` the
 dependencies let every request through unchanged and never open the database.
+
+The session token arrives in one of two ways: the ``HttpOnly`` cookie :data:`COOKIE_SESION` (the web client:
+its script never sees the token) or ``Authorization: Bearer <token>`` (clients without a browser). Writes
+authenticated by the cookie also pass the CSRF check of ``security.make_write_guard_middleware``.
 """
 
 from __future__ import annotations
@@ -10,7 +14,7 @@ from dataclasses import dataclass
 import threading
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException
+from fastapi import Cookie, Depends, Header, HTTPException
 
 from asistente.plataforma import settings
 from asistente.plataforma.auth.store import AuthStore, User
@@ -39,6 +43,10 @@ def get_auth_store() -> AuthStore:
         return store
 
 
+# ``__Host-``: the browser only accepts it with Secure, Path=/ and no Domain, so no subdomain can set or shadow it.
+COOKIE_SESION = "__Host-sesion"
+
+
 def bearer_token(authorization: str | None) -> str | None:
     if not authorization:
         return None
@@ -46,6 +54,14 @@ def bearer_token(authorization: str | None) -> str | None:
     if scheme.lower() != "bearer" or not token.strip():
         return None
     return token.strip()
+
+
+def token_de_sesion(authorization: str | None, cookie: str | None) -> str | None:
+    """The session token of a request: the Bearer header if present (an explicit client), else the cookie."""
+    token = bearer_token(authorization)
+    if token:
+        return token
+    return cookie.strip() if cookie and cookie.strip() else None
 
 
 def _unauthenticated() -> HTTPException:
@@ -59,9 +75,10 @@ def _unauthenticated() -> HTTPException:
 def require_user(
     store: Annotated[AuthStore, Depends(get_auth_store)],
     authorization: Annotated[str | None, Header()] = None,
+    sesion: Annotated[str | None, Cookie(alias=COOKIE_SESION)] = None,
 ) -> User:
-    """The user behind ``Authorization: Bearer <token>``; 401 without a live session."""
-    token = bearer_token(authorization)
+    """The user behind the session cookie or ``Authorization: Bearer <token>``; 401 without a live session."""
+    token = token_de_sesion(authorization, sesion)
     user = store.get_session_user(token) if token else None
     if user is None:
         raise _unauthenticated()
@@ -99,11 +116,12 @@ class CaseAccess:
 def get_case_access(
     store: Annotated[AuthStore, Depends(get_auth_store)],
     authorization: Annotated[str | None, Header()] = None,
+    sesion: Annotated[str | None, Cookie(alias=COOKIE_SESION)] = None,
 ) -> CaseAccess:
     """Session check for an endpoint: no-op when AUTH_MODE is off, 401 without a session otherwise."""
     if not auth_required():
         return CaseAccess(user=None, store=None)
-    return CaseAccess(user=require_user(store, authorization), store=store)
+    return CaseAccess(user=require_user(store, authorization, sesion), store=store)
 
 
 def require_session(access: Annotated[CaseAccess, Depends(get_case_access)]) -> None:

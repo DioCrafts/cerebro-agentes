@@ -138,3 +138,53 @@ def test_another_users_sessions_are_404_and_export_and_erasure_cover_them(env: E
         assert servicio.almacen.listar(case_id) == []
     finally:
         configurar_servicio(env.db_path, None)
+
+
+# --- the session as Server-Sent Events -------------------------------------------------------------------------------
+
+
+def _eventos(cliente: TestClient, ruta: str, **cabeceras: str) -> list[dict[str, Any]]:
+    from asistente.plataforma.api.sse import leer_eventos
+
+    respuesta = cliente.get(ruta, headers=cabeceras)
+    assert respuesta.status_code == 200, respuesta.text
+    assert respuesta.headers["content-type"].startswith("text/event-stream")
+    assert respuesta.headers["cache-control"] == "no-store"
+    return leer_eventos(respuesta.text)
+
+
+def test_the_session_stream_follows_the_council_until_it_ends(
+    cliente: TestClient, servicio: ServicioConsejo, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from asistente.plataforma.api.routers import consejo as consejo_router
+
+    monkeypatch.setattr(consejo_router, "INTERVALO_FLUJO_SEGUNDOS", 0.05)
+    sesion = cliente.post("/cases/c1/consejo", json={"pregunta": PREGUNTA}).json()
+    cliente.post(f"/cases/c1/consejo/{sesion['id']}/confirmar", json={})
+    # The council works in the background while the stream is open; the client never asks again.
+    temporizador = threading.Timer(0.3, servicio.ejecutar_pendientes)
+    temporizador.start()
+    try:
+        eventos = _eventos(cliente, f"/cases/c1/consejo/{sesion['id']}/eventos")
+    finally:
+        temporizador.join()
+    sesiones = [e for e in eventos if e["event"] == "sesion"]
+    assert sesiones[0]["data"]["estado"] == "en_cola" and sesiones[-1]["data"]["estado"] == "terminada"
+    assert sesiones[-1]["data"]["autoria_revelada"] and sesiones[-1]["data"]["dictamen"]
+    assert len({e["id"] for e in sesiones}) == len(sesiones)  # only changes are sent
+    assert eventos[-1] == {"event": "fin", "id": sesiones[-1]["id"], "data": {"motivo": "terminada"}}
+
+
+def test_the_session_stream_resumes_from_last_event_id_and_404s_like_the_rest(cliente: TestClient) -> None:
+    sesion = cliente.post("/cases/c1/consejo", json={"pregunta": PREGUNTA}).json()
+    ruta = f"/cases/c1/consejo/{sesion['id']}/eventos"
+    # Waiting for the user's confirmation is not running: one snapshot and the end.
+    primera = _eventos(cliente, ruta)
+    assert [e["event"] for e in primera] == ["sesion", "fin"]
+    assert primera[0]["data"]["estado"] == "pendiente_confirmacion"
+    # A reconnection that already has this state is not sent it again.
+    assert [e["event"] for e in _eventos(cliente, ruta, **{"Last-Event-ID": primera[0]["id"]})] == ["fin"]
+    assert cliente.get("/cases/c1/consejo/no-existe/eventos").status_code == 404
+    assert cliente.get(f"/cases/c2/consejo/{sesion['id']}/eventos").status_code == 404  # another case's session

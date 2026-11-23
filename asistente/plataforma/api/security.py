@@ -84,10 +84,30 @@ def origenes_permitidos(base: list[str]) -> set[str]:
 _METODOS_ESCRITURA = frozenset({"POST", "PUT", "PATCH", "DELETE"})
 
 
+# The header the web client adds to every request. A page of another site cannot send it without a CORS preflight
+# that the API refuses, so together with ``Origin`` it proves a cookie-authenticated write comes from our client.
+CABECERA_CSRF = "X-Requested-With"
+
+
+def _con_cookie_de_sesion(request: Request) -> bool:
+    """Whether the request would be authenticated by the session cookie (it has the cookie and no Bearer header)."""
+    from asistente.plataforma.auth.deps import COOKIE_SESION
+
+    if not request.cookies.get(COOKIE_SESION):
+        return False
+    return not request.headers.get("authorization", "").lower().startswith("bearer ")
+
+
 def make_write_guard_middleware(base_origins: list[str]):
     """Writes (POST/PUT/PATCH/DELETE) are refused with 403 when they carry an ``Origin`` that is neither the API's
     own nor an allowed one, and with 415 when they carry a body that is not JSON. A cross-site form or a
-    ``text/plain`` fetch (the "simple requests" a browser sends without CORS preflight) cannot write."""
+    ``text/plain`` fetch (the "simple requests" a browser sends without CORS preflight) cannot write.
+
+    CSRF: the session cookie travels on its own, so a write it would authenticate must also prove where it comes
+    from — an allowed ``Origin`` (every browser sends one with a POST, PUT or DELETE) or, failing that, the
+    :data:`CABECERA_CSRF` header. ``SameSite=Strict`` already keeps the cookie off cross-site requests; this is the
+    second lock (an old browser, a sibling subdomain). A Bearer client is not affected: no browser adds that
+    header by itself."""
     from starlette.responses import JSONResponse
 
     async def write_guard_middleware(request: Request, call_next: Any) -> Any:
@@ -98,6 +118,10 @@ def make_write_guard_middleware(base_origins: list[str]):
             propio = f"{request.url.scheme}://{request.headers.get('host', '')}"
             if origen.rstrip("/") != propio and origen.rstrip("/") not in origenes_permitidos(base_origins):
                 return JSONResponse(status_code=403, content={"detail": "Origen no permitido."})
+        elif _con_cookie_de_sesion(request) and not request.headers.get(CABECERA_CSRF):
+            return JSONResponse(
+                status_code=403, content={"detail": "Petición sin origen: no se acepta con la cookie de sesión."}
+            )
         longitud = request.headers.get("content-length")
         con_cuerpo = (longitud is not None and longitud.strip() not in ("", "0")) or (
             "transfer-encoding" in request.headers

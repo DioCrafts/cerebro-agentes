@@ -38,7 +38,7 @@ import os
 import threading
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Header, HTTPException, Response
+from fastapi import APIRouter, Cookie, Depends, Header, HTTPException, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
@@ -64,7 +64,14 @@ from asistente.nucleo.evaluacion.revision import (
     EdicionCaso,
 )
 from asistente.plataforma.api.security import require_api_key
-from asistente.plataforma.auth.deps import CaseAccess, auth_required, get_auth_store, get_case_access, require_user
+from asistente.plataforma.auth.deps import (
+    COOKIE_SESION,
+    CaseAccess,
+    auth_required,
+    get_auth_store,
+    get_case_access,
+    require_user,
+)
 from asistente.plataforma.auth.store import AuthStore, User
 
 
@@ -242,13 +249,14 @@ def get_quien(
     auth: Annotated[AuthStore, Depends(get_auth_store)],
     authorization: Annotated[str | None, Header()] = None,
     x_operator_key: Annotated[str | None, Header(alias="X-Operator-Key")] = None,
+    sesion: Annotated[str | None, Cookie(alias=COOKIE_SESION)] = None,
 ) -> Quien:
     """The reviewer behind the request. Without accounts, the single owner sees everything."""
     if not auth_required():
         return Quien(usuario=None, operador=False, case_ids=None)
     if _clave_operador_valida(x_operator_key):
         return Quien(usuario=None, operador=True, case_ids=None)
-    usuario = require_user(auth, authorization)
+    usuario = require_user(auth, authorization, sesion)
     return Quien(usuario=usuario, operador=False, case_ids=frozenset(auth.case_ids_of(usuario.id)))
 
 

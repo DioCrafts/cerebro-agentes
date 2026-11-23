@@ -218,7 +218,7 @@ export const ESTADO_LABEL: Record<EstadoSesion, string> = {
   rechazada: "Descartada",
 };
 
-function isSesion(value: unknown): value is SesionConsejo {
+export function isSesion(value: unknown): value is SesionConsejo {
   return isRecord(value) && typeof value.id === "string" && typeof value.estado === "string" && Array.isArray(value.progreso);
 }
 
@@ -236,6 +236,11 @@ function base(caseId: string): string {
 
 export function listarSesiones(caseId: string, signal?: AbortSignal): Promise<ListaSesiones> {
   return request(base(caseId), undefined, isLista, { signal, method: "GET" });
+}
+
+/** The session's live stream (Server-Sent Events `sesion`, then `fin`): see shell/useSesionConsejo.ts. */
+export function rutaEventosSesion(caseId: string, sesionId: string): string {
+  return `${base(caseId)}/${encodeURIComponent(sesionId)}/eventos`;
 }
 
 export function obtenerSesion(caseId: string, sesionId: string, signal?: AbortSignal): Promise<SesionConsejo> {
