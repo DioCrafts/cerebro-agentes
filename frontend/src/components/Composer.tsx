@@ -51,6 +51,7 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
       <div className="p-2">
         <Textarea
           ref={ref}
+          id="consulta"
           block
           rows={2}
           resize="none"

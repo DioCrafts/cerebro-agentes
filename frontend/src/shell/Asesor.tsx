@@ -14,7 +14,12 @@ import { PanelHost } from "../components/PanelHost";
 import type { SimulatorSeed } from "../components/SimulatorPanel";
 import { newId } from "../lib/id";
 import { useNavegadorActivo } from "../lib/navegador";
-import { abrirPanel, panelEnUrl, quitarParametro, usePanelUrl } from "../lib/panelUrl";
+import {
+  abrirPanel,
+  panelEnUrl,
+  quitarParametro,
+  usePanelUrl,
+} from "../lib/panelUrl";
 import { sincronizarPush } from "../lib/push";
 import { admiteServiceWorker } from "../lib/pwa";
 import { useTheme } from "../lib/theme";
@@ -39,7 +44,11 @@ export interface AccountControls {
 // Back from Google's consent screen (mail module, `?correo=…`): «Módulos» shows the result.
 function abrirModulosAlVolverDeGoogle() {
   try {
-    if (panelEnUrl() === null && new URLSearchParams(window.location.search).has("correo")) abrirPanel("modulos", { reemplazar: true });
+    if (
+      panelEnUrl() === null &&
+      new URLSearchParams(window.location.search).has("correo")
+    )
+      abrirPanel("modulos", { reemplazar: true });
   } catch {
     // Nothing to reopen.
   }
@@ -50,7 +59,11 @@ export function Asesor({ account }: { account?: AccountControls }) {
   const [menuOpen, setMenuOpen] = useState(false);
   // Figures the optimiser hands to the simulator ("Usar este plan en el simulador"): the simulator is
   // remounted with them, for the conversation they were computed in.
-  const [simulatorSeed, setSimulatorSeed] = useState<{ id: number; conversationId: string; seed: SimulatorSeed } | null>(null);
+  const [simulatorSeed, setSimulatorSeed] = useState<{
+    id: number;
+    conversationId: string;
+    seed: SimulatorSeed;
+  } | null>(null);
   const [panel, abrir, cerrar] = usePanelUrl();
   // The element that opened the panel gets the focus back when it closes.
   const disparador = useRef<HTMLElement | null>(null);
@@ -65,7 +78,10 @@ export function Asesor({ account }: { account?: AccountControls }) {
   });
   const { active } = consulta;
   const avisos = useAvisos(active.caseId, active.facts);
-  const modulos = useModulos(active.caseId, { aplicarCaso: consulta.applyCase, alCambiar: avisos.recargar });
+  const modulos = useModulos(active.caseId, {
+    aplicarCaso: consulta.applyCase,
+    alCambiar: avisos.recargar,
+  });
   const navegadorActivo = useNavegadorActivo(true);
 
   useEffect(() => {
@@ -91,7 +107,8 @@ export function Asesor({ account }: { account?: AccountControls }) {
 
   const abrirDesde = useCallback(
     (id: string) => {
-      if (panelEnUrl() === null) disparador.current = document.activeElement as HTMLElement | null;
+      if (panelEnUrl() === null)
+        disparador.current = document.activeElement as HTMLElement | null;
       abrir(id);
     },
     [abrir],
@@ -112,10 +129,14 @@ export function Asesor({ account }: { account?: AccountControls }) {
     [modulos.datos, navegadorActivo, account],
   );
   // A link to a panel that is not offered (module off, flag off, unknown id) just shows the conversation.
-  const abierto = panel !== null && paneles.some((p) => p.id === panel) ? panel : null;
+  const abierto =
+    panel !== null && paneles.some((p) => p.id === panel) ? panel : null;
 
   const visibleFactCount = active.facts.filter(
-    (f) => f.name !== "periodo_fiscal" && f.name !== "menciona_ingresos" && !modulos.hechos.has(f.name),
+    (f) =>
+      f.name !== "periodo_fiscal" &&
+      f.name !== "menciona_ingresos" &&
+      !modulos.hechos.has(f.name),
   ).length;
   const insignias: Insignias = {
     avisosSinLeer: avisos.sinLeer,
@@ -126,7 +147,12 @@ export function Asesor({ account }: { account?: AccountControls }) {
   const activeId = consulta.activeId;
   const ctx: ContextoPanel = {
     conversacionId: activeId,
-    caso: { id: active.caseId, facts: active.facts, taxPeriod: active.taxPeriod, obligations: active.obligations },
+    caso: {
+      id: active.caseId,
+      facts: active.facts,
+      taxPeriod: active.taxPeriod,
+      obligations: active.obligations,
+    },
     ocupado: consulta.busy,
     cambiarDato: consulta.changeFact,
     guardandoDato: consulta.removingFact,
@@ -134,10 +160,23 @@ export function Asesor({ account }: { account?: AccountControls }) {
     datosDeModulos: modulos.hechos,
     aplicarCaso: consulta.applyCase,
     recargarCaso: () => {
-      if (active.caseId) void getCase({ caseId: active.caseId }).then(consulta.applyCase, () => undefined);
+      if (active.caseId)
+        void getCase({ caseId: active.caseId }).then(
+          consulta.applyCase,
+          () => undefined,
+        );
     },
-    modulos: { datos: modulos.datos, error: modulos.error, cambiar: modulos.cambiar, nombres: modulos.nombres },
-    acciones: { items: modulos.acciones, decidir: modulos.decidir, recargar: modulos.recargarAcciones },
+    modulos: {
+      datos: modulos.datos,
+      error: modulos.error,
+      cambiar: modulos.cambiar,
+      nombres: modulos.nombres,
+    },
+    acciones: {
+      items: modulos.acciones,
+      decidir: modulos.decidir,
+      recargar: modulos.recargarAcciones,
+    },
     avisos: {
       items: avisos.items,
       cargando: avisos.cargando,
@@ -150,14 +189,23 @@ export function Asesor({ account }: { account?: AccountControls }) {
       void consulta.submit(texto);
     },
     abrir: abrirDesde,
-    semillaSimulador: simulatorSeed?.conversationId === activeId ? { id: simulatorSeed.id, seed: simulatorSeed.seed } : null,
+    semillaSimulador:
+      simulatorSeed?.conversationId === activeId
+        ? { id: simulatorSeed.id, seed: simulatorSeed.seed }
+        : null,
     usarEnSimulador: (seed) => {
-      setSimulatorSeed((prev) => ({ id: (prev?.id ?? 0) + 1, conversationId: activeId, seed }));
+      setSimulatorSeed((prev) => ({
+        id: (prev?.id ?? 0) + 1,
+        conversationId: activeId,
+        seed,
+      }));
       abrir("simulador");
     },
   };
 
-  const conversaciones = consulta.conversations.filter((c) => c.turns.length > 0);
+  const conversaciones = consulta.conversations.filter(
+    (c) => c.turns.length > 0,
+  );
   const nuevaConsulta = () => {
     cerrarYLimpiar();
     consulta.switchTo(newId());
@@ -189,10 +237,22 @@ export function Asesor({ account }: { account?: AccountControls }) {
     />
   );
   // A page panel takes the content's place; the conversation stays mounted underneath (hidden).
-  const paginaAbierta = paneles.some((p) => p.id === abierto && p.presentacion === "pagina");
+  const paginaAbierta = paneles.some(
+    (p) => p.id === abierto && p.presentacion === "pagina",
+  );
+
+  // «Saltar a la consulta»: straight to the question box (a page panel open is closed first).
+  const saltarALaConsulta = (e: { preventDefault: () => void }) => {
+    e.preventDefault();
+    if (paginaAbierta) cerrarYLimpiar();
+    requestAnimationFrame(() => document.getElementById("consulta")?.focus());
+  };
 
   return (
     <div className="flex min-h-dvh flex-col">
+      <a href="#consulta" className="saltar-enlace" onClick={saltarALaConsulta}>
+        Saltar a la consulta
+      </a>
       <CabeceraGlobal
         title={active.title}
         conTitulo={active.turns.length > 0}
@@ -209,20 +269,40 @@ export function Asesor({ account }: { account?: AccountControls }) {
         account={account}
       />
       <AvisoInstalar />
-      <PageLayout containerWidth="xlarge" padding="normal" columnGap="normal" className="flex-1">
-        <PageLayout.Pane position="start" width="medium" sticky hidden={{ narrow: true }} aria-label="Consultas" divider="none">
+      <PageLayout
+        containerWidth="xlarge"
+        padding="normal"
+        columnGap="normal"
+        className="flex-1"
+      >
+        <PageLayout.Pane
+          position="start"
+          width="medium"
+          sticky
+          hidden={{ narrow: true }}
+          aria-label="Consultas"
+          divider="none"
+        >
           {lista()}
         </PageLayout.Pane>
         <PageLayout.Content as="main" width="large">
           <div id="contenido" tabIndex={-1} className="outline-none" />
-          <PanelHost zona="pagina" paneles={paneles} abierto={abierto} ctx={ctx} onClose={cerrarYLimpiar} />
+          <PanelHost
+            zona="pagina"
+            paneles={paneles}
+            abierto={abierto}
+            ctx={ctx}
+            onClose={cerrarYLimpiar}
+          />
           <div hidden={paginaAbierta} className="flex flex-col gap-4">
             <Hilo
               active={active}
               turno={consulta.turno}
               busy={consulta.busy}
               highlightedId={consulta.highlightedId}
-              onSubmit={(text, replaceTurnId) => void consulta.submit(text, replaceTurnId)}
+              onSubmit={(text, replaceTurnId) =>
+                void consulta.submit(text, replaceTurnId)
+              }
               onCite={consulta.handleCite}
               lastTurnRef={consulta.lastTurnRef}
               bottomRef={consulta.bottomRef}
@@ -234,8 +314,11 @@ export function Asesor({ account }: { account?: AccountControls }) {
                 <Flash variant="warning" role="status">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>
-                      {modulos.pendientes === 1 ? "Tienes 1 acción pendiente" : `Tienes ${modulos.pendientes} acciones pendientes`} de tu
-                      confirmación. No se hará nada hasta que la confirmes.
+                      {modulos.pendientes === 1
+                        ? "Tienes 1 acción pendiente"
+                        : `Tienes ${modulos.pendientes} acciones pendientes`}{" "}
+                      de tu confirmación. No se hará nada hasta que la
+                      confirmes.
                     </span>
                     <Button size="small" onClick={() => abrirDesde("modulos")}>
                       Revisar
@@ -255,11 +338,22 @@ export function Asesor({ account }: { account?: AccountControls }) {
         </PageLayout.Content>
       </PageLayout>
       {menuOpen && (
-        <Dialog title="Menú" position="left" width="medium" onClose={() => setMenuOpen(false)}>
+        <Dialog
+          title="Menú"
+          position="left"
+          width="medium"
+          onClose={() => setMenuOpen(false)}
+        >
           {lista(() => setMenuOpen(false))}
         </Dialog>
       )}
-      <PanelHost zona="superpuesto" paneles={paneles} abierto={abierto} ctx={ctx} onClose={cerrarYLimpiar} />
+      <PanelHost
+        zona="superpuesto"
+        paneles={paneles}
+        abierto={abierto}
+        ctx={ctx}
+        onClose={cerrarYLimpiar}
+      />
     </div>
   );
 }
