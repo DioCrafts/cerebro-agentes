@@ -166,11 +166,11 @@
           flakeCheck = true;
           programs = {
             alejandra.enable = true;
-            black.enable = true;
+            ruff-format.enable = true;
             deadnix.enable = true;
             mdformat.enable = true;
             prettier.enable = true;
-            ruff.enable = true;
+            ruff-check.enable = true;
           };
           settings.formatter = {
             prettier.excludes = [
@@ -178,7 +178,7 @@
               "./tests/*"
               "*.html"
             ];
-            ruff.options = ["--fix"];
+            ruff-check.options = ["--fix"];
           };
         };
       };
