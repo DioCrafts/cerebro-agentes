@@ -717,3 +717,34 @@ def test_production_factory_builds_without_network(monkeypatch: pytest.MonkeyPat
     assert m.presidente == PRESIDENTE
     assert m._semilla == 17 and m._max_paralelo == 2
     assert isinstance(m._proveedor_para, FabricaProveedores)
+
+
+def test_an_unexpected_error_keeps_the_proposals_already_paid_for(monkeypatch: pytest.MonkeyPatch) -> None:
+    proveedores = proveedores_basicos()
+
+    def revienta(*_a: Any, **_k: Any) -> Any:
+        raise RuntimeError("fallo inesperado en las críticas")
+
+    monkeypatch.setattr(Deliberacion, "_ronda_criticas", revienta)
+    sesion = motor(proveedores).deliberar(expediente(), sesion_id=SESION)
+    assert sesion.estado == "fallida" and sesion.fase == "propuestas"
+    assert len(sesion.propuestas) == len(ASIENTOS) and "Error interno" in (sesion.error or "")
+
+
+def test_a_member_that_hangs_is_left_out_at_the_phase_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
+    from asistente.plataforma import settings
+
+    monkeypatch.setattr(settings, "CONSEJO_PLAZO_FASE_S", 0.3)
+    liberar = threading.Event()
+
+    def cuelga() -> str:
+        liberar.wait(5)
+        return "tarde"
+
+    m = Deliberacion(proveedor_para=lambda proposito: None, semilla=1, max_paralelo=2)
+    try:
+        resultados = m._en_paralelo([("rapido", lambda: "ok"), ("lento", cuelga)])
+    finally:
+        liberar.set()
+    assert resultados["rapido"] == "ok"
+    assert resultados["lento"].valor is None and "sin respuesta" in (resultados["lento"].motivo or "")

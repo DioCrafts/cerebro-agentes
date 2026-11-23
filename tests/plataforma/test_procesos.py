@@ -316,3 +316,24 @@ def test_the_api_migrates_its_database_at_start_up(tmp_path, monkeypatch: pytest
     monkeypatch.delenv("HACIENDA_OPERATOR_KEY", raising=False)
     with TestClient(mini) as client:
         assert client.get("/plataforma/salud").status_code == 404  # the operator's, not the users'
+
+
+def test_a_hung_child_job_is_killed_with_its_process_group(tmp_path) -> None:
+    marca = tmp_path / "nieto_vivo"
+    # The child starts a grandchild that would write the file after 3 s, then hangs.
+    codigo = (
+        "import subprocess, sys, time;"
+        f"subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(3); open(r\"{marca}\", \"w\")']);"
+        "time.sleep(60)"
+    )
+    trabajo = procesos.Trabajo(
+        "colgado", "c", procesos.Programacion(hora=time(7, 0)), orden=("x",), vigilado=False, timeout_s=0.5
+    )
+    object.__setattr__(trabajo, "argv", lambda: [sys.executable, "-c", codigo])
+    inicio = datetime.now(UTC)
+    assert procesos.ejecutar_trabajo(trabajo) == 124
+    assert (datetime.now(UTC) - inicio).total_seconds() < 20
+    import time as _t
+
+    _t.sleep(3.5)
+    assert not marca.exists()  # the grandchild died with the group

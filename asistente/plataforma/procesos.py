@@ -140,6 +140,9 @@ class Trabajo:
     funcion: Callable[[], int] | None = None
     por_defecto: bool = True
     vigilado: bool = True
+    # Wall-clock limit of a child-process job; past it the job's whole process group is killed. None = the
+    # platform default (``PLATAFORMA_TIMEOUT_TRABAJO_S``).
+    timeout_s: float | None = None
 
     def __post_init__(self) -> None:
         if bool(self.orden) == (self.funcion is not None):
@@ -365,12 +368,40 @@ class EstadoCompartido:
 Ejecutor = Callable[[Trabajo], int]
 
 
+def _ejecutar_proceso(trabajo: Trabajo) -> int:
+    """Run a child-process job in its own process group, with a deadline: a hung job (and every process it started)
+    is killed instead of holding its slot (and the scheduler thread) forever."""
+    limite = trabajo.timeout_s
+    if limite is None:
+        limite = float(getattr(settings, "PLATAFORMA_TIMEOUT_TRABAJO_S", 3600) or 3600)
+    proceso = subprocess.Popen(trabajo.argv(), start_new_session=True)
+    try:
+        return proceso.wait(timeout=limite)
+    except subprocess.TimeoutExpired:
+        logger.error("Scheduled job %s exceeded %.0f s: killing its process group", trabajo.nombre, limite)
+        _matar_grupo(proceso)
+        return 124  # the exit code of timeout(1)
+
+
+def _matar_grupo(proceso: subprocess.Popen[Any]) -> None:
+    import signal
+
+    try:
+        os.killpg(proceso.pid, signal.SIGTERM)
+        proceso.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        os.killpg(proceso.pid, signal.SIGKILL)
+        proceso.wait()
+    except ProcessLookupError:
+        proceso.wait()
+
+
 def ejecutar_trabajo(trabajo: Trabajo) -> int:
     """Run one job to the end and return its exit code (never raises)."""
     try:
         if trabajo.funcion is not None:
             return int(trabajo.funcion())
-        return subprocess.run(trabajo.argv(), check=False).returncode
+        return _ejecutar_proceso(trabajo)
     except Exception:
         logger.exception("Scheduled job %s failed to run", trabajo.nombre)
         return 1
