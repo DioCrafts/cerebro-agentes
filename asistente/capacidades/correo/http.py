@@ -44,7 +44,19 @@ class Transporte(Protocol):
     ) -> RespuestaHttp: ...
 
 
-def transporte_requests(
+_cliente: list[Any] = []
+
+
+def _cliente_google() -> Any:
+    """A client of its own: no redirects (a token must never follow one) and this module's size limit."""
+    from asistente.plataforma import http
+
+    if not _cliente:
+        _cliente.append(http.Cliente(timeout=TIMEOUT_SEGUNDOS, follow_redirects=False, max_bytes=MAX_RESPUESTA))
+    return _cliente[0]
+
+
+def transporte_http(
     metodo: str,
     url: str,
     *,
@@ -52,33 +64,30 @@ def transporte_requests(
     datos: Mapping[str, str] | None = None,
     cabeceras: Mapping[str, str] | None = None,
 ) -> RespuestaHttp:
-    import requests
+    import httpx
+
+    from asistente.plataforma import http
 
     try:
-        respuesta = requests.request(
+        respuesta = _cliente_google().peticion(
             metodo,
             url,
             params=dict(params) if params else None,
             data=dict(datos) if datos else None,
-            headers=dict(cabeceras) if cabeceras else None,
-            timeout=TIMEOUT_SEGUNDOS,
-            allow_redirects=False,
-            stream=True,
+            cabeceras=cabeceras,
         )
-        cuerpo = respuesta.raw.read(MAX_RESPUESTA + 1, decode_content=True)
-        respuesta.close()
-    except requests.RequestException as exc:
+    except http.RespuestaDemasiadoGrande as exc:
+        raise CorreoError("La respuesta de Google es demasiado grande.") from exc
+    except httpx.HTTPError as exc:
         raise CorreoError("No se pudo contactar con Google. Inténtalo más tarde.") from exc
-    if len(cuerpo) > MAX_RESPUESTA:
-        raise CorreoError("La respuesta de Google es demasiado grande.")
-    return RespuestaHttp(estado=respuesta.status_code, cuerpo=cuerpo)
+    return RespuestaHttp(estado=respuesta.status_code, cuerpo=respuesta.content)
 
 
 _transporte: list[Transporte] = []
 
 
 def transporte() -> Transporte:
-    return _transporte[0] if _transporte else transporte_requests
+    return _transporte[0] if _transporte else transporte_http
 
 
 def configurar_transporte(nuevo: Transporte | Callable[..., RespuestaHttp] | None) -> None:
@@ -88,4 +97,4 @@ def configurar_transporte(nuevo: Transporte | Callable[..., RespuestaHttp] | Non
         _transporte.append(nuevo)  # type: ignore[arg-type]
 
 
-__all__ = ["CorreoError", "RespuestaHttp", "Transporte", "configurar_transporte", "transporte", "transporte_requests"]
+__all__ = ["CorreoError", "RespuestaHttp", "Transporte", "configurar_transporte", "transporte", "transporte_http"]

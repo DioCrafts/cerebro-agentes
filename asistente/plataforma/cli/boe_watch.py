@@ -36,21 +36,16 @@ import json
 import logging
 from pathlib import Path
 import time
-from urllib.error import HTTPError, URLError
-import urllib.request
 
 import click
+import httpx
 
-from asistente.conocimiento import formatos
-from asistente.conocimiento.formatos_boe import ReglasMetadatos, entrada_metadatos
+from asistente.conocimiento.boe import cliente as boe
 
 logger = logging.getLogger(__name__)
 
-_BOE_META_URL = "https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/{id}/metadatos"
-_BOE_HTML_URL = "https://www.boe.es/buscar/act.php?id={id}"
 _DEFAULT_CATALOG = Path(__file__).resolve().parent / "boe_seed_catalog.json"
 _DEFAULT_OUTPUT = Path("./data/html")
-_USER_AGENT = "hacienda-asesor/0.1 (corpus drift watcher; contacto@hacienda-asesor.local)"
 
 
 # --------------------------------------------------------------------- #
@@ -105,32 +100,14 @@ def _append_change_event(output_dir: Path, event: dict) -> None:
 # BOE API + HTML fetch
 # --------------------------------------------------------------------- #
 def _fetch_metadata(boe_id: str, timeout: int = 30) -> dict:
-    """Fetch ``/metadatos`` for a BOE consolidated id and return the
-    parsed ``data[0]`` dict. Raises on non-200 or malformed JSON."""
-    req = urllib.request.Request(
-        _BOE_META_URL.format(id=boe_id),
-        headers={"Accept": "application/json", "User-Agent": _USER_AGENT},
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        raw = resp.read().decode("utf-8")
-    # Format watch: recorded before parsing, so an answer in an unknown shape leaves a sample behind.
-    formatos.observar("boe_metadatos", raw, contexto=boe_id)
-    # Which keys are read is data: the ``boe_metadatos`` format spec.
-    return entrada_metadatos(formatos.reglas_de("boe_metadatos", ReglasMetadatos), json.loads(raw), boe_id)
+    """``data[0]`` of the ``/metadatos`` of a BOE consolidated id. Raises on non-2xx or malformed JSON."""
+    return boe.metadatos(boe_id, timeout=timeout)
 
 
 def _fetch_html(boe_id: str, timeout: int = 60) -> bytes:
-    """Fetch the consolidated HTML text via the canonical ``act.php`` URL
-    that the seed crawler also uses. Kept as bytes so the SHA-256 we
-    record matches what the manifest computes — no normalisation in
-    between."""
-    req = urllib.request.Request(
-        _BOE_HTML_URL.format(id=boe_id),
-        headers={"User-Agent": _USER_AGENT},
-    )
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        body: bytes = resp.read()
-        return body
+    """The consolidated HTML via the canonical ``act.php`` URL the seed crawler also uses. Kept as bytes so
+    the SHA-256 we record matches what the manifest computes — no normalisation in between."""
+    return boe.texto_consolidado(boe_id, timeout=timeout)
 
 
 def _sha256(data: bytes) -> str:
@@ -198,7 +175,7 @@ def _load_catalog(catalog_path: Path) -> list[dict]:
 @click.option(
     "--dry-run",
     is_flag=True,
-    help="Compare metadata against state but DO NOT redownload, write " "state, or append to the change log.",
+    help="Compare metadata against state but DO NOT redownload, write state, or append to the change log.",
 )
 @click.option(
     "--polite-delay",
@@ -254,7 +231,7 @@ def cli(
 
         try:
             meta = _fetch_metadata(boe_id)
-        except (URLError, HTTPError, RuntimeError, json.JSONDecodeError) as exc:
+        except (httpx.HTTPError, RuntimeError, json.JSONDecodeError) as exc:
             stats["errors"] += 1
             click.echo(f"  ✗ {boe_id}  metadata fetch failed: {exc}")
             time.sleep(polite_delay)
@@ -295,7 +272,7 @@ def cli(
                 body = _fetch_html(boe_id)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(body)
-            except (URLError, HTTPError) as exc:
+            except httpx.HTTPError as exc:
                 stats["errors"] += 1
                 click.echo(f"  ✗ {boe_id}  HTML download failed: {exc}")
                 time.sleep(polite_delay)

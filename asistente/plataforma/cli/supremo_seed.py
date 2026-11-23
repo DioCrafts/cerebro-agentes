@@ -29,7 +29,7 @@ from typing import Any
 from urllib.parse import urlsplit
 
 import click
-import requests
+import httpx
 
 from asistente.conocimiento import formatos
 from asistente.conocimiento.crawler.cendoj import observar_documento
@@ -39,11 +39,11 @@ from asistente.conocimiento.doctrine.supremo import (
     es_objetivo_prioritario,
     sidecar_metadata,
 )
+from asistente.plataforma import http
 
 logger = logging.getLogger(__name__)
 
 # Generic on purpose: no e-mail address or any other personal data.
-_USER_AGENT = "hacienda-asesor/0.1 (consulta individual de resoluciones; sin descarga masiva)"
 _ALLOWED_HOSTS = frozenset({"www.poderjudicial.es", "poderjudicial.es"})
 _TIMEOUT_S = 30
 # HTTP statuses that mean the portal is throttling or refusing us: stop asking.
@@ -74,8 +74,10 @@ class DescargaError(Exception):
 def _http_get(url: str) -> bytes:
     """Fetch one document. Tests replace this function; it is the only network access."""
     try:
-        response = requests.get(url, headers={"User-Agent": _USER_AGENT}, timeout=_TIMEOUT_S)
-    except requests.RequestException as exc:
+        # No retries: the portal's reuse terms allow individual consultation only, so a refusal or a throttle
+        # (403/429) is an answer to respect, not a hiccup to retry through.
+        response = http.cliente().get(url, timeout=_TIMEOUT_S, reintentar=False)
+    except httpx.HTTPError as exc:
         raise DescargaError(f"no se pudo conectar ({exc.__class__.__name__})") from exc
     if response.status_code != 200:
         raise DescargaError(

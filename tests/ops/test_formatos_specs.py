@@ -6,6 +6,7 @@ from datetime import date
 import json
 
 import formatos_util as util
+import httpx
 import legacy_parsers as legacy
 import pytest
 
@@ -149,20 +150,9 @@ def test_boletin_v1_reads_the_listing_like_the_old_parser() -> None:
     assert len(boletin_autonomico.parse_listing(boletin_autonomico.BOCM_MADRID, html)) == 2
 
 
-def test_metadatos_v1_returns_the_same_entry(monkeypatch) -> None:
+def test_metadatos_v1_returns_the_same_entry(red_falsa) -> None:
     crudo = util.leer("boe_metadatos_BOE-A-2006-20764.json")
-
-    class Respuesta:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            return False
-
-        def read(self) -> bytes:
-            return crudo.encode("utf-8")
-
-    monkeypatch.setattr(boe_watch.urllib.request, "urlopen", lambda *_a, **_k: Respuesta())
+    red_falsa(lambda request: httpx.Response(200, content=crudo.encode("utf-8")))
 
     entrada = boe_watch._fetch_metadata("BOE-A-2006-20764")
 

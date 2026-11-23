@@ -184,3 +184,44 @@ def _registro_de_modulos_sin_rastro():
     despues = list(registro._cache)
     if len(antes) != len(despues) or any(a is not d for a, d in zip(antes, despues, strict=False)):
         registro.reiniciar()
+
+
+@pytest.fixture(autouse=True)
+def _sin_red_por_el_cliente_comun(monkeypatch):
+    """No test reaches the network through the shared HTTP client: any request it makes fails the test,
+    unless the test installs answers with ``red_falsa``."""
+    import httpx
+
+    from asistente.plataforma import http
+
+    def _prohibido(request):
+        pytest.fail(f"network access in a test: {request.method} {request.url}")
+
+    monkeypatch.setattr(
+        http, "_por_defecto", [http.Cliente(transport=httpx.MockTransport(_prohibido), dormir=lambda _s: None)]
+    )
+
+
+@pytest.fixture
+def red_falsa(monkeypatch):
+    """``red_falsa(handler)`` answers every request of the shared HTTP client with ``handler(request)``
+    (an ``httpx.Response``, or an exception to raise) and returns the list of requests seen."""
+    import httpx
+
+    from asistente.plataforma import http
+
+    def instalar(handler, **opciones):
+        vistas = []
+
+        def _responder(request):
+            vistas.append(request)
+            salida = handler(request)
+            if isinstance(salida, BaseException):
+                raise salida
+            return salida
+
+        cliente = http.Cliente(transport=httpx.MockTransport(_responder), dormir=lambda _s: None, **opciones)
+        monkeypatch.setattr(http, "_por_defecto", [cliente])
+        return vistas
+
+    return instalar

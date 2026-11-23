@@ -19,10 +19,12 @@ import threading
 from typing import Any
 import unicodedata
 import urllib.parse
-import urllib.request
+
+import httpx
 
 from asistente.capacidades.investigacion.dominios import es_oficial, host_de
 from asistente.capacidades.investigacion.modelo import TipoFuente
+from asistente.conocimiento.boe import cliente as boe
 from asistente.conocimiento.llm.security import neutralizar_inyeccion, parece_inyeccion
 from asistente.conocimiento.texto import texto_de_html, url_de
 from asistente.nucleo.agent.evidence import infer_authority, source_type_for
@@ -212,19 +214,15 @@ def buscar_corpus(
 Descargar = Callable[[str, str], bytes | None]
 
 
-def descargar_boe(url: str, accept: str, *, timeout: int = 30, intentos: int = 2) -> bytes | None:
-    """GET a www.boe.es URL (only that host). None after the retries."""
+def descargar_boe(url: str, accept: str, *, timeout: int = 30) -> bytes | None:
+    """GET a www.boe.es URL (only that host). None when it is not there or the network fails after the retries."""
     if not url.startswith(RAIZ_BOE):
         raise ValueError(f"Solo se descarga de {RAIZ_BOE}: {url}")
-    peticion = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": "HaciendaGPT-investigacion/1"})
-    for intento in range(intentos):
-        try:
-            with urllib.request.urlopen(peticion, timeout=timeout) as respuesta:  # noqa: S310 - host checked above
-                datos: bytes = respuesta.read()
-                return datos
-        except Exception as exc:  # network errors: retry, then give up
-            logger.warning("BOE download failed (%s/%s): %s", intento + 1, intentos, type(exc).__name__)
-    return None
+    try:
+        return boe.descargar(url, accept, timeout=timeout)
+    except httpx.HTTPError as exc:
+        logger.warning("BOE download failed: %s", type(exc).__name__)
+        return None
 
 
 @dataclass(frozen=True)

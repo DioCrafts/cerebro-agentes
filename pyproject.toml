@@ -10,6 +10,9 @@ readme = "README.md"
 requires-python = ">=3.13,<3.14"
 dependencies = [
     "requests==2.34.2",
+    # The project's one HTTP client (asistente/plataforma/http.py). requests stays only for
+    # asistente/investigador/web.py until that module moves to it.
+    "httpx==0.28.1",
     "openai==2.37.0",
     # The FAISS index on disk is LangChain's pickle format: langchain-community loads it and langchain-core
     # provides the Document type it stores. Both go when the index moves to sqlite-vec.

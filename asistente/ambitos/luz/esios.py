@@ -29,7 +29,6 @@ import json
 import os
 from typing import Any
 import urllib.parse
-import urllib.request
 
 from asistente.ambitos.luz.periodos import Zona, zona_horaria
 
@@ -54,9 +53,11 @@ def url_consulta(desde: date, hasta: date, zona: Zona = "peninsula") -> str:
 
 
 def _fetch_http(url: str, cabeceras: Mapping[str, str]) -> bytes:  # pragma: no cover - network
-    peticion = urllib.request.Request(url, headers=dict(cabeceras))
-    with urllib.request.urlopen(peticion, timeout=20) as respuesta:
-        return bytes(respuesta.read())
+    from asistente.plataforma import http
+
+    respuesta = http.cliente().get(url, cabeceras=cabeceras, timeout=20)
+    respuesta.raise_for_status()
+    return respuesta.content
 
 
 def interpretar(

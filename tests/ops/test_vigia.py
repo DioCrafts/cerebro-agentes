@@ -1,10 +1,10 @@
 from datetime import UTC, datetime, timedelta
 import json
 
+import httpx
 import pytest
 
 from asistente.plataforma import settings
-from asistente.plataforma.ops import vigia
 from asistente.plataforma.ops.vigia import (
     EstadoIlegibleError,
     avisar_healthcheck,
@@ -24,25 +24,15 @@ def state(tmp_path):
 
 
 @pytest.fixture
-def pings(monkeypatch) -> list:
+def pings(monkeypatch, red_falsa) -> list:
     """Record healthcheck pings instead of touching the network; no URL configured by default."""
     calls: list = []
 
-    class _Response:
-        def __enter__(self):
-            return self
+    def responder(request: httpx.Request) -> httpx.Response:
+        calls.append((request.method, str(request.url), request.content or None))
+        return httpx.Response(200, content=b"OK")
 
-        def __exit__(self, *_exc) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return b"OK"
-
-    def fake_urlopen(request, timeout=None):
-        calls.append((request.get_method(), request.full_url, request.data))
-        return _Response()
-
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", fake_urlopen)
+    red_falsa(responder)
     monkeypatch.setattr(settings, "HEALTHCHECK_URL", "")
     monkeypatch.delenv("HEALTHCHECK_URL_BOE_NOVEDADES", raising=False)
     return calls
@@ -153,11 +143,8 @@ def test_healthcheck_url_specific_beats_generic(pings, monkeypatch) -> None:
     assert url_de_healthcheck("run-daily") == "https://hc.example.test/generic"
 
 
-def test_a_failing_ping_never_breaks_the_job(state, monkeypatch) -> None:
-    def broken_urlopen(request, timeout=None):
-        raise OSError("network unreachable")
-
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", broken_urlopen)
+def test_a_failing_ping_never_breaks_the_job(state, monkeypatch, red_falsa) -> None:
+    red_falsa(lambda request: httpx.ConnectError("network unreachable"))
     monkeypatch.setattr(settings, "HEALTHCHECK_URL", "https://hc.example.test/generic")
 
     with vigilado("run-daily", path=state):

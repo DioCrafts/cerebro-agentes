@@ -3,6 +3,7 @@ import json
 import sys
 
 from click.testing import CliRunner
+import httpx
 import pytest
 
 from asistente.nucleo.proactive.entrega import ConfiguracionCanalError, EntregaStore
@@ -10,7 +11,6 @@ from asistente.nucleo.proactive.store import Notification, NotificationStore
 from asistente.plataforma import settings
 from asistente.plataforma.cli import ops as ops_module
 from asistente.plataforma.cli.ops import ASUNTO_DOCTOR, MAX_HORAS_POR_DEFECTO, cli
-from asistente.plataforma.ops import vigia
 from asistente.plataforma.ops.vigia import leer_estado, registrar_ejecucion
 
 
@@ -37,10 +37,6 @@ def env(tmp_path, monkeypatch):
     canales: list = []
     monkeypatch.setattr(ops_module, "canales_configurados", lambda: list(canales))
 
-    def no_network(*_args, **_kwargs):
-        raise AssertionError("the tests must not touch the network")
-
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", no_network)
     return type("Env", (), {"state": state, "db": str(db), "canales": canales})()
 
 
@@ -226,24 +222,8 @@ def test_run_executes_the_command_and_records_success(env, tmp_path) -> None:
     assert entry["last_ok"] is True and "last_error" not in entry
 
 
-def test_run_propagates_the_exit_code_and_pings_fail(env, monkeypatch) -> None:
-    pings: list = []
-
-    class _Response:
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_exc) -> None:
-            return None
-
-        def read(self) -> bytes:
-            return b"OK"
-
-    def fake_urlopen(request, timeout=None):
-        pings.append((request.full_url, request.data))
-        return _Response()
-
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", fake_urlopen)
+def test_run_propagates_the_exit_code_and_pings_fail(env, monkeypatch, red_falsa) -> None:
+    vistas = red_falsa(lambda request: httpx.Response(200, content=b"OK"))
     monkeypatch.setenv("HEALTHCHECK_URL_BOE_WATCH", "https://hc.example.test/ping/abc")
     runner = CliRunner()
 
@@ -253,9 +233,9 @@ def test_run_propagates_the_exit_code_and_pings_fail(env, monkeypatch) -> None:
     assert entry["last_ok"] is False and entry["last_error_detail"] == "código de salida 7"
 
     assert runner.invoke(cli, ["run", "boe-watch", "--", sys.executable, "-c", "pass"]).exit_code == 0
-    assert pings == [
+    assert [(str(r.url), r.content) for r in vistas] == [
         ("https://hc.example.test/ping/abc/fail", "código de salida 7".encode()),
-        ("https://hc.example.test/ping/abc", None),
+        ("https://hc.example.test/ping/abc", b""),
     ]
 
 

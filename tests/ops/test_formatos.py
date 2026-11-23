@@ -35,10 +35,7 @@ def vigilancia(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "JOBS_STATE_PATH", str(tmp_path / "jobs.json"))
     monkeypatch.setattr(settings, "HEALTHCHECK_URL", "")
 
-    def no_network(*_args, **_kwargs):
-        raise AssertionError("the tests must not touch the network")
-
-    monkeypatch.setattr(vigia.urllib.request, "urlopen", no_network)
+    # The shared HTTP client refuses the network in every test (tests/conftest.py).
     # ``ops formatos check`` also checks the calendar data, which depends on the date.
     monkeypatch.setattr(cli_formatos, "_hoy", lambda: HOY)
     return tmp_path
@@ -319,7 +316,12 @@ def test_documents_reader_reports_counters_only(vigilancia) -> None:
     )
     for _ in range(5):
         proveedor = util.ProveedorGuionizado(
-            [{"tipo_documento": "Certificado de retenciones", "hechos": [{"name": "retenciones", "value": "7000", "evidencia": "no está en el documento"}]}]  # fmt: skip
+            [
+                {
+                    "tipo_documento": "Certificado de retenciones",
+                    "hechos": [{"name": "retenciones", "value": "7000", "evidencia": "no está en el documento"}],
+                }
+            ]  # fmt: skip
         )
         analizar_documento(proveedor, filename="cert.txt", data=texto.encode())
 
