@@ -7,14 +7,12 @@
 // «Privacidad y datos» belongs to the gate (it can erase the account): it opens as the panel
 // `privacidad` of the URL (`/?panel=privacidad`), like the shell's panels.
 
-import { useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useEffect, useRef, useState } from "react";
 
 import type { AuthConfig, SessionResponse, SessionUser } from "./api";
 import { ApiError, getAuthConfig, getMe, logout, onSessionExpired, revocarTokenAntiguo } from "./api";
-import { AuthScreen } from "./components/AuthScreen";
 import { AvisoActualizacion } from "./components/AvisoActualizacion";
 import { Monogram } from "./components/Brand";
-import { PrivacyPanel } from "./components/PrivacyPanel";
 import { abrirPanel, cerrarPanel, usePanelUrl } from "./lib/panelUrl";
 import { olvidarDispositivo } from "./lib/push";
 import { cacheAuthMode, cachedAuthMode, historyOwner, setHistoryOwner, tomarTokenAntiguo } from "./lib/session";
@@ -22,6 +20,11 @@ import { borrarConversaciones, loadConversations, saveConversations } from "./li
 import { useTheme } from "./lib/theme";
 import { Asesor } from "./shell/Asesor";
 import { Spinner } from "./ui";
+
+// Out of the first load: the login screen only shows with accounts on and nobody signed in, and «Privacidad y
+// datos» only when opened. (Not prefetched: with a live session it would compete with the shell.)
+const AuthScreen = lazy(() => import("./components/AuthScreen").then((m) => ({ default: m.AuthScreen })));
+const PrivacyPanel = lazy(() => import("./components/PrivacyPanel").then((m) => ({ default: m.PrivacyPanel })));
 
 function Splash({ message }: { message?: string }) {
   return (
@@ -131,6 +134,7 @@ function Puerta() {
   }, [configAttempt]);
 
   const required = config?.auth_mode === "required";
+  const configConocida = config !== null;
 
   useEffect(() => {
     onSessionExpired(() => {
@@ -142,16 +146,19 @@ function Puerta() {
       setUser(null);
       if (privacyOpen) cerrarPanel();
       setSessionChecked(true);
-      // If we believed accounts were off, the backend has changed: ask again.
-      if (!required) setConfigAttempt((n) => n + 1);
+      // If we believed accounts were off, the backend has changed: ask again. (Not while /auth/config is
+      // still on its way: the early /auth/me of a first visit can answer first.)
+      if (configConocida && !required) setConfigAttempt((n) => n + 1);
     });
     return () => onSessionExpired(null);
-  }, [required, privacyOpen]);
+  }, [required, configConocida, privacyOpen]);
 
-  // When accounts were on last time, ask for the session while /auth/config is still on its way: both
-  // requests go out together instead of one after the other (one round trip less before the shell).
+  // Unless accounts were off last time, ask for the session while /auth/config is still on its way: both
+  // requests go out together instead of one after the other (one round trip less before the shell). On a
+  // first visit the mode is unknown and most deployments have accounts on, so it goes out too; with
+  // accounts off it costs one unanswered request, once (the mode is then cached as "off").
   const [mePrevio] = useState<Promise<SessionUser> | null>(() => {
-    if (lastKnownMode !== "required") return null;
+    if (lastKnownMode === "off") return null;
     const pendiente = getMe();
     pendiente.catch(() => undefined); // read by the effect below, or never if accounts turned out to be off
     return pendiente;
@@ -237,19 +244,26 @@ function Puerta() {
   }
   if (!required) return <Asesor key="open" />;
   if (!sessionChecked) return <Splash />;
-  if (!user) return <AuthScreen config={config} notice={notice} onSignedIn={handleSignedIn} />;
+  if (!user)
+    return (
+      <Suspense fallback={<Splash />}>
+        <AuthScreen config={config} notice={notice} onSignedIn={handleSignedIn} />
+      </Suspense>
+    );
   return (
     <>
       <Asesor key={user.id} account={{ email: user.email, onOpenPrivacy: () => abrirPanel("privacidad"), onLogout: handleLogout }} />
       {/* Mounted only while open, so the typed password never outlives the panel. */}
       {privacyOpen && (
-        <PrivacyPanel
-          open
-          onClose={cerrarPanel}
-          email={user.email}
-          noticeUrl={config.privacy_notice_url}
-          onAccountDeleted={() => signOutLocally("Tu cuenta y tus datos se han eliminado.")}
-        />
+        <Suspense fallback={null}>
+          <PrivacyPanel
+            open
+            onClose={cerrarPanel}
+            email={user.email}
+            noticeUrl={config.privacy_notice_url}
+            onAccountDeleted={() => signOutLocally("Tu cuenta y tus datos se han eliminado.")}
+          />
+        </Suspense>
       )}
     </>
   );

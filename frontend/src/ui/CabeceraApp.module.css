@@ -28,8 +28,9 @@
   align-items: center;
   gap: var(--base-size-8);
 }
+/* Fixed so it shows in the viewport even when Tab wraps round to it on a scrolled page. */
 .saltar {
-  position: absolute;
+  position: fixed;
   left: var(--base-size-8);
   top: var(--base-size-8);
   z-index: var(--zIndex-skipLink);

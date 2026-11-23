@@ -13,7 +13,7 @@ import { ApiError } from "../api";
 import type { ActividadPerfil, ResultadoActividad, ResultadoModelo130, ResultadoModelo303, Trimestre } from "../apiAutonomos";
 import { calcularActividad, calcularActividadDelExpediente, calcularModelo130, calcularModelo303, getEjerciciosAutonomos } from "../apiAutonomos";
 import { formatMoney } from "../lib/presentation";
-import { AvisoError, Button, CargandoBloque, CargandoTexto, Flash, Select, SegmentedControl } from "../ui";
+import { AvisoError, Button, CargandoBloque, Flash, Select, SegmentedControl } from "../ui";
 import { ArrowRightIcon, HistoryIcon } from "../ui/iconos";
 import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
 import { Pestanas } from "./calculos/Pestanas";
@@ -688,11 +688,17 @@ export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, f
               }}
             />
           )}
-          {ejercicios === null && loadError === null && <CargandoTexto lineas={2} etiqueta="Preparando los cálculos…" />}
           {current.error !== null && <AvisoError frase="No he podido hacer el cálculo." detalle={current.error} onReintentar={current.reintentar} />}
-          {vista.resultado}
-          {/* Until the first result: its place, at its height, so the form does not jump when it arrives. */}
-          {!vista.resultado && current.pendiente && current.error === null && <CargandoBloque alto="8.25rem" etiqueta="Calculando…" />}
+          {/* Until the first result: its place, at its height, so the form does not jump when it arrives. While
+              the years load (first), that place says so instead of the result's hint. */}
+          {ejercicios === null && loadError === null ? (
+            <CargandoBloque alto="13.25rem" etiqueta="Preparando los cálculos…" />
+          ) : (
+            <>
+              {vista.resultado}
+              {!vista.resultado && current.pendiente && current.error === null && <CargandoBloque alto="13.25rem" etiqueta="Calculando…" />}
+            </>
+          )}
         </aside>
         {/* Keyed by tab so React does not reuse one tab's DOM (open <details>, focus) for another. */}
         <div key={tab} className="flex min-w-0 flex-col gap-6">

@@ -185,7 +185,37 @@ interface RanuraProps {
   onClose: () => void;
 }
 
+// Set once the shell has painted for the first time (see useTrasElPrimerPintado).
+let shellPintado = false;
+
+/**
+ * False until the frame after the first paint of the shell. A panel open on load (`/?panel=<id>`) only asks
+ * for its chunk then: the header, the tabs and the conversation (or the panel's own header) paint first,
+ * without waiting for the panel's code and what it imports (about 100 KiB with gzip for most panels). On a
+ * phone, Lighthouse counted those downloads before the first content and put the LCP at about 4 s.
+ */
+function useTrasElPrimerPintado(): boolean {
+  const [listo, setListo] = useState(shellPintado);
+  useEffect(() => {
+    if (listo) return;
+    let espera: ReturnType<typeof setTimeout> | undefined;
+    const fotograma = requestAnimationFrame(() => {
+      espera = setTimeout(() => {
+        shellPintado = true;
+        setListo(true);
+      });
+    });
+    return () => {
+      cancelAnimationFrame(fotograma);
+      clearTimeout(espera);
+    };
+  }, [listo]);
+  return listo;
+}
+
 function Contenido({ panel, open, ctx, onClose }: RanuraProps) {
+  const listo = useTrasElPrimerPintado();
+  if (!listo) return panel.presentacion ? cargando(panel) : null;
   // The lazy component is cached per panel id (componenteDe), so it is the same on every render.
   const props: PropsPanel = { ctx, open, onClose };
   return createElement(componenteDe(panel), props);

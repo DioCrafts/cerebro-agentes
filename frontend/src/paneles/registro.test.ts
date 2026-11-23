@@ -1,7 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import { REGISTRO } from "./registro";
-import { GRUPOS } from "./tipos";
+import { REGISTRO, precargarPanel } from "./registro";
+import { GRUPOS, type DefinicionPanel } from "./tipos";
 
 describe("registro de paneles", () => {
   it("cada panel tiene una sección de «Más» conocida y una etiqueta única", () => {
@@ -23,5 +23,20 @@ describe("registro de paneles", () => {
       const insignia = p.insignia?.(insignias);
       if (insignia) expect(insignia.etiqueta.startsWith(p.etiqueta)).toBe(false);
     }
+  });
+
+  it("precarga el chunk de un panel una vez, y lo reintenta si la descarga falla", async () => {
+    const base = REGISTRO[0] as DefinicionPanel;
+    const cargar = vi.fn<DefinicionPanel["cargar"]>().mockRejectedValueOnce(new Error("sin red"));
+    const panel: DefinicionPanel = { ...base, id: "prueba-precarga", cargar };
+    precargarPanel(panel);
+    precargarPanel(panel);
+    expect(cargar).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      precargarPanel(panel);
+      expect(cargar).toHaveBeenCalledTimes(2);
+    });
+    precargarPanel(panel);
+    expect(cargar).toHaveBeenCalledTimes(2);
   });
 });

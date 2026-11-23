@@ -7,7 +7,7 @@ export default defineConfig({
   test: {
     environment: "jsdom",
     setupFiles: ["./src/test/setup.ts"],
-    include: ["src/**/*.test.{ts,tsx}"],
+    include: ["src/**/*.test.{ts,tsx}", "plugins-vite/**/*.test.ts"],
     restoreMocks: true,
     // Primer React imports its own CSS from its JavaScript: run it through Vite instead of Node.
     server: { deps: { inline: [/@primer\/react/] } },

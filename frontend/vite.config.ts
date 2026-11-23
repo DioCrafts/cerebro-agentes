@@ -5,6 +5,8 @@ import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
+import { podarVariablesDeTema, usosEn } from "./plugins-vite/podarVariables.ts";
+
 // Files of public/ that belong to the app shell (precached by the service worker with the build output).
 const PUBLICOS = [
   "manifest.webmanifest",
@@ -68,8 +70,33 @@ const proxy = {
   },
 };
 
+/**
+ * React (react, react-dom, scheduler) in a chunk of its own: the first screen always needs it and it only
+ * changes when the dependency does, so a deploy of the app keeps it cached. Primer is not grouped: its
+ * package only exports the barrel (`@primer/react`), so a group by module graph would also take every
+ * component the lazy panels use; Rolldown's automatic chunking keeps those with the panels.
+ */
+const REACT = /node_modules[\\/](react|react-dom|scheduler)[\\/]/;
+
+const RAIZ = new URL(".", import.meta.url).pathname;
+
 export default defineConfig({
   plugins: [react(), tailwindcss(), serviceWorker()],
+  css: {
+    postcss: {
+      // Primer's two colour themes, without the variables nothing reads (plugins-vite/podarVariables.ts).
+      plugins: [podarVariablesDeTema(usosEn([`${RAIZ}src`, `${RAIZ}node_modules/@primer/react/dist`]))],
+    },
+  },
+  build: {
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: "react", test: REACT }],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     proxy,

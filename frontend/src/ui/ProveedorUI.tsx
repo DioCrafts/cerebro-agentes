@@ -3,7 +3,8 @@
 // The colour mode itself is on <html> (src/lib/theme.ts), so Primer's overlays, which render in portals,
 // get the app's colours too. Here Primer is only told which mode is on.
 
-import { BaseStyles, ThemeProvider } from "@primer/react";
+import { BaseStyles } from "@primer/react";
+import { ThemeProvider } from "@primer/react/next";
 import type { ReactNode } from "react";
 
 import { useTheme } from "../lib/theme";

@@ -231,6 +231,10 @@ async function recorrerFoco(page, maximo = 70) {
     paradas: paradas.length,
     sinIndicador: paradas.filter((p) => p.tipo !== "body" && !p.indicador).map((p) => `${p.tipo}: ${p.nombre}`),
     fueraDePantalla: paradas.filter((p) => p.tipo !== "body" && !p.enPantalla).length,
+    // Cuáles: para saber qué arreglar (menú cerrado, hoja oculta, enlace que no se ve al recibir el foco…).
+    fueraDePantallaDetalle: paradas
+      .filter((p) => p.tipo !== "body" && !p.enPantalla)
+      .map((p) => `${p.tipo}:${p.nombre} @${p.x},${p.y - p.scrollY} ${p.ancho}×${p.alto}`),
     alBody: paradas.filter((p) => p.tipo === "body").length,
     saltosAtras,
     escapaDelDialogo: dialogo ? paradas.filter((p) => p.fueraDelDialogo).length : null,

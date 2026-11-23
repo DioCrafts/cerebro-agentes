@@ -33,6 +33,8 @@ export interface Pestana {
   destacada?: boolean;
   actual: boolean;
   alElegir: () => void;
+  /** Starts downloading what the tab opens (its panel's chunk) when the pointer or the focus reaches it. */
+  alPrecargar?: () => void;
 }
 
 /** Width kept for the «Más» button when some tabs overflow. */
@@ -150,7 +152,7 @@ export function PestanasNavegacion({
       <ul className={estilos.lista}>
         {visibles.map((p) => (
           <li key={p.id}>
-            <a href={p.href} className={estilos.item} aria-current={p.actual ? "page" : undefined} title={p.titulo} data-panel={p.id} onClick={elegir(p)}>
+            <a href={p.href} className={estilos.item} aria-current={p.actual ? "page" : undefined} title={p.titulo} data-panel={p.id} onClick={elegir(p)} onPointerEnter={p.alPrecargar} onFocus={p.alPrecargar}>
               <Contenido p={p} />
             </a>
           </li>
@@ -166,7 +168,7 @@ export function PestanasNavegacion({
                     const items = g.pestanas.map((p) => {
                       const Icono = p.icono;
                       return (
-                        <ActionList.LinkItem key={p.id} href={p.href} onClick={elegir(p)} data-panel={p.id}>
+                        <ActionList.LinkItem key={p.id} href={p.href} onClick={elegir(p)} data-panel={p.id} onPointerEnter={p.alPrecargar} onFocus={p.alPrecargar}>
                           <ActionList.LeadingVisual>
                             <Icono />
                           </ActionList.LeadingVisual>

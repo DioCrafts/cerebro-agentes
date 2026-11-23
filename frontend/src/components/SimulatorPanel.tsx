@@ -13,7 +13,7 @@ import { parseAmount } from "../lib/formulario";
 import type { ObligacionDeclarar } from "../lib/obligacion";
 import { COMUNIDADES, formatMoney } from "../lib/presentation";
 import { FIELDS, type FieldDef, LEVER_PRESET, TRIBUTACION, gruposDeComunidad } from "../lib/simulador/campos";
-import { AvisoError, Button, Caja, CargandoBloque, Flash, Label } from "../ui";
+import { AvisoError, Button, Caja, CargandoBloque, Flash, Label, SkeletonBox } from "../ui";
 import { HistoryIcon, LightBulbIcon } from "../ui/iconos";
 import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
 import { ObligacionDeclararCard } from "./ObligacionDeclararCard";
@@ -181,8 +181,14 @@ export function SimulatorPanel({ open, caseId, facts, taxPeriod, onSaveFact, bus
           </Flash>
         )}
         {resultadoCaja}
-        {/* Until the first result: its place, at its height, so the form does not jump when it arrives. */}
-        {!sim && error === null && <CargandoBloque alto="8.25rem" etiqueta="Calculando tu declaración…" />}
+        {/* Until the first result: its place and that of «Formas de pagar menos», which come with it, at their
+            usual height (on a phone the form is below them and must not jump when they arrive). */}
+        {!sim && error === null && (
+          <>
+            <CargandoBloque alto="11rem" etiqueta="Calculando tu declaración…" />
+            <SkeletonBox height="8.25rem" aria-hidden />
+          </>
+        )}
         {levers.length > 0 && (
           <Caja as="section" aria-labelledby="sim-palancas">
             <Caja.Cabecera>

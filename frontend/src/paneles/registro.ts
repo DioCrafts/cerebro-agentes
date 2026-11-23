@@ -220,6 +220,19 @@ export const REGISTRO: DefinicionPanel[] = [
   },
 ];
 
+const precargados = new Set<string>();
+
+/**
+ * Downloads a panel's chunk before it opens (pointer over or focus on its tab), so the click finds it ready.
+ * The module system keeps the promise: PanelHost's React.lazy then resolves at once. A failed download is
+ * forgotten, so the next hover or the opening itself tries again.
+ */
+export function precargarPanel(panel: DefinicionPanel): void {
+  if (precargados.has(panel.id)) return;
+  precargados.add(panel.id);
+  panel.cargar().catch(() => precargados.delete(panel.id));
+}
+
 function ocultosEnLaBuild(): Set<string> {
   const texto = (import.meta.env.VITE_PANELES_OCULTOS as string | undefined) ?? "";
   return new Set(

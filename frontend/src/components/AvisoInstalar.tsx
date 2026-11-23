@@ -1,12 +1,16 @@
-// Install hint. On iPhone/iPad Safari there is no install prompt, and notices on the phone only work for an
-// app added to the home screen (iOS/iPadOS 16.4 or later): say how. Where the browser offers its own prompt
-// (Chrome, Edge, Samsung Internet on Android; Chrome/Edge on a computer), offer an «Instalar» button.
-// Dismissed for 30 days.
+// Install hint for iPhone/iPad Safari, which has no install prompt: notices on the phone only work for an
+// app added to the home screen (iOS/iPadOS 16.4 or later), so say how. Dismissed for 30 days.
+//
+// Where the browser offers its own prompt (Chrome, Edge, Samsung Internet on Android; Chrome/Edge on a
+// computer) the offer is a button in the header (CabeceraGlobal), not this banner: the prompt arrives after
+// the first paint (`beforeinstallprompt`), and a banner inserted above the content then would push the whole
+// page down (a layout shift of 0.128 on a phone). On iOS this is known from the first render, so it moves
+// nothing.
 
 import { useState } from "react";
 
-import { enModoApp, esIOS, instalar, usePwa } from "../lib/pwa";
-import { Button, Flash, IconButton } from "../ui";
+import { enModoApp, esIOS } from "../lib/pwa";
+import { Flash, IconButton } from "../ui";
 import { DesktopDownloadIcon, ShareIcon, XIcon } from "../ui/iconos";
 
 const CLAVE = "haciendagpt_instalar_descartado";
@@ -33,10 +37,8 @@ export function InstruccionesIOS() {
 }
 
 export function AvisoInstalar() {
-  const { instalable } = usePwa();
   const [descartado, setDescartado] = useState(descartadoRecientemente);
-  const ios = esIOS() && !enModoApp();
-  if (descartado || enModoApp() || (!ios && !instalable)) return null;
+  if (descartado || enModoApp() || !esIOS()) return null;
 
   function descartar() {
     try {
@@ -53,13 +55,8 @@ export function AvisoInstalar() {
         <DesktopDownloadIcon className="mt-0.5 shrink-0" />
         <p className="m-0 min-w-0 flex-1">
           <strong>Instala Cerebro en este dispositivo.</strong>{" "}
-          {ios ? <InstruccionesIOS /> : "Se abre como una aplicación y puede avisarte de lo que vence."}
+          <InstruccionesIOS />
         </p>
-        {!ios && (
-          <Button size="small" variant="primary" onClick={() => void instalar()}>
-            Instalar
-          </Button>
-        )}
         <IconButton icon={XIcon} aria-label="Ahora no" variant="invisible" size="small" onClick={descartar} />
       </Flash>
     </aside>
