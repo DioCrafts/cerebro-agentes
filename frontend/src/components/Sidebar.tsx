@@ -25,7 +25,7 @@ export function Sidebar({ conversations, activeId, onSelect, onDelete, onNewCons
       {open && <button type="button" aria-label="Cerrar el menú" className="fixed inset-0 z-20 bg-ink/40 lg:hidden" onClick={onClose} />}
       <aside
         className={clsx(
-          "fixed inset-y-0 left-0 z-30 flex w-[290px] flex-shrink-0 flex-col gap-5 border-r border-line bg-paper px-4 py-5 transition-transform duration-200 lg:static lg:translate-x-0",
+          "fixed inset-y-0 left-0 z-30 flex w-[290px] shrink-0 flex-col gap-5 border-r border-line bg-paper px-4 py-5 transition-transform duration-200 lg:static lg:translate-x-0",
           open ? "translate-x-0 shadow-pop" : "-translate-x-full",
         )}
       >
@@ -66,7 +66,7 @@ export function Sidebar({ conversations, activeId, onSelect, onDelete, onNewCons
                         active ? "border-primary bg-primary-soft" : "border-transparent hover:bg-line/60",
                       )}
                     >
-                      <MessageSquare size={14} aria-hidden className={clsx("mt-1 flex-shrink-0", active ? "text-primary-dark" : "text-muted")} />
+                      <MessageSquare size={14} aria-hidden className={clsx("mt-1 shrink-0", active ? "text-primary-dark" : "text-muted")} />
                       <span className="min-w-0">
                         <span className={clsx("block truncate text-[14px]", active ? "font-semibold text-primary-dark" : "text-ink-soft")}>
                           {c.title}
@@ -102,7 +102,7 @@ export function Sidebar({ conversations, activeId, onSelect, onDelete, onNewCons
         </div>
 
         <p className="flex gap-2 text-[12px] leading-relaxed text-muted">
-          <Info size={14} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
+          <Info size={14} aria-hidden className="mt-0.5 shrink-0 text-grounding-uncited-fg" />
           <span>
             <strong className="font-semibold text-ink-soft">Herramienta de apoyo.</strong> No sustituye el asesoramiento
             fiscal profesional ni el criterio oficial.

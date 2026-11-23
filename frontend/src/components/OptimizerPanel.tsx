@@ -63,7 +63,7 @@ export function OptimizerPanel({ open, onClose, caseId, facts, taxPeriod, onSave
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 id="opt-title" className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-                <PiggyBank size={18} aria-hidden className="flex-shrink-0 text-primary-dark" />
+                <PiggyBank size={18} aria-hidden className="shrink-0 text-primary-dark" />
                 Optimizar mis impuestos
               </h2>
               <p className="text-[12.5px] leading-snug text-muted">La mejor combinación de lo que la ley te deja elegir, para tu IRPF de {computed?.plan.ejercicio ?? year}</p>
@@ -116,7 +116,7 @@ export function OptimizerPanel({ open, onClose, caseId, facts, taxPeriod, onSave
         <div ref={scrollRef} role="tabpanel" id="opt-tabpanel" aria-labelledby={`opt-tab-${tab}`} className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4 sm:px-5">
           {error && tab === "plan" && (
             <p id="opt-error" role="alert" className="mb-4 flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+              <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
               <span>
                 {error}
                 {computed && <span className="block text-[12px] text-muted">El plan de la pestaña «Tu plan» es el del último cálculo que salió bien.</span>}

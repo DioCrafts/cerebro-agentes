@@ -27,7 +27,7 @@ export function PalancaCard({ p, index, caseId, open, onToggle, onRecalcular }: 
     return (
     <li className="rounded-xl border border-line bg-surface px-4 py-3.5 shadow-card">
       <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-primary-soft text-[12.5px] font-bold text-primary-dark">
+        <span aria-hidden className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-primary-soft text-[12.5px] font-bold text-primary-dark">
           {index + 1}
         </span>
         <div className="min-w-0 flex-1">

@@ -9,7 +9,7 @@ import type { Declaracion } from "../../apiOptimizador";
 import type { FieldDef } from "../../lib/optimizador/campos";
 import { eur, resultadoTexto, splitQuotes } from "../../lib/optimizador/textos";
 
-export const INPUT = "w-full rounded-lg border bg-surface px-3 py-2 text-[16px] text-ink focus:outline-none sm:text-[14px]";
+export const INPUT = "w-full rounded-lg border bg-surface px-3 py-2 text-[16px] text-ink focus:outline-hidden sm:text-[14px]";
 
 export function Field({
   id,
@@ -38,7 +38,7 @@ export function Field({
           checked={value === "true"}
           onChange={(e) => onChange(String(e.target.checked))}
           aria-describedby={describedBy}
-          className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[rgb(var(--primary))]"
+          className="mt-0.5 h-4 w-4 shrink-0 accent-[rgb(var(--primary))]"
         />
         <span>
           <span className={clsx("text-[13.5px]", dirty ? "font-semibold text-primary-dark" : "text-ink")}>{def.label}</span>
@@ -133,7 +133,7 @@ export function Collapsible({
         )}
       >
         <span className="min-w-0">{title}</span>
-        <ChevronDown size={16} aria-hidden className="flex-shrink-0 transition group-open:rotate-180" />
+        <ChevronDown size={16} aria-hidden className="shrink-0 transition group-open:rotate-180" />
       </summary>
       <div className={clsx("border-t px-4 py-3", tone === "warn" ? "border-grounding-uncited-bd" : "border-line")}>{children}</div>
     </details>
@@ -173,7 +173,7 @@ export function Trace({ declaracion, title }: { declaracion: Declaracion; title:
         <tbody>
           {r.lineas.map((line, i) => (
             <tr key={i} className="border-b border-line last:border-0">
-              <td className="py-1.5 pr-3 text-ink-soft [overflow-wrap:anywhere]">
+              <td className="py-1.5 pr-3 text-ink-soft wrap-anywhere">
                 {line.concepto}
                 {line.referencia && <span className="block text-[11px] text-muted">{line.referencia}</span>}
               </td>

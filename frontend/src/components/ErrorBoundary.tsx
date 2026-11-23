@@ -25,7 +25,7 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (!this.state.error) return this.props.children;
     return (
-      <div role="alert" className="flex h-[100dvh] w-screen flex-col items-center justify-center gap-3 bg-paper px-6 text-center">
+      <div role="alert" className="flex h-dvh w-screen flex-col items-center justify-center gap-3 bg-paper px-6 text-center">
         <p className="font-serif text-[19px] font-bold text-ink">Algo ha fallado al mostrar la aplicación</p>
         <p className="max-w-md text-[13.5px] leading-snug text-ink-soft">
           Tus consultas siguen guardadas en este navegador. Recarga la página para continuar; si vuelve a pasar, avísanos.

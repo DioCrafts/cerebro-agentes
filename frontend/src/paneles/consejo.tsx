@@ -74,7 +74,7 @@ function Nueva({ caseId, onCreada }: { caseId: string; onCreada: (id: string) =>
         value={pregunta}
         placeholder="¿Amortizo la hipoteca o invierto los ahorros?"
         onChange={(e) => setPregunta(e.target.value)}
-        className="block w-full rounded border border-line bg-paper px-2 py-1.5 text-[13.5px] text-ink"
+        className="block w-full rounded-sm border border-line bg-paper px-2 py-1.5 text-[13.5px] text-ink"
       />
       <label htmlFor={idPreferencia} className="block text-[12.5px] text-ink-soft">
         Hacia dónde te inclinas (opcional: el consejo no lo verá hasta revisar sus propuestas)
@@ -84,7 +84,7 @@ function Nueva({ caseId, onCreada }: { caseId: string; onCreada: (id: string) =>
         maxLength={600}
         value={preferencia}
         onChange={(e) => setPreferencia(e.target.value)}
-        className="block w-full rounded border border-line bg-paper px-2 py-1.5 text-[13px] text-ink"
+        className="block w-full rounded-sm border border-line bg-paper px-2 py-1.5 text-[13px] text-ink"
       />
       <p className="text-[11.5px] leading-snug text-muted">Te diré antes cuánto cuesta; nada se ejecuta hasta que lo confirmes.</p>
       <button
@@ -225,7 +225,7 @@ export default function PanelConsejo({ ctx, open, onClose }: PropsPanel) {
                     <button
                       type="button"
                       onClick={() => setAbierta(s.id)}
-                      className="block w-full rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-card transition hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                      className="block w-full rounded-xl border border-line bg-surface px-4 py-3 text-left shadow-card transition hover:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary"
                     >
                       <span className="flex flex-wrap items-center gap-2 text-[12px] text-muted">
                         <Insignia sesion={s} />

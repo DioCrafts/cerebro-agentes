@@ -39,7 +39,7 @@ export function ObligationCard({ obligation }: { obligation: ObligationCandidate
     <article className={clsx("rounded-xl border border-l-[5px] border-line bg-surface px-4 py-4 shadow-card sm:px-5", BORDER_BY_RISK[risk])}>
       <div className="flex flex-wrap items-start justify-between gap-2">
         <h4 className="text-[16px] font-bold text-ink">{obligation.title}</h4>
-        <span className={clsx("flex-shrink-0 rounded-pill px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.06em]", BADGE_BY_RISK[risk])}>
+        <span className={clsx("shrink-0 rounded-pill px-2.5 py-1 text-[11px] font-bold uppercase tracking-[0.06em]", BADGE_BY_RISK[risk])}>
           {RISK_LABEL[risk]}
         </span>
       </div>
@@ -65,7 +65,7 @@ export function ObligationCard({ obligation }: { obligation: ObligationCandidate
           )}
           {sources.length > 0 && (
             <div className="flex flex-col gap-0.5 sm:flex-row sm:gap-2">
-              <dt className="flex-shrink-0 text-muted">Base normativa</dt>
+              <dt className="shrink-0 text-muted">Base normativa</dt>
               <dd className="text-ink-soft">{sources.join(" · ")}</dd>
             </div>
           )}

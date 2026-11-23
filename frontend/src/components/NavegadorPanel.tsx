@@ -25,7 +25,7 @@ import {
 } from "../apiNavegador";
 
 const FIELD =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
+  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 const PRIMARY =
   "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
 const QUIET =
@@ -479,7 +479,7 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
       {tarea.resumen_envio.length > 0 && (
         <div>
           <h4 className="text-[13px] font-bold text-ink">Lo que se enviaría (no se ha enviado)</h4>
-          <dl className="mt-1 grid grid-cols-[auto,1fr] gap-x-3 gap-y-0.5 text-[12.5px]">
+          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[12.5px]">
             {tarea.resumen_envio.map((f, i) => (
               <div key={i} className="contents">
                 <dt className="text-muted">{f.etiqueta}</dt>

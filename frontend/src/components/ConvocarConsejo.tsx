@@ -31,9 +31,9 @@ import { errorMessage } from "../lib/memoria";
 import { DictamenConsejo, ProgresoConsejo } from "./DictamenConsejo";
 
 const PRIMARIO =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-9 items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-dark disabled:opacity-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 const SECUNDARIO =
-  "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[13px] font-semibold text-ink-soft transition hover:border-primary hover:text-ink disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
+  "inline-flex min-h-9 items-center gap-1.5 rounded-lg border border-line px-3 py-1.5 text-[13px] font-semibold text-ink-soft transition hover:border-primary hover:text-ink disabled:opacity-50 focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary";
 
 interface ConvocarConsejoProps {
   caseId: string;
@@ -120,7 +120,7 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
             </p>
           )}
           <p className="mt-2 flex items-start gap-1.5 text-[12px] leading-snug text-muted">
-            <ShieldCheck size={13} aria-hidden className="mt-0.5 flex-shrink-0 text-primary-dark" />
+            <ShieldCheck size={13} aria-hidden className="mt-0.5 shrink-0 text-primary-dark" />
             Nunca gasta más del tope: si llega a él, para y te lo dice. Corre en segundo plano y te aviso al terminar.
           </p>
           <div className="mt-3 flex flex-wrap gap-2">

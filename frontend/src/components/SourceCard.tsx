@@ -46,13 +46,13 @@ function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
         highlighted ? "animate-flash border-primary" : "border-line",
       )}
     >
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
         <Icon size={20} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
         <h4 className="font-semibold leading-snug text-ink">
           {citation.fragment_id && (
-            <span className="mr-2 rounded bg-primary-soft px-1.5 py-0.5 font-mono text-[12px] text-primary-dark">
+            <span className="mr-2 rounded-sm bg-primary-soft px-1.5 py-0.5 font-mono text-[12px] text-primary-dark">
               {citation.fragment_id}
             </span>
           )}

@@ -13,7 +13,7 @@ export function DoctrineNotice({ conflicts, unsettled }: DoctrineNoticeProps) {
   return (
     <div role="note" className="mt-3 rounded-xl border border-grounding-abstain-bd bg-grounding-abstain-bg px-4 py-3">
       <p className="flex items-center gap-2 text-[14px] font-bold text-ink">
-        <Scale size={17} aria-hidden className="flex-shrink-0 text-grounding-abstain-fg" />
+        <Scale size={17} aria-hidden className="shrink-0 text-grounding-abstain-fg" />
         {unsettled ? "No hay criterio firme sobre esta cuestión" : "Atención a la vigencia de las fuentes"}
       </p>
       <p className="mt-1 text-[13px] leading-snug text-ink-soft">

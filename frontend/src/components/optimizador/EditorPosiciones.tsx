@@ -142,7 +142,7 @@ function FilaPosicion({ o, pos, index }: { o: Optimizador; pos: Position; index:
       </div>
       {pos.clase === "perdida" && (
         <p className="mt-2.5 flex gap-1.5 rounded-lg bg-grounding-uncited-bg px-2.5 py-2 text-[12px] leading-snug text-ink-soft">
-          <Info size={14} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
+          <Info size={14} aria-hidden className="mt-0.5 shrink-0 text-grounding-uncited-fg" />
           <span>{reglaRecompra(pos.tipo)}</span>
         </p>
       )}

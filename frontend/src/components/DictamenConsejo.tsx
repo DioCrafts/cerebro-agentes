@@ -92,7 +92,7 @@ export function ProgresoConsejo({ sesion }: { sesion: SesionConsejo }) {
               size={15}
               aria-hidden
               className={clsx(
-                "mt-0.5 flex-shrink-0",
+                "mt-0.5 shrink-0",
                 estado === "en_curso" && "animate-spin text-primary-dark",
                 estado === "hecha" && "text-grounding-cited-fg",
                 estado === "fallo" && "text-risk-high-fg",
@@ -187,9 +187,9 @@ function CifrasConProcedencia({ cifras, usadas }: { cifras: CifraConsejo[]; usad
       <ul className="divide-y divide-line border-t border-line">
         {ordenadas.map((c) => (
           <li key={c.id} className="flex flex-col gap-0.5 px-3 py-2 text-[13px] sm:flex-row sm:items-baseline sm:gap-3">
-            <span className="font-mono text-[13px] font-semibold tabular-nums text-ink sm:w-36 sm:flex-shrink-0">{c.literal || c.valor}</span>
+            <span className="font-mono text-[13px] font-semibold tabular-nums text-ink sm:w-36 sm:shrink-0">{c.literal || c.valor}</span>
             <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-ink-soft">
-              <Calculator size={13} aria-hidden className="relative top-0.5 flex-shrink-0 text-primary-dark" />
+              <Calculator size={13} aria-hidden className="relative top-0.5 shrink-0 text-primary-dark" />
               <span className="font-medium capitalize">{c.especialista}</span>
               <span className="text-muted">· {c.concepto}</span>
               {c.herramienta && <span className="text-muted">· cálculo «{c.herramienta}»</span>}
@@ -311,7 +311,7 @@ function Deliberacion({ sesion, dictamen }: { sesion: SesionConsejo; dictamen: D
             type="button"
             onClick={() => setRevelar((v) => !v)}
             aria-pressed={revelar}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-[12.5px] font-semibold text-ink-soft hover:border-primary hover:text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+            className="inline-flex items-center gap-1.5 rounded-lg border border-line px-2.5 py-1 text-[12.5px] font-semibold text-ink-soft hover:border-primary hover:text-ink focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary"
           >
             {revelar ? <EyeOff size={13} aria-hidden /> : <Eye size={13} aria-hidden />}
             {revelar ? "Ocultar quién era quién" : "Revelar quién era quién"}
@@ -421,7 +421,7 @@ export function DictamenConsejo({ sesion }: { sesion: SesionConsejo }) {
     <div>
       {avisoParcial && (
         <div role="note" className="mb-3 flex gap-2 rounded-xl border border-grounding-abstain-bd bg-grounding-abstain-bg px-4 py-3 text-grounding-abstain-fg">
-          <TriangleAlert size={16} aria-hidden className="mt-0.5 flex-shrink-0" />
+          <TriangleAlert size={16} aria-hidden className="mt-0.5 shrink-0" />
           <p className="text-[13px] leading-snug">
             <span className="block font-bold">Dictamen parcial</span>
             {avisoParcial.slice(PREFIJO_PARCIAL.length).trim() || "La sesión se detuvo antes de terminar."} Lo que sigue lo ha resumido
@@ -501,7 +501,7 @@ export function DictamenConsejo({ sesion }: { sesion: SesionConsejo }) {
         <ul className="mt-4 space-y-1 rounded-lg border border-grounding-abstain-bd bg-grounding-abstain-bg px-3 py-2 text-[12.5px] text-grounding-abstain-fg">
           {avisos.map((a, i) => (
             <li key={i} className="flex gap-1.5">
-              <TriangleAlert size={13} aria-hidden className="mt-0.5 flex-shrink-0" />
+              <TriangleAlert size={13} aria-hidden className="mt-0.5 shrink-0" />
               {a}
             </li>
           ))}

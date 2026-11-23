@@ -153,7 +153,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
   };
 
   return (
-    <div className="flex h-[100dvh] w-screen overflow-hidden">
+    <div className="flex h-dvh w-screen overflow-hidden">
       <Sidebar
         conversations={consulta.conversations.filter((c) => c.turns.length > 0)}
         activeId={activeId}

@@ -43,7 +43,7 @@ export function DeadlinesSection({ caseId, refreshKey }: { caseId: string | null
               return (
                 <li key={d.id} className="px-3.5 py-2.5">
                   <div className="flex items-start gap-2.5">
-                    <CalendarClock size={15} aria-hidden className={clsx("mt-0.5 flex-shrink-0", urgent ? "text-risk-high-fg" : "text-primary-dark")} />
+                    <CalendarClock size={15} aria-hidden className={clsx("mt-0.5 shrink-0", urgent ? "text-risk-high-fg" : "text-primary-dark")} />
                     <div className="min-w-0">
                       <p className="text-[13.5px] font-semibold text-ink">
                         {formatDate(d.fecha)}
@@ -163,7 +163,7 @@ export function DocumentSection({ caseId, disabled, onApply }: DocumentSectionPr
 
       {error && (
         <p role="alert" className="mt-2 flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-          <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+          <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
           {error}
         </p>
       )}

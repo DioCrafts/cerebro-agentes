@@ -260,7 +260,7 @@ const renderUserField = (def: FieldDef) => (
                   id={v === "si" ? "opt-acepta_iliquidez" : undefined}
                   checked={iliquidez === v}
                   onChange={() => setForm((f) => ({ ...f, iliquidezEdit: v }))}
-                  className="mt-0.5 h-4 w-4 flex-shrink-0 accent-[rgb(var(--primary))]"
+                  className="mt-0.5 h-4 w-4 shrink-0 accent-[rgb(var(--primary))]"
                 />
                 {label}
               </label>
@@ -352,13 +352,13 @@ const renderUserField = (def: FieldDef) => (
       <div className="sticky bottom-0 z-10 -mx-4 border-t border-line bg-paper px-4 pb-1 pt-3 sm:-mx-5 sm:px-5">
         {error && (
           <p id="opt-error" role="alert" className="mb-2 flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-            <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+            <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
             <span>{error}</span>
           </p>
         )}
         {invalid ? (
           <p role="status" className="mb-2 flex gap-1.5 text-[12.5px] font-semibold text-risk-high-fg">
-            <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0" />
+            <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
             Hay {problemIds.length === 1 ? "un dato" : `${problemIds.length} datos`} que revisar (en rojo).
           </p>
         ) : (

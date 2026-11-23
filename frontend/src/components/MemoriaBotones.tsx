@@ -95,7 +95,7 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
           {abierto === "recuerdamelo" ? (
             <label className="block text-[12.5px] text-ink-soft">
               Vuelve a avisarme{" "}
-              <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="rounded border border-line bg-surface px-1.5 py-0.5 text-[12.5px] text-ink">
+              <select value={dias} onChange={(e) => setDias(Number(e.target.value))} className="rounded-sm border border-line bg-surface px-1.5 py-0.5 text-[12.5px] text-ink">
                 {PLAZOS.map((p) => (
                   <option key={p.dias} value={p.dias}>
                     {p.label}
@@ -112,7 +112,7 @@ export function MemoriaBotones({ caseId, notificationId, palanca, onDone }: Memo
                 maxLength={300}
                 onChange={(e) => setRazon(e.target.value)}
                 placeholder={abierto === "no_me_interesa" ? "p. ej. tengo permanencia hasta marzo" : ""}
-                className="mt-1 block w-full rounded border border-line bg-surface px-2 py-1 text-[13px] text-ink"
+                className="mt-1 block w-full rounded-sm border border-line bg-surface px-2 py-1 text-[13px] text-ink"
               />
             </label>
           )}

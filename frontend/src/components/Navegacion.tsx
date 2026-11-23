@@ -30,7 +30,7 @@ function useMedia(query: string): boolean {
 }
 
 const BOTON =
-  "relative flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2 text-[13.5px] font-semibold text-ink-soft transition hover:border-primary hover:text-primary-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:px-3";
+  "relative flex items-center gap-2 rounded-lg border border-line bg-surface px-2 py-2 text-[13.5px] font-semibold text-ink-soft transition hover:border-primary hover:text-primary-dark focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:px-3";
 
 function Insignia({ valor, primaria }: { valor: number; primaria: boolean }) {
   return primaria ? (
@@ -81,7 +81,7 @@ export function Navegacion({ paneles, insignias, abierto, onAbrir }: NavegacionP
         aria-expanded={abierto === p.id}
         title={p.titulo}
         data-panel={p.id}
-        className={clsx(BOTON, soloIcono && "!px-2")}
+        className={clsx(BOTON, soloIcono && "px-2!")}
       >
         <Icono size={16} aria-hidden />
         {!soloIcono && <span className={clsx(esExpediente ? "hidden sm:inline" : "hidden md:inline")}>{p.etiqueta}</span>}
@@ -208,7 +208,7 @@ function MenuMas({ paneles, insignias, onAbrir }: { paneles: DefinicionPanel[]; 
                     cerrar(true);
                     onAbrir(p.id);
                   }}
-                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[14.5px] font-semibold text-ink-soft hover:bg-line/60 hover:text-primary-dark focus:bg-line/60 focus:outline-none sm:py-2 sm:text-[13.5px]"
+                  className="flex w-full items-center gap-3 rounded-lg px-3 py-3 text-left text-[14.5px] font-semibold text-ink-soft hover:bg-line/60 hover:text-primary-dark focus:bg-line/60 focus:outline-hidden sm:py-2 sm:text-[13.5px]"
                 >
                   <Icono size={18} aria-hidden />
                   <span className="flex-1">

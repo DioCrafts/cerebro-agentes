@@ -9,7 +9,7 @@ import { newId } from "../../lib/id";
 import { ETAPA_LABEL, factLabel } from "../../lib/presentation";
 import { CHILD_EXPENSES, type ChildRow, admitsAssistance, childAge, emptyChild } from "../../lib/simulador/descendientes";
 
-const SMALL_INPUT_CLASS = "w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[13.5px]";
+const SMALL_INPUT_CLASS = "w-full rounded-lg border border-line bg-surface px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[13.5px]";
 
 interface Props {
   rows: ChildRow[];
@@ -138,7 +138,7 @@ function FilaHijo({ row, index, year, problem, onChange, onRemove }: FilaProps) 
           </label>
         )}
       </div>
-      <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Gastos de este hijo en el año</p>
+      <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-widest text-muted">Gastos de este hijo en el año</p>
       <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
         {expenses.map((expense) => (
           <label key={expense.name} className="block">

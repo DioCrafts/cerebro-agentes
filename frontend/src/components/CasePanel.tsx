@@ -33,7 +33,7 @@ interface CasePanelProps {
 const HIDDEN_FACTS = new Set(["menciona_ingresos"]);
 
 const FIELD_CLASS =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
+  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 
 interface EditorProps {
   fact: Pick<Fact, "name" | "value">;
@@ -213,7 +213,7 @@ export function CasePanel({ open, onClose, facts, taxPeriod, obligations, caseId
                     <li key={row.name} className="flex items-center gap-1 py-2.5 pl-3.5 pr-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] text-muted">{label}</p>
-                        <p className={structured ? "text-[14px] font-medium leading-snug text-ink [overflow-wrap:anywhere]" : "truncate text-[14px] font-medium text-ink"}>
+                        <p className={structured ? "text-[14px] font-medium leading-snug text-ink wrap-anywhere" : "truncate text-[14px] font-medium text-ink"}>
                           {factValue(row)}
                         </p>
                       </div>

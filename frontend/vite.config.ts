@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 
@@ -68,7 +69,7 @@ const proxy = {
 };
 
 export default defineConfig({
-  plugins: [react(), serviceWorker()],
+  plugins: [react(), tailwindcss(), serviceWorker()],
   server: {
     port: 5173,
     proxy,

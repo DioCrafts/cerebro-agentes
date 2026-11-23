@@ -19,7 +19,7 @@ function Rows({ rows }: { rows: ActivityRow[] }) {
         const Icon = ROW_ICON[row.kind];
         return (
           <li key={i} className="flex gap-2.5 text-[13.5px] leading-snug">
-            <Icon size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-primary-dark" />
+            <Icon size={15} aria-hidden className="mt-0.5 shrink-0 text-primary-dark" />
             <div className="min-w-0">
               <p className="text-ink-soft">
                 {row.kind === "search" && !row.text.startsWith("¿") ? <span>Búsqueda: «{row.text}»</span> : row.text}

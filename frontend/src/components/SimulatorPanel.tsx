@@ -28,7 +28,7 @@ interface SimulatorPanelProps {
   busy: boolean;
   seed?: SimulatorSeed | null;
 }
-const INPUT_CLASS = "w-full rounded-lg border bg-surface px-3 py-2 text-[16px] text-ink focus:outline-none sm:text-[14px]";
+const INPUT_CLASS = "w-full rounded-lg border bg-surface px-3 py-2 text-[16px] text-ink focus:outline-hidden sm:text-[14px]";
 
 export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSaveFact, busy, seed = null }: SimulatorPanelProps) {
   const s = useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed });
@@ -61,7 +61,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
         <div className="flex items-start justify-between gap-3">
           <p className="text-[14px] font-semibold text-ink">{benefit.nombre}</p>
           {benefit.ahorro_estimado && Number(benefit.ahorro_estimado) > 0 && (
-            <span className="flex-shrink-0 rounded-pill bg-grounding-cited-bg px-2 py-0.5 text-[12px] font-bold text-grounding-cited-fg">
+            <span className="shrink-0 rounded-pill bg-grounding-cited-bg px-2 py-0.5 text-[12px] font-bold text-grounding-cited-fg">
               hasta −{formatMoney(benefit.ahorro_estimado)}
             </span>
           )}
@@ -188,7 +188,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
         <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-5 pt-3">
           {error && !invalid && (
             <p role="alert" className="flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+              <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
               <span>
                 {error}
                 {simulation && <span className="block text-[12px] text-muted">El resultado de abajo es el del último cálculo válido.</span>}
@@ -204,7 +204,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
 
           {sim && (
             <section aria-live="polite" className="sticky top-0 z-10 rounded-xl border border-line bg-surface px-4 py-4 shadow-pop">
-              <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">Resultado estimado</p>
+              <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">Resultado estimado</p>
               <p className={clsx("mt-1 font-serif text-[30px] font-bold leading-none", resultado > 0 ? "text-ink" : "text-grounding-cited-fg")}>
                 {formatMoney(Math.abs(resultado))}
                 <span className="ml-2 text-[14px] font-semibold text-ink-soft">{resultado > 0 ? "a pagar" : resultado < 0 ? "a devolver" : ""}</span>
@@ -214,7 +214,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
               </p>
               {invalid ? (
                 <p role="status" className="mt-2 flex gap-2 rounded-lg bg-risk-high-bg px-3 py-1.5 text-[13px] font-semibold text-risk-high-fg">
-                  <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0" />
+                  <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
                   Hay datos que no cuadran (marcados en rojo más abajo). Este resultado no incluye tus últimos cambios.
                 </p>
               ) : (
@@ -249,7 +249,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
                 {group.title === "Familia" && (
                   <label className="block sm:col-span-2">
                     <span className="text-[12.5px] text-ink-soft">Comunidad autónoma</span>
-                    <select value={comunidad} onChange={(e) => acciones.setComunidad(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]">
+                    <select value={comunidad} onChange={(e) => acciones.setComunidad(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]">
                       {COMUNIDADES.map((c) => (
                         <option key={c.value} value={c.value}>
                           {c.label}
@@ -270,7 +270,7 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
                 {group.title === "Familia" && (
                   <label className="block sm:col-span-2">
                     <span className="text-[12.5px] text-ink-soft">Tipo de declaración</span>
-                    <select value={tributacion} onChange={(e) => acciones.setTributacion(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]">
+                    <select value={tributacion} onChange={(e) => acciones.setTributacion(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]">
                       {TRIBUTACION.map((t) => (
                         <option key={t.value} value={t.value}>
                           {t.label}

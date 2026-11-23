@@ -84,7 +84,7 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
       {stale && (
         <div role="status" className="sticky top-0 z-10 rounded-xl border border-grounding-uncited-bd bg-grounding-uncited-bg px-4 py-3 shadow-pop">
           <p className="flex gap-2 text-[13px] font-semibold text-grounding-uncited-fg">
-            <TriangleAlert size={16} aria-hidden className="mt-0.5 flex-shrink-0" />
+            <TriangleAlert size={16} aria-hidden className="mt-0.5 shrink-0" />
             Plan desactualizado: has cambiado datos desde que se calculó.
           </p>
           <div className="mt-2 flex flex-wrap gap-2">
@@ -109,9 +109,9 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
           ref={headlineRef}
           tabIndex={-1}
           aria-labelledby="opt-headline"
-          className="scroll-mt-4 rounded-xl border border-line bg-surface px-4 py-4 shadow-pop focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          className="scroll-mt-4 rounded-xl border border-line bg-surface px-4 py-4 shadow-pop focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
         >
-          <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">
+          <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">
             Tu plan para el IRPF {plan.ejercicio}
             {stale && <span className="ml-1 normal-case tracking-normal text-grounding-uncited-fg">· desactualizado</span>}
           </p>
@@ -139,7 +139,7 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
           </dl>
           {(diferidas.length > 0 || gastos.length > 0) && (
             <p className="mt-3 flex gap-2 rounded-lg border border-grounding-uncited-bd bg-grounding-uncited-bg px-3 py-2 text-[12.5px] leading-snug text-ink-soft">
-              <Info size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
+              <Info size={15} aria-hidden className="mt-0.5 shrink-0 text-grounding-uncited-fg" />
               <span>
                 <span className="font-semibold text-ink">No todo es ahorro definitivo.</span>
                 {diferidas.length > 0 && (
@@ -176,7 +176,7 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
 
         {plan.busqueda.metodo === "heuristica" && (
           <p role="note" className="flex gap-2 rounded-xl border border-grounding-uncited-bd bg-grounding-uncited-bg px-4 py-3 text-[13px] leading-snug text-ink-soft">
-            <TriangleAlert size={16} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
+            <TriangleAlert size={16} aria-hidden className="mt-0.5 shrink-0 text-grounding-uncited-fg" />
             <span>
               <span className="font-semibold text-ink">Búsqueda aproximada ({plan.busqueda.evaluaciones.toLocaleString("es-ES")} cálculos).</span> {plan.busqueda.nota}
             </span>
@@ -291,7 +291,7 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
               <tbody>
                 {plan.cambios_traza.map((c, i) => (
                   <tr key={i} className="border-t border-line align-top">
-                    <td className="py-1.5 pr-2 text-ink-soft [overflow-wrap:anywhere]">
+                    <td className="py-1.5 pr-2 text-ink-soft wrap-anywhere">
                       {c.concepto}
                       {c.referencia && <span className="block text-[11px] text-muted">{c.referencia}</span>}
                     </td>
@@ -384,10 +384,10 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
             )}
             {plan.citas.length > 0 && (
               <>
-                <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-[0.1em] text-muted">Referencias del cálculo</p>
+                <p className="mb-1 mt-3 text-[11px] font-semibold uppercase tracking-widest text-muted">Referencias del cálculo</p>
                 <ul className="list-disc space-y-1 pl-4 text-[12px] leading-snug text-ink-soft">
                   {plan.citas.map((c, i) => (
-                    <li key={i} className="[overflow-wrap:anywhere]">
+                    <li key={i} className="wrap-anywhere">
                       {c}
                     </li>
                   ))}
@@ -427,14 +427,14 @@ export function OptimizadorPlan({ o, caseId, puedeUsarEnSimulador, headlineRef }
               </>
             ) : (
               <p className="flex gap-1.5 text-[12.5px] leading-snug text-ink-soft">
-                <Info size={14} aria-hidden className="mt-0.5 flex-shrink-0 text-muted" />
+                <Info size={14} aria-hidden className="mt-0.5 shrink-0 text-muted" />
                 {simulador.motivo}
               </p>
             )}
           </div>
         )}
 
-        <p className="text-[11.5px] leading-relaxed text-muted [overflow-wrap:anywhere]">
+        <p className="text-[11.5px] leading-relaxed text-muted wrap-anywhere">
           Cada cifra sale de la calculadora del IRPF con los parámetros del ejercicio {plan.ejercicio}
           {plan.optimo.declaraciones[0] ? `: ${plan.optimo.declaraciones[0].resultado.fuente}` : ""}.
         </p>

@@ -152,7 +152,7 @@ function MoneyField({ field, values, onChange }: { field: FieldDef; values: Valu
           onChange={(e) => onChange(field.name, e.target.value)}
           inputMode="decimal"
           placeholder="0"
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-7 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-7 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted">€</span>
       </span>
@@ -269,7 +269,7 @@ function Detail({ lineas, avisos }: { lineas: CalcLine[]; avisos: string[] }) {
 function ResultCard({ title, amount, suffix, good, children }: { title: string; amount: string | number; suffix?: string; good?: boolean; children?: ReactNode }) {
   return (
     <section aria-live="polite" className="z-10 rounded-xl sm:sticky sm:top-0 border border-line bg-surface px-4 py-4 shadow-pop">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">{title}</p>
+      <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">{title}</p>
       <p className={clsx("mt-1 font-serif text-[30px] font-bold leading-none", good ? "text-grounding-cited-fg" : "text-ink")}>
         {formatMoney(amount)}
         {suffix && <span className="ml-2 text-[14px] font-semibold text-ink-soft">{suffix}</span>}
@@ -282,7 +282,7 @@ function ResultCard({ title, amount, suffix, good, children }: { title: string; 
 function ErrorNote({ message }: { message: string }) {
   return (
     <p role="alert" className="flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-      <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+      <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
       {message}
     </p>
   );
@@ -295,7 +295,7 @@ function CeutaSelect({ value, onChange }: { value: string; onChange: (value: str
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+        className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
       >
         <option value="">No</option>
         <option value="ceuta">Sí, en Ceuta</option>
@@ -596,7 +596,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
             <select
               value={discapacidad}
               onChange={(e) => setDiscapacidad(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
             >
               <option value="no">No</option>
               <option value="si">Sí</option>
@@ -761,7 +761,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
                   aria-label="Ejercicio"
                   value={ejercicio}
                   onChange={(e) => setEjercicioEdit(Number(e.target.value))}
-                  className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-primary focus:outline-none"
+                  className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-primary focus:outline-hidden"
                 >
                   {ejercicios.map((year) => (
                     <option key={year} value={year}>

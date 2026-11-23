@@ -73,7 +73,7 @@ function Campo({
   );
 }
 
-const INPUT = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-primary";
+const INPUT = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-hidden focus:border-primary";
 
 function Cita({ texto }: { texto: string }) {
   return (
@@ -317,12 +317,12 @@ export function PlanificadorPanel({ open, onClose, caseId, taxPeriod }: Planific
       <div className="flex flex-col gap-4">
         {stale && (
           <p className="flex gap-2 rounded-lg border border-grounding-uncited-bd bg-grounding-uncited-bg px-3 py-2 text-[13px] text-ink-soft">
-            <Info size={15} aria-hidden className="mt-0.5 flex-shrink-0" />
+            <Info size={15} aria-hidden className="mt-0.5 shrink-0" />
             Has cambiado los datos: este plan es del cálculo anterior. Vuelve a calcular.
           </p>
         )}
         <section aria-labelledby="plan-titular" className="rounded-xl border-2 border-primary/40 bg-primary-soft px-4 py-3.5">
-          <h3 id="plan-titular" ref={headlineRef} tabIndex={-1} className="font-serif text-[17px] font-bold text-ink outline-none">
+          <h3 id="plan-titular" ref={headlineRef} tabIndex={-1} className="font-serif text-[17px] font-bold text-ink outline-hidden">
             Posición neta en {plan.horizonte_anos} {plan.horizonte_anos === 1 ? "año" : "años"}: {eur(v.total)}
           </h3>
           <p className="mt-1 text-[13px] leading-snug text-ink-soft">
@@ -573,7 +573,7 @@ export function PlanificadorPanel({ open, onClose, caseId, taxPeriod }: Planific
           <div className="flex items-start justify-between gap-2">
             <div className="min-w-0">
               <h2 id="plan-title" className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-                <Scale size={18} aria-hidden className="flex-shrink-0 text-primary-dark" />
+                <Scale size={18} aria-hidden className="shrink-0 text-primary-dark" />
                 Planificar el hogar
               </h2>
               <p className="text-[12.5px] leading-snug text-muted">¿Amortizar, aportar al plan, donar o guardar? El mejor reparto de tu dinero</p>
@@ -620,7 +620,7 @@ export function PlanificadorPanel({ open, onClose, caseId, taxPeriod }: Planific
         <div role="tabpanel" id="plan-tabpanel" aria-labelledby={`plan-tab-${tab}`} className="flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-6 sm:px-5">
           {error && tab === "plan" && (
             <p role="alert" className="mb-4 flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+              <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
               {error}
             </p>
           )}
