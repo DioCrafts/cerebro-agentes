@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // One lever of the plan: what to do, what it saves inside the plan and by itself, and its requirements.
 
 import { ChevronDown, CircleAlert } from "lucide-react";

@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Tus datos»: the figures (from the case or typed), the spouse's figures, the constraints and the
 // date of the plan. Everything typed is layered over the case until «Guardar en mi expediente».
 

@@ -46,10 +46,10 @@ export function BrandHeader({
     <div className="flex items-center gap-3 px-1 py-2">
       <Monogram size={48} />
       <div className="flex flex-col leading-tight">
-        <span className="font-serif text-[22px] font-bold text-ink tracking-tight">
+        <span className="text-xl font-semibold text-fg-default">
           {title}
         </span>
-        <span className="mt-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
+        <span className="mt-1 text-xs font-semibold uppercase text-fg-muted">
           {subtitle}
         </span>
       </div>

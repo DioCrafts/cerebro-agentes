@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // "Tu expediente": what the advisor has recorded about the user in this
 // conversation. Answers depend on these facts, so the user can see every one,
 // correct it in place, or remove it.

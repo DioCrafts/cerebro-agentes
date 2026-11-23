@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Small presentational pieces of «Optimizar mis impuestos»: a box of the form, a group, a
 // collapsible block, quoted law, a badge and the trace of one tax return.
 

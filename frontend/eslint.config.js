@@ -6,6 +6,8 @@ import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
+import ui from './eslint/solo-tokens.js'
+
 export default defineConfig([
   globalIgnores(['dist', 'pwa']),
   {
@@ -30,6 +32,13 @@ export default defineConfig([
       // Labels here wrap the box and its text in nested spans (label > span > span > text).
       'jsx-a11y/label-has-associated-control': ['error', { depth: 3 }],
     },
+  },
+  {
+    // The design system (docs/ui/sistema-de-diseno.md): only Primer tokens and Octicons. Files not yet
+    // migrated carry the comment `/* ui-legado */` and are skipped.
+    files: ['src/**/*.{ts,tsx}'],
+    plugins: { ui },
+    rules: { 'ui/solo-tokens': 'error' },
   },
   {
     files: ['**/*.test.{ts,tsx}', 'src/test/**'],

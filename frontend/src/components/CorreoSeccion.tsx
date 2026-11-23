@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Correo (Gmail)» inside the module's card in «Módulos»: connect/disconnect Gmail (read-only), sync, the
 // week's important mail, phishing warnings with their reasons, and the data the mail proposes to other
 // modules, which nothing writes until the user presses «Confirmar» here.

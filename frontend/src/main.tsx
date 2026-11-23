@@ -4,6 +4,7 @@ import './index.css'
 import App from './App.tsx'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import { iniciarPwa } from './lib/pwa'
+import { ProveedorUI } from './ui'
 
 // Installable app: service worker (production builds) and the install prompt.
 iniciarPwa()
@@ -13,8 +14,10 @@ if (!raiz) throw new Error('index.html has no #root element')
 
 createRoot(raiz).render(
   <StrictMode>
-    <ErrorBoundary>
-      <App />
-    </ErrorBoundary>
+    <ProveedorUI>
+      <ErrorBoundary>
+        <App />
+      </ErrorBoundary>
+    </ProveedorUI>
   </StrictMode>,
 )

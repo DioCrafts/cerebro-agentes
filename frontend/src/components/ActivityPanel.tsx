@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // What the advisor is doing / did for one answer. Live, it replaces the old
 // silent "Consultando…" with the actual searches as they happen; afterwards it
 // collapses into a "how I got here" disclosure under the answer.

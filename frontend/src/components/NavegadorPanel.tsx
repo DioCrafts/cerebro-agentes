@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // "Navegador": the browser agent. The user picks a task (download the Datadis consumption, prepare a
 // procedure in a sede), fills in its data, reads and accepts what the agent will do, and starts it. The
 // user logs in THEMSELVES in the browser window (or hands over a session for one run); then the agent's

@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The council's ruling («Dictamen del consejo») and its live progress.
 //
 //   · the recommendation and the council's confidence in plain words, the consensus, the agreement;

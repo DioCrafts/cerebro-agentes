@@ -1,0 +1,13 @@
+.iniciales {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  font-weight: var(--base-text-weight-semibold);
+  line-height: 1;
+  color: var(--fgColor-accent);
+  background: var(--bgColor-accent-muted);
+  border-radius: var(--borderRadius-full);
+  box-shadow: 0 0 0 var(--borderWidth-thin) var(--avatar-borderColor);
+  user-select: none;
+}

@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Two blocks of the case panel that talk to the server on their own:
 // upcoming deadlines, and "read my document" with confirm-before-save.
 

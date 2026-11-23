@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The user's privacy controls: consents, a copy of everything stored about
 // them, and erasing the account. Only exists when the backend has accounts.
 

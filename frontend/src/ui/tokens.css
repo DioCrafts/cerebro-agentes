@@ -1,0 +1,70 @@
+/*
+  Primer's tokens under Tailwind names, for the layout written with utilities (flex, gap, padding…).
+  Colours: text-fg-muted, bg-canvas-muted, border-border-default, bg-danger-muted, text-fg-danger…
+  Radii: rounded-small (3px), rounded-medium (6px), rounded-large (12px), rounded-full.
+  Shadows: shadow-resting-sm, shadow-resting-md, shadow-floating-sm, shadow-floating-md.
+  `inline`: the utilities read Primer's variables directly, so they follow the theme where they are used.
+
+  Spacing: Tailwind's step (4px) is Primer's (base-size-4): p-1 = 4px, p-2 = 8px, p-4 = 16px.
+  Banned in migrated files (eslint `ui/solo-tokens`): Tailwind's palette (bg-red-500, text-white…), the
+  app's legacy tokens (bg-paper, text-ink…) and literal colours (bg-[#fff]).
+*/
+@theme inline {
+  /* Tailwind's spacing step written into each utility: Primer's PageLayout defines its own `--spacing`,
+     which would otherwise leak into every p-*, gap-*, m-* inside the page. */
+  --spacing: 0.25rem;
+
+  --color-fg-default: var(--fgColor-default);
+  --color-fg-muted: var(--fgColor-muted);
+  --color-fg-on-emphasis: var(--fgColor-onEmphasis);
+  --color-fg-accent: var(--fgColor-accent);
+  --color-fg-success: var(--fgColor-success);
+  --color-fg-attention: var(--fgColor-attention);
+  --color-fg-danger: var(--fgColor-danger);
+  --color-fg-done: var(--fgColor-done);
+  --color-fg-neutral: var(--fgColor-neutral);
+  --color-fg-disabled: var(--fgColor-disabled);
+
+  --color-canvas-default: var(--bgColor-default);
+  --color-canvas-muted: var(--bgColor-muted);
+  --color-canvas-inset: var(--bgColor-inset);
+  --color-canvas-emphasis: var(--bgColor-emphasis);
+
+  --color-accent-emphasis: var(--bgColor-accent-emphasis);
+  --color-accent-muted: var(--bgColor-accent-muted);
+  --color-success-emphasis: var(--bgColor-success-emphasis);
+  --color-success-muted: var(--bgColor-success-muted);
+  --color-attention-emphasis: var(--bgColor-attention-emphasis);
+  --color-attention-muted: var(--bgColor-attention-muted);
+  --color-danger-emphasis: var(--bgColor-danger-emphasis);
+  --color-danger-muted: var(--bgColor-danger-muted);
+  --color-done-emphasis: var(--bgColor-done-emphasis);
+  --color-done-muted: var(--bgColor-done-muted);
+  --color-neutral-emphasis: var(--bgColor-neutral-emphasis);
+  --color-neutral-muted: var(--bgColor-neutral-muted);
+
+  --color-border-default: var(--borderColor-default);
+  --color-border-muted: var(--borderColor-muted);
+  --color-border-emphasis: var(--borderColor-emphasis);
+  --color-border-accent: var(--borderColor-accent-emphasis);
+  --color-border-accent-muted: var(--borderColor-accent-muted);
+  --color-border-success: var(--borderColor-success-emphasis);
+  --color-border-success-muted: var(--borderColor-success-muted);
+  --color-border-attention: var(--borderColor-attention-emphasis);
+  --color-border-attention-muted: var(--borderColor-attention-muted);
+  --color-border-danger: var(--borderColor-danger-emphasis);
+  --color-border-danger-muted: var(--borderColor-danger-muted);
+  --color-border-done: var(--borderColor-done-emphasis);
+  --color-border-done-muted: var(--borderColor-done-muted);
+  --color-border-neutral: var(--borderColor-neutral-emphasis);
+  --color-border-neutral-muted: var(--borderColor-neutral-muted);
+
+  --radius-small: var(--borderRadius-small);
+  --radius-medium: var(--borderRadius-medium);
+  --radius-large: var(--borderRadius-large);
+
+  --shadow-resting-sm: var(--shadow-resting-small);
+  --shadow-resting-md: var(--shadow-resting-medium);
+  --shadow-floating-sm: var(--shadow-floating-small);
+  --shadow-floating-md: var(--shadow-floating-medium);
+}

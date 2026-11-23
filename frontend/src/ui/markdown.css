@@ -1,0 +1,130 @@
+/*
+  Rendered Markdown with the look of a GitHub comment body (`.markdown-body`), on Primer tokens.
+  Used by <Markdown> (src/ui/Markdown.tsx) and by RichText (the advisor's answers, with their citations).
+  Not in a layer, like Primer's own component styles.
+*/
+.markdown-body {
+  font: var(--text-body-shorthand-medium);
+  font-family: var(--fontStack-sansSerif);
+  color: var(--fgColor-default);
+  overflow-wrap: break-word;
+}
+.markdown-body > :first-child {
+  margin-top: 0 !important;
+}
+.markdown-body > :last-child {
+  margin-bottom: 0 !important;
+}
+.markdown-body p,
+.markdown-body ul,
+.markdown-body ol,
+.markdown-body blockquote,
+.markdown-body table,
+.markdown-body pre {
+  margin-top: 0;
+  margin-bottom: var(--base-size-16);
+}
+.markdown-body h1,
+.markdown-body h2,
+.markdown-body h3,
+.markdown-body h4 {
+  margin-top: var(--base-size-24);
+  margin-bottom: var(--base-size-16);
+  font-weight: var(--base-text-weight-semibold);
+  line-height: 1.25;
+}
+.markdown-body h1 {
+  font-size: 2em;
+  padding-bottom: 0.3em;
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+.markdown-body h2 {
+  font-size: 1.5em;
+  padding-bottom: 0.3em;
+  border-bottom: var(--borderWidth-thin) solid var(--borderColor-muted);
+}
+.markdown-body h3 {
+  font-size: 1.25em;
+}
+.markdown-body h4 {
+  font-size: 1em;
+}
+.markdown-body ul,
+.markdown-body ol {
+  padding-left: 2em;
+}
+.markdown-body ul {
+  list-style: disc;
+}
+.markdown-body ol {
+  list-style: decimal;
+}
+.markdown-body li + li {
+  margin-top: 0.25em;
+}
+.markdown-body strong {
+  font-weight: var(--base-text-weight-semibold);
+}
+.markdown-body a {
+  color: var(--fgColor-accent);
+  text-decoration: underline;
+  text-underline-offset: 0.2rem;
+}
+.markdown-body code {
+  padding: 0.2em 0.4em;
+  margin: 0;
+  font-family: var(--fontStack-monospace);
+  font-size: 85%;
+  white-space: break-spaces;
+  background-color: var(--bgColor-neutral-muted);
+  border-radius: var(--borderRadius-medium);
+}
+.markdown-body blockquote {
+  padding: 0 1em;
+  color: var(--fgColor-muted);
+  border-left: 0.25em solid var(--borderColor-default);
+}
+.markdown-body hr {
+  height: 0.25em;
+  margin: var(--base-size-24) 0;
+  background-color: var(--borderColor-default);
+  border: 0;
+}
+
+/* A citation [F2] of an answer: a small monospace token that jumps to its source. */
+.markdown-body .cita {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 0.15em;
+  padding: 0 0.4em;
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  font-weight: var(--base-text-weight-semibold);
+  line-height: 1.6;
+  vertical-align: 0.1em;
+  border-radius: var(--borderRadius-medium);
+  border: var(--borderWidth-thin) solid transparent;
+}
+.markdown-body button.cita {
+  color: var(--fgColor-accent);
+  background: var(--bgColor-accent-muted);
+  border-color: var(--borderColor-accent-muted);
+  cursor: pointer;
+}
+.markdown-body button.cita:hover {
+  color: var(--fgColor-onEmphasis);
+  background: var(--bgColor-accent-emphasis);
+}
+.markdown-body button.cita:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: 1px;
+}
+.markdown-body .cita-borrador {
+  color: var(--fgColor-muted);
+  background: var(--bgColor-neutral-muted);
+}
+.markdown-body .cita-rota {
+  color: var(--fgColor-danger);
+  background: var(--bgColor-danger-muted);
+  text-decoration: line-through;
+}

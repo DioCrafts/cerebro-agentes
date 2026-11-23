@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «¿Estás obligado a declarar?»: the answer the calculator gives with every
 // individual simulation (art. 96 LIRPF, asistente/ambitos/fiscal/calculo/obligacion.py), the
 // rule that decides it with its literal quote, and the questions still open.

@@ -3,6 +3,9 @@
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
 
+import { Blankslate, Button } from "../ui";
+import { AlertIcon } from "../ui/iconos";
+
 interface Props {
   children: ReactNode;
 }
@@ -25,18 +28,21 @@ export class ErrorBoundary extends Component<Props, State> {
   render(): ReactNode {
     if (!this.state.error) return this.props.children;
     return (
-      <div role="alert" className="flex h-dvh w-screen flex-col items-center justify-center gap-3 bg-paper px-6 text-center">
-        <p className="font-serif text-[19px] font-bold text-ink">Algo ha fallado al mostrar la aplicación</p>
-        <p className="max-w-md text-[13.5px] leading-snug text-ink-soft">
-          Tus consultas siguen guardadas en este navegador. Recarga la página para continuar; si vuelve a pasar, avísanos.
-        </p>
-        <button
-          type="button"
-          onClick={() => window.location.reload()}
-          className="rounded-lg bg-primary px-4 py-2 text-[14px] font-semibold text-white transition hover:bg-primary-hover"
-        >
-          Recargar
-        </button>
+      <div role="alert" className="flex min-h-dvh items-center justify-center px-4">
+        <Blankslate>
+          <Blankslate.Visual>
+            <AlertIcon size={24} />
+          </Blankslate.Visual>
+          <Blankslate.Heading>Algo ha fallado al mostrar la aplicación</Blankslate.Heading>
+          <Blankslate.Description>
+            Tus consultas siguen guardadas en este navegador. Recarga la página para continuar; si vuelve a pasar, avísanos.
+          </Blankslate.Description>
+          <div className="mt-4">
+            <Button variant="primary" onClick={() => window.location.reload()}>
+              Recargar
+            </Button>
+          </div>
+        </Blankslate>
       </div>
     );
   }

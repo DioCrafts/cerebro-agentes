@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Pure helpers of the «Planificar el hogar» screen: the request built from the form, labels and
 // error wording. No React here, so the component file only exports components.
 

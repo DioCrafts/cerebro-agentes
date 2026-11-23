@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The latent positions of «Tus datos»: investments the user could sell before 31 December.
 
 import { Info, Plus, Trash2 } from "lucide-react";

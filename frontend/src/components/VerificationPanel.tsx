@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Claim-by-claim verification: what the independent checker concluded about
 // each normative statement in the answer, in plain language. Problems are
 // open by default; a fully verified answer keeps the detail one click away.

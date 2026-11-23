@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Self-employed panel: annual net income of the activity, the quarterly IRPF
 // payment (modelo 130) and the quarterly VAT return (modelo 303). Everything
 // is the deterministic calculators behind POST /autonomos/* — no model call,

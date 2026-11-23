@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Simulator: change a figure, see the tax change. Everything here is the
 // deterministic calculator (POST /simulate) — no model call, so it answers as
 // you type. The saved case is the baseline; edits are compared against it.

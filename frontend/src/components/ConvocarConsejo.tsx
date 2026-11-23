@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The council in the chat.
 //
 //   · ConvocarConsejo — the card of ONE session: while it waits for the user, the estimate (cost, cap, time), the
