@@ -267,7 +267,7 @@ def evaluar_imv(p: PrestacionesParams, h: Hogar) -> Evaluacion:
         estado="probable" if _estimado(h) or h.patrimonio is None else "cumple",
         motivo=f"Los ingresos del hogar quedan por debajo de la renta garantizada: unos {eur(importe)} al mes.",
         importe_mensual=importe,
-        importe_anual=(importe * 12).quantize(CENT),
+        importe_anual=(importe * 12).quantize(CENT, rounding=ROUND_HALF_UP),
         lineas=lineas,
         requisitos_comprobados=comprobados,
         requisitos_no_comprobados=no_comprobados,
@@ -301,8 +301,10 @@ def evaluar_capi(p: PrestacionesParams, h: Hogar) -> Evaluacion:
             **comunes,
         )
     assert h.adultos is not None and h.menores is not None and h.ingresos is not None
-    umbral_anexo = (imv.renta_garantizada_individual * imv.escala(h.adultos, h.menores) * 12).quantize(CENT)
-    limite = (umbral_anexo * capi.umbral_ingresos).quantize(CENT)
+    umbral_anexo = (imv.renta_garantizada_individual * imv.escala(h.adultos, h.menores) * 12).quantize(
+        CENT, rounding=ROUND_HALF_UP
+    )
+    limite = (umbral_anexo * capi.umbral_ingresos).quantize(CENT, rounding=ROUND_HALF_UP)
     lineas = [
         Linea(
             concepto="Renta garantizada anual del hogar según la escala del anexo I",
@@ -552,7 +554,7 @@ def evaluar_nacimiento(p: PrestacionesParams, h: Hogar, grado_progenitor: int | 
     if h.ingresos <= limite:
         por_hijo = g.importe
     elif h.ingresos < limite + g.importe and limite + g.importe - h.ingresos >= g.diferencia_minima:
-        por_hijo = (limite + g.importe - h.ingresos).quantize(CENT)
+        por_hijo = (limite + g.importe - h.ingresos).quantize(CENT, rounding=ROUND_HALF_UP)
     else:
         return Evaluacion(
             estado="no_cumple",
@@ -675,7 +677,7 @@ def evaluar_bono_social_electrico(p: PrestacionesParams, h: Hogar) -> Evaluacion
         circ = _circunstancias(h)
         if circ:
             mult += b.incremento_circunstancias
-        umbral = (mult * anual).quantize(CENT)
+        umbral = (mult * anual).quantize(CENT, rounding=ROUND_HALF_UP)
         lineas = [
             Linea(
                 concepto=f"IPREM anual de 14 pagas ({eur(iprem.mensual)} × 14)",

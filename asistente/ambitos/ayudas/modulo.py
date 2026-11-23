@@ -22,9 +22,15 @@ from typing import Any
 from asistente.ambitos.ayudas import almacen as almacen_mod
 from asistente.ambitos.ayudas.convocatorias import TEMAS, Convocatoria, Encaje, encaje
 from asistente.ambitos.ayudas.hogar import PRESTACIONES, Hogar, entero, hogar_del_perfil
-from asistente.ambitos.ayudas.parametros import PrestacionesParams, ejercicio_para, load_prestaciones
+from asistente.ambitos.ayudas.parametros import (
+    PrestacionesParams,
+    aviso_ejercicio,
+    ejercicio_para,
+    load_prestaciones,
+)
 from asistente.ambitos.ayudas.prestaciones import ORDEN_ESTADOS, Evaluacion, eur, evaluar_todas, fecha
 from asistente.ambitos.ayudas.revision import actualizar_convocatorias
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.agent.providers.base import ToolSpec
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import (
@@ -68,10 +74,10 @@ def _entero_entre(minimo: int, maximo: int, que: str) -> Any:
 
 def _importe(que: str) -> Any:
     def validar(valor: Any) -> float:
-        try:
-            n = float(str(valor).replace(",", "."))
-        except ValueError as exc:
-            raise ValueError(f"{que}: debe ser un importe en euros.") from exc
+        numero = importe(valor)
+        if numero is None:
+            raise ValueError(f"{que}: debe ser un importe en euros.")
+        n = float(numero)
         if n < 0 or n > 10_000_000:
             raise ValueError(f"{que}: debe ser un importe entre 0 y 10.000.000 euros.")
         return n
@@ -356,6 +362,9 @@ def ejecutar_comprobar(args: Mapping[str, Any], contexto: ContextoModulo) -> Res
         visibles.sort(key=lambda e: ORDEN_ESTADOS[e.estado])
         propuestas = [e for e in evaluaciones if e.proponible]
         partes = [f"# Ayudas públicas estatales ({p.ejercicio})"]
+        aviso = aviso_ejercicio(p.ejercicio, contexto.hoy)
+        if aviso:
+            partes.append(aviso)
         if propuestas:
             partes.append(
                 "Encontradas: "

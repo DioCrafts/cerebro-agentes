@@ -129,11 +129,11 @@ def test_plan_with_several_levers_shows_each_marginal_contribution(store) -> Non
 
 
 def test_plan_passes_through_the_regional_caveat_and_missing_core_data(store) -> None:
-    case = make_case(rendimiento_trabajo_bruto=45000, rendimiento_actividad_neto=5000, comunidad_autonoma="Navarra")
+    case = make_case(rendimiento_trabajo_bruto=45000, rendimiento_actividad_neto=5000, comunidad_autonoma="Tabarnia")
     assert plan_fin_de_ejercicio(case, hoy=NOV, store=store) == 1
     body = store.list(case.case_id)[0].body
     limits = body.split("**Límites de esta estimación**")[1]
-    assert limits.strip().startswith("- La normativa autonómica de «Navarra» no está cargada")
+    assert limits.strip().startswith("- La normativa autonómica de «Tabarnia» no está cargada")
     assert "se ha aproximado" in limits
     assert limits.count("\n- ") <= 3  # at most 3 calculator caveats + the generic one
     assert "No me consta" in body and "las retenciones de IRPF" in body
@@ -218,3 +218,8 @@ def test_ejecutar_para_todos_covers_every_open_case(tmp_path, store) -> None:
     assert summary == {"hoy": "2026-11-12", "cases": 2, "plazo": 0, "fin_de_ejercicio": 1, "errors": 0}
     assert len(store.list("a")) == 1 and store.list("b") == [] and store.list("closed") == []
     assert ejecutar_para_todos(cases, store, hoy=NOV)["fin_de_ejercicio"] == 0
+
+
+def test_foral_territory_gets_no_invented_plan(store) -> None:
+    case = make_case(rendimiento_trabajo_bruto=45000, comunidad_autonoma="Navarra")
+    assert plan_fin_de_ejercicio(case, hoy=NOV, store=store) == 0

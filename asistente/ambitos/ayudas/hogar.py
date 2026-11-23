@@ -10,11 +10,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 import json
 from typing import Any
 
 from asistente.ambitos.fiscal.profile import DatosInvalidosError, normalizar_datos_conyuge, normalizar_descendientes
+from asistente.ambitos.numeros import importe
 
 # Identifiers of the stable benefits (family A), also the values of ``ayudas_ya_solicitadas``.
 PRESTACIONES: dict[str, str] = {
@@ -38,12 +39,7 @@ _INGRESOS_PERFIL = (
 
 
 def numero(valor: Any) -> Decimal | None:
-    if valor is None or isinstance(valor, bool):
-        return None
-    try:
-        return Decimal(str(valor).strip().replace(",", ".")) if str(valor).strip() else None
-    except InvalidOperation:
-        return None
+    return importe(valor)
 
 
 def entero(valor: Any) -> int | None:

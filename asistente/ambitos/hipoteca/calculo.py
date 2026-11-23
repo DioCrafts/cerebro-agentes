@@ -178,18 +178,23 @@ def fecha_cuota(p: Prestamo, numero: int) -> date:
 def dato_para_revision(p: Prestamo, serie: SerieIndices, fecha: date, hoy: date) -> tuple[Dato | None, bool]:
     """(index value, is_projection) for the review on ``fecha`` under the deed's rule.
 
-    When the value the rule asks for is not published yet (as of ``hoy``), the last published one is used
-    as a projection."""
+    Only a value the rule asks for that is *later* than the last published month (as of ``hoy``) is
+    projected with that last value. A month that should already be in the series but is missing — a gap,
+    or a review before the series starts — gives ``(None, False)``: the caller then asks for the rate the
+    bank applied instead of inventing one with today's index."""
     assert p.indice is not None
+    ultimo = serie.ultimo(p.indice, publicado_hasta=hoy)
     if p.indice_regla == "meses_antes":
-        dato = serie.valor(p.indice, mes_menos(fecha, p.indice_meses_antes))
+        mes = mes_menos(fecha, p.indice_meses_antes)
+        dato = serie.valor(p.indice, mes)
         if dato is not None and dato.publicado <= hoy:
             return dato, False
+        if dato is None and ultimo is not None and mes <= ultimo.mes:
+            return None, False
     elif fecha <= hoy:
         dato = serie.ultimo(p.indice, publicado_hasta=fecha)
-        if dato is not None:
-            return dato, False
-    return serie.ultimo(p.indice, publicado_hasta=hoy), True
+        return dato, False  # None: the review predates the series
+    return ultimo, True
 
 
 def tipo_revisado(p: Prestamo, valor_indice: Decimal) -> tuple[Decimal, str]:

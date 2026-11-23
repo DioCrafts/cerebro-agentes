@@ -56,18 +56,24 @@ def _segmentos(desde: date, hasta: date) -> list[tuple[date, date]]:
     return salida
 
 
-def estimar_energia_pvpc(
+def estimar_precio_pvpc(
     consumo: ConsumoGuardado, desde: date, hasta: date, precios: dict[tuple[date, int], Decimal], zona: Zona
 ) -> dict[str, Decimal]:
-    """€ of PVPC energy per month: exact where hourly readings are stored, else the month's hour-of-day
-    consumption profile × the month's average price of each hour of the day."""
+    """Average PVPC energy price (€/kWh) per month over ``desde``..``hasta``.
+
+    Exact where hourly readings are stored (Σ kWh × price ÷ Σ kWh), else the month's hour-of-day
+    consumption profile weighted by the average price of each hour of the day within the dates. A bill
+    multiplies it by the kWh of each of its stretches, so a partial month is charged for its own kWh,
+    not for the whole month's."""
     salida: dict[str, Decimal] = {}
     for inicio, fin in _segmentos(desde, hasta):
         mes = f"{inicio:%Y-%m}"
         lecturas = consumo.lecturas_horarias(inicio, fin)
         if lecturas is not None and all((x.fecha, x.indice) in precios for x in lecturas):
-            salida[mes] = sum((x.kwh * precios[(x.fecha, x.indice)] for x in lecturas), CERO)
-            continue
+            kwh = sum((x.kwh for x in lecturas), CERO)
+            if kwh:
+                salida[mes] = sum((x.kwh * precios[(x.fecha, x.indice)] for x in lecturas), CERO) / kwh
+                continue
         resumen = consumo.meses.get(mes)
         if resumen is None:
             raise FacturaError(f"No hay perfil horario de {mes} para estimar el PVPC.")
@@ -77,9 +83,12 @@ def estimar_energia_pvpc(
                 por_hora[hora_local(dia, indice, zona)].append(precio)
         if len(por_hora) < 24:
             raise FacturaError(f"Faltan precios PVPC de {mes}.")
-        salida[mes] = sum(
-            (resumen.perfil[h] * sum(por_hora[h], CERO) / len(por_hora[h]) for h in range(24)),
-            CERO,
+        kwh_perfil = sum(resumen.perfil, CERO)
+        if not kwh_perfil:
+            salida[mes] = sum((sum(v, CERO) / len(v) for v in por_hora.values()), CERO) / 24
+            continue
+        salida[mes] = (
+            sum((resumen.perfil[h] * sum(por_hora[h], CERO) / len(por_hora[h]) for h in range(24)), CERO) / kwh_perfil
         )
     return salida
 
@@ -131,7 +140,7 @@ def comparar(
     costes: list[CosteOferta] = []
     dias_total = sum((b - a).days + 1 for a, b in segmentos)
     for oferta, es_actual in candidatas:
-        energia_pvpc: dict[str, Decimal] | None = None
+        precio_pvpc: dict[str, Decimal] | None = None
         if oferta.tipo == "pvpc":
             if manual:
                 descartadas.append(f"«{oferta.nombre}»: el PVPC necesita consumo horario (importa el CSV).")
@@ -142,7 +151,7 @@ def comparar(
             try:
                 if precios is None:
                     precios = proveedor_precios(segmentos[0][0], segmentos[-1][1])
-                energia_pvpc = estimar_energia_pvpc(consumo, segmentos[0][0], segmentos[-1][1], precios, contrato.zona)
+                precio_pvpc = estimar_precio_pvpc(consumo, segmentos[0][0], segmentos[-1][1], precios, contrato.zona)
             except (FacturaError, RuntimeError) as exc:
                 descartadas.append(f"«{oferta.nombre}»: {exc}")
                 continue
@@ -155,7 +164,7 @@ def comparar(
                     factura = calcular_factura(oferta, contrato, a, b, totales={"p1": m.p1, "p2": m.p2, "p3": m.p3})
                 else:
                     factura = calcular_factura(
-                        oferta, contrato, a, b, dias_kwh=consumo.dias, energia_pvpc_eur=energia_pvpc
+                        oferta, contrato, a, b, dias_kwh=consumo.dias, precio_pvpc_medio=precio_pvpc
                     )
                 total += factura.total
                 meses.append((f"{a:%Y-%m}", factura.total))

@@ -15,6 +15,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from asistente.ambitos.suscripciones.deteccion import sigue_activa
 from asistente.ambitos.suscripciones.modelos import ServicioGuardado, ServiciosGuardados
 
 NOMBRE_HECHO = "suscripciones_servicios"
@@ -47,7 +48,8 @@ def fusionar(
     anterior: ServiciosGuardados | None, nuevos: list[ServicioGuardado], hoy: date, hasta: date | None
 ) -> ServiciosGuardados:
     """Merge a new analysis into the stored list: per id, the most recent data wins; services of other
-    statements (another account, an older period) are kept."""
+    statements (another account, an older period) are kept, but one with no charge for longer than its
+    period allows by the end of the latest statement is marked inactive, so it stops adding to the totals."""
     por_id: dict[str, ServicioGuardado] = {s.id: s for s in (anterior.servicios if anterior else [])}
     for servicio in nuevos:
         previo = por_id.get(servicio.id)
@@ -56,9 +58,16 @@ def fusionar(
     extracto_hasta = max(
         (d for d in (hasta, anterior.extracto_hasta if anterior else None) if d is not None), default=None
     )
+    if extracto_hasta is not None:
+        for id_, servicio in por_id.items():
+            if servicio.estado == "activa" and not sigue_activa(
+                servicio.periodicidad, servicio.ultima_fecha, extracto_hasta
+            ):
+                por_id[id_] = servicio.model_copy(update={"estado": "inactiva", "proxima_fecha": None})
     servicios = sorted(por_id.values(), key=lambda s: (s.estado != "activa", s.etiqueta, s.id))
     return ServiciosGuardados(actualizado_el=hoy, extracto_hasta=extracto_hasta, servicios=servicios)
 
 
 def total(servicios: list[ServicioGuardado]) -> Decimal:
-    return sum((s.coste_anual for s in servicios), Decimal(0))
+    """Yearly cost in euros of the active services; amounts in another currency are not added (no rate)."""
+    return sum((s.coste_anual for s in servicios if s.estado == "activa" and s.divisa == "EUR"), Decimal(0))

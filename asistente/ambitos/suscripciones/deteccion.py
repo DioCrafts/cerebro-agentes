@@ -364,7 +364,8 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
     if not movimientos or desde is None or hasta is None:
         return Analisis((), desde, hasta, 0, 0)
     span = (hasta - desde).days
-    grupos: dict[tuple[str, bool], tuple[Identidad, list[Cargo]]] = {}
+    # Grouped by currency too: a charge in USD is never averaged or totalled with charges in EUR.
+    grupos: dict[tuple[str, bool, str], tuple[Identidad, list[Cargo]]] = {}
     num_cargos = 0
     for movimiento in movimientos:
         if movimiento.importe >= 0 or movimiento.medio == "efectivo":
@@ -374,17 +375,21 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
         if not identidad.recurrente:
             continue
         paypal = identidad.canal == "paypal"
-        grupos.setdefault((identidad.clave, paypal), (identidad, []))[1].append(
-            Cargo(movimiento.fecha, (-movimiento.importe).quantize(CENTIMO), movimiento)
+        grupos.setdefault((identidad.clave, paypal, movimiento.divisa.upper()), (identidad, []))[1].append(
+            Cargo(movimiento.fecha, (-movimiento.importe).quantize(CENTIMO, rounding=ROUND_HALF_UP), movimiento)
         )
     series: list[_Serie] = []
-    for (_, paypal), (identidad, cargos) in sorted(grupos.items()):
+    for (_, paypal, _), (identidad, cargos) in sorted(grupos.items()):
         series.extend(_series_del_grupo(identidad, paypal, cargos, span, hasta))
 
     detectados: list[ServicioDetectado] = []
     ordinales: Counter[tuple[str, bool, str]] = Counter()
-    for serie in sorted(series, key=lambda s: (s.identidad.clave, s.paypal, s.periodicidad, s.cargos[0].importe)):
-        clave = (serie.identidad.clave, serie.paypal, serie.periodicidad)
+    for serie in sorted(
+        series, key=lambda s: (s.identidad.clave, s.paypal, _divisa(s), s.periodicidad, s.cargos[0].importe)
+    ):
+        divisa = _divisa(serie)
+        # EUR keeps the historical ids; another currency gets its own, so it never overwrites the EUR one.
+        clave = (serie.identidad.clave + ("" if divisa == "EUR" else f"|{divisa}"), serie.paypal, serie.periodicidad)
         identificador = _identificador(*clave, ordinales[clave])
         ordinales[clave] += 1
         detectados.append(_a_servicio(serie, identificador, hasta, usar_etiquetador))
@@ -393,11 +398,21 @@ def analizar(extracto: Extracto, *, usar_etiquetador: bool = True) -> Analisis:
     return Analisis(tuple(detectados), desde, hasta, len(movimientos), num_cargos)
 
 
+def _divisa(serie: _Serie) -> str:
+    return serie.cargos[0].movimiento.divisa.upper()
+
+
+def sigue_activa(periodicidad: str, ultima: date, referencia: date) -> bool:
+    """Whether a service last charged on ``ultima`` still counts as active on ``referencia``: at most
+    one and a half periods (plus the period's tolerance) without a charge."""
+    dias, tolerancia, _ = PERIODOS[periodicidad]
+    return (referencia - ultima).days <= dias * 1.5 + tolerancia
+
+
 def _a_servicio(serie: _Serie, identificador: str, hasta: date, usar_etiquetador: bool) -> ServicioDetectado:
     cargos = serie.cargos
     fechas = [c.fecha for c in cargos]
-    dias, tolerancia, _ = PERIODOS[serie.periodicidad]
-    activa = (hasta - fechas[-1]).days <= dias * 1.5 + tolerancia
+    activa = sigue_activa(serie.periodicidad, fechas[-1], hasta)
     cambios, atipicos = ([], 0) if serie.variable else cambios_de_precio(cargos)
     if not serie.variable and len(cambios) + atipicos > max(2, len(cargos) * 0.3):
         serie.variable, cambios = True, []
@@ -447,6 +462,7 @@ def _a_servicio(serie: _Serie, identificador: str, hasta: date, usar_etiquetador
         sector=identidad.sector,  # type: ignore[arg-type]
         periodicidad=serie.periodicidad,  # type: ignore[arg-type]
         importe=importe,
+        divisa=_divisa(serie),
         importe_variable=serie.variable,
         medio=_medio(serie),  # type: ignore[arg-type]
         primera_fecha=fechas[0],

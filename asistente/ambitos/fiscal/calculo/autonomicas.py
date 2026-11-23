@@ -11,9 +11,10 @@ from calendar import isleap
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import date
-from decimal import Decimal
+from decimal import ROUND_HALF_UP, Decimal
 from typing import Any
 
+from asistente.ambitos.fiscal.calculo.lineas import ClaveLinea
 from asistente.ambitos.fiscal.calculo.params import (
     CAMPOS_UNIDAD_HIJOS,
     PERIODOS_POR_HIJO,
@@ -757,7 +758,7 @@ def aplicar(
     *,
     conjunta: bool,
     norma: str,
-    linea: Callable[[str, Decimal, str], None],
+    linea: Callable[..., None],
     aviso: Callable[[str], None],
 ) -> Decimal:
     """Apply every triggered deduction; returns their total (not yet capped by the regional tax)."""
@@ -765,9 +766,9 @@ def aplicar(
     aplicadas: set[str] = set()
     resultados = [evaluar(d, inp, bases, conjunta=conjunta) for d in deducciones]
     candidatas = {
-        i: r.importe.quantize(CENT)
+        i: r.importe.quantize(CENT, rounding=ROUND_HALF_UP)
         for i, r in enumerate(resultados)
-        if r is not None and r.motivo is None and r.importe.quantize(CENT)
+        if r is not None and r.motivo is None and r.importe.quantize(CENT, rounding=ROUND_HALF_UP)
     }
     descartadas = _mejor_combinacion(deducciones, candidatas) if any(d.excluyente_con for d in deducciones) else {}
     usado_del_grupo: dict[str, Decimal] = {}
@@ -787,7 +788,7 @@ def aplicar(
             if d.recodificada_el:
                 aviso(_aviso_recodificada(d))
             continue
-        importe = resultado.importe.quantize(Decimal("0.01"))
+        importe = resultado.importe.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
         if not importe:
             continue
         if i in descartadas:
@@ -814,7 +815,9 @@ def aplicar(
                 ),
             )
             assert tope is not None
-            disponible = max(ZERO, tope - usado_del_grupo.get(conjunto.grupo, ZERO)).quantize(CENT)
+            disponible = max(ZERO, tope - usado_del_grupo.get(conjunto.grupo, ZERO)).quantize(
+                CENT, rounding=ROUND_HALF_UP
+            )
             if importe > disponible:
                 aviso(
                     f"«{d.titulo}»: reducida de {importe:.2f} € a {disponible:.2f} € por el límite conjunto de "
@@ -824,7 +827,12 @@ def aplicar(
             usado_del_grupo[conjunto.grupo] = usado_del_grupo.get(conjunto.grupo, ZERO) + importe
             if not importe:
                 continue
-        linea(f"Deducción autonómica: {d.titulo}", -importe, f"{d.articulo} {norma}")
+        linea(
+            f"Deducción autonómica: {d.titulo}",
+            -importe,
+            f"{d.articulo} {norma}",
+            clave=ClaveLinea.autonomica(d.articulo),
+        )
         if resultado.variante:
             aviso(f"«{d.titulo}»: se han aplicado las cifras de la variante «{resultado.variante}».")
         if (d.importes_por_orden or any(v.importes_por_orden for v in d.variantes)) and (

@@ -13,7 +13,7 @@
 from __future__ import annotations
 
 from datetime import timedelta
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 import os
 
 from asistente.ambitos.hipoteca.calculo import (
@@ -28,6 +28,7 @@ from asistente.ambitos.hipoteca.comisiones import comision_maxima
 from asistente.ambitos.hipoteca.herramientas import DatosHipotecaError, _Entorno, estimar_revision
 from asistente.ambitos.hipoteca.indices import SerieIndices
 from asistente.ambitos.hipoteca.normativa import Normativa
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.modulos.contrato import AvisoModulo, ContextoModulo
 
 DIAS_AVISO_REVISION = 45
@@ -48,11 +49,8 @@ def _umbral(contexto: ContextoModulo) -> Decimal:
     for valor in (contexto.perfil.get("hipoteca_umbral_aviso"), os.environ.get("HIPOTECA_UMBRAL_AVISO_EUR")):
         if valor in (None, ""):
             continue
-        try:
-            umbral = Decimal(str(valor).replace(",", "."))
-        except InvalidOperation:
-            continue
-        if umbral.is_finite() and umbral >= 0:
+        umbral = importe(valor)
+        if umbral is not None and umbral >= 0:
             return umbral
     return UMBRAL_EUR
 

@@ -25,6 +25,7 @@ from asistente.ambitos.luz.herramientas import (
     herramientas,
 )
 from asistente.ambitos.luz.ofertas import cargar_oferta, cargar_ofertas, validar_oferta, validar_ofertas
+from asistente.ambitos.numeros import importe
 from asistente.nucleo.eventos.tipos import FECHA_UMBRAL, MODULO_ACTIVADO, PERFIL_CAMBIADO
 from asistente.nucleo.modulos.contrato import (
     AvisoModulo,
@@ -48,10 +49,9 @@ def validar_cups(valor: Any) -> str:
 
 
 def validar_potencia(valor: Any) -> float:
-    try:
-        kw = Decimal(str(valor).replace(",", "."))
-    except InvalidOperation as exc:
-        raise ValueError("La potencia es un número de kW (p. ej. 4,6).") from exc
+    kw = importe(valor)
+    if kw is None:
+        raise ValueError("La potencia es un número de kW (p. ej. 4,6).")
     if not Decimal(0) < kw <= 15:
         raise ValueError("En la tarifa 2.0TD la potencia es mayor que 0 y como mucho 15 kW.")
     return float(kw)
