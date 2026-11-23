@@ -366,9 +366,9 @@ def test_endpoints_without_a_case_still_need_a_session(env: Env, no_model) -> No
     assert env.client.post("/optimize", json={"datos": {}}).status_code == 401
     # The legacy /qa chain (unmetered) does not exist with accounts on, not even with a session (S-14).
     assert env.client.post("/qa", json={"query": "hola"}).status_code == 404
-    # Liveness and metrics stay open.
+    # Liveness stays open; metrics are for the operator (404 without HACIENDA_OPERATOR_KEY).
     assert env.client.get("/health").status_code == 200
-    assert env.client.get("/metrics").status_code == 200
+    assert env.client.get("/metrics").status_code == 404
 
 
 def test_proactive_jobs_run_without_a_session(env: Env) -> None:

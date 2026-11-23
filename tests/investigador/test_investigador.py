@@ -262,7 +262,7 @@ def test_lector_local_lee_lo_que_web_fetch_no_pudo(monkeypatch):
 
     from asistente.investigador import web as w
 
-    monkeypatch.setattr(w, "_host_publico", lambda url: True)
+    monkeypatch.setattr(w, "_ip_publica", lambda url: "93.184.216.34")
     html = "<html><head><title>Reinversión</title><script>x()</script></head><body><nav>Menú</nav>" \
            "<p>Podrán excluirse de gravamen las ganancias patrimoniales.</p></body></html>"
     lector = w.LectorLocal(obtener=lambda url, **k: _Resp(html=html))
@@ -281,24 +281,68 @@ def test_lector_local_rechaza_ips_privadas_y_redirecciones_a_ellas():
     assert not w._host_publico("file:///etc/passwd")
     lector = w.LectorLocal(obtener=lambda url, **k: _Resp(status=302, location="http://127.0.0.1/"))
     import asistente.investigador.web as mod
-    orig = mod._host_publico
-    mod._host_publico = lambda url: not url.startswith("http://127.")
+    orig = mod._ip_publica
+    mod._ip_publica = lambda url: None if url.startswith("http://127.") else "93.184.216.34"
     try:
         assert lector.leer("https://ejemplo.es/") is None
     finally:
-        mod._host_publico = orig
+        mod._ip_publica = orig
 
 
 def test_lector_local_rechaza_no_html():
     from asistente.investigador import web as w
 
     lector = w.LectorLocal(obtener=lambda url, **k: _Resp(ctype="application/pdf", html="%PDF"))
-    w_orig = w._host_publico
-    w._host_publico = lambda url: True
+    w_orig = w._ip_publica
+    w._ip_publica = lambda url: "93.184.216.34"
     try:
         assert lector.leer("https://ejemplo.es/a.pdf") is None
     finally:
-        w._host_publico = w_orig
+        w._ip_publica = w_orig
+
+
+def _resolver(monkeypatch, *direcciones):
+    import socket
+
+    monkeypatch.setattr(socket, "getaddrinfo", lambda *a, **k: [(0, 0, 0, "", (d, 0)) for d in direcciones])
+
+
+def test_ip_publica_exige_is_global(monkeypatch):
+    from asistente.investigador import web as w
+
+    for d in ("100.64.0.1", "192.0.2.1", "::ffff:127.0.0.1", "10.0.0.1", "fd00::1", "0.0.0.0"):
+        _resolver(monkeypatch, d)
+        assert w._ip_publica("https://x.es/") is None, d
+    # One private address among public ones is enough to refuse the name (rebinding with several A records).
+    _resolver(monkeypatch, "93.184.216.34", "127.0.0.1")
+    assert w._ip_publica("https://x.es/") is None
+    _resolver(monkeypatch, "93.184.216.34")
+    assert w._ip_publica("https://x.es/") == "93.184.216.34"
+
+
+def test_lector_conecta_a_la_ip_resuelta_y_revalida_redirecciones(monkeypatch):
+    from asistente.investigador import web as w
+
+    resoluciones = iter(["93.184.216.34", None])
+    monkeypatch.setattr(w, "_ip_publica", lambda url: next(resoluciones))
+    vistas: list[str] = []
+
+    def obtener(url, **k):
+        vistas.append(k["ip"])
+        return _Resp(status=302, location="https://otro.es/")
+
+    assert w.LectorLocal(obtener=obtener).leer("https://ejemplo.es/") is None
+    assert vistas == ["93.184.216.34"]  # the second hop resolved to nothing public: never fetched
+
+
+def test_lector_rechaza_redireccion_a_otro_esquema(monkeypatch):
+    from asistente.investigador import web as w
+
+    monkeypatch.setattr(w, "_ip_publica", lambda url: "93.184.216.34")
+    lector = w.LectorLocal(obtener=lambda url, **k: _Resp(status=302, location="file:///etc/passwd"))
+    assert lector.leer("https://ejemplo.es/") is None
+    sin_destino = w.LectorLocal(obtener=lambda url, **k: _Resp(status=302, location=""))
+    assert sin_destino.leer("https://ejemplo.es/") is None
 
 
 def test_lector_local_decodifica_utf8_sin_charset_declarado():

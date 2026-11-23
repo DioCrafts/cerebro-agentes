@@ -28,6 +28,89 @@ logger = logging.getLogger(__name__)
 _AUTH_DISABLED_WARNED = False
 
 
+def _iguales(recibido: str, esperado: str) -> bool:
+    """Constant-time comparison of two secrets as UTF-8 bytes. ``hmac.compare_digest`` on ``str`` raises
+    TypeError for non-ASCII text, which turned a key with an «ñ» (sent or configured) into a 500."""
+    return hmac.compare_digest(recibido.encode("utf-8", "surrogateescape"), esperado.encode("utf-8", "surrogateescape"))
+
+
+def _verdadero(nombre: str) -> bool:
+    return os.environ.get(nombre, "").strip().lower() in ("1", "true", "yes", "si", "sí", "on")
+
+
+# --- start-up guard -----------------------------------------------------------------
+
+
+class ArranqueInseguroError(RuntimeError):
+    """The API would start with nothing protecting it."""
+
+
+def comprobar_arranque() -> None:
+    """Refuse to start with ``AUTH_MODE=off`` and no ``HACIENDA_API_KEY``: every case would be readable and
+    writable by anyone who reaches the port. ``PERMITIR_SIN_AUTENTICACION=1`` is the explicit, logged opt-out
+    for a single-user machine."""
+    from asistente.plataforma import settings
+
+    if settings.AUTH_MODE == "required" or os.environ.get("HACIENDA_API_KEY"):
+        return
+    if _verdadero("PERMITIR_SIN_AUTENTICACION"):
+        logger.warning("API started WITHOUT authentication (PERMITIR_SIN_AUTENTICACION=1).")
+        return
+    raise ArranqueInseguroError(
+        "La API no arranca sin autenticación: configura AUTH_MODE=required o HACIENDA_API_KEY, "
+        "o declara PERMITIR_SIN_AUTENTICACION=1 si es una máquina de un solo usuario."
+    )
+
+
+# --- Host, Origin and Content-Type of the requests ------------------------------------
+
+DEFAULT_ALLOWED_HOSTS = ("localhost", "127.0.0.1")
+
+
+def hosts_permitidos() -> list[str]:
+    """``API_ALLOWED_HOSTS`` (comma separated, ``*.example.com`` allowed); by default only the loopback names,
+    so a DNS-rebinding page cannot reach a local API through its own domain."""
+    valor = os.environ.get("API_ALLOWED_HOSTS", "")
+    hosts = [h.strip() for h in valor.split(",") if h.strip()]
+    return hosts or list(DEFAULT_ALLOWED_HOSTS)
+
+
+def origenes_permitidos(base: list[str]) -> set[str]:
+    """``base`` plus ``API_ALLOWED_ORIGINS`` (comma separated, exact ``scheme://host[:port]``)."""
+    extra = os.environ.get("API_ALLOWED_ORIGINS", "")
+    return {o.rstrip("/") for o in [*base, *extra.split(",")] if o.strip()}
+
+
+_METODOS_ESCRITURA = frozenset({"POST", "PUT", "PATCH", "DELETE"})
+
+
+def make_write_guard_middleware(base_origins: list[str]):
+    """Writes (POST/PUT/PATCH/DELETE) are refused with 403 when they carry an ``Origin`` that is neither the API's
+    own nor an allowed one, and with 415 when they carry a body that is not JSON. A cross-site form or a
+    ``text/plain`` fetch (the "simple requests" a browser sends without CORS preflight) cannot write."""
+    from starlette.responses import JSONResponse
+
+    async def write_guard_middleware(request: Request, call_next: Any) -> Any:
+        if request.method not in _METODOS_ESCRITURA:
+            return await call_next(request)
+        origen = request.headers.get("origin")
+        if origen is not None:
+            propio = f"{request.url.scheme}://{request.headers.get('host', '')}"
+            if origen.rstrip("/") != propio and origen.rstrip("/") not in origenes_permitidos(base_origins):
+                return JSONResponse(status_code=403, content={"detail": "Origen no permitido."})
+        longitud = request.headers.get("content-length")
+        con_cuerpo = (longitud is not None and longitud.strip() not in ("", "0")) or (
+            "transfer-encoding" in request.headers
+        )
+        if con_cuerpo:
+            tipo = request.headers.get("content-type", "").split(";")[0].strip().lower()
+            if tipo != "application/json" and not (tipo.startswith("application/") and tipo.endswith("+json")):
+                return JSONResponse(status_code=415, content={"detail": "El cuerpo debe ser JSON."})
+        return await call_next(request)
+
+    return write_guard_middleware
+
+
 def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Key")) -> None:
     """FastAPI dependency enforcing the ``X-API-Key`` header when configured.
 
@@ -45,7 +128,7 @@ def require_api_key(x_api_key: str | None = Header(default=None, alias="X-API-Ke
             )
             _AUTH_DISABLED_WARNED = True
         return
-    if not x_api_key or not hmac.compare_digest(x_api_key, expected):
+    if not x_api_key or not _iguales(x_api_key, expected):
         raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
@@ -85,7 +168,7 @@ def client_key(request: Request) -> str:
     """
     api_key = request.headers.get("X-API-Key")
     expected = os.environ.get("HACIENDA_API_KEY")
-    if api_key and expected and hmac.compare_digest(api_key, expected):
+    if api_key and expected and _iguales(api_key, expected):
         return "key:configured"
     client = request.client
     return f"ip:{client.host}" if client else "ip:unknown"
@@ -251,7 +334,7 @@ def require_operator(
     if settings.AUTH_MODE != "required":
         return
     esperado = os.environ.get("HACIENDA_OPERATOR_KEY", "")
-    if not esperado or not x_operator_key or not hmac.compare_digest(x_operator_key, esperado):
+    if not esperado or not x_operator_key or not _iguales(x_operator_key, esperado):
         raise HTTPException(status_code=404, detail="Not Found")
 
 

@@ -173,7 +173,8 @@ GROUNDING_SNIPPET_CHARS = int(os.environ.get("GROUNDING_SNIPPET_CHARS", "240"))
 # Set HACIENDA_API_KEY (enforced via the X-API-Key header) and a positive
 # API_RATE_LIMIT_PER_MIN before exposing the API beyond localhost — /qa spends
 # OpenAI tokens and loads multi-GB models per process.
-API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "0"))
+# Requests per minute per client (peer IP, or the configured API key). On by default; 0 disables it.
+API_RATE_LIMIT_PER_MIN = int(os.environ.get("API_RATE_LIMIT_PER_MIN", "300"))
 
 # --- Retrieval thresholds ---------------------------------------------------
 # Cosine-similarity floor applied by the EmbeddingsFilter compressor in the

@@ -72,6 +72,20 @@ def envolver(origen: str, texto: str) -> str:
     return "\n".join([f'{APERTURA} origen="{etiqueta}">', AVISO_DATOS, limpio, CIERRE])
 
 
+# Opening mark of ANY untrusted-data wrapper of the project (``envolver``, the mail module's own one…). The
+# wrappers replace «<» inside the data, so third-party text cannot forge it.
+_MARCA_NO_CONFIABLE = re.compile(r"<datos_[a-z_]*no_confiables\b")
+
+
+def contiene_no_confiable(texto: str | None) -> bool:
+    """Whether ``texto`` carries third-party data wrapped by one of the project's untrusted-data marks.
+
+    Once a turn has read such data, a ``prepara`` tool that would write facts no longer writes them: the write
+    waits as a pending action the user confirms (``nucleo/cerebro/colaboracion/modulos.py``,
+    ``nucleo/agent/especialistas.py``). A model steered by an e-mail or a web page cannot change the case."""
+    return bool(texto) and _MARCA_NO_CONFIABLE.search(texto or "") is not None
+
+
 # --------------------------------------------------------------------------- #
 # JSON Schema (the subset the contract uses)
 # --------------------------------------------------------------------------- #
@@ -293,4 +307,13 @@ def _registrar(rotulo: str, contexto: ContextoPeticion, op: OperacionCapacidad, 
     )
 
 
-__all__ = ["APERTURA", "AVISO_DATOS", "CIERRE", "Consentido", "envolver", "fallos_de_esquema", "pedir"]
+__all__ = [
+    "APERTURA",
+    "AVISO_DATOS",
+    "CIERRE",
+    "Consentido",
+    "contiene_no_confiable",
+    "envolver",
+    "fallos_de_esquema",
+    "pedir",
+]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import AsyncIterator, Callable
+from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 import json
 import logging
@@ -11,6 +12,7 @@ from uuid import uuid4
 
 from fastapi import APIRouter, BackgroundTasks, Depends, FastAPI, HTTPException, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.trustedhost import TrustedHostMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from fastapi.responses import HTMLResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
@@ -129,11 +131,15 @@ from asistente.plataforma.api.routers import tareas as tareas_router
 from asistente.plataforma.api.security import (
     BodySizeLimitMiddleware,
     RateLimiter,
+    comprobar_arranque,
     comprobar_pregunta,
+    hosts_permitidos,
     make_rate_limit_middleware,
+    make_write_guard_middleware,
     recortar_historial,
     require_api_key,
     require_docs_publicas,
+    require_operator,
     require_qa_legado,
     security_headers_middleware,
 )
@@ -150,7 +156,23 @@ from asistente.plataforma.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE
 _logger = logging.getLogger(__name__)
 
 # The documentation routes are declared below, behind ``require_docs_publicas`` (docs/seguridad.md, S-18).
-app = FastAPI(title="HaciendaGPT Decision API", version="1.0.0", docs_url=None, redoc_url=None, openapi_url=None)
+
+
+@asynccontextmanager
+async def _arranque(_app: FastAPI) -> AsyncIterator[None]:
+    """Refuses to serve with no authentication at all (see ``comprobar_arranque``)."""
+    comprobar_arranque()
+    yield
+
+
+app = FastAPI(
+    title="HaciendaGPT Decision API",
+    version="1.0.0",
+    docs_url=None,
+    redoc_url=None,
+    openapi_url=None,
+    lifespan=_arranque,
+)
 
 
 def _no_disponible(mensaje: str, exc: BaseException) -> HTTPException:
@@ -214,11 +236,15 @@ app.add_middleware(
 app.state.api_metrics = ApiMetrics()
 _rate_limiter = RateLimiter(API_RATE_LIMIT_PER_MIN)
 app.middleware("http")(make_rate_limit_middleware(_rate_limiter))
+# Cross-site writes and non-JSON bodies are refused before any handler runs.
+app.middleware("http")(make_write_guard_middleware(_ALLOWED_ORIGINS))
 app.middleware("http")(observability_middleware)
 # Security headers on every response, and the request-body cap outermost so an oversized body is refused
 # before anything reads it (docs/seguridad.md).
 app.middleware("http")(security_headers_middleware)
 app.add_middleware(BodySizeLimitMiddleware)
+# Outermost: a request whose Host is not ours (DNS rebinding against a local API) gets a 400 before anything.
+app.add_middleware(TrustedHostMiddleware, allowed_hosts=hosts_permitidos())
 
 
 @_thread_safe_singleton
@@ -313,11 +339,11 @@ def health() -> dict[str, str]:
     return {"status": "ok", "ts": datetime.now(UTC).isoformat()}
 
 
-@app.get("/metrics")
+@app.get("/metrics", dependencies=[Depends(require_operator)])
 def metrics() -> Response:
     """Prometheus-format HTTP metrics (request counts, errors, latency).
 
-    Exempt from auth and rate limiting so scrapers always reach it.
+    Exempt from rate limiting; operator only (the API key, and the operator key with accounts on).
     """
     return Response(
         content=app.state.api_metrics.prometheus_text(),

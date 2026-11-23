@@ -34,6 +34,7 @@ import scrapy
 from scrapy.http import Response
 
 from asistente.conocimiento import formatos
+from asistente.conocimiento.crawler.middlewares import peticion_fallida
 
 CENDOJ_BASE_URL = "https://www.poderjudicial.es"
 CENDOJ_DEFAULT_USER_AGENT = "hacienda-asesor/0.1 (research; contacto@hacienda-asesor.local)"
@@ -208,11 +209,21 @@ def observar_documento(html: str, *, contexto: str = "") -> None:
     formatos.observar("cendoj_documento", html, contexto=contexto)
 
 
+def _como_palabra(keyword: str) -> re.Pattern[str]:
+    return re.compile(rf"(?<!\w){re.escape(keyword)}(?!\w)")
+
+
+# Whole words: «iva» inside «activa», «privativa» or «definitiva», or «lgt»/«aeat» inside another word, made
+# almost every ruling look tributario.
+_STRONG_TAX_PATTERNS = tuple(_como_palabra(k) for k in _STRONG_TAX_KEYWORDS)
+_WEAK_TAX_PATTERNS = tuple(_como_palabra(k) for k in _WEAK_TAX_KEYWORDS)
+
+
 def _classify_tributario(text: str) -> bool:
     lowered = text.lower()
-    if any(keyword in lowered for keyword in _STRONG_TAX_KEYWORDS):
+    if any(patron.search(lowered) for patron in _STRONG_TAX_PATTERNS):
         return True
-    weak_hits = sum(1 for keyword in _WEAK_TAX_KEYWORDS if keyword in lowered)
+    weak_hits = sum(1 for patron in _WEAK_TAX_PATTERNS if patron.search(lowered))
     return weak_hits >= 2
 
 
@@ -323,11 +334,14 @@ class CENDOJCrawler(scrapy.Spider):
 
     def start_requests(self) -> Generator[scrapy.Request]:
         for index, url in enumerate(self._urls):
-            yield scrapy.Request(url, callback=self.parse_document, cb_kwargs={"slot": index})
+            yield scrapy.Request(url, callback=self.parse_document, cb_kwargs={"slot": index}, errback=self._fallida)
+
+    def _fallida(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
 
     async def start(self):  # type: ignore[override]
         for index, url in enumerate(self._urls):
-            yield scrapy.Request(url, callback=self.parse_document, cb_kwargs={"slot": index})
+            yield scrapy.Request(url, callback=self.parse_document, cb_kwargs={"slot": index}, errback=self._fallida)
 
     def parse_document(self, response: Response, slot: int) -> None:
         html = response.text

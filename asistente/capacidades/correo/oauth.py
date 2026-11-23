@@ -52,6 +52,12 @@ def _exigir(conf: Configuracion) -> None:
 
 def iniciar(case_id: str, user_id: str | None, *, db_path: str | None = None) -> str:
     """The Google consent URL for this case and user."""
+    return iniciar_flujo(case_id, user_id, db_path=db_path)[0]
+
+
+def iniciar_flujo(case_id: str, user_id: str | None, *, db_path: str | None = None) -> tuple[str, str]:
+    """The Google consent URL and the ``state`` it carries (the API also sets it in an HttpOnly cookie, so the
+    callback only completes in the browser that started the flow: no login CSRF with someone else's code)."""
     conf = configuracion()
     _exigir(conf)
     estado = secrets.token_urlsafe(32)
@@ -76,7 +82,7 @@ def iniciar(case_id: str, user_id: str | None, *, db_path: str | None = None) ->
         "code_challenge": reto,
         "code_challenge_method": "S256",
     }
-    return f"{conf.auth_url}?{urlencode(params)}"
+    return f"{conf.auth_url}?{urlencode(params)}", estado
 
 
 def _token(conf: Configuracion, datos: dict[str, str], http: Transporte) -> dict[str, Any]:

@@ -378,7 +378,8 @@ def build_router(
                 detail="El módulo de esta acción está desactivado o ya no la ofrece. No se ha hecho nada.",
             )
         herramienta = encontrada[1]
-        if herramienta.efecto != "actua":
+        # «prepara»: a draft whose writes were held because the turn had read third-party data.
+        if herramienta.efecto not in ("actua", "prepara"):
             raise HTTPException(status_code=409, detail="Esta herramienta ya no es una acción. No se ha hecho nada.")
         if acciones.transicion(accion_id, desde="pendiente", hacia="ejecutando") is None:
             raise HTTPException(status_code=409, detail="Esta acción ya se decidió; no se puede ejecutar de nuevo.")

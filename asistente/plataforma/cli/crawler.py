@@ -25,33 +25,44 @@ CRAWLER_MAPPING: dict[str, type[Spider]] = {
 
 _PARAM_FREE_CRAWLERS = {AgenciaTributariaPDFCrawler, AgenciaTributariaWebCrawler}
 
+# An honest, fixed User-Agent (no rotating fake browsers: the sources are public bodies we identify ourselves to).
+USER_AGENT = "asistente-fiscal-crawler/1.0 (+https://github.com/DioCrafts/cerebro-agentes)"
+
 SETTINGS = {
     "ROBOTSTXT_OBEY": True,
+    "USER_AGENT": USER_AGENT,
     "HTTPCACHE_ENABLED": True,
-    # `scrapy-fake-useragent` 1.4.4 (the version pinned in uv.lock) reaches
-    # for `self.EXCEPTIONS_TO_RETRY` on Scrapy's `RetryMiddleware`, but that
-    # attribute was removed in Scrapy 2.11+. Hitting it blows up the very
-    # first request (typically the robots.txt fetch) and the crawl ends with
-    # zero items. We therefore disable the fake-UA retry shim and let the
-    # stock Scrapy retry path stay in charge. We still randomize the User
-    # Agent per request via `RandomUserAgentMiddleware`, which is unaffected.
-    "DOWNLOADER_MIDDLEWARES": {
-        "scrapy.downloadermiddlewares.useragent.UserAgentMiddleware": None,
-        "scrapy_fake_useragent.middleware.RandomUserAgentMiddleware": 400,
-        # Route every HTTPS request through scrapy-playwright so we sidestep
-        # the X509/pyOpenSSL incompatibility on the stock Scrapy downloader.
-        "asistente.conocimiento.crawler.middlewares.ForcePlaywrightMiddleware": 543,
-    },
-    "DOWNLOAD_HANDLERS": {
-        "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-        "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
-    },
+    # A cached page is reused for one day at most (the corpus tracks sources that change), and a server error
+    # is never cached: it would be replayed as the page's content on every later run.
+    "HTTPCACHE_EXPIRATION_SECS": 24 * 3600,
+    "HTTPCACHE_IGNORE_HTTP_CODES": list(range(500, 600)),
+    # scrapy-playwright is only the download handler of the AEAT sede crawler (its custom_settings); every
+    # other crawler uses Scrapy's own downloader. The asyncio reactor is a process-wide choice, so it is here.
     "TWISTED_REACTOR": "twisted.internet.asyncioreactor.AsyncioSelectorReactor",
     "PLAYWRIGHT_BROWSER_TYPE": "chromium",
     "PLAYWRIGHT_LAUNCH_OPTIONS": {
         "executable_path": os.environ.get("PLAYWRIGHT_BROWSERS_BINARY_PATH"),
     },
 }
+
+
+def rastreo_fallido(stats: dict[str, Any]) -> str | None:
+    """Why a finished crawl counts as failed (None when it went well): it did not finish normally, a request
+    failed (errback or download error) or a callback raised."""
+    motivo = stats.get("finish_reason")
+    if motivo != "finished":
+        return f"el rastreo terminó con «{motivo}»"
+    fallos = sum(
+        int(valor)
+        for clave, valor in stats.items()
+        if clave in ("crawler/peticiones_fallidas", "downloader/exception_count")
+        or clave.startswith("spider_exceptions/")
+    )
+    if fallos:
+        return f"{fallos} peticiones o páginas fallaron"
+    if int(stats.get("log_count/ERROR", 0)):
+        return "hubo errores en el registro"
+    return None
 
 
 def start_crawler(
@@ -62,14 +73,21 @@ def start_crawler(
     snapshot_date: str | None,
     extra_kwargs: dict[str, Any] | None = None,
 ) -> None:
+    """Run one crawl; ``SystemExit(1)`` when it failed (see :func:`rastreo_fallido`), so cron and scripts notice."""
     process = CrawlerProcess(settings=settings)
     kwargs = {"folder": os.path.abspath(folder), "snapshot_date": snapshot_date}
     if crawler_class in _PARAM_FREE_CRAWLERS:
         kwargs["mode"] = mode
     if extra_kwargs:
         kwargs.update(extra_kwargs)
-    process.crawl(crawler_class, **kwargs)
+    crawler = process.create_crawler(crawler_class)
+    process.crawl(crawler, **kwargs)
     process.start(install_signal_handlers=True)
+    stats = crawler.stats.get_stats() if crawler.stats is not None else {}
+    motivo = rastreo_fallido(stats)
+    if motivo is not None:
+        click.echo(f"El rastreo de {crawler_class.__name__} ha fallado: {motivo}.", err=True)
+        raise SystemExit(1)
 
 
 @click.command()

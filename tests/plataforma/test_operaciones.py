@@ -94,3 +94,38 @@ def test_the_cli_requires_a_key_unless_told_otherwise(base: str, tmp_path, monke
     cifrada = resultado.output.strip()
     resultado = runner.invoke(cli, ["descifrar-copia", cifrada, str(tmp_path / "r.sqlite3")])
     assert resultado.exit_code == 0 and _casos(str(tmp_path / "r.sqlite3")) == ["caso-secreto-77"]
+
+
+def test_copias_privadas_desde_el_primer_byte(tmp_path, monkeypatch) -> None:
+    """Even with umask 0, no copy (plain, encrypted or decrypted) is ever readable by others, not even while
+    it is being written: the file is created 0600 before SQLite or the encrypted bytes touch it."""
+    import os
+    import sqlite3 as _sqlite3
+    import stat
+
+    from asistente.plataforma import operaciones as ops
+
+    origen = tmp_path / "casos.sqlite3"
+    with _sqlite3.connect(origen) as conn:
+        conn.execute("CREATE TABLE t (x)")
+    modos: list[int] = []
+    conectar = _sqlite3.connect
+
+    def espia(ruta, *a, **k):
+        if str(ruta) != str(origen) and os.path.exists(ruta):
+            modos.append(stat.S_IMODE(os.stat(ruta).st_mode))
+        return conectar(ruta, *a, **k)
+
+    monkeypatch.setattr(ops.sqlite3, "connect", espia)
+    anterior = os.umask(0)
+    try:
+        plana = ops.copiar(str(origen), str(tmp_path / "copias"))
+        clave = ops.nueva_clave()
+        cifrada = ops.copiar(str(origen), str(tmp_path / "copias"), clave=clave)
+        descifrada = ops.descifrar(str(cifrada), str(tmp_path / "fuera" / "x.sqlite3"), clave=clave)
+    finally:
+        os.umask(anterior)
+    assert modos and set(modos) == {0o600}
+    for ruta in (plana, cifrada, descifrada):
+        assert stat.S_IMODE(os.stat(ruta).st_mode) == 0o600, ruta
+    assert stat.S_IMODE(os.stat(tmp_path / "copias").st_mode) == 0o700
