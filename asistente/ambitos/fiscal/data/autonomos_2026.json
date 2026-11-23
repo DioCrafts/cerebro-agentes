@@ -13,9 +13,9 @@
       "norma": "Reglamento del IRPF, Real Decreto 439/2007, de 30 de marzo (texto consolidado)",
       "boe_id": "BOE-A-2007-6820",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2007-6820",
-      "consolidado_a": "2026-10-07",
-      "consultado_el": "2026-11-12",
-      "sha256_html": "e1d12adfbd9866ae6e485797ebd7c4081ce36efbd11c8b4c119cc38b4a33e33a"
+      "consolidado_a": "2026-11-18",
+      "consultado_el": "2026-11-23",
+      "sha256_html": "641cbc22b8465f1d8a5a55ec81061850038ee9f925b8fa9bae4770b3c116d4cd"
     },
     "BOE-A-1992-28740": {
       "norma": "Ley 37/1992, de 28 de diciembre, del Impuesto sobre el Valor Añadido (texto consolidado)",
@@ -536,5 +536,13 @@
         "cita": "a) En la República Federal de Alemania, la Isla de Helgoland y el territorio de Büsingen; en el Reino de España, Ceuta y Melilla y en la República Italiana, Livigno, en cuanto territorios no comprendidos en la Unión Aduanera. b) En el Reino de España, Canarias;"
       }
     ]
-  }
+  },
+  "revisiones": [
+    {
+      "norma": "Relectura de Reglamento del IRPF, Real Decreto 439/2007, de 30 de marzo",
+      "boe_id": "BOE-A-2007-6820",
+      "revisado_el": "2026-11-23",
+      "resultado": "Texto consolidado a 2026-11-18 leído el 2026-11-23: todas las comprobaciones de los grupos que la citan coinciden, ningún artículo modificado desde la lectura anterior queda sin releer y no hay nada abierto sobre ella. Se actualiza su procedencia (consolidado_a, consultado_el y sha256_html) sin tocar ninguna cifra."
+    }
+  ]
 }

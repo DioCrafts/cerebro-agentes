@@ -94,9 +94,9 @@
       "norma": "Decreto Legislativo 1/2024, de 12 de marzo, libro sexto del Código tributario de Cataluña (texto consolidado)",
       "boe_id": "BOE-A-2024-6951",
       "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951",
-      "consolidado_a": "2026-05-22",
-      "consultado_el": "2026-11-12",
-      "sha256_html": "bc994c0eac637ca386b63d8d3cdcf26be2a0dbcc54f5d92572749a071f52508a"
+      "consolidado_a": "2026-11-19",
+      "consultado_el": "2026-11-23",
+      "sha256_html": "85ac90b2d5c85aeab4887b72236c26caa6a9fc9fe933e684ca81e85aa8ca2fad"
     },
     "BOE-A-1998-8202": {
       "norma": "Ley 13/1997, de 23 de diciembre, del tramo autonómico del IRPF y restantes tributos cedidos de la Comunitat Valenciana (texto consolidado)",
@@ -1823,5 +1823,13 @@
       "aplicable_2025": true,
       "diferencias_2025": []
     }
-  }
+  },
+  "revisiones": [
+    {
+      "norma": "Relectura de Decreto Legislativo 1/2024, de 12 de marzo, libro sexto del Código tributario de Cataluña",
+      "boe_id": "BOE-A-2024-6951",
+      "revisado_el": "2026-11-23",
+      "resultado": "Texto consolidado a 2026-11-19 leído el 2026-11-23: todas las comprobaciones de los grupos que la citan coinciden, ningún artículo modificado desde la lectura anterior queda sin releer y no hay nada abierto sobre ella. Se actualiza su procedencia (consolidado_a, consultado_el y sha256_html) sin tocar ninguna cifra."
+    }
+  ]
 }

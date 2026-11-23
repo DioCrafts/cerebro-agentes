@@ -5051,9 +5051,9 @@
         "norma": "Decreto Legislativo 1/2024, de 12 de marzo, por el que se aprueba el libro sexto del Código tributario de Catalunya, que integra el texto refundido de los preceptos legales vigentes en Catalunya en materia de tributos cedidos (texto consolidado)",
         "boe_id": "BOE-A-2024-6951",
         "url": "https://www.boe.es/buscar/act.php?id=BOE-A-2024-6951",
-        "consolidado_a": "2026-07-20",
-        "consultado_el": "2026-11-12",
-        "sha256_html": "bc994c0eac637ca386b63d8d3cdcf26be2a0dbcc54f5d92572749a071f52508a"
+        "consolidado_a": "2026-11-19",
+        "consultado_el": "2026-11-23",
+        "sha256_html": "85ac90b2d5c85aeab4887b72236c26caa6a9fc9fe933e684ca81e85aa8ca2fad"
       },
       "escala_general": {
         "tramos": [
@@ -8357,6 +8357,12 @@
       "boe_id": "BOE-A-2006-20764; BOCM-m-2010-90068; BOE-A-2021-17915; BOE-A-2015-945 (redacción de BOE-A-2025-25707); BOE-A-2014-6925; BOC-j-2009-90008; BOCL-h-2013-90254; BOE-A-2024-6951; BOE-A-1998-8202; BOE-A-2011-18161; BOE-A-2017-13750",
       "revisado_el": "2026-11-13",
       "resultado": "Leídos los arts. 58 a 61 LIRPF y el artículo de mínimos de cada comunidad, en la redacción aplicable a 2025 y a 2026 (la misma). El Estado (3.000 € y 9.000 € desde el 65 %, más 3.000 € de gastos de asistencia) y Madrid, Andalucía, Asturias, Canarias, Castilla y León, la Comunidad Valenciana y Galicia imprimen para ascendientes y descendientes los mismos importes que para el contribuyente; Baleares los incrementa un 10 % junto con los del contribuyente; Cataluña solo cambia el mínimo del contribuyente. La Rioja (art. 31 bis Ley 10/2017) eleva solo el de descendientes a 3.300 € y 9.900 €, sin cambiar los gastos de asistencia: se añaden sus mínimos. Las citas literales de los mínimos están en evidencia_parametros.json."
+    },
+    {
+      "norma": "Relectura de Decreto Legislativo 1/2024, de 12 de marzo, por el que se aprueba el libro sexto del Código tributario de Catalunya, que integra el texto refundido de los preceptos legales vigentes en Ca",
+      "boe_id": "BOE-A-2024-6951",
+      "revisado_el": "2026-11-23",
+      "resultado": "Texto consolidado a 2026-11-19 leído el 2026-11-23: todas las comprobaciones de los grupos que la citan coinciden, ningún artículo modificado desde la lectura anterior queda sin releer y no hay nada abierto sobre ella. Se actualiza su procedencia (consolidado_a, consultado_el y sha256_html) sin tocar ninguna cifra."
     }
   ],
   "reduccion_arrendamiento": {
