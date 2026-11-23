@@ -40,8 +40,7 @@ from asistente.conocimiento.registro import FicheroLegal, ficheros_legales
 from asistente.conocimiento.texto import TextoDe
 
 REVISION_HUMANA = (
-    "datos legales de un módulo del hogar: una persona confirma la propuesta antes de aplicarla (nunca se aplica "
-    "sola)"
+    "datos legales de un módulo del hogar: una persona confirma la propuesta antes de aplicarla (nunca se aplica sola)"
 )
 
 

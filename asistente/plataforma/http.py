@@ -138,8 +138,8 @@ class _Politica:
         if respuesta is not None:
             pedida = espera_retry_after(respuesta.headers.get("Retry-After"))
             if pedida is not None:
-                return pedida if pedida <= RETRY_AFTER_MAX else None
-        return min(self.espera_max, self.espera_base * 2**intento)
+                return float(pedida) if pedida <= RETRY_AFTER_MAX else None
+        return float(min(self.espera_max, self.espera_base * 2**intento))
 
     def excede(self, recibidos: int, limite: int | None) -> bool:
         return recibidos > (self.max_bytes if limite is None else limite)

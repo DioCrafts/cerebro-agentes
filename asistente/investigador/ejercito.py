@@ -126,8 +126,11 @@ class Ejercito:
             consultas = tuple(str(q)[:200] for q in (c.get("consultas") or [texto]))[:3]
             nuevas.append(Subpregunta(f"S{len(self.plan) + len(nuevas) + 1}", texto, consultas, profundidad))
         self.plan.extend(nuevas)
-        self._emitir("plan", f"Plan (nivel {profundidad}): {len(nuevas)} subpreguntas",
-                     subpreguntas=[{"id": s.id, "texto": s.texto, "consultas": list(s.consultas)} for s in nuevas])
+        self._emitir(
+            "plan",
+            f"Plan (nivel {profundidad}): {len(nuevas)} subpreguntas",
+            subpreguntas=[{"id": s.id, "texto": s.texto, "consultas": list(s.consultas)} for s in nuevas],
+        )
         return nuevas
 
     def buscar(self, sub: Subpregunta) -> list[Fuente]:
@@ -153,8 +156,15 @@ class Ejercito:
                     continue
                 self._vistas.add(d.url)
                 fid = f"F{len(self.fuentes) + 1}"
-                f = Fuente(fid, d.url, d.titulo[:200], d.texto, sub.id, seguridad.sospechosa(d.texto),
-                           d.recuperado_el or datetime.now(UTC))
+                f = Fuente(
+                    fid,
+                    d.url,
+                    d.titulo[:200],
+                    d.texto,
+                    sub.id,
+                    seguridad.sospechosa(d.texto),
+                    d.recuperado_el or datetime.now(UTC),
+                )
                 self.fuentes[fid] = f
             if f.sospechosa:
                 self._aviso(f"{fid} ({f.url}) contiene posibles instrucciones incrustadas: neutralizadas.")
@@ -179,8 +189,12 @@ class Ejercito:
             texto, fid, cita = str(h.get("texto", "")).strip(), str(h.get("fuente", "")), str(h.get("cita", ""))
             fuente = por_id.get(fid)
             if not texto or fuente is None or not cita_literal(cita, fuente) or not cifras_respaldadas(texto, [cita]):
-                self._emitir("afirmacion_eliminada", f"Hallazgo descartado (cita no literal o fuente no leída): {texto[:80]}",
-                             texto=texto, fuente=fid)
+                self._emitir(
+                    "afirmacion_eliminada",
+                    f"Hallazgo descartado (cita no literal o fuente no leída): {texto[:80]}",
+                    texto=texto,
+                    fuente=fid,
+                )
                 continue
             with self.contador._lock:
                 hid = f"H{len(self.hallazgos) + 1}"
@@ -197,20 +211,30 @@ class Ejercito:
         bloques = []
         for h in hallazgos:
             f = self.fuentes[h.fuente]
-            bloques.append(f"Hallazgo {h.id}: {h.texto}\nCita: «{h.cita}»\n{seguridad.envolver(f.id, f.url, f.texto, 3000, foco=f"{h.texto} {h.cita}")}")
+            bloques.append(
+                f"Hallazgo {h.id}: {h.texto}\nCita: «{h.cita}»\n{seguridad.envolver(f.id, f.url, f.texto, 3000, foco=f'{h.texto} {h.cita}')}"
+            )
         try:
             datos = self._llamar("critico", "\n\n".join(bloques))
         except RespuestaInvalidaError as exc:
             self._aviso(f"Crítica no válida ({exc}): los hallazgos quedan como dudosos.")
-            datos = {"criticas": [{"hallazgo": h.id, "veredicto": "dudoso", "motivo": "sin crítica"} for h in hallazgos]}
+            datos = {
+                "criticas": [{"hallazgo": h.id, "veredicto": "dudoso", "motivo": "sin crítica"} for h in hallazgos]
+            }
         for c in datos.get("criticas") or []:
             if not isinstance(c, dict) or c.get("hallazgo") not in self.hallazgos:
                 continue
-            veredicto: Veredicto = c["veredicto"] if c.get("veredicto") in ("sostenido", "dudoso", "refutado") else "dudoso"
+            veredicto: Veredicto = (
+                c["veredicto"] if c.get("veredicto") in ("sostenido", "dudoso", "refutado") else "dudoso"
+            )
             critica = Critica(c["hallazgo"], veredicto, str(c.get("motivo", ""))[:400])
             self.criticas.append(critica)
-            self._emitir("critica", f"{critica.hallazgo}: {veredicto} — {critica.motivo}",
-                         hallazgo=critica.hallazgo, veredicto=veredicto)
+            self._emitir(
+                "critica",
+                f"{critica.hallazgo}: {veredicto} — {critica.motivo}",
+                hallazgo=critica.hallazgo,
+                veredicto=veredicto,
+            )
             if veredicto == "refutado":
                 self.hallazgos.pop(critica.hallazgo, None)
         return [str(x)[:300] for x in (datos.get("lagunas") or []) if str(x).strip()]
@@ -248,8 +272,12 @@ class Ejercito:
                 a.nota = "el crítico la considera dudosa"
             if motivo:
                 a.estado, a.nota = "sin_fuente", motivo
-                self._emitir("afirmacion_eliminada", f"Afirmación sin fuente válida ({motivo}): {a.texto[:80]}",
-                             texto=a.texto, motivo=motivo)
+                self._emitir(
+                    "afirmacion_eliminada",
+                    f"Afirmación sin fuente válida ({motivo}): {a.texto[:80]}",
+                    texto=a.texto,
+                    motivo=motivo,
+                )
                 if self.sin_fuente == "eliminar":
                     eliminadas.append(a)
                     continue
@@ -321,5 +349,7 @@ class Ejercito:
             presupuesto_agotado=agotado,
             avisos=self.avisos,
         )
-        self._emitir("fin", f"Informe: {len(afirmaciones)} afirmaciones, {len(informe.fuentes_citadas())} fuentes citadas")
+        self._emitir(
+            "fin", f"Informe: {len(afirmaciones)} afirmaciones, {len(informe.fuentes_citadas())} fuentes citadas"
+        )
         return informe

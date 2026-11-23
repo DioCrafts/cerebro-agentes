@@ -21,8 +21,11 @@ class JuezSimulado:
 
     def complete_json(self, *, system: str, user: str, schema: Any, schema_name: str) -> dict[str, Any]:
         n = user.count("\n") and user.split("<criterios>")[1].count(". ")
-        return {"veredictos": [{"criterio": i, "cumple": True, "cita": self.cita, "motivo": "ok"}
-                               for i in range(1, max(n, 1) + 1)]}
+        return {
+            "veredictos": [
+                {"criterio": i, "cumple": True, "cita": self.cita, "motivo": "ok"} for i in range(1, max(n, 1) + 1)
+            ]
+        }
 
 
 BUENA_IVA = "El tipo general del IVA en España es el 21 % (art. 90 Ley 37/1992). [f1]"
@@ -40,8 +43,11 @@ def test_la_bateria_versionada_carga_y_cubre_los_dos_sistemas() -> None:
 
 def test_inyeccion_resistida_pasa_y_cedida_falla() -> None:
     caso = _caso("inv-inyeccion-iva")
-    buena = b.Salida(respuesta=BUENA_IVA, fuentes=["https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"],
-                     evidencias=["El impuesto se exigirá al tipo del 21 por ciento"])
+    buena = b.Salida(
+        respuesta=BUENA_IVA,
+        fuentes=["https://www.boe.es/buscar/act.php?id=BOE-A-1992-28740"],
+        evidencias=["El impuesto se exigirá al tipo del 21 por ciento"],
+    )
     r = b.evaluar_caso(caso, buena, b.cargar_bateria().dominios_oficiales)
     assert r.critico_ok and r.calidad == 1.0 and r.fuentes_oficiales == 1
     mala = b.evaluar_caso(caso, b.Salida(respuesta=MALA_IVA), [])
@@ -59,14 +65,17 @@ def test_cifra_inventada_es_fallo_critico_del_investigador() -> None:
 
 def test_cifra_requerida_con_respaldo() -> None:
     caso = _caso("inv-alquiler-transitorio")
-    texto = ("Solo contratos anteriores al 1 de enero de 2015 (régimen transitorio): 10,05 % sobre una base "
-             "inferior a 24.107,20 €.")
+    texto = (
+        "Solo contratos anteriores al 1 de enero de 2015 (régimen transitorio): 10,05 % sobre una base "
+        "inferior a 24.107,20 €."
+    )
     sin_respaldo = b.evaluar_caso(caso, b.Salida(respuesta=texto, evidencias=["10,05"]), [])
     assert any("24.107,20" in f for f in sin_respaldo.fallos_criticos)  # also an unbacked figure
     con = b.evaluar_caso(
         caso,
-        b.Salida(respuesta=texto, evidencias=["10,05 por ciento", "inferior a 24.107,20 euros"],
-                 fuentes=["https://boe.es/x"]),
+        b.Salida(
+            respuesta=texto, evidencias=["10,05 por ciento", "inferior a 24.107,20 euros"], fuentes=["https://boe.es/x"]
+        ),
         ["boe.es"],
     )
     assert con.critico_ok and con.calidad == 1.0
@@ -113,8 +122,9 @@ def _ejecutores(respuestas: dict[str, b.Salida]) -> dict[str, b.Ejecutor]:
 
 def test_ejecucion_completa_guardado_y_comparacion(tmp_path) -> None:
     bat = b.cargar_bateria()
-    base = b.ejecutar(bat, _ejecutores({"inv-inyeccion-iva": b.Salida(respuesta=BUENA_IVA, evidencias=["21"])}),
-                      modo="simulado")
+    base = b.ejecutar(
+        bat, _ejecutores({"inv-inyeccion-iva": b.Salida(respuesta=BUENA_IVA, evidencias=["21"])}), modo="simulado"
+    )
     assert base.resumen["ejecutados"] == 13 and base.resumen["omitidos"] == 0
     ruta = b.guardar(base, tmp_path / "base.json")
     assert b.cargar_informe(ruta).casos == base.casos
@@ -134,15 +144,19 @@ def test_regresion_de_calidad_pareada() -> None:
     bat = b.cargar_bateria()
     buenas = {
         "cer-suscripciones": b.Salida(respuesta="74,87 € al mes, 898,44 € al año", violaciones_puerta=[]),
-        "cer-hipoteca-amortizar": b.Salida(respuesta="Cuota 872,42 €, nueva 775,49 €; o reducir plazo.",
-                                           violaciones_puerta=[]),
-        "cer-alquiler-madrid": b.Salida(respuesta="No te corresponde: el límite es 26.414,22 €.",
-                                        violaciones_puerta=[]),
-        "cer-potencia-luz": b.Salida(respuesta="El término de potencia baja; puede saltar el ICP.",
-                                     violaciones_puerta=[]),
+        "cer-hipoteca-amortizar": b.Salida(
+            respuesta="Cuota 872,42 €, nueva 775,49 €; o reducir plazo.", violaciones_puerta=[]
+        ),
+        "cer-alquiler-madrid": b.Salida(
+            respuesta="No te corresponde: el límite es 26.414,22 €.", violaciones_puerta=[]
+        ),
+        "cer-potencia-luz": b.Salida(
+            respuesta="El término de potencia baja; puede saltar el ICP.", violaciones_puerta=[]
+        ),
         "cer-transferencia-sin-confirmar": b.Salida(respuesta="No puedo hacerlo.", violaciones_puerta=[]),
-        "cer-conjunta-individual": b.Salida(respuesta="Os conviene la individual. Reducción conjunta 3.400 €.",
-                                            violaciones_puerta=[]),
+        "cer-conjunta-individual": b.Salida(
+            respuesta="Os conviene la individual. Reducción conjunta 3.400 €.", violaciones_puerta=[]
+        ),
     }
     base = b.ejecutar(bat, _ejecutores(buenas), sistemas=["cerebro"], modo="simulado")
     peor = b.ejecutar(bat, _ejecutores({}), sistemas=["cerebro"], modo="simulado")
@@ -153,6 +167,7 @@ def test_regresion_de_calidad_pareada() -> None:
 
 def test_presupuesto_total_y_sistema_sin_ejecutor_se_omiten() -> None:
     bat = b.cargar_bateria()
+
     def caro(_c: b.CasoBateria, _p: float) -> b.Salida:
         return b.Salida(respuesta="No lo sé.", violaciones_puerta=[], coste=0.5)
 
@@ -170,8 +185,9 @@ def test_un_ejecutor_que_falla_no_rompe_la_bateria() -> None:
     assert all(not r.critico_ok and r.error for r in informe.casos)
 
 
-@pytest.mark.parametrize("texto,esperado", [("cuesta 1.234,56 € y un 21 %", ["1.234,56", "21"]),
-                                            ("art. 38 de la Ley 35/2006, año 2025", [])])
+@pytest.mark.parametrize(
+    "texto,esperado", [("cuesta 1.234,56 € y un 21 %", ["1.234,56", "21"]), ("art. 38 de la Ley 35/2006, año 2025", [])]
+)
 def test_cifras_monetarias(texto: str, esperado: list[str]) -> None:
     assert b.cifras_monetarias(texto) == esperado
 

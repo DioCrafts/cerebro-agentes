@@ -998,7 +998,9 @@ def test_autopilot_reads_the_amending_norm_then_the_consolidated_text_bears_it_o
         f"{NORMA}: MODIFICA el art. 5 de la Ley 1/2020" in lector.llamadas[0]["user"]
     )  # the BOE's analysis, as annotations
     # …and such a proposal is never applied without a person, auto-application or not.
-    assert any("aún no había consolidado" in r for r in propuesta.control.revisar) and not propuesta.aplicable_sin_persona  # type: ignore[union-attr]
+    assert (
+        any("aún no había consolidado" in r for r in propuesta.control.revisar) and not propuesta.aplicable_sin_persona
+    )  # type: ignore[union-attr]
     assert _deduccion(datos, 2026) == ANTIGUA
 
     # Running again costs nothing: same norm, same text, same data.
@@ -1450,17 +1452,18 @@ def test_cli_eval_and_gate(cli: Any, monkeypatch) -> None:
 
 def test_a_summary_that_is_not_json_reaches_the_format_watch(monkeypatch: pytest.MonkeyPatch) -> None:
     from asistente.conocimiento import formatos
+    from asistente.conocimiento.boe import cliente as boe_cliente
 
     vistos: list[tuple[str, str, str]] = []
     monkeypatch.setattr(formatos, "observar", lambda clave, crudo, **kw: vistos.append((clave, crudo, kw["contexto"])))
-    monkeypatch.setattr(cli_module, "_get", lambda url, **kw: b"<html>Servicio no disponible</html>")
+    monkeypatch.setattr(boe_cliente, "descargar", lambda url, *a, **kw: b"<html>Servicio no disponible</html>")
     monkeypatch.setattr(cli_module.time, "sleep", lambda _s: None)
     with pytest.raises(ValueError):
         cli_module._sumario(date(2026, 11, 10))
     assert vistos == [("boe_sumario", "<html>Servicio no disponible</html>", "2026-11-10")]
-    monkeypatch.setattr(cli_module, "_get", lambda url, **kw: b'{"data": {}}')
+    monkeypatch.setattr(boe_cliente, "descargar", lambda url, *a, **kw: b'{"data": {}}')
     assert cli_module._sumario(date(2026, 11, 10)) == {"data": {}} and len(vistos) == 1
-    monkeypatch.setattr(cli_module, "_get", lambda url, **kw: None)
+    monkeypatch.setattr(boe_cliente, "descargar", lambda url, *a, **kw: None)
     assert cli_module._sumario(date(2026, 11, 8)) is None
 
 

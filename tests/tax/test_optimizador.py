@@ -650,7 +650,7 @@ def test_optimize_endpoint_answers_422_with_a_readable_message() -> None:
 
 
 def test_optimize_endpoint_example_of_the_readme_is_valid() -> None:
-    readme = (Path(__file__).resolve().parents[2] / "README.md").read_text(encoding="utf-8")
+    readme = (Path(__file__).resolve().parents[2] / "docs" / "referencia.md").read_text(encoding="utf-8")
     seccion = readme.split("### Optimizador fiscal", 1)[1]
     ejemplo = seccion.split("```json", 1)[1].split("```", 1)[0]
     cuerpo = json.loads(ejemplo)

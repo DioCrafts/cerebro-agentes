@@ -67,7 +67,7 @@ def _get_model(model_path: str) -> tuple[Any, Any, int, int]:
             return cached
         from mlx_lm import load
 
-        model, tokenizer = load(model_path)
+        model, tokenizer = load(model_path)[:2]
         yes_id = tokenizer.encode("yes", add_special_tokens=False)[0]
         no_id = tokenizer.encode("no", add_special_tokens=False)[0]
         _MODEL_CACHE[model_path] = (model, tokenizer, yes_id, no_id)
@@ -170,5 +170,5 @@ class MLXReranker(BaseDocumentCompressor):
         no_logits = mx.stack([logits[i, int(last_pos[i]), no_id] for i in range(len(docs))])
         paired = mx.stack([no_logits, yes_logits], axis=1)  # (B, 2)
         probs = mx.softmax(paired, axis=1)  # (B, 2)
-        scores: list[float] = probs[:, 1].tolist()
+        scores = [float(x) for x in probs[:, 1].tolist()]  # type: ignore[union-attr,arg-type]
         return scores

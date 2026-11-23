@@ -101,7 +101,7 @@ class MLXContextualizer:
         from mlx_lm import load
 
         logger.info("Loading contextualizer model %s ...", model_path)
-        self._model, self._tokenizer = load(str(path))
+        self._model, self._tokenizer = load(str(path))[:2]
         logger.info("Contextualizer model loaded")
 
     # ------------------------------------------------------------------ #

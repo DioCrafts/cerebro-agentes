@@ -97,6 +97,11 @@ FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
 # no pickle). Stays "faiss" until the retrieval benchmark validates the switch (docs/cerebro/benchmark-recuperacion.md).
 INDICE_BACKEND = os.environ.get("INDICE_BACKEND", "faiss").strip().lower()
 INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(FAISS_INDEX_PATH, "indice.sqlite"))
+# Hybrid retrieval in the sqlite backend: dense (sqlite-vec) + lexical (FTS5) fused with weighted RRF.
+# Off by default: on the fiscal benchmark BM25 cost one cited answer net; measure before turning it on.
+BM25_ENABLED = _env_bool("BM25_ENABLED", default=False)
+BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.6"))
+BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.4"))
 
 DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")

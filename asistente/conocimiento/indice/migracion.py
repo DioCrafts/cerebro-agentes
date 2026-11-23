@@ -78,7 +78,7 @@ def cargar_faiss(directorio: str | Path, *, confiar: bool) -> Any:
         )
     from langchain_community.vectorstores import FAISS
 
-    return FAISS.load_local(str(directorio), _SinEmbedder(), allow_dangerous_deserialization=True)
+    return FAISS.load_local(str(directorio), _SinEmbedder(), allow_dangerous_deserialization=True)  # type: ignore[arg-type]
 
 
 def _fragmento(chunk_id: str, documento: Any) -> Fragmento:

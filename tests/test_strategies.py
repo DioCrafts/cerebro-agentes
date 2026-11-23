@@ -199,7 +199,7 @@ def test_split_block_tables_keeps_thead_on_each_fragment() -> None:
         <tbody>{rows}</tbody>
       </table>
     </div>
-    """.format(rows="".join(f"<tr><td>{i}</td><td>{i*2}</td></tr>" for i in range(1500)))
+    """.format(rows="".join(f"<tr><td>{i}</td><td>{i * 2}</td></tr>" for i in range(1500)))
 
     fragments = _split_block_tables(block)
 

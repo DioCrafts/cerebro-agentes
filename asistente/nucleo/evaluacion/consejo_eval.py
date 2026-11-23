@@ -1118,9 +1118,7 @@ def comparar(
         "promovida": "mantener",
         "rechazada": "no_mantener",
         "evidencia_insuficiente": "evidencia_insuficiente",
-    }[
-        promocion.decision
-    ]  # type: ignore[assignment]
+    }[promocion.decision]  # type: ignore[assignment]
     criterios = [
         ComparacionCriterio(
             criterio=criterio,

@@ -357,7 +357,8 @@ _CON_PARENTESCO = re.compile(
 _ME_LLAMO = re.compile(rf"\b(me llamo|mi nombre es|ll[aá]mame|soy el|soy la)\s+{_NOMBRE_PROPIO}", re.IGNORECASE)
 _TRATAMIENTO = re.compile(rf"\b(?:Sr\.?|Sra\.?|Srta\.?|Don|Doña|D\.|Dña\.?)\s+{_NOMBRE_PROPIO}")
 # Common given names (Spain, INE) and some frequent among residents born abroad: replaced when written alone.
-_NOMBRES_COMUNES = frozenset("""
+_NOMBRES_COMUNES = frozenset(
+    """
     Antonio Manuel José Jose Francisco David Juan Javier Daniel Carlos Jesús Jesus Alejandro Miguel Rafael Pedro
     Pablo Ángel Angel Sergio Fernando Jorge Luis Alberto Álvaro Alvaro Adrián Adrian Diego Raúl Raul Enrique Ramón
     Ramon Vicente Iván Ivan Rubén Ruben Óscar Oscar Andrés Andres Joaquín Joaquin Santiago Eduardo Víctor Victor
@@ -368,7 +369,8 @@ _NOMBRES_COMUNES = frozenset("""
     Mónica Monica Rosario Concepción Concepcion Sandra Alicia Sonia Yolanda Marina Eva Inmaculada Sofía Sofia
     Claudia Natalia Ángela Angela Noelia Carolina Susana Victoria Lorena Esther Amparo Verónica Veronica Gloria
     Fatima Fátima Nerea Carla Daniela Valeria Martina Lola Inés Ines Olga Fernanda Gabriela Aitana Lidia Miriam
-    """.split())
+    """.split()
+)
 _PALABRA_MAYUSCULA = re.compile(r"\b[A-ZÁÉÍÓÚÑ][a-záéíóúñü]+\b")
 _NACIONALIDADES = (
     r"espa[ñn]ol[a]?(?:es|as)?|marroqu[ií](?:es)?|rumano|rumana|ecuatorian[oa]|colombian[oa]|venezolan[oa]|"

@@ -53,23 +53,27 @@ VIDA_MEDIA_DIAS: dict[str, float] = {"preferencia": 540.0, "dato": 365.0, "conte
 # Spanish text analysis
 # --------------------------------------------------------------------------------------------------------------
 
-_STOPWORDS = frozenset("""
+_STOPWORDS = frozenset(
+    """
     a al algo algun alguna algunas alguno algunos ante antes aqui asi aun aunque bien cada casi como con contra cual
     cuales cuando de del desde donde dos e el ella ellas ello ellos en entre era eran es esa esas ese eso esos esta
     estaba estado estan estar estas este esto estos fue fueron ha habia han has hasta hay he la las le les lo los mas
     me mi mia mias mio mios mis mucho muy nada ni no nos nosotros o os otra otras otro otros para pero poco por porque
     que quien quienes se sea ser si sido siempre sin sobre solo son su sus tal tambien te tenia ti tu tus u un una
     uno unos usted ustedes vosotros y ya yo the of and to in is it
-    """.split())
+    """.split()
+)
 # Words that make a question but carry no topic: kept, at a low weight.
-_DE_PREGUNTA = frozenset("""
+_DE_PREGUNTA = frozenset(
+    """
     cuanto cuanta cuantos cuantas puedo podria podrias quiero querria saber hacer tengo tiene tienes tenemos deberia
     deberias conviene convendria mejor ahora hoy dime dimelo explica explicame ayuda ayudame gracias favor recuerdas
     recuerda acuerdas dije dijiste conte comente hablamos hablado sabes sobre pregunta preguntar vale bueno hola oye
     mira necesito necesitaria cosa cosas algo eso esto tema asunto quedo quedamos quedaste paso interesa
     interesaria compensa compensaria merece vale pena
     manana tarde noche dia dias semana semanas mes meses ano anos hoy ayer tiempo vez veces hora horas momento rato
-    """.split())
+    """.split()
+)
 
 # Household synonyms (stems after :func:`raiz`): each group expands to the others at PESO_SINONIMO.
 _GRUPOS_SINONIMOS: tuple[tuple[str, ...], ...] = (
@@ -380,8 +384,9 @@ def seleccionar(
         while pendientes and len(elegidos) < limite:
             mejor = max(
                 pendientes,
-                key=lambda p: lambda_mmr * p.relevancia
-                - (1 - lambda_mmr) * max((similitud(p, e) for e in elegidos), default=0.0),
+                key=lambda p: (
+                    lambda_mmr * p.relevancia - (1 - lambda_mmr) * max((similitud(p, e) for e in elegidos), default=0.0)
+                ),
             )
             elegidos.append(mejor)
             pendientes.remove(mejor)

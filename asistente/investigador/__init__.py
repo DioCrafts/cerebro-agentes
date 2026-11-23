@@ -48,9 +48,9 @@ def investigar(
         from asistente.investigador.web import web_por_defecto
 
         web = web_por_defecto(_proveedor_de(llm))
-    return Ejercito(llm, web, presupuesto or Presupuesto(), al_progresar=al_progresar, sin_fuente=sin_fuente).investigar(
-        pregunta.strip()
-    )
+    return Ejercito(
+        llm, web, presupuesto or Presupuesto(), al_progresar=al_progresar, sin_fuente=sin_fuente
+    ).investigar(pregunta.strip())
 
 
 def _proveedor_de(llm: Any) -> Any:
@@ -70,6 +70,18 @@ def _proveedor_de(llm: Any) -> Any:
 
 
 __all__ = [
-    "Afirmacion", "Critica", "Documento", "Ejercito", "Evento", "Fuente", "Hallazgo", "HerramientaWeb", "Informe",
-    "Presupuesto", "PresupuestoAgotadoError", "Subpregunta", "WebDeCapacidad", "investigar",
+    "Afirmacion",
+    "Critica",
+    "Documento",
+    "Ejercito",
+    "Evento",
+    "Fuente",
+    "Hallazgo",
+    "HerramientaWeb",
+    "Informe",
+    "Presupuesto",
+    "PresupuestoAgotadoError",
+    "Subpregunta",
+    "WebDeCapacidad",
+    "investigar",
 ]

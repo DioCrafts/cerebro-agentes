@@ -209,8 +209,7 @@ def _regimen(
     if tramo == "variable":
         limite = l2.limite_subrogacion_variable if operacion == "subrogacion" else l2.limite_no_subrogatoria_variable
         res.fundamento.append(
-            f"Préstamo variable anterior a la Ley 41/2007: como máximo el {fmt_pct(limite * 100)} "
-            f"({l2.cita_corta()})."
+            f"Préstamo variable anterior a la Ley 41/2007: como máximo el {fmt_pct(limite * 100)} ({l2.cita_corta()})."
         )
         return _con_pactada(limite, pactada, res)
     res.incierta = pactada is None

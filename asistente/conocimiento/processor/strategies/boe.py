@@ -155,8 +155,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
                     del elem.getparent()[0]
         except etree.XMLSyntaxError as exc:
             logger.warning(
-                "BOE split: lxml could not stream-parse %s (%s) — "
-                "falling back to default Docling path for this file.",
+                "BOE split: lxml could not stream-parse %s (%s) — falling back to default Docling path for this file.",
                 file_path,
                 exc,
             )
@@ -166,7 +165,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
 
         if not bloque_html_fragments:
             logger.warning(
-                "BOE split: no <div class='bloque'> found in %s — " "falling back to default Docling path.",
+                "BOE split: no <div class='bloque'> found in %s — falling back to default Docling path.",
                 file_path,
             )
             from asistente.conocimiento.processor.strategies.default import parse_with_default
@@ -345,12 +344,7 @@ def _wrap_in_minimal_html(body_fragment: str) -> str:
     """Wrap a fragment in just enough HTML for Docling to parse it as a
     full document — without bringing in BOE's heavy CSS/JS preamble,
     which Docling doesn't need."""
-    return (
-        '<!DOCTYPE html><html lang="es"><head>'
-        '<meta charset="utf-8"/></head><body>'
-        f"{body_fragment}"
-        "</body></html>"
-    )
+    return f'<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"/></head><body>{body_fragment}</body></html>'
 
 
 def _count_rows(table) -> int:

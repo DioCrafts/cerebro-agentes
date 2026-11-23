@@ -93,9 +93,7 @@ def test_especialista_del_cerebro_retiene_escrituras_tras_leer_un_correo(monkeyp
     )
     monkeypatch.setattr(colaboracion, "perfil_de", lambda case: {})
     modulo = SimpleNamespace(clave="luz", nombre="Luz", herramientas=_herramientas([]))
-    contexto = SimpleNamespace(
-        turno=turno, pizarra=SimpleNamespace(cancelada=False), encargo=SimpleNamespace(id="e1")
-    )
+    contexto = SimpleNamespace(turno=turno, pizarra=SimpleNamespace(cancelada=False), encargo=SimpleNamespace(id="e1"))
     caja = _Caja(SimpleNamespace(modulo=modulo), contexto, [])  # type: ignore[arg-type]
     caja.execute(_llamada("preparar_borrador", kw=4))
     assert len(escritos) == 1  # before any third-party data the draft writes as always

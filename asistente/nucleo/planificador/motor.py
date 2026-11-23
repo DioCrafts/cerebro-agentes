@@ -1311,7 +1311,9 @@ def planificar(
                         PalancaNoUsada(
                             id=palanca,
                             nombre=nombre,
-                            causa=causa if causa in ("restricciones", "faltan_datos", "sin_margen", "fecha") else "sin_margen",  # type: ignore[arg-type]
+                            causa=causa
+                            if causa in ("restricciones", "faltan_datos", "sin_margen", "fecha")
+                            else "sin_margen",  # type: ignore[arg-type]
                             detalle=detalle,
                         )
                     )

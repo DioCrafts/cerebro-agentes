@@ -80,7 +80,7 @@ class SqliteCorpusSearcher:
         return self._indice.buscar_denso(vector, k=profundidad)
 
     def search(self, query: str, *, k: int, filters: Any) -> list[Document]:
-        from asistente.conocimiento.llm.chain import _sanitize_context_documents
+        from asistente.conocimiento.llm.security import sanitize_context_documents
         from asistente.nucleo.agent.search import build_filter_predicate
 
         first_stage_k = max(k, self._first_stage_k) if self._reranker is not None else k
@@ -97,4 +97,4 @@ class SqliteCorpusSearcher:
         if self._reranker is not None and docs:
             docs = list(self._reranker.compress_documents(docs, query))
         # El texto recuperado es entrada no fiable para el modelo: se limpia igual que en el backend FAISS.
-        return _sanitize_context_documents(list(docs[:k]))
+        return list(sanitize_context_documents(list(docs[:k])))

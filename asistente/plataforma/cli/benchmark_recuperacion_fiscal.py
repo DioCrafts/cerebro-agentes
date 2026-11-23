@@ -112,7 +112,10 @@ NORMAS_BOE = {
     "BOE-A-2014-12328": ("LIS", "Ley 27/2014, del Impuesto sobre Sociedades"),
     "BOE-A-1987-28141": ("LISD", "Ley 29/1987, del Impuesto sobre Sucesiones y Donaciones"),
     # The 20 % of the autónomos' quarterly payment (modelo 130) lives in the regulation, not in the law.
-    "BOE-A-2007-6820": ("RIRPF", "Real Decreto 439/2007, Reglamento del Impuesto sobre la Renta de las Personas Físicas"),
+    "BOE-A-2007-6820": (
+        "RIRPF",
+        "Real Decreto 439/2007, Reglamento del Impuesto sobre la Renta de las Personas Físicas",
+    ),
 }
 
 
@@ -292,7 +295,7 @@ class RecuperadorAgente(BaseRetriever):
     def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
         from asistente.nucleo.agent.search import SearchFilters
 
-        return self.buscador.search(query, k=self.k, filters=SearchFilters())  # type: ignore[attr-defined]
+        return list(self.buscador.search(query, k=self.k, filters=SearchFilters()))  # type: ignore[attr-defined]
 
 
 def construir_base(
@@ -305,7 +308,9 @@ def construir_base(
 ) -> RecuperadorAgente:
     from asistente.nucleo.agent.search import FaissCorpusSearcher
 
-    buscador = FaissCorpusSearcher(VectoresEnMemoria(corpus, embeddings), reranker=reranker, first_stage_k=primera_etapa)
+    buscador = FaissCorpusSearcher(
+        VectoresEnMemoria(corpus, embeddings), reranker=reranker, first_stage_k=primera_etapa
+    )
     return RecuperadorAgente(buscador=buscador, k=k)
 
 
@@ -324,9 +329,7 @@ class Precios:
         return (c.tokens_entrada * self.entrada_por_millon + c.tokens_salida * self.salida_por_millon) / 1e6
 
 
-def evaluar_variante(
-    nombre: str, recuperador: BaseRetriever, consultas: Sequence[dict], precios: Precios
-) -> dict:
+def evaluar_variante(nombre: str, recuperador: BaseRetriever, consultas: Sequence[dict], precios: Precios) -> dict:
     filas = []
     for q in consultas:
         t0 = time.perf_counter()
@@ -383,7 +386,11 @@ def resumir(filas: list[dict]) -> dict:
     por_estilo = {}
     for estilo in sorted({f["estilo"] for f in citas}):
         grupo = [f for f in citas if f["estilo"] == estilo]
-        por_estilo[estilo] = {"n": len(grupo), "top1": frac([f["top1"] for f in grupo]), "en_k": frac([f["en_k"] for f in grupo])}
+        por_estilo[estilo] = {
+            "n": len(grupo),
+            "top1": frac([f["top1"] for f in grupo]),
+            "en_k": frac([f["en_k"] for f in grupo]),
+        }
     return {
         "consultas": len(filas),
         "n_citas": len(citas),
@@ -427,13 +434,12 @@ def ejecutar(
     base = construir_base(corpus, embeddings or EmbeddingsHash(), k=k, primera_etapa=primera_etapa, reranker=reranker)
     selector = selector or SelectorLexico()
     resultados = [
-        evaluar_variante(v, envolver_recuperador(v, base, corpus, selector, k=k), consultas, precios)
-        for v in variantes
+        evaluar_variante(v, envolver_recuperador(v, base, corpus, selector, k=k), consultas, precios) for v in variantes
     ]
     return {
-        "corpus": str(indice) if indice is not None else (
-            str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)
-        ),
+        "corpus": str(indice)
+        if indice is not None
+        else (str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)),
         "chunks": len(corpus),
         "chunks_aeat": sum(d.metadata.get("norma") == "AEAT" for d in corpus),
         "consultas": len(consultas),
@@ -455,8 +461,10 @@ def _ic(par: Sequence[float]) -> str:
 
 
 def tabla_markdown(resultado: dict) -> str:
-    cab = ("| variante | cita top-1 | cita en top-k (IC 95 %) | abst. correctas (IC 95 %) | falsas abst. | "
-           "conducta correcta | lat. est. media (ms) | p95 (ms) | llamadas LLM | tokens | coste/consulta |")
+    cab = (
+        "| variante | cita top-1 | cita en top-k (IC 95 %) | abst. correctas (IC 95 %) | falsas abst. | "
+        "conducta correcta | lat. est. media (ms) | p95 (ms) | llamadas LLM | tokens | coste/consulta |"
+    )
     out = [cab, "|" + "---|" * 11]
     for v in resultado["variantes"]:
         r = v["resumen"]
@@ -469,11 +477,17 @@ def tabla_markdown(resultado: dict) -> str:
     if resultado["variantes"]:
         r = resultado["variantes"][0]["resumen"]
         out.append(f"\nn = {r['n_citas']} citas, {r['n_abstenciones']} abstenciones")
-        out.append("\n| variante | " + " | ".join(f"{e} (n={x['n']}) top-1 / top-k" for e, x in r["por_estilo"].items()) + " |")
+        out.append(
+            "\n| variante | " + " | ".join(f"{e} (n={x['n']}) top-1 / top-k" for e, x in r["por_estilo"].items()) + " |"
+        )
         out.append("|" + "---|" * (1 + len(r["por_estilo"])))
         for v in resultado["variantes"]:
             pe = v["resumen"]["por_estilo"]
-            out.append(f"| {v['variante']} | " + " | ".join(f"{_pct(x['top1'])} / {_pct(x['en_k'])}" for x in pe.values()) + " |")
+            out.append(
+                f"| {v['variante']} | "
+                + " | ".join(f"{_pct(x['top1'])} / {_pct(x['en_k'])}" for x in pe.values())
+                + " |"
+            )
     return "\n".join(out)
 
 
@@ -518,22 +532,48 @@ class _OpenAITexto:
 @click.option("--variantes", default=",".join(RECUPERADORES), help="Lista separada por comas.")
 @click.option("--corpus", "corpus_path", type=click.Path(path_type=Path), default=CORPUS_POR_DEFECTO)
 @click.option("--consultas", "consultas_path", type=click.Path(path_type=Path), default=CONSULTAS_POR_DEFECTO)
-@click.option("--real", is_flag=True,
-              help="Embeddings del proyecto, reranker si RERANKER_ENABLED y LLM real como selector de pageindex.")
-@click.option("--proveedor", type=click.Choice(["anthropic", "openai"]), default="anthropic", show_default=True,
-              help="LLM selector con --real (ANTHROPIC_MODEL u OPENAI_AGENT_MODEL).")
-@click.option("--indice", type=click.Path(path_type=Path, exists=True, file_okay=False), default=None,
-              help="Evalúa sobre los chunks reales de un índice FAISS del procesador (las normas citadas).")
+@click.option(
+    "--real",
+    is_flag=True,
+    help="Embeddings del proyecto, reranker si RERANKER_ENABLED y LLM real como selector de pageindex.",
+)
+@click.option(
+    "--proveedor",
+    type=click.Choice(["anthropic", "openai"]),
+    default="anthropic",
+    show_default=True,
+    help="LLM selector con --real (ANTHROPIC_MODEL u OPENAI_AGENT_MODEL).",
+)
+@click.option(
+    "--indice",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    default=None,
+    help="Evalúa sobre los chunks reales de un índice FAISS del procesador (las normas citadas).",
+)
 @click.option("--k", default=3, show_default=True)
-@click.option("--aeat/--sin-aeat", default=True, show_default=True,
-              help="Con --indice, incluye las páginas de la AEAT como competidoras.")
-@click.option("--primera-etapa", default=None, type=int,
-              help="Candidatos densos antes del reranker (por defecto, RERANKER_FIRST_STAGE_K, como el agente).")
-@click.option("--escribir-manifiesto", type=click.Path(path_type=Path), default=None,
-              help="Con --indice: escribe qué artículos y páginas AEAT existen y termina.")
+@click.option(
+    "--aeat/--sin-aeat",
+    default=True,
+    show_default=True,
+    help="Con --indice, incluye las páginas de la AEAT como competidoras.",
+)
+@click.option(
+    "--primera-etapa",
+    default=None,
+    type=int,
+    help="Candidatos densos antes del reranker (por defecto, RERANKER_FIRST_STAGE_K, como el agente).",
+)
+@click.option(
+    "--escribir-manifiesto",
+    type=click.Path(path_type=Path),
+    default=None,
+    help="Con --indice: escribe qué artículos y páginas AEAT existen y termina.",
+)
 @click.option("--precio-entrada", default=0.15, show_default=True, help="Precio por 1M tokens de entrada.")
 @click.option("--precio-salida", default=0.60, show_default=True, help="Precio por 1M tokens de salida.")
-@click.option("--latencia-llm-ms", default=800.0, show_default=True, help="Latencia supuesta por llamada LLM (simulado).")
+@click.option(
+    "--latencia-llm-ms", default=800.0, show_default=True, help="Latencia supuesta por llamada LLM (simulado)."
+)
 @click.option("--salida", type=click.Path(path_type=Path), default=None, help="Guarda el JSON completo.")
 def cli(
     variantes: str,

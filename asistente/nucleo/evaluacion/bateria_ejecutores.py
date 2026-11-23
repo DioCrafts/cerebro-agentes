@@ -77,8 +77,9 @@ def ejecutor_cerebro(*, max_llamadas_por_caso: int = 60) -> Any:
     def ejecutar(caso: CasoBateria, _presupuesto_eur: float) -> Salida:
         inicio = time.perf_counter()
         clave = f"bateria:{caso.id}:{int(time.time())}"
-        provider = MeteredProvider(create_provider(), consumo, purpose=PROPOSITO_AGENTE, presupuesto=limites,
-                                   compartido=True)
+        provider = MeteredProvider(
+            create_provider(), consumo, purpose=PROPOSITO_AGENTE, presupuesto=limites, compartido=True
+        )
         agente = TeamAgent(
             provider=provider,
             searcher=buscador,
@@ -86,8 +87,13 @@ def ejecutor_cerebro(*, max_llamadas_por_caso: int = 60) -> Any:
             mode=settings.AGENT_TEAM_MODE,
         )
         # CasoEvaluacion needs an expectation; the battery checks the output itself, so a placeholder rubric.
-        evaluacion = CasoEvaluacion(id=caso.id, categoria="bateria", pregunta=caso.pregunta, requiere=["cerebro"],
-                                    rubrica=Rubrica(criterios=["(la batería comprueba la salida)"]))
+        evaluacion = CasoEvaluacion(
+            id=caso.id,
+            categoria="bateria",
+            pregunta=caso.pregunta,
+            requiere=["cerebro"],
+            rubrica=Rubrica(criterios=["(la batería comprueba la salida)"]),
+        )
         error = None
         result = None
         with contexto_consumo(case_id=clave):

@@ -471,8 +471,7 @@ def _encargos(
         if len(claves) > 1:
             otros = ", ".join(fichas[c].nombre for c in claves if c != clave)
             pregunta = (
-                f"{pregunta}\n\nResponde a la parte de «{fichas[clave].nombre}»; de {otros} se ocupa otro "
-                "especialista."
+                f"{pregunta}\n\nResponde a la parte de «{fichas[clave].nombre}»; de {otros} se ocupa otro especialista."
             )[:_MAX_PREGUNTA]
         depende = [
             ids[espera]

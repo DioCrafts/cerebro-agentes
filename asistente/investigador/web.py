@@ -94,8 +94,13 @@ def _obtener_fijado(url: str, *, ip: str, timeout: float, headers: dict[str, str
     pool: Any
     if partes.scheme == "https":
         pool = urllib3.HTTPSConnectionPool(
-            ip, port=partes.port or 443, timeout=tiempo, server_hostname=host, assert_hostname=host,
-            cert_reqs="CERT_REQUIRED", retries=False,
+            ip,
+            port=partes.port or 443,
+            timeout=tiempo,
+            server_hostname=host,
+            assert_hostname=host,
+            cert_reqs="CERT_REQUIRED",
+            retries=False,
         )
     else:
         pool = urllib3.HTTPConnectionPool(ip, port=partes.port or 80, timeout=tiempo, retries=False)
@@ -144,8 +149,14 @@ class LectorLocal:
             if ip is None:
                 return None
             try:
-                r = self._obtener(actual, ip=ip, timeout=TIMEOUT_S, allow_redirects=False, stream=True,
-                                  headers={"User-Agent": _AGENTE, "Accept": "text/html"})
+                r = self._obtener(
+                    actual,
+                    ip=ip,
+                    timeout=TIMEOUT_S,
+                    allow_redirects=False,
+                    stream=True,
+                    headers={"User-Agent": _AGENTE, "Accept": "text/html"},
+                )
             except Exception as exc:  # network errors: the page is simply not read
                 logger.info("local read of %s failed: %s", actual, type(exc).__name__)
                 return None
@@ -177,8 +188,14 @@ class LectorLocal:
 class WebDeCapacidad:
     """Adapter over ``asistente.capacidades.investigacion.web.BuscadorWeb`` (``web_para(proveedor)``)."""
 
-    def __init__(self, buscador: Any, *, permitidos: Sequence[str] | None = None, bloqueados: Sequence[str] = (),
-                 lector: LectorLocal | None = None):
+    def __init__(
+        self,
+        buscador: Any,
+        *,
+        permitidos: Sequence[str] | None = None,
+        bloqueados: Sequence[str] = (),
+        lector: LectorLocal | None = None,
+    ):
         self.buscador = buscador
         self.permitidos = permitidos
         self.bloqueados = tuple(bloqueados)

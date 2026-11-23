@@ -82,7 +82,7 @@ def fusion_rrf(
 def _serializar(vector: Sequence[float]) -> bytes:
     import sqlite_vec
 
-    return sqlite_vec.serialize_float32(list(map(float, vector)))
+    return bytes(sqlite_vec.serialize_float32(list(map(float, vector))))
 
 
 def abrir_conexion(ruta: str | Path, *, solo_lectura: bool = False) -> sqlite3.Connection:

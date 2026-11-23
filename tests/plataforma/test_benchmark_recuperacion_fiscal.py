@@ -40,14 +40,17 @@ def test_toda_cita_esperada_existe_en_el_indice_real() -> None:
     """Contra el manifiesto versionado de ``data/faiss`` (si no, el benchmark mediría ruido)."""
     manifiesto = json.loads(MANIFIESTO.read_text(encoding="utf-8"))
     faltan = [
-        q["id"] for q in bench.cargar_consultas(bench.CONSULTAS_POR_DEFECTO)
+        q["id"]
+        for q in bench.cargar_consultas(bench.CONSULTAS_POR_DEFECTO)
         if q["tipo"] == "cita" and not bench.cita_en_manifiesto(q["espera"], manifiesto)
     ]
     assert faltan == []
 
 
-@pytest.mark.skipif(not (bench.RAIZ / "data/faiss/index.pkl").exists() and not os.environ.get("FAISS_INDEX_PATH"),
-                    reason="sin índice local")
+@pytest.mark.skipif(
+    not (bench.RAIZ / "data/faiss/index.pkl").exists() and not os.environ.get("FAISS_INDEX_PATH"),
+    reason="sin índice local",
+)
 def test_manifiesto_coincide_con_el_indice_local() -> None:
     ruta = bench.RAIZ / "data/faiss"
     if not (ruta / "index.pkl").exists():
@@ -75,7 +78,9 @@ def test_puntuacion_de_paginas_aeat_y_de_normas() -> None:
     lisd = _doc("BOE-A-1987-28141.html", ["Capítulo V", "Artículo 21. Tarifa."], "LISD")
     assert not bench.es_cita_correcta(lisd, {"norma": "LIS", "articulo": "21"})
     assert bench.es_cita_correcta(lisd, {"norma": "LISD", "articulo": "21"})
-    assert bench.es_cita_correcta(lisd, {"norma": "LIS", "articulo": "9", "alternativas": [{"norma": "LISD", "articulo": "21"}]})
+    assert bench.es_cita_correcta(
+        lisd, {"norma": "LIS", "articulo": "9", "alternativas": [{"norma": "LISD", "articulo": "21"}]}
+    )
     m = bench.manifiesto_de_corpus([pagina, lisd])
     assert m == {"normas": {"LISD": ["21"]}, "aeat": {h: "Quiero un certificado de mi declaración de renta"}}
 
@@ -117,7 +122,10 @@ def test_wilson() -> None:
 def test_ejecutar_es_reproducible_y_mide_todas_las_metricas() -> None:
     a = bench.ejecutar()
     b = bench.ejecutar()
-    resumen = lambda r: {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia" not in k} for v in r["variantes"]}  # noqa: E731
+
+    def resumen(r: dict) -> dict:
+        return {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia" not in k} for v in r["variantes"]}
+
     assert resumen(a) == resumen(b)
     assert [v["variante"] for v in a["variantes"]] == ["faiss", "pageindex"]
     faiss, pageindex = (v["resumen"] for v in a["variantes"])

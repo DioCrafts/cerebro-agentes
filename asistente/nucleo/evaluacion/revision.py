@@ -327,11 +327,10 @@ class CandidatoStore:
             conn = self._get()
             with conn:
                 cursor = conn.execute(
-                    f"DELETE FROM evaluacion_candidatos WHERE case_id IN ({marcas})", tuple(case_ids)  # noqa: S608
+                    f"DELETE FROM evaluacion_candidatos WHERE case_id IN ({marcas})",
+                    tuple(case_ids),  # noqa: S608
                 )
-                conn.execute(
-                    f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids)
-                )  # noqa: S608
+                conn.execute(f"DELETE FROM evaluacion_aprendizaje WHERE case_id IN ({marcas})", tuple(case_ids))  # noqa: S608
             conn.execute("PRAGMA wal_checkpoint(TRUNCATE);")
         return cursor.rowcount
 

@@ -342,6 +342,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `CONSEJO_FACTOR_TOPE` / `CONSEJO_TOPE_MAX_USD` | `2.0` / `3.00` | Tope duro de una sesión = estimación × factor, nunca por encima del máximo; una sesión cuya estimación supera el máximo no se ofrece. Al llegar al tope no se hace ninguna llamada más: el consejo dictamina con lo que tiene (un dictamen parcial escrito por código, que lo dice) o la sesión termina como fallida y lo explica. |
 | `CONSEJO_MAX_LLAMADAS` | `150` | Llamadas al modelo de una sesión entera (incluidos los especialistas del expediente). |
 | `CONSEJO_EN_SEGUNDO_PLANO` | `true` | Despliegues de un solo proceso: al confirmar, la sesión empieza ya en un hilo de la API (la tarea `consejo` es la red de seguridad). |
+| `CONSEJO_PLAZO_FASE_S` | `600` | Segundos que tiene una fase de la deliberación para todos sus miembros a la vez; el miembro que no ha terminado se queda fuera de esa fase. Debe ser menor que `CONSEJO_ARRIENDO_S`. |
 | `CONSEJO_ARRIENDO_S` / `CONSEJO_MAX_INTENTOS` | `900` / `2` | Segundos que un trabajador retiene una sesión en marcha (se renuevan en cada fase) y ejecuciones como mucho de una sesión interrumpida. |
 | `CONSEJO_CADUCIDAD_HORAS` | `72` | Una convocatoria sin confirmar ni rechazar caduca a las tantas horas. |
 | `CONSEJO_RETENCION_DIAS` | `365` | Días que se guardan las sesiones terminadas (con su expediente y deliberación). |

@@ -194,7 +194,9 @@ def calcular_importes(
             res.anadir("total al año", anual, "EUR/año", decimales)
             res.supuestos.append("Mensual ↔ anual con el factor 12 (prorrateo lineal).")
             for i in importes:
-                otro: tuple[Decimal, UnidadSalida] = (i.valor * 12, "EUR/año") if i.periodicidad == "mes" else (i.valor / 12, "EUR/mes")
+                otro: tuple[Decimal, UnidadSalida] = (
+                    (i.valor * 12, "EUR/año") if i.periodicidad == "mes" else (i.valor / 12, "EUR/mes")
+                )
                 res.anadir(
                     f"{i.concepto} ({'al año' if otro[1] == 'EUR/año' else 'al mes'})", otro[0], otro[1], decimales
                 )
