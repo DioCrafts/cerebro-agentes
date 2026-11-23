@@ -438,10 +438,10 @@ class OpenAIFactExtractor:
     layer, so :func:`default_fact_extractor` never returns it (docs/seguridad.md, S-14)."""
 
     def __init__(self, client: Any | None = None, model: str | None = None) -> None:
+        from asistente.plataforma import settings
+
         self._client = client
-        self._model = (
-            model or os.environ.get("DECISION_EXTRACTOR_MODEL") or os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-        )
+        self._model = model or os.environ.get("DECISION_EXTRACTOR_MODEL") or settings.OPENAI_AGENT_MODEL
         # A single hung request used to stall a whole turn indefinitely (no
         # timeout) and a transient 5xx/rate-limit tumbled it straight to a 500.
         # Bound both: the OpenAI SDK applies exponential backoff that honours
@@ -825,7 +825,7 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
     """The extractor on the provider layer, metered (usage log and daily budgets) as purpose «hechos».
 
     ``name`` "openai" builds it on OpenAI whatever ``LLM_PROVIDER`` says (``DECISION_EXTRACTOR=openai``, or only
-    an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_MODEL``).
+    an OpenAI key), with the extractor's own model (``DECISION_EXTRACTOR_MODEL``, else ``OPENAI_AGENT_MODEL``).
     """
     from asistente.nucleo.agent.providers import create_provider
     from asistente.plataforma import settings
@@ -833,7 +833,7 @@ def _provider_extractor(name: str | None = None) -> FactExtractor:
 
     model = os.environ.get("DECISION_EXTRACTOR_MODEL") or None
     if name == "openai":
-        model = model or settings.OPENAI_MODEL
+        model = model or settings.OPENAI_AGENT_MODEL
     # Metered (and routed) as purpose "hechos"; DECISION_EXTRACTOR_MODEL, when set, is kept by the routing.
     return ProviderFactExtractor(
         medir(

@@ -1,7 +1,7 @@
 """Embedding model factory — MLX (Apple Silicon native, bf16) only.
 
 Both indexing (``asistente.conocimiento.processor.document_loader``) and querying
-(``asistente.conocimiento.llm.chain`` and ``asistente.plataforma.cli.benchmark_retrieval``) build
+(``asistente.nucleo.agent.search``) build
 their embedder here so the FAISS index and the query path always share the
 same vector space.
 

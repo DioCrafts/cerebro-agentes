@@ -108,3 +108,22 @@ def parece_inyeccion(text: str) -> bool:
 def neutralizar_inyeccion(text: str, redaccion: str = _REDACTION) -> str:
     """``text`` without invisible characters and with the broader injection patterns replaced by ``redaccion``."""
     return INYECCION_AMPLIA.sub(redaccion, quitar_invisibles(text))
+
+
+def sanitize_context_documents(docs: list) -> list:
+    """Return copies of ``docs`` with prompt-injection fragments redacted.
+
+    FAISS' ``InMemoryDocstore`` hands back the *same* ``Document`` instances it
+    stores, so mutating ``doc.page_content`` in place would permanently corrupt
+    the in-memory corpus (the searcher is cached for the process lifetime). The
+    document is copied only when sanitizing actually changed the content, so
+    the index keeps its original text and each request sees a clean view.
+    """
+    sanitized = []
+    for doc in docs:
+        cleaned = sanitize_retrieved_context(doc.page_content)
+        if cleaned == doc.page_content:
+            sanitized.append(doc)
+        else:
+            sanitized.append(doc.model_copy(update={"page_content": cleaned}))
+    return sanitized

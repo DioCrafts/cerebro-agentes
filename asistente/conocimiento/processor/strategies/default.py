@@ -1,8 +1,8 @@
 """Default Docling-backed strategy — claims every file as a last resort.
 
 This is the strategy the project shipped before the registry existed:
-parse with :class:`docling.document_converter.DocumentConverter` via
-``langchain_docling.DoclingLoader`` and chunk with the per-worker
+parse with :class:`docling.document_converter.DocumentConverter` and chunk
+with the per-worker
 :class:`docling.chunking.HybridChunker`. It is the right call for the
 overwhelming majority of files in the corpus — small to medium HTMLs /
 PDFs where Docling's layout-aware parsing and tokenizer-aware chunking

@@ -22,13 +22,13 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
 
     ``functools.lru_cache`` is documented as **not** thread-safe for
     concurrent first calls: under a request burst (e.g. uvicorn worker
-    thread pool serving the first ``/qa``) two threads can both observe a
-    cache miss and run ``factory()`` in parallel. For ``_build_qa_chain``
+    thread pool serving the first ``/agent``) two threads can both observe a
+    cache miss and run ``factory()`` in parallel. For ``_build_agent``
     that meant loading the 1.1 GB MLX embedder twice into RAM. This
     decorator wraps the factory in double-checked locking so the work
     happens exactly once.
 
-    A FAILED build is cached too: a misconfiguration (missing OPENAI_API_KEY,
+    A FAILED build is cached too: a misconfiguration (missing API key,
     absent FAISS index, a model that won't load) would otherwise re-run the
     expensive factory — reloading the multi-GB embedder — on *every* request.
     The cached exception is re-raised cheaply instead. ``cache_clear()`` resets
@@ -76,7 +76,6 @@ from asistente.ambitos.fiscal.documentos import (
     decode_upload,
 )
 from asistente.ambitos.fiscal.profile import DETALLE_FACT_TYPES, DatosInvalidosError
-from asistente.conocimiento.llm.grounding import AnswerEnvelope
 from asistente.nucleo.agent.agent import AgentResult, TaxAgent
 from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError
 from asistente.nucleo.cerebro.cerebro import Cerebro
@@ -134,7 +133,6 @@ from asistente.plataforma.api.security import (
     recortar_historial,
     require_api_key,
     require_docs_publicas,
-    require_qa_legado,
     security_headers_middleware,
 )
 from asistente.plataforma.auth.deps import (
@@ -142,7 +140,6 @@ from asistente.plataforma.auth.deps import (
     get_case_access,
     require_case_access,
     require_document_consent,
-    require_session,
 )
 from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo, medir
 from asistente.plataforma.settings import API_RATE_LIMIT_PER_MIN, DECISION_STATE_DB_PATH
@@ -223,10 +220,9 @@ app.add_middleware(BodySizeLimitMiddleware)
 
 @_thread_safe_singleton
 def _build_case_store() -> SQLiteCaseStateStore:
-    # Single configurable store shared with the Streamlit UI; the path was
-    # previously hardcoded, so the API and UI never saw each other's cases.
+    # Single configurable store (DECISION_STATE_DB_PATH).
     # Cached so the schema DDL and the SQLite connection are set up once,
-    # not rebuilt on every request (mirrors _build_qa_chain).
+    # not rebuilt on every request (mirrors _build_agent).
     return SQLiteCaseStateStore(DECISION_STATE_DB_PATH)
 
 
@@ -262,7 +258,7 @@ def get_accion_store(cases: Annotated[SQLiteCaseStateStore, Depends(get_case_sto
 
 @_thread_safe_singleton
 def _build_fact_extractor() -> FactExtractor:
-    # Built once and reused, mirroring _build_qa_chain / _build_case_store. The
+    # Built once and reused, mirroring _build_agent / _build_case_store. The
     # previous per-request construction spun up a fresh OpenAI() client on every
     # turn; the extractor's backend choice is fixed by the environment at
     # process start, so there is nothing to recompute per request.
@@ -442,68 +438,6 @@ def post_turn(
     )
 
 
-class QARequest(BaseModel):
-    model_config = ConfigDict(extra="forbid")
-
-    query: str = Field(min_length=1)
-    chat_history: list[dict] = Field(default_factory=list)
-
-
-@_thread_safe_singleton
-def _build_qa_chain():
-    """Build the retrieval chain once and reuse it across requests.
-
-    Constructing the chain loads the local embedding model (Qwen3-Embedding,
-    several GB) and the FAISS index. Doing that on every ``/qa`` request — as
-    the previous per-request dependency did — added seconds of latency and
-    re-loaded the model into memory each time. The cache makes the first
-    request pay the cost and the rest reuse the warm chain.
-    """
-    from asistente.conocimiento.llm.chain import create_openai_chain
-    from asistente.plataforma.utils import get_openai_api_key
-
-    return create_openai_chain(openai_api_key=get_openai_api_key())
-
-
-def get_qa_chain():
-    """FastAPI dependency returning the cached retrieval chain.
-
-    Translates a failed chain build (missing OPENAI_API_KEY, absent FAISS index,
-    a model that won't load) into a clean 503 instead of an opaque 500. The
-    failure is cached by ``_build_qa_chain`` so repeated requests fail fast
-    rather than re-running the expensive build. Kept as a thin wrapper so tests
-    can still override it via ``app.dependency_overrides``.
-    """
-    try:
-        return _build_qa_chain()
-    except HTTPException:
-        raise
-    except Exception as exc:
-        raise _no_disponible("El servicio de consulta no está disponible.", exc) from exc
-
-
-# The legacy chain calls OpenAI through LangChain, outside the metered providers (no usage log, no daily
-# budget): only without accounts (docs/seguridad.md, S-14). The web app no longer calls it.
-@app.post(
-    "/qa",
-    response_model=AnswerEnvelope,
-    dependencies=[Depends(require_qa_legado), Depends(require_api_key), Depends(require_session)],
-)
-def post_qa(payload: QARequest, chain=Depends(get_qa_chain)) -> AnswerEnvelope:
-    from asistente.conocimiento.llm.chain import answer_with_grounding
-
-    comprobar_pregunta(payload.query)
-    try:
-        return answer_with_grounding(chain, query=payload.query, chat_history=recortar_historial(payload.chat_history))
-    except HTTPException:
-        raise
-    except Exception as exc:
-        # The chain built fine but answering failed (retrieval, the OpenAI call,
-        # grounding…). Surface a clean error instead of an opaque 500. This is
-        # per-request, so — unlike a build failure — it is NOT cached.
-        raise _no_disponible("No se pudo procesar la consulta. Inténtalo de nuevo en unos minutos.", exc) from exc
-
-
 class AgentRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -537,7 +471,7 @@ class AgentResponse(AgentResult):
 
 @_thread_safe_singleton
 def _build_agent() -> Agente:
-    """Build the agent once (loads the embedder + FAISS index, like the QA chain)."""
+    """Build the agent once (loads the embedder + FAISS index)."""
     from asistente.nucleo.agent.agent import build_agent
 
     return build_agent()
@@ -787,7 +721,7 @@ def post_agent(
 ) -> AgentResponse:
     """Tool-using advisor: searches the corpus, cites fragments, verifies claims.
 
-    Unlike ``/qa`` (fixed retrieve-then-answer chain), the model decides what to
+    The model decides what to
     look up and how often, and every normative claim in the answer is checked
     against the fragment it cites before the response is labelled ``verified``.
     """

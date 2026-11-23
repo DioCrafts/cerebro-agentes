@@ -117,7 +117,6 @@
             };
             commandList = [
               {bin = "pytest";}
-              {bin = "streamlit";}
             ];
           in
             (map uvCommand commandList)

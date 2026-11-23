@@ -47,7 +47,7 @@ Las CE-stress queries fueron diseñadas explícitamente para forzar el modo de f
 - El código de CE queda en el repositorio (`asistente/conocimiento/processor/contextualizer.py` y settings `CONTEXTUAL_EMBEDDINGS_ENABLED`, `CONTEXTUAL_MODEL_PATH`, `CONTEXTUAL_MAX_TOKENS`).
 - `CONTEXTUAL_EMBEDDINGS_ENABLED` permanece `False` por defecto. Activarlo bumpea el `pipeline_fingerprint` y fuerza re-ingesta — comportamiento esperado.
 - No se introducen flujos automáticos que dependan de CE.
-- Las queries CE-stress (`ce_*` en [`scripts/qa_battery_test.py`](../../scripts/qa_battery_test.py)) se quedan en la batería como **regresión-tests**: si en el futuro alguien activa CE, debe medir cuánto sube `context_precision` específicamente en esa cohorte para justificar el coste.
+- Las queries CE-stress (`ce_*` en `scripts/qa_battery_test.py`, retirado en noviembre de 2026) se quedan en la batería como **regresión-tests**: si en el futuro alguien activa CE, debe medir cuánto sube `context_precision` específicamente en esa cohorte para justificar el coste.
 - El esfuerzo de mejora de calidad del retrieval se redirige a:
   1. Investigar las 7 abstenciones evitables (system prompt + grounding gate).
   2. Endurecer el prompt del LLM contra el "rellenado" (faith bajo en respuestas cited).

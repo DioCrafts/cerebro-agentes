@@ -5,11 +5,9 @@
         --dgt-dir data/html/<snapshot>/dgt-vinculantes --out eval_data/dgt_golden.jsonl \\
         --sample 200 --since-year 2022
 
-    # 2) Evaluate the agent (and, for comparison, the legacy /qa chain):
+    # 2) Evaluate the agent:
     uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
         --system agent --out reports/eval_agent.json
-    uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \\
-        --system qa --out reports/eval_qa.json
 
 Both commands call paid LLM APIs (unless LLM_PROVIDER=local); each prints how
 many calls it is about to make and asks before spending.
@@ -110,36 +108,16 @@ def _agent_system(exclude_source: bool) -> SystemUnderTest:
     return run
 
 
-def _qa_system() -> SystemUnderTest:
-    from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
-    from asistente.conocimiento.llm.grounding import AnswerMode
-    from asistente.plataforma.utils import get_openai_api_key
-
-    chain = create_openai_chain(openai_api_key=get_openai_api_key())
-
-    def run(case: GoldenCase) -> SystemAnswer:
-        envelope = answer_with_grounding(chain, query=case.question)
-        return SystemAnswer(
-            answer=envelope.answer,
-            mode=envelope.mode.value,
-            confident=envelope.mode is AnswerMode.CITED,
-            abstained=envelope.mode is AnswerMode.ABSTAINED,
-            detail={"citations": [f"{c.title} ({c.locator})" for c in envelope.citations]},
-        )
-
-    return run
-
-
 @cli.command()
 @click.option("--dataset", required=True, type=click.Path(exists=True, dir_okay=False, path_type=Path))
 @click.option("--out", "out_path", required=True, type=click.Path(dir_okay=False, path_type=Path))
-@click.option("--system", "system_name", type=click.Choice(["agent", "qa"]), default="agent", show_default=True)
+@click.option("--system", "system_name", type=click.Choice(["agent"]), default="agent", show_default=True)
 @click.option("--limit", default=0, show_default=True, help="Evaluate only the first N cases (0 = all).")
 @click.option(
     "--exclude-source/--include-source",
     default=True,
     show_default=True,
-    help="Hide each case's own consulta from the agent's retrieval (the legacy qa chain cannot do this).",
+    help="Hide each case's own consulta from the agent's retrieval.",
 )
 @click.option("--judge-provider", default=None, help="Provider for the judge (default: LLM_PROVIDER).")
 @click.option("--judge-model", default=None, help="Model for the judge (default: the provider's).")
@@ -175,16 +153,13 @@ def run(
     )
     judge = medir(create_provider(judge_provider, model=judge_model), "evaluacion-juez", ruta=ruta)
     if not yes:
-        per_case = "varias llamadas (búsquedas + verificación)" if system_name == "agent" else "varias llamadas"
+        per_case = "varias llamadas (búsquedas + verificación)"
         click.confirm(
             f"Se evaluarán {len(cases)} casos con '{system_name}': {per_case} por caso más una del juez "
             f"({judge.name}/{judge.model}). ¿Continuar?",
             abort=True,
         )
-    if system_name == "qa" and exclude_source:
-        click.echo("Aviso: la cadena /qa no puede ocultar la consulta de origen; puede encontrar la respuesta.")
-
-    system = _agent_system(exclude_source) if system_name == "agent" else _qa_system()
+    system = _agent_system(exclude_source)
     results: list[CaseResult] = []
     report_label = label or system_name
     with click.progressbar(cases, label="Evaluando") as bar:

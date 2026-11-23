@@ -143,8 +143,6 @@ dmypy.json
 # Tool caches
 .ruff_cache/
 
-# Streamlit
-.streamlit/
 
 # Project data & generated artifacts (not committed)
 /data/

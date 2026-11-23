@@ -20,9 +20,7 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 - [ ] Trocear el HTML consolidado del BOE con lxml por su estructura fija (`h4.titulo_*`, `h4.capitulo_*`, `h4.seccion`, `h5.articulo`) en lugar de Docling. El 95 % de los fragmentos son del BOE; la jerarquía saldría exacta y el indexado mucho más rápido.
 - [ ] Ampliar la caché de prompts: hoy solo se marca el prompt de sistema de Anthropic. Marcar también los bloques estables del investigador y de los especialistas (instrucciones, aviso de seguridad, fuentes que el lector y el crítico releen) y ponerlos delante del prompt.
 - [ ] Activar el enrutado por niveles (`LLM_ROUTING_PROFILE=recomendado`): modelo pequeño o esfuerzo bajo para intención, extracción de hechos, selección de nodos, lector y planificador; modelo grande para síntesis, verificador y crítico. Hoy todo va al mismo modelo con `ANTHROPIC_EFFORT=high`. Es el mayor ahorro y el de más riesgo: solo con la batería en verde.
-- [ ] MultiQuery solo cuando la primera búsqueda no supera el umbral, en vez de en cada consulta.
 - [ ] Caché de resultados de recuperación por pregunta normalizada.
-- [ ] Probar `BM25_ENABLED=true` en el benchmark (ayuda a encontrar artículos citados por número).
 - [ ] Investigador: segunda ronda solo si el crítico señala lagunas; caché de páginas leídas por URL con fecha de lectura.
 
 ## Tests

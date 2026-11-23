@@ -263,11 +263,11 @@ Lo mismo con `OpenAIFactExtractor` (`decision/fact_extractor.py:423`), que se us
 `DECISION_EXTRACTOR=openai` o solo hay `OPENAI_API_KEY`. **Propuesta**: retirar `/qa` cuando
 `AUTH_MODE=required` (o del todo) y pasar el extractor de OpenAI por el proveedor medido
 (`_provider_extractor`). **Corrección**: con `AUTH_MODE=required`, `POST /qa` responde 404 a todos
-(`require_qa_legado`, antes de mirar la clave, la sesión o construir la cadena); sin cuentas sigue
-como estaba. `default_fact_extractor` ya no devuelve nunca `OpenAIFactExtractor`: con
+antes de mirar la clave, la sesión o construir la cadena. En noviembre de 2026 se retiró del todo: `/qa`,
+la cadena y `langchain-openai` ya no existen, y `/agent` es la única vía de preguntas libres. `default_fact_extractor` ya no devuelve nunca `OpenAIFactExtractor`: con
 `DECISION_EXTRACTOR=openai` o solo `OPENAI_API_KEY` usa `ProviderFactExtractor` sobre el proveedor
 OpenAI envuelto en `medir(…, "hechos")` (registro de consumo y presupuestos), con el modelo propio del
-extractor (`DECISION_EXTRACTOR_MODEL` u `OPENAI_MODEL`). La clase queda para uso directo. **Pruebas**:
+extractor (`DECISION_EXTRACTOR_MODEL` u `OPENAI_AGENT_MODEL`). La clase queda para uso directo. **Pruebas**:
 `test_qa_is_gone_with_accounts_even_for_a_session_and_never_builds_the_chain`,
 `test_default_extractor_follows_llm_provider`.
 
@@ -329,7 +329,7 @@ un correo leído por el especialista de correo intenta que el asesor central reg
 
 ### S-17 (baja, corregido): pickle de FAISS en el indexador
 
-`agent/search.py` y `llm/chain.py` exigen `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
+`agent/search.py` exige `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
 el indexador incremental (`processor/document_loader.py:869`) no. Lo ejecuta el operador sobre su
 propio directorio de salida, así que solo es explotable si ese directorio lo puede escribir otro.
 **Corrección**: la misma guarda que `agent/search.py`; sin `FAISS_TRUSTED_INDEX=true` una ejecución
@@ -387,7 +387,7 @@ inventario de rutas.
 ## Endurecimiento: lo que tiene que hacer el operador
 
 1. **`AUTH_MODE=required`** siempre que haya más de una persona. Con `off` no hay control de acceso.
-   No exponer la interfaz Streamlit (`asistente/plataforma/ui`) ni los CLI.
+   No exponer los CLI.
 2. **Proxy inverso con TLS** (nginx, Caddy…) delante de uvicorn, que escuche solo en `127.0.0.1`:
    ```
    uvicorn asistente.plataforma.api.api:app --host 127.0.0.1 --port 8000 \

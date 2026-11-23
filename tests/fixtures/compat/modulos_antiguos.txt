@@ -96,7 +96,6 @@ hacienda_gpt.capacidades.navegador.vigilancia
 hacienda_gpt.capacidades.peticion
 hacienda_gpt.capacidades.registro
 hacienda_gpt.cli
-hacienda_gpt.cli.benchmark_retrieval
 hacienda_gpt.cli.boe_seed
 hacienda_gpt.cli.boe_watch
 hacienda_gpt.cli.check_critical_regressions
@@ -105,7 +104,6 @@ hacienda_gpt.cli.crawler
 hacienda_gpt.cli.dgt_seed
 hacienda_gpt.cli.doctrine_graph
 hacienda_gpt.cli.drift_check
-hacienda_gpt.cli.eval
 hacienda_gpt.cli.eval_agent
 hacienda_gpt.cli.eval_interpreter
 hacienda_gpt.cli.eval_pipeline
@@ -182,12 +180,9 @@ hacienda_gpt.eventos.tipos
 hacienda_gpt.governance
 hacienda_gpt.governance.drift
 hacienda_gpt.llm
-hacienda_gpt.llm.chain
 hacienda_gpt.llm.embeddings
 hacienda_gpt.llm.grounding
-hacienda_gpt.llm.mlx_chat
 hacienda_gpt.llm.reranker
-hacienda_gpt.llm.retrieval_profiles
 hacienda_gpt.llm.security
 hacienda_gpt.memoria
 hacienda_gpt.memoria.agente
@@ -436,6 +431,5 @@ hacienda_gpt.tax.sucesiones
 hacienda_gpt.tax.sucesiones_params
 hacienda_gpt.tax.verificacion
 hacienda_gpt.tax.vigencia_normas
-hacienda_gpt.ui.app
 hacienda_gpt.utils
 hacienda_gpt.utils.xml_seguro

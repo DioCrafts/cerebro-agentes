@@ -3,7 +3,7 @@ security headers and the operator-only gate (see docs/seguridad.md).
 
 Both are **opt-in via environment** and disabled by default, so local dev and
 the test suite keep working unauthenticated. Turn them on in any deployment that
-exposes the API beyond localhost — ``/qa`` spends real OpenAI tokens and loads
+exposes the API beyond localhost — ``/agent`` spends real LLM tokens and loads
 multi-GB models per process, so an open endpoint is a cost/abuse footgun.
 
 The limiter is a simple in-process fixed-window counter. That is correct for a
@@ -342,16 +342,4 @@ def docs_publicas() -> bool:
 
 def require_docs_publicas() -> None:
     if not docs_publicas():
-        raise HTTPException(status_code=404, detail="Not Found")
-
-
-# --- the legacy /qa chain (S-14) -----------------------------------------------------------------------------
-
-
-def require_qa_legado() -> None:
-    """``/qa`` (the LangChain chain, unmetered and outside the daily budgets) only answers without accounts:
-    with ``AUTH_MODE=required`` it is a 404, before the API key, the session or the chain are looked at."""
-    from asistente.plataforma import settings
-
-    if settings.AUTH_MODE == "required":
         raise HTTPException(status_code=404, detail="Not Found")

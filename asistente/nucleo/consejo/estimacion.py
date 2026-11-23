@@ -77,7 +77,7 @@ def _modelo_base(familia: str) -> str:
     if familia in ("anthropic", "claude"):
         return str(getattr(settings, "ANTHROPIC_MODEL", "") or "")
     if familia == "openai":
-        return str(getattr(settings, "OPENAI_AGENT_MODEL", "") or getattr(settings, "OPENAI_MODEL", "") or "")
+        return str(getattr(settings, "OPENAI_AGENT_MODEL", "") or "")
     if familia == "local":
         return str(getattr(settings, "LOCAL_LLM_MODEL", "") or "")
     return ""
