@@ -131,12 +131,14 @@ class FaissCorpusSearcher:
         self._lock = threading.Lock()
 
     @classmethod
-    def from_settings(cls) -> FaissCorpusSearcher | SinCorpus:
+    def from_settings(cls) -> CorpusSearcher:
         """The process's shared searcher for the configured index (loaded once; later calls reuse it)."""
         from asistente.plataforma import settings
 
         clave = (
+            str(settings.INDICE_BACKEND),
             str(settings.FAISS_INDEX_PATH),
+            str(settings.INDICE_SQLITE_PATH),
             bool(settings.RERANKER_ENABLED),
             str(settings.RERANKER_MODEL),
             int(settings.RERANKER_TOP_K),
@@ -146,17 +148,21 @@ class FaissCorpusSearcher:
             buscador = _BUSCADORES.get(clave)
             if buscador is None:
                 buscador = cls._cargar()
-                if isinstance(buscador, FaissCorpusSearcher):  # a missing index is looked for again next time
+                if not isinstance(buscador, SinCorpus):  # a missing index is looked for again next time
                     _BUSCADORES[clave] = buscador
             return buscador
 
     @classmethod
-    def _cargar(cls) -> FaissCorpusSearcher | SinCorpus:
+    def _cargar(cls) -> CorpusSearcher:
         from langchain_community.vectorstores import FAISS
 
         from asistente.conocimiento.llm.embeddings import create_embeddings
         from asistente.plataforma import settings
 
+        if settings.INDICE_BACKEND == "sqlite":
+            from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
+
+            return SqliteCorpusSearcher.from_settings()
         if not Path(settings.FAISS_INDEX_PATH).exists():
             # A missing index must not take the whole brain down: searches find nothing (the grounding gate
             # abstains on normative questions) and every other specialist stays available.
@@ -196,5 +202,5 @@ class FaissCorpusSearcher:
         return sanitize_context_documents(list(docs[:k]))
 
 
-_BUSCADORES: dict[tuple[Any, ...], FaissCorpusSearcher] = {}
+_BUSCADORES: dict[tuple[Any, ...], CorpusSearcher] = {}
 _BUSCADORES_LOCK = threading.Lock()

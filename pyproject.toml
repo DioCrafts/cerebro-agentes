@@ -23,6 +23,8 @@ dependencies = [
     # directly (DocumentConverter + HybridChunker).
     "docling==2.96.0",
     "faiss-cpu==1.13.2",
+    # Corpus index in one SQLite file (vectors; BM25 is SQLite FTS5). Replaces faiss-cpu + rank-bm25 once validated.
+    "sqlite-vec==0.1.9",
     "cryptography==48.0.0",
     "python-dotenv==1.2.2",
     "huggingface-hub==1.15.0",

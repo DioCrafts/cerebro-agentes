@@ -93,6 +93,10 @@ CONTEXTUAL_MAX_TOKENS = int(os.environ.get("CONTEXTUAL_MAX_TOKENS", "80"))
 
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", ".faiss")
 FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
+# Corpus index backend: "faiss" (pickle + rank-bm25, legacy) or "sqlite" (sqlite-vec + FTS5 in one file,
+# no pickle). Stays "faiss" until the retrieval benchmark validates the switch (docs/cerebro/benchmark-recuperacion.md).
+INDICE_BACKEND = os.environ.get("INDICE_BACKEND", "faiss").strip().lower()
+INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(FAISS_INDEX_PATH, "indice.sqlite"))
 
 DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")
