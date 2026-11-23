@@ -528,3 +528,35 @@ def test_an_incremental_run_refuses_to_unpickle_an_untrusted_index(corpus, patch
         _make_processor(content_dir, output_dir).process_documents()
     # Not silently rebuilt either: the index is as it was.
     assert (output_dir / "index.pkl").read_bytes() == antes
+
+
+# --------------------------------------------------------------------------- #
+# INDICE_BACKEND=sqlite: same incremental flow over sqlite-vec + FTS5
+# --------------------------------------------------------------------------- #
+
+
+def test_sqlite_backend_incremental_add_modify_remove(corpus, patch_docling, monkeypatch) -> None:
+    pytest.importorskip("sqlite_vec")
+    from asistente.conocimiento.indice import IndiceHibrido
+    from asistente.conocimiento.indice.ingesta import ruta_indice
+
+    monkeypatch.setattr(settings, "INDICE_BACKEND", "sqlite")
+    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)  # no pickle on this path
+    content_dir, output_dir = corpus
+    _write(content_dir / "a.html")
+    _write(content_dir / "b.html")
+    _make_processor(content_dir, output_dir).process_documents()
+    assert not (output_dir / "index.pkl").exists()
+    with IndiceHibrido(ruta_indice(output_dir)) as ind:
+        assert len(ind) == 4 and ind.num_vectores() == 4
+
+    _write(content_dir / "a.html", "<html>v2</html>")
+    patch_docling["a.html"] = 3
+    (content_dir / "b.html").unlink()
+    _make_processor(content_dir, output_dir).process_documents()
+    manifest = mf.load_manifest(output_dir)
+    assert set(manifest.files) == {"a.html"} and manifest.files["a.html"].n_chunks == 3
+    with IndiceHibrido(ruta_indice(output_dir)) as ind:
+        assert len(ind) == 3 and ind.num_vectores() == 3
+        assert [a.fragmento.metadatos["title"] for a in ind.buscar_lexico("chunk 2 of a.html", k=1)] == ["a"]
+        assert all(a.fragmento.fuente.endswith("a.html") for a in ind.buscar_lexico("b.html", k=10))

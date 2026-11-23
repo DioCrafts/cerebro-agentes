@@ -32,12 +32,12 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 import hashlib
-import re
 import json
 import logging
 import multiprocessing as mp
 from pathlib import Path
 import queue
+import re
 import shutil
 import threading
 from typing import Any
@@ -896,9 +896,19 @@ class DocumentProcessor:
         #   corrupt files), fall back to full rebuild over the whole corpus.
         db: Any | None = None
         existing_manifest: Manifest | None = None
-        if diff is not None:
-            from asistente.plataforma import settings as _settings
+        from asistente.plataforma import settings as _settings
 
+        # INDICE_BACKEND=sqlite: sqlite-vec + FTS5 in <output_dir>/indice.sqlite, no pickle (conocimiento/indice).
+        sqlite_backend = _settings.INDICE_BACKEND == "sqlite"
+        if sqlite_backend:
+            from asistente.conocimiento.indice.ingesta import EscritorSqlite, borrar_indice
+
+            if diff is None:
+                borrar_indice(self.output_dir)
+            db = EscritorSqlite(self.output_dir, self.embeddings)
+            if diff is not None:
+                existing_manifest = load_manifest(self.output_dir)
+        elif diff is not None:
             # Loading the index unpickles it: only an index the operator trusts (docs/seguridad.md, S-17), like
             # agent/search.py and llm/chain.py. Checked before the fallback below, which would hide it.
             if not _settings.FAISS_TRUSTED_INDEX:
@@ -935,7 +945,7 @@ class DocumentProcessor:
 
         # Removals-only path: nothing to parse, just persist what we have.
         if not files_to_process:
-            if db is not None:
+            if db is not None and not sqlite_backend:
                 self._atomic_save_index(db)
             if existing_manifest is not None:
                 existing_manifest.pipeline_fingerprint = fingerprint
@@ -1025,7 +1035,7 @@ class DocumentProcessor:
                     current_db.add_documents(chunks_w, ids=ids)
                 db_holder[0] = current_db
 
-            if current_db is not None:
+            if current_db is not None and not sqlite_backend:
                 self._atomic_save_index(current_db)
 
             entries = self._build_entries(files_w, chunks_w)

@@ -127,12 +127,16 @@ class FaissCorpusSearcher:
         self._first_stage_k = first_stage_k
 
     @classmethod
-    def from_settings(cls) -> FaissCorpusSearcher | SinCorpus:
+    def from_settings(cls) -> CorpusSearcher:
         from langchain_community.vectorstores import FAISS
 
         from asistente.conocimiento.llm.embeddings import create_embeddings
         from asistente.plataforma import settings
 
+        if settings.INDICE_BACKEND == "sqlite":
+            from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
+
+            return SqliteCorpusSearcher.from_settings()
         if not Path(settings.FAISS_INDEX_PATH).exists():
             # A missing index must not take the whole brain down: searches find nothing (the grounding gate
             # abstains on normative questions) and every other specialist stays available.

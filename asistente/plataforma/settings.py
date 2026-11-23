@@ -144,6 +144,10 @@ RAGAS_JUDGE_MAX_TOKENS = int(os.environ.get("RAGAS_JUDGE_MAX_TOKENS", "1024"))
 
 FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", ".faiss")
 FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
+# Corpus index backend: "faiss" (pickle + rank-bm25, legacy) or "sqlite" (sqlite-vec + FTS5 in one file,
+# no pickle). Stays "faiss" until the retrieval benchmark validates the switch (docs/cerebro/benchmark-recuperacion.md).
+INDICE_BACKEND = os.environ.get("INDICE_BACKEND", "faiss").strip().lower()
+INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(FAISS_INDEX_PATH, "indice.sqlite"))
 MEMORY_KEY = os.environ.get("MEMORY_KEY", "chat_history")
 TOP_K = int(os.environ.get("TOP_K", "3"))
 # Recuperador experimental del módulo fiscal: ``faiss`` (por defecto, el
