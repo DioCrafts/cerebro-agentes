@@ -1,41 +1,41 @@
 # Medición «primer» (2026-11-23)
 
-Navegador: Chromium 153.0.8010.12. Duración: 780 s.
+Navegador: Chromium 153.0.8010.12. Duración: 587 s.
 
 ## Cifras resumen
 
 | Grupo | Cifra | Valor |
 |---|---:|---:|
-| Rendimiento | Lighthouse rendimiento (mediana, móvil) | 85 |
-| Rendimiento | LCP mediana (móvil) | 3664 ms |
-| Rendimiento | LCP peor pantalla (móvil) | 4880 ms |
+| Rendimiento | Lighthouse rendimiento (mediana, móvil) | 86 |
+| Rendimiento | LCP mediana (móvil) | 3643 ms |
+| Rendimiento | LCP peor pantalla (móvil) | 3957 ms |
 | Rendimiento | CLS peor pantalla (móvil) | 0.236 |
 | Rendimiento | TBT mediana (móvil) | 0 ms |
 | Rendimiento | Lighthouse rendimiento (mediana, escritorio) | 99 |
-| Rendimiento | LCP mediana (escritorio) | 834 ms |
-| Rendimiento | LCP peor pantalla (escritorio) | 895 ms |
-| Rendimiento | CLS peor pantalla (escritorio) | 0.044 |
+| Rendimiento | LCP mediana (escritorio) | 824 ms |
+| Rendimiento | LCP peor pantalla (escritorio) | 1279 ms |
+| Rendimiento | CLS peor pantalla (escritorio) | 0.045 |
 | Rendimiento | TBT mediana (escritorio) | 0 ms |
-| Rendimiento | INP aproximado, peor interacción (móvil) | 128 ms |
-| Rendimiento | Primer texto del asesor tras «Enviar» (móvil) | 894.5 ms |
-| Rendimiento | INP aproximado, peor interacción (escritorio) | 112 ms |
-| Rendimiento | Primer texto del asesor tras «Enviar» (escritorio) | 977 ms |
-| Bundle | JS total (gzip) | 394.4 KiB |
+| Rendimiento | INP aproximado, peor interacción (móvil) | 48 ms |
+| Rendimiento | Primer texto del asesor tras «Enviar» (móvil) | 879.5 ms |
+| Rendimiento | INP aproximado, peor interacción (escritorio) | 48 ms |
+| Rendimiento | Primer texto del asesor tras «Enviar» (escritorio) | 816 ms |
+| Bundle | JS total (gzip) | 394.5 KiB |
 | Bundle | Carga inicial JS+CSS (gzip) | 339.9 KiB |
-| Bundle | CSS (gzip) | 70.9 KiB |
+| Bundle | CSS (gzip) | 71 KiB |
 | Bundle | Chunks JS | 46 |
 | Accesibilidad | Lighthouse accesibilidad (mediana, móvil) | 100 |
 | Accesibilidad | Lighthouse accesibilidad (mediana, escritorio) | 100 |
 | Accesibilidad | Nodos con violaciones axe: critical | 0 |
-| Accesibilidad | Nodos con violaciones axe: serious | 34 |
-| Accesibilidad | Nodos con violaciones axe: moderate | 58 |
+| Accesibilidad | Nodos con violaciones axe: serious | 0 |
+| Accesibilidad | Nodos con violaciones axe: moderate | 4 |
 | Accesibilidad | Nodos con violaciones axe: minor | 0 |
-| Accesibilidad | Reglas axe distintas incumplidas | 4 |
+| Accesibilidad | Reglas axe distintas incumplidas | 1 |
 | Accesibilidad | Nodos con contraste insuficiente | 0 |
 | Accesibilidad | Paradas de foco sin indicador visible | 0 |
-| Accesibilidad | Saltos atrás en el orden del foco | 19 |
+| Accesibilidad | Saltos atrás en el orden del foco | 15 |
 | Accesibilidad | Foco que se escapa de un diálogo modal | 0 |
-| Accesibilidad | Paradas de foco fuera de pantalla | 30 |
+| Accesibilidad | Paradas de foco fuera de pantalla | 49 |
 | Accesibilidad | Paneles que no devuelven el foco al cerrar | 0 |
 | Accesibilidad | Teclado: Tab hasta la caja de consulta (móvil) | 22 |
 | Accesibilidad | Teclado: Tab hasta «Tu expediente» (móvil) | 12 |
@@ -45,7 +45,7 @@ Navegador: Chromium 153.0.8010.12. Duración: 780 s.
 | Accesibilidad | Teclado: flujo completo sin ratón (escritorio) | 1 |
 | Accesibilidad | Controles con solo icono | 1 |
 | Accesibilidad | Controles de menos de 24 px (móvil, WCAG 2.5.8) | 66 |
-| Accesibilidad | Controles de menos de 44 px en móvil | 605 |
+| Accesibilidad | Controles de menos de 44 px en móvil | 615 |
 | Accesibilidad | Controles de menos de 24 px (escritorio, WCAG 2.5.8) | 66 |
 | Consistencia visual | Tamaños de fuente distintos | 8 |
 | Consistencia visual | Pesos de fuente distintos | 4 |
@@ -53,7 +53,7 @@ Navegador: Chromium 153.0.8010.12. Duración: 780 s.
 | Consistencia visual | Valores de espaciado distintos | 40 |
 | Consistencia visual | Radios de borde distintos | 8 |
 | Consistencia visual | Sombras distintas | 16 |
-| Consistencia visual | Alturas de botón distintas | 13 |
+| Consistencia visual | Alturas de botón distintas | 12 |
 | Consistencia visual | Alturas de campo distintas | 5 |
 | Consistencia visual | Colores de texto distintos (claro) | 9 |
 | Consistencia visual | Colores de fondo distintos (claro) | 15 |
@@ -77,7 +77,7 @@ Navegador: Chromium 153.0.8010.12. Duración: 780 s.
 | UX | Paneles escondidos tras «Más» (escritorio) | 5 |
 | UX | Pantallas sin indicador de carga | 0 |
 | UX | Pantallas sin mensaje de error | 0 |
-| UX | Errores sin opción de reintentar | 1 |
+| UX | Errores sin opción de reintentar | 0 |
 | UX | Pantallas vacías sin explicación | 3 |
 | UX | Textos poco claros detectados | 9 |
 | UX | Errores de consola durante el recorrido | 0 |
@@ -88,102 +88,102 @@ Modo navegación, throttling simulado por defecto (móvil: 4G lento y CPU ×4; e
 
 | Pantalla | Viewport | Rend. | Acc. | FCP ms | LCP ms | CLS | TBT ms | SI ms | JS sin usar KiB |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| entrar | movil | 90 | 100 | 1562 | 3532 | 0 | 0 | 1562 | 134.3 |
-| inicio | movil | 90 | 100 | 1524 | 3528 | 0 | 0 | 1612 | 121.8 |
-| panel-avisos | movil | 86 | 100 | 1514 | 3468 | 0.128 | 2 | 1770 | 114.6 |
-| panel-modulos | movil | 83 | 100 | 1516 | 3997 | 0.124 | 25 | 1516 | 91.1 |
-| panel-expediente | movil | 85 | 100 | 1518 | 3664 | 0.128 | 0 | 1518 | 114.6 |
-| panel-simulador | movil | 76 | 100 | 1525 | 3825 | 0.236 | 0 | 1525 | 109.7 |
-| panel-autonomos | movil | 82 | 100 | 1525 | 3681 | 0.164 | 0 | 1525 | 109.0 |
-| panel-optimizador | movil | 78 | 100 | 1540 | 4188 | 0.128 | 185 | 2307 | 109.5 |
-| panel-planificar | movil | 78 | 100 | 1590 | 4024 | 0.128 | 224 | 2506 | 108.9 |
-| panel-tareas | movil | 90 | 100 | 1533 | 3568 | 0 | 24 | 1533 | 114.3 |
-| panel-preferencias | movil | 77 | 100 | 1555 | 1555 | 0.128 | 701 | 2586 | 114.3 |
-| panel-recuerdos | movil | 86 | 100 | 1527 | 3487 | 0.128 | 0 | 1527 | 113.6 |
-| panel-movil | movil | 40 | 100 | 1813 | 4880 | 0.19 | 2355 | 4997 | 111.5 |
-| panel-consejo | movil | 86 | 100 | 1532 | 3536 | 0.128 | 0 | 1532 | 114.8 |
-| panel-investigar | movil | 86 | 100 | 1507 | 3493 | 0.128 | 0 | 1507 | 111.1 |
-| panel-navegador | movil | 89 | 100 | 1508 | 3665 | 0 | 0 | 1508 | 114.7 |
-| panel-revision | movil | 84 | 100 | 1519 | 3817 | 0.128 | 0 | 1519 | 114.5 |
-| entrar | escritorio | 100 | 100 | 373 | 737 | 0 | 0 | 373 | 136.7 |
-| inicio | escritorio | 99 | 100 | 372 | 748 | 0.043 | 0 | 372 | 121.8 |
-| panel-avisos | escritorio | 99 | 100 | 369 | 859 | 0.043 | 0 | 468 | 114.3 |
-| panel-modulos | escritorio | 99 | 100 | 370 | 857 | 0.043 | 0 | 370 | 90.7 |
-| panel-expediente | escritorio | 99 | 100 | 381 | 835 | 0.043 | 0 | 415 | 114.5 |
-| panel-simulador | escritorio | 99 | 100 | 378 | 841 | 0 | 0 | 470 | 109.7 |
-| panel-autonomos | escritorio | 99 | 100 | 386 | 895 | 0.044 | 0 | 446 | 109.2 |
-| panel-optimizador | escritorio | 99 | 100 | 373 | 874 | 0 | 0 | 493 | 109.5 |
-| panel-planificar | escritorio | 99 | 100 | 378 | 808 | 0.043 | 0 | 469 | 108.9 |
-| panel-tareas | escritorio | 100 | 100 | 370 | 817 | 0 | 0 | 377 | 114.3 |
-| panel-preferencias | escritorio | 100 | 100 | 369 | 816 | 0 | 0 | 497 | 114.7 |
-| panel-recuerdos | escritorio | 99 | 100 | 372 | 836 | 0.003 | 0 | 421 | 113.3 |
-| panel-movil | escritorio | 99 | 100 | 366 | 824 | 0.043 | 0 | 478 | 111.6 |
-| panel-consejo | escritorio | 99 | 100 | 365 | 778 | 0.043 | 0 | 365 | 114.7 |
-| panel-investigar | escritorio | 100 | 100 | 368 | 731 | 0.043 | 0 | 368 | 110.8 |
-| panel-navegador | escritorio | 99 | 100 | 376 | 842 | 0.043 | 0 | 376 | 114.7 |
-| panel-revision | escritorio | 99 | 100 | 372 | 834 | 0 | 0 | 480 | 114.5 |
+| entrar | movil | 91 | 100 | 1510 | 3464 | 0 | 17 | 1510 | 134.3 |
+| inicio | movil | 86 | 100 | 1508 | 3499 | 0.128 | 0 | 1508 | 121.8 |
+| panel-avisos | movil | 86 | 100 | 1506 | 3458 | 0.128 | 0 | 1715 | 114.6 |
+| panel-modulos | movil | 87 | 100 | 1509 | 3957 | 0 | 0 | 1509 | 91.1 |
+| panel-expediente | movil | 85 | 100 | 1506 | 3641 | 0.128 | 0 | 1599 | 114.5 |
+| panel-simulador | movil | 77 | 100 | 1504 | 3789 | 0.236 | 0 | 1680 | 109.4 |
+| panel-autonomos | movil | 78 | 100 | 1503 | 3643 | 0.231 | 0 | 1625 | 109.3 |
+| panel-optimizador | movil | 83 | 100 | 1506 | 3943 | 0.128 | 0 | 1506 | 109.7 |
+| panel-planificar | movil | 89 | 100 | 1507 | 3650 | 0 | 0 | 1612 | 108.7 |
+| panel-tareas | movil | 84 | 100 | 1511 | 3875 | 0 | 210 | 1715 | 114.6 |
+| panel-preferencias | movil | 90 | 100 | 1507 | 3612 | 0 | 0 | 1768 | 114.7 |
+| panel-recuerdos | movil | 87 | 100 | 1510 | 3811 | 0 | 144 | 1999 | 113.5 |
+| panel-movil | movil | 80 | 100 | 1536 | 3718 | 0.128 | 240 | 1931 | 111.7 |
+| panel-consejo | movil | 86 | 100 | 1508 | 3496 | 0.128 | 0 | 1540 | 114.7 |
+| panel-investigar | movil | 90 | 100 | 1506 | 3610 | 0 | 0 | 1506 | 110.8 |
+| panel-navegador | movil | 86 | 100 | 1504 | 3488 | 0.128 | 0 | 1504 | 114.7 |
+| panel-revision | movil | 88 | 100 | 1507 | 3800 | 0.005 | 0 | 1522 | 114.5 |
+| entrar | escritorio | 100 | 100 | 365 | 767 | 0 | 0 | 365 | 134.3 |
+| inicio | escritorio | 100 | 100 | 371 | 746 | 0 | 0 | 416 | 121.8 |
+| panel-avisos | escritorio | 99 | 100 | 370 | 860 | 0.043 | 0 | 413 | 114.3 |
+| panel-modulos | escritorio | 99 | 100 | 367 | 869 | 0.043 | 0 | 439 | 90.7 |
+| panel-expediente | escritorio | 99 | 100 | 367 | 772 | 0.043 | 0 | 444 | 114.5 |
+| panel-simulador | escritorio | 100 | 100 | 370 | 734 | 0.043 | 0 | 398 | 109.4 |
+| panel-autonomos | escritorio | 99 | 100 | 367 | 823 | 0.045 | 0 | 367 | 109.2 |
+| panel-optimizador | escritorio | 99 | 100 | 368 | 862 | 0 | 0 | 437 | 110.0 |
+| panel-planificar | escritorio | 99 | 100 | 371 | 830 | 0.043 | 0 | 387 | 108.9 |
+| panel-tareas | escritorio | 96 | 100 | 575 | 1279 | 0.043 | 3 | 1021 | 115.0 |
+| panel-preferencias | escritorio | 100 | 100 | 368 | 814 | 0 | 0 | 503 | 114.6 |
+| panel-recuerdos | escritorio | 99 | 100 | 370 | 859 | 0 | 0 | 503 | 113.6 |
+| panel-movil | escritorio | 99 | 100 | 366 | 824 | 0 | 0 | 473 | 111.3 |
+| panel-consejo | escritorio | 99 | 100 | 366 | 778 | 0.043 | 0 | 366 | 114.7 |
+| panel-investigar | escritorio | 100 | 100 | 370 | 734 | 0.043 | 0 | 453 | 111.2 |
+| panel-navegador | escritorio | 99 | 100 | 380 | 846 | 0.001 | 0 | 455 | 114.7 |
+| panel-revision | escritorio | 99 | 100 | 367 | 824 | 0.043 | 0 | 367 | 114.5 |
 
 ## Bundle por chunk
 
 | Chunk | Tipo | Inicial | Bytes | gzip | brotli |
 |---|---:|---:|---:|---:|---:|
-| ui.js | js | sí | 489458 | 91071 | 72200 |
-| index.js | js | sí | 433359 | 135813 | 115747 |
-| index.css | css | sí | 244597 | 41044 | 19823 |
+| ui.js | js | sí | 489363 | 91045 | 72187 |
+| index.js | js | sí | 433434 | 135848 | 115789 |
+| index.css | css | sí | 244614 | 41048 | 19856 |
 | ui.css | css | sí | 122744 | 16740 | 14314 |
-| FormControl.js | js | sí | 119211 | 40363 | 34228 |
-| optimizador.js | js |  | 53404 | 16707 | 15161 |
-| modulos.js | js |  | 45406 | 14402 | 12635 |
+| FormControl.js | js | sí | 119211 | 40362 | 34243 |
+| optimizador.js | js |  | 53404 | 16704 | 15190 |
+| modulos.js | js |  | 45637 | 14435 | 12660 |
 | FormControl.css | css | sí | 43127 | 6914 | 6112 |
-| simulador.js | js |  | 35729 | 12187 | 11051 |
-| autonomos.js | js |  | 22396 | 7734 | 7032 |
-| DictamenConsejo.js | js |  | 20523 | 6933 | 6170 |
+| simulador.js | js |  | 35729 | 12188 | 11064 |
+| autonomos.js | js |  | 22396 | 7732 | 7034 |
+| DictamenConsejo.js | js |  | 20523 | 6932 | 6169 |
 | SegmentedControl.css | css |  | 19322 | 2441 | 2081 |
-| planificar.js | js |  | 19303 | 6574 | 5975 |
-| StateLabel.js | js | sí | 18345 | 4870 | 4229 |
-| revision.js | js |  | 16358 | 5276 | 4701 |
-| tareas.js | js |  | 14433 | 4855 | 4377 |
-| navegador.js | js |  | 13264 | 4599 | 4169 |
-| avisos.js | js |  | 12986 | 4417 | 3940 |
-| recuerdos.js | js |  | 11257 | 3859 | 3480 |
-| expediente.js | js |  | 10819 | 4085 | 3679 |
-| investigar.js | js |  | 10557 | 3854 | 3458 |
-| SegmentedControl.js | js |  | 10157 | 3823 | 3287 |
+| planificar.js | js |  | 19303 | 6571 | 5964 |
+| StateLabel.js | js | sí | 18345 | 4869 | 4227 |
+| revision.js | js |  | 16358 | 5277 | 4703 |
+| tareas.js | js |  | 14587 | 4921 | 4438 |
+| navegador.js | js |  | 13264 | 4598 | 4178 |
+| avisos.js | js |  | 12986 | 4419 | 3948 |
+| recuerdos.js | js |  | 11257 | 3860 | 3484 |
+| expediente.js | js |  | 10819 | 4085 | 3678 |
+| investigar.js | js |  | 10557 | 3855 | 3460 |
+| SegmentedControl.js | js |  | 10157 | 3822 | 3289 |
 | preferencias.js | js |  | 7348 | 2901 | 2609 |
-| textos.js | js |  | 7290 | 3154 | 2845 |
+| textos.js | js |  | 7290 | 3156 | 2849 |
 | ToggleSwitch.css | css |  | 7108 | 1460 | 1221 |
 | Timeline.css | css | sí | 5966 | 1217 | 1052 |
-| consejo.js | js |  | 5615 | 2416 | 2173 |
-| ToggleSwitch.js | js |  | 5603 | 2386 | 2072 |
-| movil.js | js |  | 5375 | 2209 | 1954 |
-| piezas.js | js |  | 5009 | 1822 | 1631 |
-| CheckboxOrRadioGroup.js | js | sí | 4942 | 2151 | 1876 |
+| consejo.js | js |  | 5615 | 2415 | 2179 |
+| ToggleSwitch.js | js |  | 5603 | 2384 | 2067 |
+| movil.js | js |  | 5375 | 2206 | 1953 |
+| piezas.js | js |  | 5009 | 1818 | 1627 |
+| CheckboxOrRadioGroup.js | js | sí | 4942 | 2150 | 1872 |
 | StateLabel.css | css | sí | 4759 | 625 | 508 |
-| Timeline.js | js | sí | 4731 | 1680 | 1431 |
-| EtiquetaEstado.js | js | sí | 4309 | 1996 | 1772 |
-| MemoriaBotones.js | js |  | 4055 | 1911 | 1705 |
-| ProgressBar.js | js |  | 2920 | 1420 | 1199 |
-| apiTareas.js | js |  | 2025 | 754 | 681 |
+| Timeline.js | js | sí | 4731 | 1679 | 1432 |
+| EtiquetaEstado.js | js | sí | 4309 | 1997 | 1779 |
+| MemoriaBotones.js | js |  | 4055 | 1911 | 1704 |
+| ProgressBar.js | js |  | 2920 | 1420 | 1195 |
+| apiTareas.js | js |  | 2025 | 751 | 679 |
 | ProgressBar.css | css |  | 1740 | 646 | 533 |
-| ShieldIcon.js | js | sí | 1480 | 763 | 689 |
+| ShieldIcon.js | js | sí | 1480 | 762 | 690 |
 | optimizador.css | css |  | 1269 | 387 | 320 |
-| XCircleFillIcon.js | js |  | 1219 | 580 | 521 |
+| XCircleFillIcon.js | js |  | 1219 | 578 | 520 |
 | Pestanas.css | css |  | 1217 | 538 | 417 |
-| apiCorreo.js | js |  | 1184 | 526 | 469 |
-| ZonaPeligro.js | js |  | 1182 | 571 | 507 |
-| HistoryIcon.js | js |  | 1134 | 625 | 574 |
-| UploadIcon.js | js |  | 1126 | 494 | 430 |
+| apiCorreo.js | js |  | 1184 | 523 | 466 |
+| ZonaPeligro.js | js |  | 1182 | 568 | 500 |
+| HistoryIcon.js | js |  | 1134 | 624 | 576 |
+| UploadIcon.js | js |  | 1126 | 493 | 430 |
 | CheckboxOrRadioGroup.css | css | sí | 1100 | 385 | 296 |
-| apiMemoria.js | js |  | 939 | 480 | 422 |
-| useFlujoSse.js | js | sí | 923 | 523 | 480 |
+| apiMemoria.js | js |  | 939 | 479 | 421 |
+| useFlujoSse.js | js | sí | 923 | 522 | 478 |
 | formulario.js | js |  | 871 | 463 | 404 |
-| ClockIcon.js | js | sí | 857 | 488 | 439 |
-| ChevronDownIcon.js | js | sí | 841 | 454 | 395 |
-| Pestanas.js | js |  | 800 | 515 | 429 |
+| ClockIcon.js | js | sí | 857 | 486 | 439 |
+| ChevronDownIcon.js | js | sí | 841 | 452 | 395 |
+| Pestanas.js | js |  | 800 | 511 | 427 |
 | EtiquetaEstado.css | css | sí | 763 | 252 | 221 |
 | rolldown-runtime.js | js | sí | 726 | 431 | 382 |
-| memoria.js | js | sí | 421 | 305 | 255 |
-| useConfirmar.js | js |  | 329 | 244 | 203 |
+| memoria.js | js | sí | 421 | 304 | 253 |
+| useConfirmar.js | js |  | 329 | 242 | 203 |
 | urls.js | js |  | 307 | 188 | 149 |
 
 ## Accesibilidad: reglas de axe incumplidas
@@ -192,9 +192,6 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 
 | Regla | Impacto | Nodos | Pantallas | Ejemplo |
 |---|---:|---:|---:|---:|
-| landmark-unique | moderate | 40 | 20 | `.prc-PageLayout-Pane-AyzHK` |
-| label-content-name-mismatch | serious | 34 | 2 | `#_r_1k_` |
-| heading-order | moderate | 14 | 7 | `._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3` |
 | region | moderate | 4 | 1 | `.prc-ActionMenu-ActionMenuContainer-Om1Qz` |
 
 ## Orden del foco (tema claro)
@@ -202,23 +199,23 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | Pantalla | Viewport | Paradas | Sin indicador | Saltos atrás | Fuera de pantalla | Escapa del diálogo |
 |---|---:|---:|---:|---:|---:|---:|
 | entrar | movil | 5 | 0 | 0 | 0 | — |
-| inicio | movil | 35 | 0 | 1 | 3 | — |
-| conversacion | movil | 23 | 0 | 0 | 2 | — |
+| inicio | movil | 70 | 0 | 2 | 7 | — |
+| conversacion | movil | 22 | 0 | 1 | 2 | — |
 | panel-avisos | movil | 12 | 0 | 0 | 0 | 0 |
-| panel-modulos | movil | 24 | 0 | 2 | 1 | — |
-| panel-expediente | movil | 24 | 0 | 0 | 0 | — |
+| panel-modulos | movil | 25 | 0 | 0 | 2 | — |
+| panel-expediente | movil | 23 | 0 | 1 | 2 | — |
 | panel-simulador | movil | 70 | 0 | 0 | 0 | — |
-| panel-autonomos | movil | 23 | 0 | 2 | 1 | — |
-| panel-optimizador | movil | 40 | 0 | 1 | 1 | — |
-| panel-planificar | movil | 29 | 0 | 1 | 2 | — |
-| panel-tareas | movil | 16 | 0 | 0 | 2 | — |
+| panel-autonomos | movil | 24 | 0 | 0 | 2 | — |
+| panel-optimizador | movil | 39 | 0 | 1 | 2 | — |
+| panel-planificar | movil | 30 | 0 | 0 | 0 | — |
+| panel-tareas | movil | 15 | 0 | 1 | 2 | — |
 | panel-preferencias | movil | 2 | 0 | 0 | 0 | 0 |
 | panel-recuerdos | movil | 8 | 0 | 0 | 0 | 0 |
 | panel-movil | movil | 2 | 0 | 0 | 0 | 0 |
-| panel-consejo | movil | 15 | 0 | 1 | 2 | — |
-| panel-investigar | movil | 20 | 0 | 0 | 0 | — |
-| panel-navegador | movil | 14 | 0 | 1 | 2 | — |
-| panel-revision | movil | 18 | 0 | 0 | 2 | — |
+| panel-consejo | movil | 16 | 0 | 0 | 2 | — |
+| panel-investigar | movil | 19 | 0 | 2 | 1 | — |
+| panel-navegador | movil | 15 | 0 | 0 | 2 | — |
+| panel-revision | movil | 17 | 0 | 1 | 2 | — |
 | entrar | escritorio | 5 | 0 | 0 | 0 | — |
 | inicio | escritorio | 26 | 0 | 0 | 2 | — |
 | conversacion | escritorio | 32 | 0 | 1 | 2 | — |
@@ -226,17 +223,17 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | panel-modulos | escritorio | 35 | 0 | 0 | 2 | — |
 | panel-simulador | escritorio | 70 | 0 | 0 | 0 | — |
 | panel-autonomos | escritorio | 32 | 0 | 1 | 2 | — |
-| panel-optimizador | escritorio | 49 | 0 | 0 | 0 | — |
-| panel-planificar | escritorio | 38 | 0 | 2 | 1 | — |
-| panel-tareas | escritorio | 25 | 0 | 1 | 1 | — |
-| panel-consejo | escritorio | 24 | 0 | 2 | 1 | — |
-| panel-investigar | escritorio | 29 | 0 | 0 | 0 | — |
-| panel-expediente | escritorio | 33 | 0 | 2 | 1 | — |
+| panel-optimizador | escritorio | 49 | 0 | 0 | 2 | — |
+| panel-planificar | escritorio | 38 | 0 | 1 | 1 | — |
+| panel-tareas | escritorio | 25 | 0 | 0 | 2 | — |
+| panel-consejo | escritorio | 24 | 0 | 1 | 2 | — |
+| panel-investigar | escritorio | 29 | 0 | 0 | 2 | — |
+| panel-expediente | escritorio | 33 | 0 | 1 | 2 | — |
 | panel-preferencias | escritorio | 2 | 0 | 0 | 0 | 0 |
 | panel-recuerdos | escritorio | 8 | 0 | 0 | 0 | 0 |
 | panel-movil | escritorio | 2 | 0 | 0 | 0 | 0 |
-| panel-navegador | escritorio | 24 | 0 | 0 | 0 | — |
-| panel-revision | escritorio | 26 | 0 | 1 | 0 | — |
+| panel-navegador | escritorio | 24 | 0 | 0 | 2 | — |
+| panel-revision | escritorio | 26 | 0 | 1 | 2 | — |
 
 ### Solo con teclado
 
@@ -275,26 +272,26 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 
 ## Consistencia visual (todas las pantallas)
 
-- **tamanoFuente** (8 distintos): `12.3px` ×4158, `10.5px` ×2270, `14px` ×232, `13px` ×76, `17.5px` ×74, `10px` ×14, `16px` ×14, `26.3px` ×4
-- **pesoFuente** (4 distintos): `400` ×3654, `600` ×2296, `500` ×850, `700` ×42
-- **alturaLinea** (18 distintos): `18.4px` ×3216, `17.5px` ×816, `14px` ×744, `10.5px` ×744, `15.8px` ×268, `17.1px` ×254, `21px` ×232, `20px` ×98, `16px` ×96, `15px` ×92, `13px` ×76, `28.4px` ×70, `16.8px` ×56, `14.7px` ×38, `18px` ×20, `10px` ×14, `31.5px` ×4, `24.5px` ×4
-- **familia** (2 distintos): `Mona Sans VF` ×6680, `ui-monospace` ×162
-- **espaciado** (40 distintos): `7px` ×11448, `14px` ×4172, `3.5px` ×3358, `5.3px` ×2984, `10.5px` ×1688, `1.8px` ×806, `21px` ×546, `-0.9px` ×528, `-1px` ×424, `8px` ×192, `12px` ×176, `1px` ×152, `4.2px` ×112, `-3.5px` ×100, `4px` ×80, `59px` ×74, `17.5px` ×60, `1.6px` ×56, `-7px` ×50, `16px` ×32, `28px` ×32, `-15px` ×28, `4.5px` ×28, `49px` ×28
+- **tamanoFuente** (8 distintos): `12.3px` ×4194, `10.5px` ×2244, `14px` ×232, `13px` ×76, `17.5px` ×74, `10px` ×14, `16px` ×14, `26.3px` ×4
+- **pesoFuente** (4 distintos): `400` ×3656, `600` ×2304, `500` ×850, `700` ×42
+- **alturaLinea** (18 distintos): `18.4px` ×3248, `17.5px` ×816, `14px` ×744, `10.5px` ×744, `15.8px` ×268, `17.1px` ×254, `21px` ×232, `20px` ×102, `15px` ×92, `13px` ×76, `28.4px` ×70, `16px` ×70, `16.8px` ×56, `14.7px` ×38, `18px` ×20, `10px` ×14, `31.5px` ×4, `24.5px` ×4
+- **familia** (2 distintos): `Mona Sans VF` ×6690, `ui-monospace` ×162
+- **espaciado** (40 distintos): `7px` ×11440, `14px` ×4172, `3.5px` ×3310, `5.3px` ×2984, `10.5px` ×1688, `1.8px` ×806, `-1px` ×552, `21px` ×546, `-0.9px` ×528, `8px` ×192, `12px` ×176, `1px` ×152, `4.2px` ×112, `-3.5px` ×100, `4px` ×80, `59px` ×70, `17.5px` ×60, `1.6px` ×56, `-7px` ×50, `16px` ×32, `28px` ×32, `-15px` ×28, `4.5px` ×28, `49px` ×28
 - **radio** (8 distintos): `5.3px` ×3194, `pill (≥999px)` ×776, `20px` ×300, `2.6px` ×142, `6px` ×76, `3.3px` ×32, `3.5px` ×16, `10.5px` ×14
 - **sombra** (16 distintos): `rgba(31, 35, 40, 0.04) 0px 1px 0px 0px inset` ×296, `rgba(1, 4, 9, 0.24) 0px 1px 0px 0px inset` ×296, `rgba(31, 35, 40, 0.04) 0px 1px 0px 0px` ×72, `rgb(24, 106, 70) 0px 0px 0px 0.875px inset` ×56, `rgba(31, 35, 40, 0.15) 0px 0px 0px 0.875px` ×52, `rgba(255, 255, 255, 0.15) 0px 0px 0px 0.875px` ×52
-- **alturaBoton** (13 distintos): `28px` ×478, `25px` ×434, `32px` ×96, `45px` ×72, `19px` ×56, `50px` ×26, `24px` ×16, `31px` ×8, `58px` ×8, `18px` ×4, `14px` ×4, `95px` ×4, `76px` ×4
+- **alturaBoton** (12 distintos): `28px` ×478, `25px` ×434, `32px` ×96, `45px` ×72, `19px` ×56, `31px` ×34, `24px` ×16, `58px` ×8, `18px` ×4, `14px` ×4, `95px` ×4, `76px` ×4
 - **alturaCampo** (5 distintos): `26px` ×508, `24px` ×40, `56px` ×32, `74px` ×8, `18px` ×4
-- **objetivoTactil** (3 distintos): `24-43px` ×2442, `<24px` ×264, `≥44px` ×118
+- **objetivoTactil** (3 distintos): `24-43px` ×2468, `<24px` ×264, `≥44px` ×92
 
 ### Colores usados, tema claro
 
-- **colorTexto** (9): `#1b2330` ×1851, `#5e6774` ×939, `#14635e` ×290, `#25292e` ×166, `#ffffff` ×93, `#186a46` ×36, `#8c5a04` ×22, `#b23826` ×22, `#818b98` ×2
+- **colorTexto** (9): `#1b2330` ×1867, `#5e6774` ×924, `#14635e` ×290, `#25292e` ×170, `#ffffff` ×93, `#186a46` ×36, `#8c5a04` ×22, `#b23826` ×22, `#818b98` ×2
 - **colorFondo** (15): `#ffffff` ×655, `#f6f4ef` ×230, `#eef0f3` ×185, `#14635e` ×119, `#e2eeec` ×96, `#e4ded3` ×38, `#186a46` ×28, `#808d9a26` ×20, `#fbf1da` ×18, `#1b232f66` ×10, `#e6eaef` ×10, `#e4ded3b3` ×4, `#8089931a` ×2, `#fae8e4` ×2, `#eff2f5` ×2
 - **colorBorde** (12): `#e4ded3` ×519, `#868b91` ×429, `#14635e` ×184, `#e4ded3b3` ×160, `#14645f66` ×58, `#f6f4ef` ×36, `#186a46` ×34, `#22222826` ×27, `#8c5a04` ×26, `#eed8a6` ×16, `#b23826` ×8, `#8089931a` ×2
 
 ### Colores usados, tema oscuro
 
-- **colorTexto** (9): `#e9edf2` ×2017, `#96a0ae` ×939, `#86d6cc` ×290, `#ffffff` ×93, `#76d0a0` ×36, `#ecbc60` ×22, `#f28874` ×18, `#fa5e55` ×4, `#656c76` ×2
+- **colorTexto** (9): `#e9edf2` ×2037, `#96a0ae` ×924, `#86d6cc` ×290, `#ffffff` ×93, `#76d0a0` ×36, `#ecbc60` ×22, `#f28874` ×18, `#fa5e55` ×4, `#656c76` ×2
 - **colorFondo** (16): `#10141a` ×631, `#191f28` ×242, `#222832` ×185, `#1a7a73` ×119, `#183432` ×96, `#2e3642` ×38, `#186a46` ×28, `#646e7833` ×22, `#382b10` ×18, `#0000008c` ×10, `#010409` ×10, `#262c36` ×8, `#2e3642b3` ×4, `#ffffff` ×4, `#3c1b17` ×2, `#212830` ×2
 - **colorBorde** (12): `#2e3642` ×519, `#626b78` ×429, `#1a7a73` ×184, `#2e3642b3` ×160, `#197a7366` ×58, `#191f28` ×36, `#186a46` ×34, `#ffffff26` ×27, `#8c5a04` ×26, `#624b1c` ×16, `#b23826` ×8, `#626c761a` ×2
 
@@ -341,9 +338,9 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--bgColor-done-muted` | `#e9ebef` | `#172231` | 0 | 0 |
 | `--bgColor-draft-emphasis` | `#4c596b` | `#4c596b` | 0 | 0 |
 | `--bgColor-draft-muted` | `#eef0f3` | `#222832` | 185 | 185 |
-| `--bgColor-emphasis` | `#1b2330` | `#3a4250` | 1851 | 0 |
+| `--bgColor-emphasis` | `#1b2330` | `#3a4250` | 1867 | 0 |
 | `--bgColor-inset` | `#f6f4ef` | `#10141a` | 266 | 631 |
-| `--bgColor-inverse` | `#25292e` | `#ffffff` | 166 | 124 |
+| `--bgColor-inverse` | `#25292e` | `#ffffff` | 170 | 124 |
 | `--bgColor-muted` | `#f6f4ef` | `#191f28` | 266 | 278 |
 | `--bgColor-neutral-emphasis` | `#4c596b` | `#4c596b` | 0 | 0 |
 | `--bgColor-neutral-muted` | `#eef0f3` | `#222832` | 185 | 185 |
@@ -413,7 +410,7 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--button-default-borderColor-hover` | `#868b91` | `#626b78` | 429 | 429 |
 | `--button-default-borderColor-rest` | `#868b91` | `#626b78` | 429 | 429 |
 | `--button-default-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--button-default-fgColor-rest` | `#25292e` | `#e9edf2` | 166 | 2017 |
+| `--button-default-fgColor-rest` | `#25292e` | `#e9edf2` | 170 | 2037 |
 | `--button-inactive-bgColor` | `#e6eaef` | `#262c36` | 10 | 8 |
 | `--button-inactive-fgColor` | `#59636e` | `#9198a1` | 0 | 0 |
 | `--button-invisible-bgColor-active` | `#808d9a26` | `#646c7840` | 20 | 0 |
@@ -423,13 +420,13 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--button-invisible-borderColor-disabled` | `#00000000` | `#00000000` | 0 | 10 |
 | `--button-invisible-borderColor-hover` | `#00000000` | `#00000000` | 0 | 10 |
 | `--button-invisible-borderColor-rest` | `#00000000` | `#00000000` | 0 | 10 |
-| `--button-invisible-fgColor-active` | `#25292e` | `#e9edf2` | 166 | 2017 |
+| `--button-invisible-fgColor-active` | `#25292e` | `#e9edf2` | 170 | 2037 |
 | `--button-invisible-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--button-invisible-fgColor-hover` | `#25292e` | `#e9edf2` | 166 | 2017 |
-| `--button-invisible-fgColor-rest` | `#25292e` | `#e9edf2` | 166 | 2017 |
+| `--button-invisible-fgColor-hover` | `#25292e` | `#e9edf2` | 170 | 2037 |
+| `--button-invisible-fgColor-rest` | `#25292e` | `#e9edf2` | 170 | 2037 |
 | `--button-invisible-iconColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--button-invisible-iconColor-hover` | `#5e6774` | `#96a0ae` | 939 | 939 |
-| `--button-invisible-iconColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--button-invisible-iconColor-hover` | `#5e6774` | `#96a0ae` | 924 | 924 |
+| `--button-invisible-iconColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--button-outline-bgColor-active` | `#0f4f4a` | `#14635e` | 0 | 0 |
 | `--button-outline-bgColor-disabled` | `#eff2f5` | `#212830` | 2 | 2 |
 | `--button-outline-bgColor-hover` | `#14635e` | `#1a7a73` | 593 | 303 |
@@ -448,9 +445,9 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--button-primary-borderColor-disabled` | `#e4ded3` | `#2e3642` | 721 | 721 |
 | `--button-primary-borderColor-hover` | `#22222826` | `#ffffff26` | 27 | 124 |
 | `--button-primary-borderColor-rest` | `#22222826` | `#ffffff26` | 27 | 124 |
-| `--button-primary-fgColor-disabled` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--button-primary-fgColor-disabled` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--button-primary-fgColor-rest` | `#ffffff` | `#ffffff` | 748 | 124 |
-| `--button-primary-iconColor-disabled` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--button-primary-iconColor-disabled` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--button-primary-iconColor-rest` | `#ffffffcc` | `#ffffff` | 748 | 124 |
 | `--button-star-iconColor` | `#eac54f` | `#e3b341` | 0 | 0 |
 | `--buttonCounter-danger-bgColor-disabled` | `#d827270d` | `#d83b3b0d` | 0 | 0 |
@@ -479,13 +476,13 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--buttonKeybindingHint-danger-fgColor-active` | `#ffffff` | `#ffffff` | 748 | 124 |
 | `--buttonKeybindingHint-danger-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
 | `--buttonKeybindingHint-danger-fgColor-hover` | `#ffffff` | `#ffffff` | 748 | 124 |
-| `--buttonKeybindingHint-danger-fgColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--buttonKeybindingHint-danger-fgColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--buttonKeybindingHint-default-bgColor-disabled` | `#eff2f5` | `#2a313c` | 2 | 0 |
 | `--buttonKeybindingHint-default-bgColor-rest` | `#eff2f5` | `#2a313c` | 2 | 0 |
 | `--buttonKeybindingHint-default-borderColor-disabled` | `#8089931a` | `#626c761a` | 4 | 2 |
 | `--buttonKeybindingHint-default-borderColor-rest` | `#e4ded3b3` | `#2e3642b3` | 721 | 721 |
 | `--buttonKeybindingHint-default-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--buttonKeybindingHint-default-fgColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--buttonKeybindingHint-default-fgColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--buttonKeybindingHint-inactive-bgColor` | `#eff2f5` | `#2a313c` | 2 | 0 |
 | `--buttonKeybindingHint-inactive-borderColor` | `#e4ded3b3` | `#2e3642b3` | 721 | 721 |
 | `--buttonKeybindingHint-inactive-fgColor` | `#59636e` | `#9198a1` | 0 | 0 |
@@ -496,12 +493,12 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--buttonKeybindingHint-invisible-borderColor-disabled` | `#8089931a` | `#626c761a` | 4 | 2 |
 | `--buttonKeybindingHint-invisible-borderColor-rest` | `#00000000` | `#00000000` | 0 | 10 |
 | `--buttonKeybindingHint-invisible-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--buttonKeybindingHint-invisible-fgColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--buttonKeybindingHint-invisible-fgColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--buttonKeybindingHint-primary-bgColor-disabled` | `#0031141a` | `#0027141a` | 0 | 0 |
 | `--buttonKeybindingHint-primary-bgColor-rest` | `#002d0f33` | `#05280f33` | 0 | 0 |
 | `--buttonKeybindingHint-primary-borderColor-disabled` | `#8089931a` | `#626c761a` | 4 | 2 |
 | `--buttonKeybindingHint-primary-borderColor-rest` | `#22222826` | `#0027141a` | 27 | 0 |
-| `--buttonKeybindingHint-primary-fgColor-disabled` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--buttonKeybindingHint-primary-fgColor-disabled` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--buttonKeybindingHint-primary-fgColor-rest` | `#ffffff` | `#ffffff` | 748 | 124 |
 | `--card-bgColor` | `#ffffff` | `#191f28` | 748 | 278 |
 | `--cited-bd` | `#c2e2cf` | `#26543d` | 0 | 0 |
@@ -509,14 +506,14 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--cited-fg` | `#186a46` | `#76d0a0` | 98 | 36 |
 | `--codeMirror-activeline-bgColor` | `#eef0f3` | `#222832` | 185 | 185 |
 | `--codeMirror-bgColor` | `#ffffff` | `#10141a` | 748 | 631 |
-| `--codeMirror-cursor-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
-| `--codeMirror-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--codeMirror-cursor-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
+| `--codeMirror-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--codeMirror-gutterMarker-fgColor-default` | `#ffffff` | `#10141a` | 748 | 631 |
-| `--codeMirror-gutterMarker-fgColor-muted` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--codeMirror-gutterMarker-fgColor-muted` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--codeMirror-gutters-bgColor` | `#ffffff` | `#10141a` | 748 | 631 |
-| `--codeMirror-lineNumber-fgColor` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--codeMirror-lineNumber-fgColor` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--codeMirror-lines-bgColor` | `#ffffff` | `#10141a` | 748 | 631 |
-| `--codeMirror-matchingBracket-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--codeMirror-matchingBracket-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--codeMirror-selection-bgColor` | `#14645f66` | `#197a7366` | 58 | 58 |
 | `--codeMirror-syntax-fgColor-comment` | `#1f2328` | `#656c76` | 0 | 2 |
 | `--codeMirror-syntax-fgColor-constant` | `#0550ae` | `#79c0ff` | 0 | 0 |
@@ -553,10 +550,10 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--color-grounding-uncited-bd` | `#eed8a6` | `#624b1c` | 16 | 16 |
 | `--color-grounding-uncited-bg` | `#fbf1da` | `#382b10` | 18 | 18 |
 | `--color-grounding-uncited-fg` | `#8c5a04` | `#ecbc60` | 48 | 22 |
-| `--color-ink` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--color-ink` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--color-ink-soft` | `#404a59` | `#c4ccd6` | 0 | 0 |
 | `--color-line` | `#e4ded3` | `#2e3642` | 721 | 721 |
-| `--color-muted` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--color-muted` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--color-navy` | `#1f3a5f` | `#2c4c78` | 0 | 0 |
 | `--color-paper` | `#f6f4ef` | `#10141a` | 266 | 631 |
 | `--color-prettylights-syntax-brackethighlighter-angle` | `#59636e` | `#9198a1` | 0 | 0 |
@@ -646,9 +643,9 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--control-danger-fgColor-hover` | `#b23826` | `#ff7b72` | 30 | 0 |
 | `--control-danger-fgColor-rest` | `#b23826` | `#f28874` | 30 | 18 |
 | `--control-fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
-| `--control-fgColor-placeholder` | `#5e6774` | `#96a0ae` | 939 | 939 |
-| `--control-fgColor-rest` | `#25292e` | `#e9edf2` | 166 | 2017 |
-| `--control-iconColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--control-fgColor-placeholder` | `#5e6774` | `#96a0ae` | 924 | 924 |
+| `--control-fgColor-rest` | `#25292e` | `#e9edf2` | 170 | 2037 |
+| `--control-iconColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--control-transparent-bgColor-active` | `#808d9a26` | `#646c7840` | 20 | 0 |
 | `--control-transparent-bgColor-disabled` | `#eff2f5` | `#212830` | 2 | 2 |
 | `--control-transparent-bgColor-hover` | `#8089931a` | `#646e7833` | 4 | 22 |
@@ -670,7 +667,7 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--controlTrack-borderColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
 | `--controlTrack-borderColor-rest` | `#e4ded3` | `#2e3642` | 721 | 721 |
 | `--controlTrack-fgColor-disabled` | `#ffffff` | `#ffffff` | 748 | 124 |
-| `--controlTrack-fgColor-rest` | `#59636e` | `#96a0ae` | 0 | 939 |
+| `--controlTrack-fgColor-rest` | `#59636e` | `#96a0ae` | 0 | 924 |
 | `--counter-bgColor-emphasis` | `#4c596b` | `#4c596b` | 0 | 0 |
 | `--counter-bgColor-muted` | `#eef0f3` | `#222832` | 185 | 185 |
 | `--counter-borderColor` | `#00000000` | `#00000000` | 0 | 10 |
@@ -710,26 +707,26 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--data-yellow-color-emphasis` | `#b88700` | `#895906` | 0 | 0 |
 | `--data-yellow-color-muted` | `#ffec9e` | `#2e1a00` | 0 | 0 |
 | `--diffBlob-additionLine-bgColor` | `#e8f3ec` | `#143024` | 0 | 0 |
-| `--diffBlob-additionLine-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-additionLine-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-additionNum-bgColor` | `#aceebb` | `#3fb94f4d` | 0 | 0 |
-| `--diffBlob-additionNum-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-additionNum-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-additionWord-bgColor` | `#aceebb` | `#2da04366` | 0 | 0 |
-| `--diffBlob-additionWord-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-additionWord-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-deletionLine-bgColor` | `#fae8e4` | `#3c1b17` | 2 | 2 |
-| `--diffBlob-deletionLine-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-deletionLine-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-deletionNum-bgColor` | `#ffcecb` | `#f84f494d` | 0 | 0 |
-| `--diffBlob-deletionNum-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-deletionNum-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-deletionWord-bgColor` | `#ffcecb` | `#f8504866` | 0 | 0 |
-| `--diffBlob-deletionWord-fgColor` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-deletionWord-fgColor` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--diffBlob-emptyLine-bgColor` | `#f6f4ef` | `#191f28` | 266 | 278 |
 | `--diffBlob-emptyNum-bgColor` | `#f6f4ef` | `#191f28` | 266 | 278 |
-| `--diffBlob-expander-iconColor` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--diffBlob-expander-iconColor` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--diffBlob-hunkLine-bgColor` | `#e2eeec` | `#183432` | 96 | 96 |
-| `--diffBlob-hunkLine-fgColor` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--diffBlob-hunkLine-fgColor` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--diffBlob-hunkNum-bgColor-hover` | `#14635e` | `#1a7a73` | 593 | 303 |
 | `--diffBlob-hunkNum-bgColor-rest` | `#b6e3ff` | `#0c2d6b` | 0 | 0 |
 | `--diffBlob-hunkNum-fgColor-hover` | `#ffffff` | `#ffffff` | 748 | 124 |
-| `--diffBlob-hunkNum-fgColor-rest` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--diffBlob-hunkNum-fgColor-rest` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--display-auburn-bgColor-emphasis` | `#9d615c` | `#87534f` | 0 | 0 |
 | `--display-auburn-bgColor-muted` | `#f2e9e9` | `#271817` | 0 | 0 |
 | `--display-auburn-borderColor-emphasis` | `#9d615c` | `#a86f6b` | 0 | 0 |
@@ -1025,12 +1022,12 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--fgColor-black` | `#1f2328` | `#010409` | 0 | 10 |
 | `--fgColor-closed` | `#b23826` | `#f28874` | 30 | 18 |
 | `--fgColor-danger` | `#b23826` | `#f28874` | 30 | 18 |
-| `--fgColor-default` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--fgColor-default` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--fgColor-disabled` | `#818b98` | `#656c76` | 2 | 2 |
 | `--fgColor-done` | `#1f3a5f` | `#8b9db5` | 0 | 0 |
 | `--fgColor-draft` | `#4c596b` | `#acb6c4` | 0 | 0 |
 | `--fgColor-link` | `#14635e` | `#86d6cc` | 593 | 290 |
-| `--fgColor-muted` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--fgColor-muted` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--fgColor-neutral` | `#4c596b` | `#acb6c4` | 0 | 0 |
 | `--fgColor-onEmphasis` | `#ffffff` | `#ffffff` | 748 | 124 |
 | `--fgColor-onInverse` | `#ffffff` | `#010409` | 748 | 10 |
@@ -1046,10 +1043,10 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--header-borderColor-divider` | `#818b98` | `#656c76` | 2 | 2 |
 | `--header-fgColor-default` | `#ffffffb3` | `#ffffffb3` | 748 | 124 |
 | `--header-fgColor-logo` | `#ffffff` | `#f0f6fc` | 748 | 0 |
-| `--headerSearch-bgColor` | `#25292e` | `#0d1117` | 166 | 0 |
+| `--headerSearch-bgColor` | `#25292e` | `#0d1117` | 170 | 0 |
 | `--headerSearch-borderColor` | `#818b98` | `#2a313c` | 2 | 0 |
 | `--highlight-neutral-bgColor` | `#fff8c5` | `#d2982366` | 0 | 0 |
-| `--ink` | `#1b2330` | `#e9edf2` | 1851 | 2017 |
+| `--ink` | `#1b2330` | `#e9edf2` | 1867 | 2037 |
 | `--ink-soft` | `#404a59` | `#c4ccd6` | 0 | 0 |
 | `--label-auburn-bgColor-active` | `#d4b7b5` | `#543331` | 0 | 0 |
 | `--label-auburn-bgColor-hover` | `#e6d6d5` | `#3a2422` | 0 | 0 |
@@ -1186,7 +1183,7 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--label-yellow-fgColor-rest` | `#805900` | `#d3910d` | 0 | 0 |
 | `--line` | `#e4ded3` | `#2e3642` | 721 | 721 |
 | `--menu-bgColor-active` | `#00000000` | `#151b23` | 0 | 0 |
-| `--muted` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--muted` | `#5e6774` | `#96a0ae` | 924 | 924 |
 | `--navy` | `#1f3a5f` | `#2c4c78` | 0 | 0 |
 | `--overlay-backdrop-bgColor` | `#1b232f66` | `#0000008c` | 10 | 10 |
 | `--overlay-bgColor` | `#ffffff` | `#191f28` | 748 | 278 |
@@ -1258,22 +1255,22 @@ Nodos sumados sobre todas las pantallas, viewports y temas.
 | `--selectMenu-bgColor-active` | `#e2eeec` | `#183432` | 96 | 96 |
 | `--selectMenu-borderColor` | `#00000000` | `#2e3642` | 0 | 721 |
 | `--selection-bgColor` | `#0a69dc33` | `#1f6febb3` | 0 | 0 |
-| `--shadow` | `#1b2330` | `#000000` | 1851 | 10 |
+| `--shadow` | `#1b2330` | `#000000` | 1867 | 10 |
 | `--sideNav-bgColor-selected` | `#ffffff` | `#212830` | 748 | 2 |
 | `--skeletonLoader-bgColor` | `#e4ded3b3` | `#2e3642b3` | 721 | 721 |
 | `--surface` | `#ffffff` | `#191f28` | 748 | 278 |
 | `--timelineBadge-bgColor` | `#f6f4ef` | `#191f28` | 266 | 278 |
-| `--tooltip-bgColor` | `#1b2330` | `#3a4250` | 1851 | 0 |
+| `--tooltip-bgColor` | `#1b2330` | `#3a4250` | 1867 | 0 |
 | `--tooltip-fgColor` | `#ffffff` | `#ffffff` | 748 | 124 |
 | `--topicTag-borderColor` | `#00000000` | `#00000000` | 0 | 10 |
-| `--treeViewItem-leadingVisual-iconColor-rest` | `#54aeff` | `#96a0ae` | 0 | 939 |
+| `--treeViewItem-leadingVisual-iconColor-rest` | `#54aeff` | `#96a0ae` | 0 | 924 |
 | `--tw-ring-offset-color` | `#ffffff` | `#ffffff` | 748 | 124 |
 | `--uncited-bd` | `#eed8a6` | `#624b1c` | 16 | 16 |
 | `--uncited-bg` | `#fbf1da` | `#382b10` | 18 | 18 |
 | `--uncited-fg` | `#8c5a04` | `#ecbc60` | 48 | 22 |
 | `--underlineNav-borderColor-active` | `#14635e` | `#1a7a73` | 593 | 303 |
 | `--underlineNav-borderColor-hover` | `#e4ded3b3` | `#3a4250` | 721 | 0 |
-| `--underlineNav-iconColor-rest` | `#5e6774` | `#96a0ae` | 939 | 939 |
+| `--underlineNav-iconColor-rest` | `#5e6774` | `#96a0ae` | 924 | 924 |
 
 Colores usados que no son ningún token (opacidades, blanco fijo, colores de Tailwind):
 
@@ -1284,42 +1281,42 @@ Colores usados que no son ningún token (opacidades, blanco fijo, colores de Tai
 
 | Flujo | Viewport | Clics | Campos | Pasos | ms | Foco vuelve |
 |---|---:|---:|---:|---:|---:|---:|
-| entrar | movil | 1 | 2 | 4 | 4666 |  |
-| preguntar | movil | 2 | 1 | 3 | 1409 |  |
-| abrir-avisos | movil | 1 | 0 | 1 | 839 | sí |
-| abrir-modulos | movil | 1 | 0 | 1 | 442 | sí |
-| abrir-expediente | movil | 1 | 0 | 1 | 845 | sí |
-| abrir-simulador | movil | 2 | 0 | 2 | 1802 | sí |
-| abrir-autonomos | movil | 2 | 0 | 2 | 997 | sí |
-| abrir-optimizador | movil | 2 | 0 | 2 | 975 | sí |
-| abrir-planificar | movil | 2 | 0 | 2 | 2124 | sí |
-| abrir-tareas | movil | 2 | 0 | 2 | 958 | sí |
-| abrir-preferencias | movil | 2 | 0 | 2 | 1034 | sí |
-| abrir-recuerdos | movil | 2 | 0 | 2 | 957 | sí |
-| abrir-movil | movil | 2 | 0 | 2 | 1007 | sí |
-| abrir-consejo | movil | 2 | 0 | 2 | 968 | sí |
-| abrir-investigar | movil | 2 | 0 | 2 | 974 | sí |
-| abrir-navegador | movil | 2 | 0 | 2 | 2628 | sí |
-| abrir-revision | movil | 2 | 0 | 2 | 1025 | sí |
+| entrar | movil | 1 | 2 | 4 | 3044 |  |
+| preguntar | movil | 2 | 1 | 3 | 1380 |  |
+| abrir-avisos | movil | 1 | 0 | 1 | 710 | sí |
+| abrir-modulos | movil | 1 | 0 | 1 | 439 | sí |
+| abrir-expediente | movil | 1 | 0 | 1 | 803 | sí |
+| abrir-simulador | movil | 2 | 0 | 2 | 1064 | sí |
+| abrir-autonomos | movil | 2 | 0 | 2 | 992 | sí |
+| abrir-optimizador | movil | 2 | 0 | 2 | 993 | sí |
+| abrir-planificar | movil | 2 | 0 | 2 | 979 | sí |
+| abrir-tareas | movil | 2 | 0 | 2 | 1064 | sí |
+| abrir-preferencias | movil | 2 | 0 | 2 | 967 | sí |
+| abrir-recuerdos | movil | 2 | 0 | 2 | 982 | sí |
+| abrir-movil | movil | 2 | 0 | 2 | 965 | sí |
+| abrir-consejo | movil | 2 | 0 | 2 | 975 | sí |
+| abrir-investigar | movil | 2 | 0 | 2 | 1011 | sí |
+| abrir-navegador | movil | 2 | 0 | 2 | 989 | sí |
+| abrir-revision | movil | 2 | 0 | 2 | 978 | sí |
 | guardar-expediente | movil | 3 | 1 | 4 |  |  |
 | ver-avisos | movil | 2 | 0 | 2 |  |  |
-| entrar | escritorio | 1 | 2 | 4 | 1686 |  |
-| preguntar | escritorio | 2 | 1 | 3 | 1398 |  |
-| abrir-avisos | escritorio | 1 | 0 | 1 | 688 | sí |
-| abrir-modulos | escritorio | 1 | 0 | 1 | 678 | sí |
+| entrar | escritorio | 1 | 2 | 4 | 1789 |  |
+| preguntar | escritorio | 2 | 1 | 3 | 1430 |  |
+| abrir-avisos | escritorio | 1 | 0 | 1 | 695 | sí |
+| abrir-modulos | escritorio | 1 | 0 | 1 | 405 | sí |
 | abrir-simulador | escritorio | 1 | 0 | 1 | 689 | sí |
-| abrir-autonomos | escritorio | 1 | 0 | 1 | 685 | sí |
-| abrir-optimizador | escritorio | 1 | 0 | 1 | 686 | sí |
-| abrir-planificar | escritorio | 1 | 0 | 1 | 741 | sí |
-| abrir-tareas | escritorio | 1 | 0 | 1 | 759 | sí |
-| abrir-consejo | escritorio | 1 | 0 | 1 | 759 | sí |
-| abrir-investigar | escritorio | 1 | 0 | 1 | 750 | sí |
-| abrir-expediente | escritorio | 1 | 0 | 1 | 706 | sí |
-| abrir-preferencias | escritorio | 2 | 0 | 2 | 1060 | sí |
-| abrir-recuerdos | escritorio | 2 | 0 | 2 | 998 | sí |
-| abrir-movil | escritorio | 2 | 0 | 2 | 995 | sí |
-| abrir-navegador | escritorio | 2 | 0 | 2 | 1068 | sí |
-| abrir-revision | escritorio | 2 | 0 | 2 | 982 | sí |
+| abrir-autonomos | escritorio | 1 | 0 | 1 | 693 | sí |
+| abrir-optimizador | escritorio | 1 | 0 | 1 | 693 | sí |
+| abrir-planificar | escritorio | 1 | 0 | 1 | 694 | sí |
+| abrir-tareas | escritorio | 1 | 0 | 1 | 688 | sí |
+| abrir-consejo | escritorio | 1 | 0 | 1 | 689 | sí |
+| abrir-investigar | escritorio | 1 | 0 | 1 | 691 | sí |
+| abrir-expediente | escritorio | 1 | 0 | 1 | 679 | sí |
+| abrir-preferencias | escritorio | 2 | 0 | 2 | 950 | sí |
+| abrir-recuerdos | escritorio | 2 | 0 | 2 | 961 | sí |
+| abrir-movil | escritorio | 2 | 0 | 2 | 954 | sí |
+| abrir-navegador | escritorio | 2 | 0 | 2 | 952 | sí |
+| abrir-revision | escritorio | 2 | 0 | 2 | 944 | sí |
 | guardar-expediente | escritorio | 3 | 1 | 4 |  |  |
 | ver-avisos | escritorio | 2 | 0 | 2 |  |  |
 
@@ -1336,7 +1333,7 @@ Con la API simulada lenta (2,5 s), caída (500) o sin datos; escritorio, tema cl
 | autonomos | sí | sí | sí | sí | **no** | Error interno del servicio (simulado para la medición). /  |
 | optimizador | **no** | **no** | **no** | **no** | sí |  / Este año, además de lo ya aportado. Vacío si no lo sabes: el plan supone que puedes llegar al máximo que reduce tu impuesto, y te lo dice. |
 | planificar | **no** | **no** | **no** | **no** | sí |  / No proponer nada que me haga perder o rebajar una ayuda pública que hoy me corresponde |
-| tareas | sí | sí | sí | **no** | sí | Error interno del servicio (simulado para la medición). / Aún no tienes tareas |
+| tareas | sí | sí | sí | sí | sí | Error interno del servicio (simulado para la medición). / Aún no tienes tareas |
 | preferencias | sí | sí | sí | sí | sí | Error interno del servicio (simulado para la medición). / Nada que recordar todavía |
 | recuerdos | sí | sí | sí | sí | sí | Error interno del servicio (simulado para la medición). / Todavía no recuerdo nada de ti |
 | movil | sí | sí | sí | sí | **no** | Error interno del servicio (simulado para la medición). /  |
@@ -1362,4 +1359,4 @@ Con la API simulada lenta (2,5 s), caída (500) o sin datos; escritorio, tema cl
 - Nombre de control muy largo: «Bienes en el extranjero Tengo una cuenta bancaria en otro país. ¿A partir de qué importe debo presentar el modelo 720?» (inicio)
 - Nombre de control muy largo: «Donación de padres a hijos Mis padres quieren donarme dinero para comprar un piso. ¿Cómo tributa y qué plazo hay para declararlo?» (inicio)
 - Nombre de control muy largo: «¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora» (conversacion, menu-mas, panel-avisos)
-- Nombre de control muy largo: «¿Tengo que hacer la declaración de la renta si gano 34.00… , hace 1 min» (panel-recuerdos, panel-movil, panel-navegador)
+- Nombre de control muy largo: «¿Tengo que hacer la declaración de la renta si gano 34.00… , hace 1 min» (avisos-tras-leer, panel-navegador, panel-revision)

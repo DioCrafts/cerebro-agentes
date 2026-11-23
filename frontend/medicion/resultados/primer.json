@@ -1,6 +1,6 @@
 {
  "nombre": "primer",
- "fecha": "2026-11-23T18:44:10.276Z",
+ "fecha": "2026-11-23T19:05:58.170Z",
  "viewports": [
   "movil",
   "escritorio"
@@ -12,30 +12,30 @@
  "bundle": {
   "chunks": [
    {
-    "fichero": "ui-CYOS0P9V.js",
+    "fichero": "ui-CGL90iMb.js",
     "chunk": "ui.js",
     "tipo": "js",
-    "bytes": 489458,
-    "gzip": 91071,
-    "brotli": 72200,
+    "bytes": 489363,
+    "gzip": 91045,
+    "brotli": 72187,
     "inicial": true
    },
    {
-    "fichero": "index-C4Rx1kDh.js",
+    "fichero": "index-6HqEy1T8.js",
     "chunk": "index.js",
     "tipo": "js",
-    "bytes": 433359,
-    "gzip": 135813,
-    "brotli": 115747,
+    "bytes": 433434,
+    "gzip": 135848,
+    "brotli": 115789,
     "inicial": true
    },
    {
-    "fichero": "index-CrXP2By-.css",
+    "fichero": "index-r5Cqs6o6.css",
     "chunk": "index.css",
     "tipo": "css",
-    "bytes": 244597,
-    "gzip": 41044,
-    "brotli": 19823,
+    "bytes": 244614,
+    "gzip": 41048,
+    "brotli": 19856,
     "inicial": true
    },
    {
@@ -48,30 +48,30 @@
     "inicial": true
    },
    {
-    "fichero": "FormControl-COZYyDn6.js",
+    "fichero": "FormControl-B2Vnfxqx.js",
     "chunk": "FormControl.js",
     "tipo": "js",
     "bytes": 119211,
-    "gzip": 40363,
-    "brotli": 34228,
+    "gzip": 40362,
+    "brotli": 34243,
     "inicial": true
    },
    {
-    "fichero": "optimizador-D1lGTnrM.js",
+    "fichero": "optimizador-CmE52lZR.js",
     "chunk": "optimizador.js",
     "tipo": "js",
     "bytes": 53404,
-    "gzip": 16707,
-    "brotli": 15161,
+    "gzip": 16704,
+    "brotli": 15190,
     "inicial": false
    },
    {
-    "fichero": "modulos-CqVi6Olt.js",
+    "fichero": "modulos-CJNL0RkK.js",
     "chunk": "modulos.js",
     "tipo": "js",
-    "bytes": 45406,
-    "gzip": 14402,
-    "brotli": 12635,
+    "bytes": 45637,
+    "gzip": 14435,
+    "brotli": 12660,
     "inicial": false
    },
    {
@@ -84,30 +84,30 @@
     "inicial": true
    },
    {
-    "fichero": "simulador-D116XO61.js",
+    "fichero": "simulador-DQnwzCMS.js",
     "chunk": "simulador.js",
     "tipo": "js",
     "bytes": 35729,
-    "gzip": 12187,
-    "brotli": 11051,
+    "gzip": 12188,
+    "brotli": 11064,
     "inicial": false
    },
    {
-    "fichero": "autonomos-Tmo5t1_o.js",
+    "fichero": "autonomos-DqXTVjaO.js",
     "chunk": "autonomos.js",
     "tipo": "js",
     "bytes": 22396,
-    "gzip": 7734,
-    "brotli": 7032,
+    "gzip": 7732,
+    "brotli": 7034,
     "inicial": false
    },
    {
-    "fichero": "DictamenConsejo-DhYdM6AG.js",
+    "fichero": "DictamenConsejo-D_ECKIf8.js",
     "chunk": "DictamenConsejo.js",
     "tipo": "js",
     "bytes": 20523,
-    "gzip": 6933,
-    "brotli": 6170,
+    "gzip": 6932,
+    "brotli": 6169,
     "inicial": false
    },
    {
@@ -120,97 +120,97 @@
     "inicial": false
    },
    {
-    "fichero": "planificar-CSmmsbUi.js",
+    "fichero": "planificar-B2U8lDoJ.js",
     "chunk": "planificar.js",
     "tipo": "js",
     "bytes": 19303,
-    "gzip": 6574,
-    "brotli": 5975,
+    "gzip": 6571,
+    "brotli": 5964,
     "inicial": false
    },
    {
-    "fichero": "StateLabel-D0vlW3Za.js",
+    "fichero": "StateLabel-DyfEbQwV.js",
     "chunk": "StateLabel.js",
     "tipo": "js",
     "bytes": 18345,
-    "gzip": 4870,
-    "brotli": 4229,
+    "gzip": 4869,
+    "brotli": 4227,
     "inicial": true
    },
    {
-    "fichero": "revision-Cly65c2P.js",
+    "fichero": "revision-Duo5OFQl.js",
     "chunk": "revision.js",
     "tipo": "js",
     "bytes": 16358,
-    "gzip": 5276,
-    "brotli": 4701,
+    "gzip": 5277,
+    "brotli": 4703,
     "inicial": false
    },
    {
-    "fichero": "tareas-C1092YJX.js",
+    "fichero": "tareas-b1KpW7LK.js",
     "chunk": "tareas.js",
     "tipo": "js",
-    "bytes": 14433,
-    "gzip": 4855,
-    "brotli": 4377,
+    "bytes": 14587,
+    "gzip": 4921,
+    "brotli": 4438,
     "inicial": false
    },
    {
-    "fichero": "navegador-_GqWGfWo.js",
+    "fichero": "navegador-DJQFWZqd.js",
     "chunk": "navegador.js",
     "tipo": "js",
     "bytes": 13264,
-    "gzip": 4599,
-    "brotli": 4169,
+    "gzip": 4598,
+    "brotli": 4178,
     "inicial": false
    },
    {
-    "fichero": "avisos-Br1jpveT.js",
+    "fichero": "avisos-ClrSs8zu.js",
     "chunk": "avisos.js",
     "tipo": "js",
     "bytes": 12986,
-    "gzip": 4417,
-    "brotli": 3940,
+    "gzip": 4419,
+    "brotli": 3948,
     "inicial": false
    },
    {
-    "fichero": "recuerdos-C8kFx_QJ.js",
+    "fichero": "recuerdos-D-e81QtS.js",
     "chunk": "recuerdos.js",
     "tipo": "js",
     "bytes": 11257,
-    "gzip": 3859,
-    "brotli": 3480,
+    "gzip": 3860,
+    "brotli": 3484,
     "inicial": false
    },
    {
-    "fichero": "expediente-BGb39XN4.js",
+    "fichero": "expediente-B5l9Rd_o.js",
     "chunk": "expediente.js",
     "tipo": "js",
     "bytes": 10819,
     "gzip": 4085,
-    "brotli": 3679,
+    "brotli": 3678,
     "inicial": false
    },
    {
-    "fichero": "investigar-DO67xc88.js",
+    "fichero": "investigar-mIuxDsDo.js",
     "chunk": "investigar.js",
     "tipo": "js",
     "bytes": 10557,
-    "gzip": 3854,
-    "brotli": 3458,
+    "gzip": 3855,
+    "brotli": 3460,
     "inicial": false
    },
    {
-    "fichero": "SegmentedControl-CnwAs2Ss.js",
+    "fichero": "SegmentedControl-B7LnA0BT.js",
     "chunk": "SegmentedControl.js",
     "tipo": "js",
     "bytes": 10157,
-    "gzip": 3823,
-    "brotli": 3287,
+    "gzip": 3822,
+    "brotli": 3289,
     "inicial": false
    },
    {
-    "fichero": "preferencias-DbXdhWZu.js",
+    "fichero": "preferencias-C3z278Qt.js",
     "chunk": "preferencias.js",
     "tipo": "js",
     "bytes": 7348,
@@ -219,12 +219,12 @@
     "inicial": false
    },
    {
-    "fichero": "textos-CW7aDjIA.js",
+    "fichero": "textos-H-1vXoOZ.js",
     "chunk": "textos.js",
     "tipo": "js",
     "bytes": 7290,
-    "gzip": 3154,
-    "brotli": 2845,
+    "gzip": 3156,
+    "brotli": 2849,
     "inicial": false
    },
    {
@@ -246,48 +246,48 @@
     "inicial": true
    },
    {
-    "fichero": "consejo-Df5_rhmA.js",
+    "fichero": "consejo-8L644U93.js",
     "chunk": "consejo.js",
     "tipo": "js",
     "bytes": 5615,
-    "gzip": 2416,
-    "brotli": 2173,
+    "gzip": 2415,
+    "brotli": 2179,
     "inicial": false
    },
    {
-    "fichero": "ToggleSwitch-by7avjOk.js",
+    "fichero": "ToggleSwitch-JmEnFdSt.js",
     "chunk": "ToggleSwitch.js",
     "tipo": "js",
     "bytes": 5603,
-    "gzip": 2386,
-    "brotli": 2072,
+    "gzip": 2384,
+    "brotli": 2067,
     "inicial": false
    },
    {
-    "fichero": "movil-CDnc3LBl.js",
+    "fichero": "movil-BEA-vN8g.js",
     "chunk": "movil.js",
     "tipo": "js",
     "bytes": 5375,
-    "gzip": 2209,
-    "brotli": 1954,
+    "gzip": 2206,
+    "brotli": 1953,
     "inicial": false
    },
    {
-    "fichero": "piezas-DC83puV0.js",
+    "fichero": "piezas-lUxCvROv.js",
     "chunk": "piezas.js",
     "tipo": "js",
     "bytes": 5009,
-    "gzip": 1822,
-    "brotli": 1631,
+    "gzip": 1818,
+    "brotli": 1627,
     "inicial": false
    },
    {
-    "fichero": "CheckboxOrRadioGroup-Bph9MrA-.js",
+    "fichero": "CheckboxOrRadioGroup-zfIcblpo.js",
     "chunk": "CheckboxOrRadioGroup.js",
     "tipo": "js",
     "bytes": 4942,
-    "gzip": 2151,
-    "brotli": 1876,
+    "gzip": 2150,
+    "brotli": 1872,
     "inicial": true
    },
    {
@@ -300,48 +300,48 @@
     "inicial": true
    },
    {
-    "fichero": "Timeline-DlUXyZBl.js",
+    "fichero": "Timeline-Dl97Cy8U.js",
     "chunk": "Timeline.js",
     "tipo": "js",
     "bytes": 4731,
-    "gzip": 1680,
-    "brotli": 1431,
+    "gzip": 1679,
+    "brotli": 1432,
     "inicial": true
    },
    {
-    "fichero": "EtiquetaEstado-CX4VgLty.js",
+    "fichero": "EtiquetaEstado-DySUvucx.js",
     "chunk": "EtiquetaEstado.js",
     "tipo": "js",
     "bytes": 4309,
-    "gzip": 1996,
-    "brotli": 1772,
+    "gzip": 1997,
+    "brotli": 1779,
     "inicial": true
    },
    {
-    "fichero": "MemoriaBotones-BHhLbHbC.js",
+    "fichero": "MemoriaBotones-BrpVrES2.js",
     "chunk": "MemoriaBotones.js",
     "tipo": "js",
     "bytes": 4055,
     "gzip": 1911,
-    "brotli": 1705,
+    "brotli": 1704,
     "inicial": false
    },
    {
-    "fichero": "ProgressBar-DdGyGrVF.js",
+    "fichero": "ProgressBar-DA7GaWSD.js",
     "chunk": "ProgressBar.js",
     "tipo": "js",
     "bytes": 2920,
     "gzip": 1420,
-    "brotli": 1199,
+    "brotli": 1195,
     "inicial": false
    },
    {
-    "fichero": "apiTareas-Bzmotf5C.js",
+    "fichero": "apiTareas-rCEB6Jev.js",
     "chunk": "apiTareas.js",
     "tipo": "js",
     "bytes": 2025,
-    "gzip": 754,
-    "brotli": 681,
+    "gzip": 751,
+    "brotli": 679,
     "inicial": false
    },
    {
@@ -354,12 +354,12 @@
     "inicial": false
    },
    {
-    "fichero": "ShieldIcon-BgZbKsuI.js",
+    "fichero": "ShieldIcon-B3YRSSf-.js",
     "chunk": "ShieldIcon.js",
     "tipo": "js",
     "bytes": 1480,
-    "gzip": 763,
-    "brotli": 689,
+    "gzip": 762,
+    "brotli": 690,
     "inicial": true
    },
    {
@@ -372,12 +372,12 @@
     "inicial": false
    },
    {
-    "fichero": "XCircleFillIcon-CtcsN8S_.js",
+    "fichero": "XCircleFillIcon-DiTx0vxH.js",
     "chunk": "XCircleFillIcon.js",
     "tipo": "js",
     "bytes": 1219,
-    "gzip": 580,
-    "brotli": 521,
+    "gzip": 578,
+    "brotli": 520,
     "inicial": false
    },
    {
@@ -390,38 +390,38 @@
     "inicial": false
    },
    {
-    "fichero": "apiCorreo-C2QPr8w0.js",
+    "fichero": "apiCorreo-WmjS99T0.js",
     "chunk": "apiCorreo.js",
     "tipo": "js",
     "bytes": 1184,
-    "gzip": 526,
-    "brotli": 469,
+    "gzip": 523,
+    "brotli": 466,
     "inicial": false
    },
    {
-    "fichero": "ZonaPeligro-DR8On3nP.js",
+    "fichero": "ZonaPeligro-CGxtJW89.js",
     "chunk": "ZonaPeligro.js",
     "tipo": "js",
     "bytes": 1182,
-    "gzip": 571,
-    "brotli": 507,
+    "gzip": 568,
+    "brotli": 500,
     "inicial": false
    },
    {
-    "fichero": "HistoryIcon-DdPnEXpK.js",
+    "fichero": "HistoryIcon-DpPwHezR.js",
     "chunk": "HistoryIcon.js",
     "tipo": "js",
     "bytes": 1134,
-    "gzip": 625,
-    "brotli": 574,
+    "gzip": 624,
+    "brotli": 576,
     "inicial": false
    },
    {
-    "fichero": "UploadIcon-CpZHatQG.js",
+    "fichero": "UploadIcon-CFO4kDNy.js",
     "chunk": "UploadIcon.js",
     "tipo": "js",
     "bytes": 1126,
-    "gzip": 494,
+    "gzip": 493,
     "brotli": 430,
     "inicial": false
    },
@@ -435,21 +435,21 @@
     "inicial": true
    },
    {
-    "fichero": "apiMemoria-DR2q60t4.js",
+    "fichero": "apiMemoria-CRZhhhM_.js",
     "chunk": "apiMemoria.js",
     "tipo": "js",
     "bytes": 939,
-    "gzip": 480,
-    "brotli": 422,
+    "gzip": 479,
+    "brotli": 421,
     "inicial": false
    },
    {
-    "fichero": "useFlujoSse-BDZShw80.js",
+    "fichero": "useFlujoSse-DQdji0rq.js",
     "chunk": "useFlujoSse.js",
     "tipo": "js",
     "bytes": 923,
-    "gzip": 523,
-    "brotli": 480,
+    "gzip": 522,
+    "brotli": 478,
     "inicial": true
    },
    {
@@ -462,30 +462,30 @@
     "inicial": false
    },
    {
-    "fichero": "ClockIcon-_gQmBTB_.js",
+    "fichero": "ClockIcon-BhL9DhC3.js",
     "chunk": "ClockIcon.js",
     "tipo": "js",
     "bytes": 857,
-    "gzip": 488,
+    "gzip": 486,
     "brotli": 439,
     "inicial": true
    },
    {
-    "fichero": "ChevronDownIcon-DSwtPyH_.js",
+    "fichero": "ChevronDownIcon-BlpybPbR.js",
     "chunk": "ChevronDownIcon.js",
     "tipo": "js",
     "bytes": 841,
-    "gzip": 454,
+    "gzip": 452,
     "brotli": 395,
     "inicial": true
    },
    {
-    "fichero": "Pestanas-1imU-I58.js",
+    "fichero": "Pestanas-CtOg1Al8.js",
     "chunk": "Pestanas.js",
     "tipo": "js",
     "bytes": 800,
-    "gzip": 515,
-    "brotli": 429,
+    "gzip": 511,
+    "brotli": 427,
     "inicial": false
    },
    {
@@ -507,20 +507,20 @@
     "inicial": true
    },
    {
-    "fichero": "memoria-DzmAvpP4.js",
+    "fichero": "memoria-DPlM8MLf.js",
     "chunk": "memoria.js",
     "tipo": "js",
     "bytes": 421,
-    "gzip": 305,
-    "brotli": 255,
+    "gzip": 304,
+    "brotli": 253,
     "inicial": true
    },
    {
-    "fichero": "useConfirmar-CqKmlbjK.js",
+    "fichero": "useConfirmar-DahtvKjp.js",
     "chunk": "useConfirmar.js",
     "tipo": "js",
     "bytes": 329,
-    "gzip": 244,
+    "gzip": 242,
     "brotli": 203,
     "inicial": false
    },
@@ -535,12 +535,12 @@
    }
   ],
   "totales": {
-   "jsBytes": 1430526,
-   "jsGzip": 403872,
-   "cssBytes": 453712,
-   "cssGzip": 72649,
-   "inicialGzip": 348085,
-   "inicialBytes": 1502659,
+   "jsBytes": 1430891,
+   "jsGzip": 403937,
+   "cssBytes": 453729,
+   "cssGzip": 72653,
+   "inicialGzip": 348088,
+   "inicialBytes": 1502656,
    "numeroChunks": 46
   }
  },
@@ -629,33 +629,33 @@
        "body:undefined"
       ]
      },
-     "inpMs": 80
+     "inpMs": 48
     },
     {
      "clave": "inicio",
      "id": "inicio--movil--claro",
      "captura": "capturas/primer/inicio--movil--claro.png",
-     "elementos": 128,
+     "elementos": 129,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 23,
+       "12.3px": 24,
        "13px": 1,
        "14px": 1,
        "10.5px": 4
       },
       "pesoFuente": {
-       "400": 16,
+       "400": 17,
        "500": 2,
        "600": 11
       },
       "alturaLinea": {
-       "18.4px": 23,
+       "18.4px": 24,
        "13px": 1,
        "21px": 1,
        "14px": 4
       },
       "familia": {
-       "Mona Sans VF": 29
+       "Mona Sans VF": 30
       },
       "espaciado": {
        "8px": 2,
@@ -666,6 +666,7 @@
        "5.3px": 8,
        "10.5px": 30,
        "-3.5px": 1,
+       "-1px": 4,
        "21px": 2,
        "38.5px": 2,
        "24.5px": 2,
@@ -701,7 +702,7 @@
       "colorTexto": {
        "#14635e": 6,
        "#ffffff": 1,
-       "#1b2330": 11,
+       "#1b2330": 12,
        "#25292e": 1,
        "#5e6774": 10
       },
@@ -721,11 +722,11 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 35,
+      "paradas": 70,
       "sinIndicador": [],
-      "fueraDePantalla": 3,
-      "alBody": 1,
-      "saltosAtras": 1,
+      "fueraDePantalla": 7,
+      "alBody": 2,
+      "saltosAtras": 2,
       "escapaDelDialogo": null,
       "orden": [
        "a:Saltar a la consulta",
@@ -762,30 +763,35 @@
        "button:Empezar como autónomo Voy a darme de alta como autónomo. ¿Qué modelos tengo que ",
        "button:Bienes en el extranjero Tengo una cuenta bancaria en otro país. ¿A partir de qué",
        "button:Donación de padres a hijos Mis padres quieren donarme dinero para comprar un pis",
-       "textarea:Escribe tu consulta"
+       "textarea:Escribe tu consulta",
+       "a:Saltar a la consulta",
+       "a:Saltar al contenido",
+       "button:",
+       "button:",
+       "button:"
       ]
      },
-     "inpMs": 48
+     "inpMs": 32
     },
     {
      "clave": "conversacion",
      "id": "conversacion--movil--claro",
      "captura": "capturas/primer/conversacion--movil--claro.png",
-     "elementos": 214,
+     "elementos": 215,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 43,
+       "12.3px": 44,
        "13px": 1,
        "10.5px": 22,
        "10px": 1
       },
       "pesoFuente": {
-       "400": 34,
+       "400": 35,
        "500": 10,
        "600": 23
       },
       "alturaLinea": {
-       "18.4px": 36,
+       "18.4px": 37,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -796,7 +802,7 @@
        "17.5px": 6
       },
       "familia": {
-       "Mona Sans VF": 63,
+       "Mona Sans VF": 64,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -809,6 +815,7 @@
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 4,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -850,7 +857,7 @@
       "colorTexto": {
        "#14635e": 7,
        "#ffffff": 3,
-       "#1b2330": 35,
+       "#1b2330": 36,
        "#5e6774": 14,
        "#25292e": 4,
        "#186a46": 2,
@@ -879,26 +886,13 @@
        "#868b91": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
-      "paradas": 23,
+      "paradas": 22,
       "sinIndicador": [],
       "fueraDePantalla": 2,
-      "alBody": 1,
-      "saltosAtras": 0,
+      "alBody": 0,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "button:",
@@ -911,7 +905,6 @@
        "button:Corregir",
        "button:Revisar",
        "textarea:Escribe tu consulta",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -926,32 +919,32 @@
        "button:Más"
       ]
      },
-     "inpMs": 40
+     "inpMs": 32
     },
     {
      "clave": "menu-mas",
      "id": "menu-mas--movil--claro",
      "captura": "capturas/primer/menu-mas--movil--claro.png",
-     "elementos": 327,
+     "elementos": 308,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 55,
+       "12.3px": 56,
        "13px": 1,
-       "10.5px": 36,
+       "10.5px": 26,
        "10px": 1
       },
       "pesoFuente": {
-       "400": 56,
+       "400": 47,
        "500": 10,
        "600": 27
       },
       "alturaLinea": {
-       "18.4px": 36,
+       "18.4px": 37,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
        "16.8px": 2,
-       "16px": 12,
+       "16px": 2,
        "14px": 7,
        "17.1px": 3,
        "17.5px": 6,
@@ -959,7 +952,7 @@
        "20px": 12
       },
       "familia": {
-       "Mona Sans VF": 89,
+       "Mona Sans VF": 80,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -967,11 +960,12 @@
        "12px": 2,
        "7px": 194,
        "14px": 66,
-       "3.5px": 61,
+       "3.5px": 41,
        "5.3px": 58,
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -980,8 +974,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -1004,22 +997,21 @@
        "32px": 1,
        "25px": 6,
        "19px": 2,
-       "50px": 10,
-       "31px": 2
+       "31px": 12
       },
       "alturaCampo": {
        "56px": 1
       },
       "objetivoTactil": {
-       "24-43px": 22,
+       "24-43px": 32,
        "<24px": 3,
-       "≥44px": 11
+       "≥44px": 1
       },
       "colorTexto": {
        "#14635e": 7,
        "#ffffff": 3,
-       "#1b2330": 47,
-       "#5e6774": 28,
+       "#1b2330": 48,
+       "#5e6774": 18,
        "#25292e": 4,
        "#186a46": 2,
        "#8c5a04": 1,
@@ -1050,38 +1042,6 @@
      },
      "violaciones": [
       {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      },
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 10,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_1k_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1l_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1m_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
        "id": "region",
        "impacto": "moderate",
        "nodos": 1,
@@ -1101,22 +1061,22 @@
      "clave": "panel-avisos",
      "id": "panel-avisos--movil--claro",
      "captura": "capturas/primer/panel-avisos--movil--claro.png",
-     "elementos": 352,
+     "elementos": 353,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 50,
+       "12.3px": 51,
        "13px": 1,
        "10.5px": 52,
        "10px": 1,
        "14px": 4
       },
       "pesoFuente": {
-       "400": 51,
+       "400": 52,
        "500": 28,
        "600": 29
       },
       "alturaLinea": {
-       "18.4px": 43,
+       "18.4px": 44,
        "13px": 1,
        "10.5px": 17,
        "10px": 1,
@@ -1129,7 +1089,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 104,
+       "Mona Sans VF": 105,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -1142,6 +1102,7 @@
        "1.8px": 12,
        "10.5px": 21,
        "-3.5px": 4,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -1151,7 +1112,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 8,
        "89px": 1,
        "79.5px": 1,
        "85.8px": 1
@@ -1188,7 +1148,7 @@
       "colorTexto": {
        "#14635e": 10,
        "#ffffff": 3,
-       "#1b2330": 47,
+       "#1b2330": 48,
        "#5e6774": 25,
        "#25292e": 15,
        "#186a46": 3,
@@ -1219,20 +1179,7 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 12,
       "sinIndicador": [],
@@ -1261,25 +1208,25 @@
      "clave": "panel-modulos",
      "id": "panel-modulos--movil--claro",
      "captura": "capturas/primer/panel-modulos--movil--claro.png",
-     "elementos": 207,
+     "elementos": 209,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 37,
+       "12.3px": 38,
        "13px": 1,
        "10.5px": 14,
        "17.5px": 2
       },
       "pesoFuente": {
-       "400": 32,
+       "400": 31,
        "500": 4,
-       "600": 18
+       "600": 20
       },
       "alturaLinea": {
        "18.4px": 27,
        "13px": 1,
        "10.5px": 6,
        "28.4px": 2,
-       "20px": 7,
+       "20px": 8,
        "18px": 2,
        "14px": 2,
        "17.1px": 2,
@@ -1287,14 +1234,14 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 54
+       "Mona Sans VF": 55
       },
       "espaciado": {
        "8px": 2,
        "12px": 2,
-       "7px": 98,
+       "7px": 96,
        "14px": 47,
-       "3.5px": 12,
+       "3.5px": 13,
        "5.3px": 34,
        "1.8px": 10,
        "10.5px": 10,
@@ -1333,8 +1280,8 @@
        "#14635e": 5,
        "#ffffff": 2,
        "#1b2330": 31,
-       "#5e6774": 13,
-       "#25292e": 3
+       "#5e6774": 12,
+       "#25292e": 5
       },
       "colorFondo": {
        "#ffffff": 5,
@@ -1358,36 +1305,19 @@
        "#14635e": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 2,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_3a_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_3e_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
-      "paradas": 24,
+      "paradas": 25,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
-      "alBody": 0,
-      "saltosAtras": 2,
+      "fueraDePantalla": 2,
+      "alBody": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
-       "a:General 1 (1)",
+       "a:General 1 (1) 1 pendientes de tu confirmación",
        "a:Impuestos",
        "a:Luz y gas",
-       "a:Vivienda desactivado",
+       "a:Vivienda · desactivado",
        "a:Capacidades",
        "button:Confirmar",
        "button:Rechazar",
@@ -1396,6 +1326,7 @@
        "button:",
        "a:Vivienda",
        "button:",
+       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -1498,11 +1429,11 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 24,
+      "paradas": 23,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
-      "alBody": 1,
-      "saltosAtras": 0,
+      "fueraDePantalla": 2,
+      "alBody": 0,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "button:",
@@ -1516,7 +1447,6 @@
        "button:",
        "button:Leer un certificado o los datos fiscales (PDF o foto)",
        "summary:Detalle",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -1531,7 +1461,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "panel-simulador",
@@ -1686,7 +1616,7 @@
        "input:"
       ]
      },
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-autonomos",
@@ -1784,11 +1714,11 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 23,
+      "paradas": 24,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
-      "alBody": 0,
-      "saltosAtras": 2,
+      "fueraDePantalla": 2,
+      "alBody": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
        "tab:Mi actividad",
@@ -1801,6 +1731,7 @@
        "input:0",
        "input:0",
        "summary:Más datos (opcional)",
+       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -1816,7 +1747,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-optimizador",
@@ -1921,10 +1852,10 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 40,
+      "paradas": 39,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
-      "alBody": 1,
+      "fueraDePantalla": 2,
+      "alBody": 0,
       "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
@@ -1954,7 +1885,6 @@
        "input:",
        "input:",
        "button:Calcular mi plan",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -1970,7 +1900,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 24
+     "inpMs": 40
     },
     {
      "clave": "panel-planificar",
@@ -2070,11 +2000,11 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 29,
+      "paradas": 30,
       "sinIndicador": [],
-      "fueraDePantalla": 2,
-      "alBody": 0,
-      "saltosAtras": 1,
+      "fueraDePantalla": 0,
+      "alBody": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
        "tab:1. Tu dinero",
@@ -2093,6 +2023,7 @@
        "input:",
        "summary:Pensiones, donativo e hipoteca compartida",
        "button:Calcular el mejor reparto",
+       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -2108,7 +2039,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 32
+     "inpMs": 40
     },
     {
      "clave": "panel-tareas",
@@ -2200,16 +2131,15 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 16,
+      "paradas": 15,
       "sinIndicador": [],
       "fueraDePantalla": 2,
-      "alBody": 1,
-      "saltosAtras": 0,
+      "alBody": 0,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "select:Elige…",
        "input:Por ejemplo: renovar el pasaporte antes del viaje de marzo",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -2225,28 +2155,28 @@
        "button:Más"
       ]
      },
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-preferencias",
      "id": "panel-preferencias--movil--claro",
      "captura": "capturas/primer/panel-preferencias--movil--claro.png",
-     "elementos": 243,
+     "elementos": 244,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 44,
+       "12.3px": 45,
        "13px": 1,
        "10.5px": 25,
        "10px": 1,
        "14px": 2
       },
       "pesoFuente": {
-       "400": 37,
+       "400": 38,
        "500": 11,
        "600": 25
       },
       "alturaLinea": {
-       "18.4px": 37,
+       "18.4px": 38,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -2259,7 +2189,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 69,
+       "Mona Sans VF": 70,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -2272,6 +2202,7 @@
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 5,
@@ -2280,8 +2211,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -2315,7 +2245,7 @@
       "colorTexto": {
        "#14635e": 7,
        "#ffffff": 3,
-       "#1b2330": 37,
+       "#1b2330": 38,
        "#5e6774": 17,
        "#25292e": 5,
        "#186a46": 2,
@@ -2345,20 +2275,7 @@
        "#868b91": 3
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 2,
       "sinIndicador": [],
@@ -2377,22 +2294,22 @@
      "clave": "panel-recuerdos",
      "id": "panel-recuerdos--movil--claro",
      "captura": "capturas/primer/panel-recuerdos--movil--claro.png",
-     "elementos": 301,
+     "elementos": 302,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 53,
+       "12.3px": 54,
        "13px": 1,
        "10.5px": 35,
        "10px": 1,
        "14px": 1
       },
       "pesoFuente": {
-       "400": 46,
+       "400": 47,
        "500": 13,
        "600": 32
       },
       "alturaLinea": {
-       "18.4px": 45,
+       "18.4px": 46,
        "13px": 1,
        "10.5px": 10,
        "10px": 1,
@@ -2405,7 +2322,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 87,
+       "Mona Sans VF": 88,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -2418,6 +2335,7 @@
        "1.8px": 12,
        "10.5px": 27,
        "-3.5px": 1,
+       "-1px": 22,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -2427,7 +2345,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 18,
        "1px": 1,
        "4px": 4
       },
@@ -2466,7 +2383,7 @@
       "colorTexto": {
        "#14635e": 8,
        "#ffffff": 3,
-       "#1b2330": 49,
+       "#1b2330": 50,
        "#5e6774": 20,
        "#25292e": 5,
        "#186a46": 2,
@@ -2499,20 +2416,7 @@
        "#b23826": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 8,
       "sinIndicador": [],
@@ -2537,22 +2441,22 @@
      "clave": "panel-movil",
      "id": "panel-movil--movil--claro",
      "captura": "capturas/primer/panel-movil--movil--claro.png",
-     "elementos": 245,
+     "elementos": 246,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 45,
+       "12.3px": 46,
        "13px": 1,
        "10.5px": 24,
        "10px": 1,
        "14px": 1
       },
       "pesoFuente": {
-       "400": 37,
+       "400": 38,
        "500": 11,
        "600": 24
       },
       "alturaLinea": {
-       "18.4px": 38,
+       "18.4px": 39,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -2565,7 +2469,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 68,
+       "Mona Sans VF": 69,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -2578,6 +2482,7 @@
        "1.8px": 11,
        "10.5px": 25,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -2586,8 +2491,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -2622,7 +2526,7 @@
       "colorTexto": {
        "#14635e": 7,
        "#ffffff": 3,
-       "#1b2330": 37,
+       "#1b2330": 38,
        "#5e6774": 17,
        "#25292e": 4,
        "#186a46": 2,
@@ -2652,20 +2556,7 @@
        "#868b91": 3
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 2,
       "sinIndicador": [],
@@ -2770,15 +2661,16 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 15,
+      "paradas": 16,
       "sinIndicador": [],
       "fueraDePantalla": 2,
-      "alBody": 0,
-      "saltosAtras": 1,
+      "alBody": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
        "textarea:¿Amortizo la hipoteca o invierto los ahorros?",
        "input:",
+       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -2794,7 +2686,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 40
+     "inpMs": 16
     },
     {
      "clave": "panel-investigar",
@@ -2894,11 +2786,11 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 20,
+      "paradas": 19,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
-      "alBody": 1,
-      "saltosAtras": 0,
+      "fueraDePantalla": 1,
+      "alBody": 0,
+      "saltosAtras": 2,
       "escapaDelDialogo": null,
       "orden": [
        "textarea:Por ejemplo: ¿qué documentos necesito para renovar el pasaporte?",
@@ -2907,7 +2799,6 @@
        "button:Rápida",
        "button:Normal",
        "button:A fondo",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -2923,7 +2814,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 40
+     "inpMs": 48
     },
     {
      "clave": "panel-navegador",
@@ -3012,14 +2903,15 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 14,
+      "paradas": 15,
       "sinIndicador": [],
       "fueraDePantalla": 2,
-      "alBody": 0,
-      "saltosAtras": 1,
+      "alBody": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
        "button:Elegir : Pedir cita previa en la DGT",
+       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -3035,7 +2927,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 40
+     "inpMs": 24
     },
     {
      "clave": "panel-revision",
@@ -3129,18 +3021,17 @@
      },
      "violaciones": [],
      "foco": {
-      "paradas": 18,
+      "paradas": 17,
       "sinIndicador": [],
       "fueraDePantalla": 2,
-      "alBody": 1,
-      "saltosAtras": 0,
+      "alBody": 0,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "button:",
        "button:Pendientes",
        "button:Aceptados",
        "button:Rechazados",
-       "body:undefined",
        "a:Saltar a la consulta",
        "a:Saltar al contenido",
        "button:",
@@ -3156,7 +3047,7 @@
        "button:Más"
       ]
      },
-     "inpMs": 48
+     "inpMs": 24
     },
     {
      "clave": "expediente-editando",
@@ -3309,28 +3200,28 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "avisos-tras-leer",
      "id": "avisos-tras-leer--movil--claro",
      "captura": "capturas/primer/avisos-tras-leer--movil--claro.png",
-     "elementos": 346,
+     "elementos": 347,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 50,
+       "12.3px": 51,
        "13px": 1,
        "10.5px": 50,
        "10px": 1,
        "14px": 4
       },
       "pesoFuente": {
-       "400": 51,
+       "400": 52,
        "500": 26,
        "600": 29
       },
       "alturaLinea": {
-       "18.4px": 43,
+       "18.4px": 44,
        "13px": 1,
        "10.5px": 16,
        "10px": 1,
@@ -3343,7 +3234,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 102,
+       "Mona Sans VF": 103,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -3356,6 +3247,7 @@
        "1.8px": 12,
        "10.5px": 21,
        "-3.5px": 4,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -3365,7 +3257,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 8,
        "141.1px": 1,
        "79.5px": 1,
        "85.8px": 1
@@ -3402,7 +3293,7 @@
       "colorTexto": {
        "#14635e": 9,
        "#ffffff": 3,
-       "#1b2330": 47,
+       "#1b2330": 48,
        "#5e6774": 25,
        "#25292e": 14,
        "#186a46": 3,
@@ -3433,22 +3324,9 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 40
     }
    ],
    "flujos": {
@@ -3463,7 +3341,7 @@
       "Escribir la contraseña",
       "Pulsar «Entrar»"
      ],
-     "ms": 4666
+     "ms": 3044
     },
     "preguntar": {
      "clics": 2,
@@ -3475,8 +3353,8 @@
       "Escribir la pregunta",
       "Pulsar «Enviar»"
      ],
-     "msPrimerTexto": 962,
-     "msRespuestaCompleta": 1409
+     "msPrimerTexto": 857,
+     "msRespuestaCompleta": 1380
     },
     "abrir-avisos": {
      "clics": 1,
@@ -3486,7 +3364,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «avisos»"
      ],
-     "ms": 839,
+     "ms": 710,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -3499,7 +3377,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «modulos»"
      ],
-     "ms": 442,
+     "ms": 439,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=avisos\" class=\"_item_rpgqp_33 focus-visible\" title=\"Avisos de t",
      "presentacion": "pagina"
@@ -3512,7 +3390,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «expediente»"
      ],
-     "ms": 845,
+     "ms": 803,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=modulos\" class=\"_item_rpgqp_33\" title=\"Módulos del hogar\" data-",
      "presentacion": "pagina"
@@ -3526,7 +3404,7 @@
       "Abrir «Más»",
       "Elegir «simulador» en el menú"
      ],
-     "ms": 1802,
+     "ms": 1064,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=expediente\" class=\"_item_rpgqp_33\" title=\"Tu expediente\" data-p",
      "presentacion": "pagina"
@@ -3540,7 +3418,7 @@
       "Abrir «Más»",
       "Elegir «autonomos» en el menú"
      ],
-     "ms": 997,
+     "ms": 992,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3554,7 +3432,7 @@
       "Abrir «Más»",
       "Elegir «optimizador» en el menú"
      ],
-     "ms": 975,
+     "ms": 993,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3568,7 +3446,7 @@
       "Abrir «Más»",
       "Elegir «planificar» en el menú"
      ],
-     "ms": 2124,
+     "ms": 979,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3582,7 +3460,7 @@
       "Abrir «Más»",
       "Elegir «tareas» en el menú"
      ],
-     "ms": 958,
+     "ms": 1064,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3596,7 +3474,7 @@
       "Abrir «Más»",
       "Elegir «preferencias» en el menú"
      ],
-     "ms": 1034,
+     "ms": 967,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -3610,7 +3488,7 @@
       "Abrir «Más»",
       "Elegir «recuerdos» en el menú"
      ],
-     "ms": 957,
+     "ms": 982,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -3624,7 +3502,7 @@
       "Abrir «Más»",
       "Elegir «movil» en el menú"
      ],
-     "ms": 1007,
+     "ms": 965,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -3638,7 +3516,7 @@
       "Abrir «Más»",
       "Elegir «consejo» en el menú"
      ],
-     "ms": 968,
+     "ms": 975,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3652,7 +3530,7 @@
       "Abrir «Más»",
       "Elegir «investigar» en el menú"
      ],
-     "ms": 974,
+     "ms": 1011,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3666,7 +3544,7 @@
       "Abrir «Más»",
       "Elegir «navegador» en el menú"
      ],
-     "ms": 2628,
+     "ms": 989,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -3680,7 +3558,7 @@
       "Abrir «Más»",
       "Elegir «revision» en el menú"
      ],
-     "ms": 1025,
+     "ms": 978,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -7701,27 +7579,27 @@
      "clave": "inicio",
      "id": "inicio--movil--oscuro",
      "captura": "capturas/primer/inicio--movil--oscuro.png",
-     "elementos": 128,
+     "elementos": 129,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 23,
+       "12.3px": 24,
        "13px": 1,
        "14px": 1,
        "10.5px": 4
       },
       "pesoFuente": {
-       "400": 16,
+       "400": 17,
        "500": 2,
        "600": 11
       },
       "alturaLinea": {
-       "18.4px": 23,
+       "18.4px": 24,
        "13px": 1,
        "21px": 1,
        "14px": 4
       },
       "familia": {
-       "Mona Sans VF": 29
+       "Mona Sans VF": 30
       },
       "espaciado": {
        "8px": 2,
@@ -7732,6 +7610,7 @@
        "5.3px": 8,
        "10.5px": 30,
        "-3.5px": 1,
+       "-1px": 4,
        "21px": 2,
        "38.5px": 2,
        "24.5px": 2,
@@ -7767,7 +7646,7 @@
       "colorTexto": {
        "#86d6cc": 6,
        "#ffffff": 1,
-       "#e9edf2": 12,
+       "#e9edf2": 13,
        "#96a0ae": 10
       },
       "colorFondo": {
@@ -7786,27 +7665,27 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": null
+     "inpMs": 16
     },
     {
      "clave": "conversacion",
      "id": "conversacion--movil--oscuro",
      "captura": "capturas/primer/conversacion--movil--oscuro.png",
-     "elementos": 214,
+     "elementos": 215,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 43,
+       "12.3px": 44,
        "13px": 1,
        "10.5px": 22,
        "10px": 1
       },
       "pesoFuente": {
-       "400": 34,
+       "400": 35,
        "500": 10,
        "600": 23
       },
       "alturaLinea": {
-       "18.4px": 36,
+       "18.4px": 37,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -7817,7 +7696,7 @@
        "17.5px": 6
       },
       "familia": {
-       "Mona Sans VF": 63,
+       "Mona Sans VF": 64,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -7830,6 +7709,7 @@
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 4,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -7870,7 +7750,7 @@
       "colorTexto": {
        "#86d6cc": 7,
        "#ffffff": 3,
-       "#e9edf2": 39,
+       "#e9edf2": 40,
        "#96a0ae": 14,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -7898,47 +7778,34 @@
        "#626b78": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "menu-mas",
      "id": "menu-mas--movil--oscuro",
      "captura": "capturas/primer/menu-mas--movil--oscuro.png",
-     "elementos": 327,
+     "elementos": 308,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 55,
+       "12.3px": 56,
        "13px": 1,
-       "10.5px": 36,
+       "10.5px": 26,
        "10px": 1
       },
       "pesoFuente": {
-       "400": 56,
+       "400": 47,
        "500": 10,
        "600": 27
       },
       "alturaLinea": {
-       "18.4px": 36,
+       "18.4px": 37,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
        "16.8px": 2,
-       "16px": 12,
+       "16px": 2,
        "14px": 7,
        "17.1px": 3,
        "17.5px": 6,
@@ -7946,7 +7813,7 @@
        "20px": 12
       },
       "familia": {
-       "Mona Sans VF": 89,
+       "Mona Sans VF": 80,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -7954,11 +7821,12 @@
        "12px": 2,
        "7px": 194,
        "14px": 66,
-       "3.5px": 61,
+       "3.5px": 41,
        "5.3px": 58,
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -7967,8 +7835,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -7990,22 +7857,21 @@
        "32px": 1,
        "25px": 6,
        "19px": 2,
-       "50px": 10,
-       "31px": 2
+       "31px": 12
       },
       "alturaCampo": {
        "56px": 1
       },
       "objetivoTactil": {
-       "24-43px": 22,
+       "24-43px": 32,
        "<24px": 3,
-       "≥44px": 11
+       "≥44px": 1
       },
       "colorTexto": {
        "#86d6cc": 7,
        "#ffffff": 3,
-       "#e9edf2": 51,
-       "#96a0ae": 28,
+       "#e9edf2": 52,
+       "#96a0ae": 18,
        "#76d0a0": 2,
        "#ecbc60": 1,
        "#f28874": 1
@@ -8035,38 +7901,6 @@
      },
      "violaciones": [
       {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      },
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 10,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_1k_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1l_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1m_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
        "id": "region",
        "impacto": "moderate",
        "nodos": 1,
@@ -8086,22 +7920,22 @@
      "clave": "panel-avisos",
      "id": "panel-avisos--movil--oscuro",
      "captura": "capturas/primer/panel-avisos--movil--oscuro.png",
-     "elementos": 352,
+     "elementos": 353,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 50,
+       "12.3px": 51,
        "13px": 1,
        "10.5px": 52,
        "10px": 1,
        "14px": 4
       },
       "pesoFuente": {
-       "400": 51,
+       "400": 52,
        "500": 28,
        "600": 29
       },
       "alturaLinea": {
-       "18.4px": 43,
+       "18.4px": 44,
        "13px": 1,
        "10.5px": 17,
        "10px": 1,
@@ -8114,7 +7948,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 104,
+       "Mona Sans VF": 105,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -8127,6 +7961,7 @@
        "1.8px": 12,
        "10.5px": 21,
        "-3.5px": 4,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -8136,7 +7971,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 8,
        "89px": 1,
        "79.5px": 1,
        "85.8px": 1
@@ -8172,7 +8006,7 @@
       "colorTexto": {
        "#86d6cc": 10,
        "#ffffff": 3,
-       "#e9edf2": 62,
+       "#e9edf2": 63,
        "#96a0ae": 25,
        "#76d0a0": 3,
        "#ecbc60": 3,
@@ -8202,46 +8036,33 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-modulos",
      "id": "panel-modulos--movil--oscuro",
      "captura": "capturas/primer/panel-modulos--movil--oscuro.png",
-     "elementos": 207,
+     "elementos": 209,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 37,
+       "12.3px": 38,
        "13px": 1,
        "10.5px": 14,
        "17.5px": 2
       },
       "pesoFuente": {
-       "400": 32,
+       "400": 31,
        "500": 4,
-       "600": 18
+       "600": 20
       },
       "alturaLinea": {
        "18.4px": 27,
        "13px": 1,
        "10.5px": 6,
        "28.4px": 2,
-       "20px": 7,
+       "20px": 8,
        "18px": 2,
        "14px": 2,
        "17.1px": 2,
@@ -8249,14 +8070,14 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 54
+       "Mona Sans VF": 55
       },
       "espaciado": {
        "8px": 2,
        "12px": 2,
-       "7px": 98,
+       "7px": 96,
        "14px": 47,
-       "3.5px": 12,
+       "3.5px": 13,
        "5.3px": 34,
        "1.8px": 10,
        "10.5px": 10,
@@ -8293,8 +8114,8 @@
       "colorTexto": {
        "#86d6cc": 5,
        "#ffffff": 2,
-       "#e9edf2": 34,
-       "#96a0ae": 13
+       "#e9edf2": 36,
+       "#96a0ae": 12
       },
       "colorFondo": {
        "#10141a": 3,
@@ -8319,26 +8140,9 @@
        "#1a7a73": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 2,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_2t_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_31_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": null
     },
     {
      "clave": "panel-expediente",
@@ -8424,7 +8228,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-simulador",
@@ -8528,7 +8332,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-autonomos",
@@ -8625,7 +8429,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-optimizador",
@@ -8829,7 +8633,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-tareas",
@@ -8920,28 +8724,28 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-preferencias",
      "id": "panel-preferencias--movil--oscuro",
      "captura": "capturas/primer/panel-preferencias--movil--oscuro.png",
-     "elementos": 243,
+     "elementos": 244,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 44,
+       "12.3px": 45,
        "13px": 1,
        "10.5px": 25,
        "10px": 1,
        "14px": 2
       },
       "pesoFuente": {
-       "400": 37,
+       "400": 38,
        "500": 11,
        "600": 25
       },
       "alturaLinea": {
-       "18.4px": 37,
+       "18.4px": 38,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -8954,7 +8758,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 69,
+       "Mona Sans VF": 70,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -8967,6 +8771,7 @@
        "1.8px": 10,
        "10.5px": 21,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 5,
@@ -8975,8 +8780,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -9009,7 +8813,7 @@
       "colorTexto": {
        "#86d6cc": 7,
        "#ffffff": 3,
-       "#e9edf2": 42,
+       "#e9edf2": 43,
        "#96a0ae": 17,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -9038,43 +8842,30 @@
        "#626b78": 3
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-recuerdos",
      "id": "panel-recuerdos--movil--oscuro",
      "captura": "capturas/primer/panel-recuerdos--movil--oscuro.png",
-     "elementos": 301,
+     "elementos": 302,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 53,
+       "12.3px": 54,
        "13px": 1,
        "10.5px": 35,
        "10px": 1,
        "14px": 1
       },
       "pesoFuente": {
-       "400": 46,
+       "400": 47,
        "500": 13,
        "600": 32
       },
       "alturaLinea": {
-       "18.4px": 45,
+       "18.4px": 46,
        "13px": 1,
        "10.5px": 10,
        "10px": 1,
@@ -9087,7 +8878,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 87,
+       "Mona Sans VF": 88,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -9100,6 +8891,7 @@
        "1.8px": 12,
        "10.5px": 27,
        "-3.5px": 1,
+       "-1px": 22,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -9109,7 +8901,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 18,
        "1px": 1,
        "4px": 4
       },
@@ -9147,7 +8938,7 @@
       "colorTexto": {
        "#86d6cc": 8,
        "#ffffff": 3,
-       "#e9edf2": 54,
+       "#e9edf2": 55,
        "#96a0ae": 20,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -9181,43 +8972,30 @@
        "#b23826": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-movil",
      "id": "panel-movil--movil--oscuro",
      "captura": "capturas/primer/panel-movil--movil--oscuro.png",
-     "elementos": 245,
+     "elementos": 246,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 45,
+       "12.3px": 46,
        "13px": 1,
        "10.5px": 24,
        "10px": 1,
        "14px": 1
       },
       "pesoFuente": {
-       "400": 37,
+       "400": 38,
        "500": 11,
        "600": 24
       },
       "alturaLinea": {
-       "18.4px": 38,
+       "18.4px": 39,
        "13px": 1,
        "10.5px": 9,
        "10px": 1,
@@ -9230,7 +9008,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 68,
+       "Mona Sans VF": 69,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -9243,6 +9021,7 @@
        "1.8px": 11,
        "10.5px": 25,
        "-3.5px": 1,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -9251,8 +9030,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 2,
-       "-1px": 8
+       "-7px": 2
       },
       "radio": {
        "6px": 1,
@@ -9286,7 +9064,7 @@
       "colorTexto": {
        "#86d6cc": 7,
        "#ffffff": 3,
-       "#e9edf2": 41,
+       "#e9edf2": 42,
        "#96a0ae": 17,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -9315,22 +9093,9 @@
        "#626b78": 3
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-consejo",
@@ -9421,7 +9186,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "panel-investigar",
@@ -9520,7 +9285,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 40
     },
     {
      "clave": "panel-navegador",
@@ -9607,7 +9372,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "panel-revision",
@@ -9701,7 +9466,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "expediente-editando",
@@ -9780,7 +9545,7 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 128
+     "inpMs": 24
     },
     {
      "clave": "expediente-guardado",
@@ -9855,22 +9620,22 @@
      "clave": "avisos-tras-leer",
      "id": "avisos-tras-leer--movil--oscuro",
      "captura": "capturas/primer/avisos-tras-leer--movil--oscuro.png",
-     "elementos": 346,
+     "elementos": 347,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 50,
+       "12.3px": 51,
        "13px": 1,
        "10.5px": 50,
        "10px": 1,
        "14px": 4
       },
       "pesoFuente": {
-       "400": 51,
+       "400": 52,
        "500": 26,
        "600": 29
       },
       "alturaLinea": {
-       "18.4px": 43,
+       "18.4px": 44,
        "13px": 1,
        "10.5px": 16,
        "10px": 1,
@@ -9883,7 +9648,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 102,
+       "Mona Sans VF": 103,
        "ui-monospace": 4
       },
       "espaciado": {
@@ -9896,6 +9661,7 @@
        "1.8px": 12,
        "10.5px": 21,
        "-3.5px": 4,
+       "-1px": 12,
        "4.2px": 4,
        "1.6px": 2,
        "17.5px": 1,
@@ -9905,7 +9671,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 2,
-       "-1px": 8,
        "141.1px": 1,
        "79.5px": 1,
        "85.8px": 1
@@ -9941,7 +9706,7 @@
       "colorTexto": {
        "#86d6cc": 9,
        "#ffffff": 3,
-       "#e9edf2": 61,
+       "#e9edf2": 62,
        "#96a0ae": 25,
        "#76d0a0": 3,
        "#ecbc60": 3,
@@ -9971,20 +9736,7 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "heading-order",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Heading levels should only increase by one",
-       "ejemplos": [
-        {
-         "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > ._encabezado_1ykq8_83",
-         "resumen": "Fix any of the following:\n  Heading order invalid"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     }
@@ -10001,7 +9753,7 @@
       "Escribir la contraseña",
       "Pulsar «Entrar»"
      ],
-     "ms": 4428
+     "ms": 1873
     },
     "preguntar": {
      "clics": 2,
@@ -10013,8 +9765,8 @@
       "Escribir la pregunta",
       "Pulsar «Enviar»"
      ],
-     "msPrimerTexto": 827,
-     "msRespuestaCompleta": 1432
+     "msPrimerTexto": 902,
+     "msRespuestaCompleta": 1404
     },
     "abrir-avisos": {
      "clics": 1,
@@ -10024,7 +9776,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «avisos»"
      ],
-     "ms": 695,
+     "ms": 687,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -10037,7 +9789,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «modulos»"
      ],
-     "ms": 400,
+     "ms": 419,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=avisos\" class=\"_item_rpgqp_33 focus-visible\" title=\"Avisos de t",
      "presentacion": "pagina"
@@ -10050,7 +9802,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «expediente»"
      ],
-     "ms": 686,
+     "ms": 699,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=modulos\" class=\"_item_rpgqp_33\" title=\"Módulos del hogar\" data-",
      "presentacion": "pagina"
@@ -10064,7 +9816,7 @@
       "Abrir «Más»",
       "Elegir «simulador» en el menú"
      ],
-     "ms": 937,
+     "ms": 994,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=expediente\" class=\"_item_rpgqp_33\" title=\"Tu expediente\" data-p",
      "presentacion": "pagina"
@@ -10078,7 +9830,7 @@
       "Abrir «Más»",
       "Elegir «autonomos» en el menú"
      ],
-     "ms": 957,
+     "ms": 989,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10092,7 +9844,7 @@
       "Abrir «Más»",
       "Elegir «optimizador» en el menú"
      ],
-     "ms": 972,
+     "ms": 963,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10106,7 +9858,7 @@
       "Abrir «Más»",
       "Elegir «planificar» en el menú"
      ],
-     "ms": 942,
+     "ms": 972,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10120,7 +9872,7 @@
       "Abrir «Más»",
       "Elegir «tareas» en el menú"
      ],
-     "ms": 927,
+     "ms": 978,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10134,7 +9886,7 @@
       "Abrir «Más»",
       "Elegir «preferencias» en el menú"
      ],
-     "ms": 934,
+     "ms": 974,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -10148,7 +9900,7 @@
       "Abrir «Más»",
       "Elegir «recuerdos» en el menú"
      ],
-     "ms": 946,
+     "ms": 931,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -10162,7 +9914,7 @@
       "Abrir «Más»",
       "Elegir «movil» en el menú"
      ],
-     "ms": 928,
+     "ms": 973,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -10176,7 +9928,7 @@
       "Abrir «Más»",
       "Elegir «consejo» en el menú"
      ],
-     "ms": 955,
+     "ms": 968,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10190,7 +9942,7 @@
       "Abrir «Más»",
       "Elegir «investigar» en el menú"
      ],
-     "ms": 928,
+     "ms": 1036,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10204,7 +9956,7 @@
       "Abrir «Más»",
       "Elegir «navegador» en el menú"
      ],
-     "ms": 942,
+     "ms": 976,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -10218,7 +9970,7 @@
       "Abrir «Más»",
       "Elegir «revision» en el menú"
      ],
-     "ms": 934,
+     "ms": 1036,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -14247,29 +13999,29 @@
        "body:undefined"
       ]
      },
-     "inpMs": null
+     "inpMs": 32
     },
     {
      "clave": "inicio",
      "id": "inicio--escritorio--claro",
      "captura": "capturas/primer/inicio--escritorio--claro.png",
-     "elementos": 198,
+     "elementos": 199,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 32,
+       "12.3px": 33,
        "10.5px": 15,
        "13px": 1,
        "14px": 3,
        "17.5px": 1
       },
       "pesoFuente": {
-       "400": 29,
+       "400": 30,
        "500": 9,
        "600": 13,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 32,
+       "18.4px": 33,
        "14.7px": 1,
        "13px": 1,
        "21px": 3,
@@ -14279,7 +14031,7 @@
        "28.4px": 1
       },
       "familia": {
-       "Mona Sans VF": 51,
+       "Mona Sans VF": 52,
        "ui-monospace": 1
       },
       "espaciado": {
@@ -14294,6 +14046,7 @@
        "-3.5px": 1,
        "59px": 2,
        "1.8px": 4,
+       "-1px": 4,
        "70px": 2,
        "35px": 2,
        "-0.9px": 3,
@@ -14329,7 +14082,7 @@
       "colorTexto": {
        "#14635e": 12,
        "#ffffff": 2,
-       "#1b2330": 22,
+       "#1b2330": 23,
        "#5e6774": 15,
        "#25292e": 1
       },
@@ -14392,23 +14145,23 @@
      "clave": "conversacion",
      "id": "conversacion--escritorio--claro",
      "captura": "capturas/primer/conversacion--escritorio--claro.png",
-     "elementos": 291,
+     "elementos": 292,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 52,
+       "12.3px": 53,
        "10.5px": 35,
        "13px": 1,
        "14px": 2,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 45,
+       "400": 46,
        "500": 17,
        "600": 28,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -14421,7 +14174,7 @@
        "17.5px": 6
       },
       "familia": {
-       "Mona Sans VF": 86,
+       "Mona Sans VF": 87,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -14436,6 +14189,7 @@
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 4,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -14480,7 +14234,7 @@
       "colorTexto": {
        "#14635e": 13,
        "#ffffff": 4,
-       "#1b2330": 45,
+       "#1b2330": 46,
        "#5e6774": 20,
        "#25292e": 5,
        "#186a46": 2,
@@ -14511,20 +14265,7 @@
        "#eed8a6": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 32,
       "sinIndicador": [],
@@ -14561,35 +14302,35 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 32
+     "inpMs": 40
     },
     {
      "clave": "menu-mas",
      "id": "menu-mas--escritorio--claro",
      "captura": "capturas/primer/menu-mas--escritorio--claro.png",
-     "elementos": 340,
+     "elementos": 335,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 57,
-       "10.5px": 40,
+       "12.3px": 58,
+       "10.5px": 37,
        "13px": 1,
        "14px": 2,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 53,
+       "400": 51,
        "500": 17,
        "600": 30,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -14597,13 +14338,13 @@
        "17.1px": 4,
        "20px": 6,
        "14px": 12,
-       "16px": 6,
+       "16px": 3,
        "16.8px": 2,
        "17.5px": 6,
        "18px": 2
       },
       "familia": {
-       "Mona Sans VF": 96,
+       "Mona Sans VF": 94,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -14612,12 +14353,13 @@
        "7px": 207,
        "14px": 56,
        "21px": 12,
-       "3.5px": 54,
+       "3.5px": 48,
        "5.3px": 68,
        "1.8px": 9,
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -14626,8 +14368,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 1,
-       "-1px": 8
+       "-7px": 1
       },
       "radio": {
        "6px": 1,
@@ -14653,22 +14394,21 @@
        "25px": 7,
        "45px": 2,
        "19px": 2,
-       "31px": 2,
-       "50px": 3
+       "31px": 5
       },
       "alturaCampo": {
        "56px": 1
       },
       "objetivoTactil": {
-       "24-43px": 30,
-       "≥44px": 5,
+       "24-43px": 33,
+       "≥44px": 2,
        "<24px": 3
       },
       "colorTexto": {
        "#14635e": 13,
        "#ffffff": 4,
-       "#1b2330": 50,
-       "#5e6774": 25,
+       "#1b2330": 51,
+       "#5e6774": 22,
        "#25292e": 5,
        "#186a46": 2,
        "#8c5a04": 1,
@@ -14701,38 +14441,6 @@
      },
      "violaciones": [
       {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 3,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_1l_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1o_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1p_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      },
-      {
        "id": "region",
        "impacto": "moderate",
        "nodos": 1,
@@ -14752,23 +14460,23 @@
      "clave": "panel-avisos",
      "id": "panel-avisos--escritorio--claro",
      "captura": "capturas/primer/panel-avisos--escritorio--claro.png",
-     "elementos": 429,
+     "elementos": 430,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 59,
+       "12.3px": 60,
        "10.5px": 65,
        "13px": 1,
        "14px": 6,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 62,
+       "400": 63,
        "500": 35,
        "600": 34,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 51,
+       "18.4px": 52,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 23,
@@ -14782,7 +14490,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 127,
+       "Mona Sans VF": 128,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -14797,6 +14505,7 @@
        "10.5px": 21,
        "-3.5px": 4,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -14806,7 +14515,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "194px": 1,
        "184.5px": 1,
        "190.8px": 1
@@ -14847,7 +14555,7 @@
       "colorTexto": {
        "#14635e": 16,
        "#ffffff": 4,
-       "#1b2330": 57,
+       "#1b2330": 58,
        "#5e6774": 31,
        "#25292e": 16,
        "#186a46": 3,
@@ -14880,20 +14588,7 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 12,
       "sinIndicador": [],
@@ -14922,19 +14617,19 @@
      "clave": "panel-modulos",
      "id": "panel-modulos--escritorio--claro",
      "captura": "capturas/primer/panel-modulos--escritorio--claro.png",
-     "elementos": 283,
+     "elementos": 285,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 46,
+       "12.3px": 47,
        "10.5px": 26,
        "13px": 1,
        "14px": 2,
        "17.5px": 2
       },
       "pesoFuente": {
-       "400": 42,
+       "400": 41,
        "500": 11,
-       "600": 23,
+       "600": 25,
        "700": 1
       },
       "alturaLinea": {
@@ -14944,7 +14639,7 @@
        "10.5px": 12,
        "21px": 2,
        "17.1px": 3,
-       "20px": 8,
+       "20px": 9,
        "14px": 6,
        "28.4px": 2,
        "18px": 2,
@@ -14952,16 +14647,16 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 76,
+       "Mona Sans VF": 77,
        "ui-monospace": 1
       },
       "espaciado": {
        "8px": 2,
        "12px": 2,
-       "7px": 146,
+       "7px": 144,
        "14px": 41,
        "21px": 15,
-       "3.5px": 19,
+       "3.5px": 20,
        "5.3px": 62,
        "1.8px": 11,
        "10.5px": 10,
@@ -15003,8 +14698,8 @@
        "#14635e": 11,
        "#ffffff": 3,
        "#1b2330": 41,
-       "#5e6774": 18,
-       "#25292e": 4
+       "#5e6774": 17,
+       "#25292e": 6
       },
       "colorFondo": {
        "#ffffff": 6,
@@ -15028,36 +14723,7 @@
        "#8c5a04": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 2,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_2t_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_31_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 35,
       "sinIndicador": [],
@@ -15066,10 +14732,10 @@
       "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
-       "a:General 1 (1)",
+       "a:General 1 (1) 1 pendientes de tu confirmación",
        "a:Impuestos",
        "a:Luz y gas",
-       "a:Vivienda desactivado",
+       "a:Vivienda · desactivado",
        "a:Capacidades",
        "button:Confirmar",
        "button:Rechazar",
@@ -15097,7 +14763,7 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
@@ -15217,20 +14883,7 @@
        "#186a46": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 70,
       "sinIndicador": [],
@@ -15281,7 +14934,7 @@
        "input:"
       ]
      },
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-autonomos",
@@ -15390,20 +15043,7 @@
        "#14635e": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 32,
       "sinIndicador": [],
@@ -15440,7 +15080,7 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
@@ -15556,24 +15196,11 @@
        "#14645f66": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 49,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
+      "fueraDePantalla": 2,
       "alBody": 1,
       "saltosAtras": 0,
       "escapaDelDialogo": null,
@@ -15728,26 +15355,13 @@
        "#14635e": 12
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 38,
       "sinIndicador": [],
       "fueraDePantalla": 1,
       "alBody": 0,
-      "saltosAtras": 2,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "tab:1. Tu dinero",
@@ -15784,13 +15398,13 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 32
+     "inpMs": 24
     },
     {
      "clave": "panel-tareas",
@@ -15897,26 +15511,13 @@
        "#14635e": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 25,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
+      "fueraDePantalla": 2,
       "alBody": 1,
-      "saltosAtras": 1,
+      "saltosAtras": 0,
       "escapaDelDialogo": null,
       "orden": [
        "select:Elige…",
@@ -15940,13 +15541,13 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 56
+     "inpMs": 24
     },
     {
      "clave": "panel-consejo",
@@ -16051,26 +15652,13 @@
        "#14635e": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 24,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
+      "fueraDePantalla": 2,
       "alBody": 0,
-      "saltosAtras": 2,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "textarea:¿Amortizo la hipoteca o invierto los ahorros?",
@@ -16093,13 +15681,13 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 40
+     "inpMs": 32
     },
     {
      "clave": "panel-investigar",
@@ -16148,7 +15736,6 @@
        "1.8px": 10,
        "10.5px": 14,
        "-3.5px": 1,
-       "59px": 2,
        "-1px": 8,
        "1px": 2,
        "4px": 8
@@ -16211,24 +15798,11 @@
        "#8089931a": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 29,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
+      "fueraDePantalla": 2,
       "alBody": 1,
       "saltosAtras": 0,
       "escapaDelDialogo": null,
@@ -16258,13 +15832,13 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-expediente",
@@ -16366,26 +15940,13 @@
        "#14635e": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 33,
       "sinIndicador": [],
-      "fueraDePantalla": 1,
+      "fueraDePantalla": 2,
       "alBody": 0,
-      "saltosAtras": 2,
+      "saltosAtras": 1,
       "escapaDelDialogo": null,
       "orden": [
        "button:",
@@ -16417,22 +15978,22 @@
        "a:Investigar",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
        "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 48
+     "inpMs": 16
     },
     {
      "clave": "panel-preferencias",
      "id": "panel-preferencias--escritorio--claro",
      "captura": "capturas/primer/panel-preferencias--escritorio--claro.png",
-     "elementos": 320,
+     "elementos": 321,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 52,
+       "12.3px": 53,
        "10.5px": 38,
        "13px": 1,
        "14px": 4,
@@ -16440,13 +16001,13 @@
        "17.5px": 1
       },
       "pesoFuente": {
-       "400": 48,
+       "400": 49,
        "500": 18,
        "600": 30,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -16461,7 +16022,7 @@
        "28.4px": 1
       },
       "familia": {
-       "Mona Sans VF": 92,
+       "Mona Sans VF": 93,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -16476,6 +16037,7 @@
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -16485,7 +16047,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "28px": 4,
        "63.5px": 2
       },
@@ -16525,7 +16086,7 @@
       "colorTexto": {
        "#14635e": 13,
        "#ffffff": 4,
-       "#1b2330": 47,
+       "#1b2330": 48,
        "#5e6774": 23,
        "#25292e": 6,
        "#186a46": 2,
@@ -16557,20 +16118,7 @@
        "#eed8a6": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 2,
       "sinIndicador": [],
@@ -16583,29 +16131,29 @@
        "button:Añadir una preferencia"
       ]
      },
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-recuerdos",
      "id": "panel-recuerdos--escritorio--claro",
      "captura": "capturas/primer/panel-recuerdos--escritorio--claro.png",
-     "elementos": 378,
+     "elementos": 379,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 62,
+       "12.3px": 63,
        "10.5px": 48,
        "13px": 1,
        "14px": 3,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 57,
+       "400": 58,
        "500": 20,
        "600": 37,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 53,
+       "18.4px": 54,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 16,
@@ -16619,7 +16167,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 110,
+       "Mona Sans VF": 111,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -16634,6 +16182,7 @@
        "10.5px": 27,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 22,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -16643,7 +16192,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 18,
        "1px": 1,
        "4px": 4
       },
@@ -16686,7 +16234,7 @@
       "colorTexto": {
        "#14635e": 14,
        "#ffffff": 4,
-       "#1b2330": 59,
+       "#1b2330": 60,
        "#5e6774": 26,
        "#25292e": 6,
        "#186a46": 2,
@@ -16721,20 +16269,7 @@
        "#b23826": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 8,
       "sinIndicador": [],
@@ -16753,29 +16288,29 @@
        "button:Olvidar todo"
       ]
      },
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-movil",
      "id": "panel-movil--escritorio--claro",
      "captura": "capturas/primer/panel-movil--escritorio--claro.png",
-     "elementos": 322,
+     "elementos": 323,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 54,
+       "12.3px": 55,
        "10.5px": 37,
        "13px": 1,
        "14px": 3,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 48,
+       "400": 49,
        "500": 18,
        "600": 29,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 46,
+       "18.4px": 47,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -16789,7 +16324,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 91,
+       "Mona Sans VF": 92,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -16804,6 +16339,7 @@
        "10.5px": 25,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -16812,8 +16348,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 1,
-       "-1px": 8
+       "-7px": 1
       },
       "radio": {
        "6px": 1,
@@ -16851,7 +16386,7 @@
       "colorTexto": {
        "#14635e": 13,
        "#ffffff": 4,
-       "#1b2330": 47,
+       "#1b2330": 48,
        "#5e6774": 23,
        "#25292e": 5,
        "#186a46": 2,
@@ -16883,20 +16418,7 @@
        "#eed8a6": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 2,
       "sinIndicador": [],
@@ -16909,7 +16431,7 @@
        "input:"
       ]
      },
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-navegador",
@@ -17011,24 +16533,11 @@
        "#eed8a6": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 24,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
+      "fueraDePantalla": 2,
       "alBody": 1,
       "saltosAtras": 0,
       "escapaDelDialogo": null,
@@ -17053,13 +16562,13 @@
        "a:Navegador",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
-       "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , hace 1 min",
+       "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-revision",
@@ -17166,24 +16675,11 @@
        "#14635e": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": {
       "paradas": 26,
       "sinIndicador": [],
-      "fueraDePantalla": 0,
+      "fueraDePantalla": 2,
       "alBody": 0,
       "saltosAtras": 1,
       "escapaDelDialogo": null,
@@ -17210,13 +16706,13 @@
        "a:Revisión",
        "a:Tu expediente 4 (4) , 4 datos guardados",
        "button:Más",
-       "region:Consultas",
+       "region:Tus consultas y temas",
        "button:Nueva",
-       "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , hace 1 min",
+       "button:¿Tengo que hacer la declaración de la renta si gano 34.00… , ahora",
        "button:"
       ]
      },
-     "inpMs": 40
+     "inpMs": 24
     },
     {
      "clave": "expediente-editando",
@@ -17295,22 +16791,9 @@
        "#868b91": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "expediente-guardado",
@@ -17380,20 +16863,7 @@
        "#868b91": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -17401,23 +16871,23 @@
      "clave": "avisos-tras-leer",
      "id": "avisos-tras-leer--escritorio--claro",
      "captura": "capturas/primer/avisos-tras-leer--escritorio--claro.png",
-     "elementos": 423,
+     "elementos": 424,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 59,
+       "12.3px": 60,
        "10.5px": 63,
        "13px": 1,
        "14px": 6,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 62,
+       "400": 63,
        "500": 33,
        "600": 34,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 51,
+       "18.4px": 52,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 22,
@@ -17431,7 +16901,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 125,
+       "Mona Sans VF": 126,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -17446,6 +16916,7 @@
        "10.5px": 21,
        "-3.5px": 4,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -17455,7 +16926,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "246.1px": 1,
        "184.5px": 1,
        "190.8px": 1
@@ -17496,7 +16966,7 @@
       "colorTexto": {
        "#14635e": 15,
        "#ffffff": 4,
-       "#1b2330": 57,
+       "#1b2330": 58,
        "#5e6774": 31,
        "#25292e": 15,
        "#186a46": 3,
@@ -17529,22 +16999,9 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 40
+     "inpMs": 24
     }
    ],
    "flujos": {
@@ -17559,7 +17016,7 @@
       "Escribir la contraseña",
       "Pulsar «Entrar»"
      ],
-     "ms": 1686
+     "ms": 1789
     },
     "preguntar": {
      "clics": 2,
@@ -17571,8 +17028,8 @@
       "Escribir la pregunta",
       "Pulsar «Enviar»"
      ],
-     "msPrimerTexto": 819,
-     "msRespuestaCompleta": 1398
+     "msPrimerTexto": 815,
+     "msRespuestaCompleta": 1430
     },
     "abrir-avisos": {
      "clics": 1,
@@ -17582,7 +17039,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «avisos»"
      ],
-     "ms": 688,
+     "ms": 695,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -17595,7 +17052,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «modulos»"
      ],
-     "ms": 678,
+     "ms": 405,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=avisos\" class=\"_item_rpgqp_33 focus-visible\" title=\"Avisos de t",
      "presentacion": "pagina"
@@ -17621,7 +17078,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «autonomos»"
      ],
-     "ms": 685,
+     "ms": 693,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=simulador\" class=\"_item_rpgqp_33\" title=\"Simulador de IRPF\" dat",
      "presentacion": "pagina"
@@ -17634,7 +17091,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «optimizador»"
      ],
-     "ms": 686,
+     "ms": 693,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=autonomos\" class=\"_item_rpgqp_33\" title=\"Autónomos: tu benefici",
      "presentacion": "pagina"
@@ -17647,7 +17104,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «planificar»"
      ],
-     "ms": 741,
+     "ms": 694,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=optimizador\" class=\"_item_rpgqp_33\" title=\"Optimizar tus impues",
      "presentacion": "pagina"
@@ -17660,7 +17117,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «tareas»"
      ],
-     "ms": 759,
+     "ms": 688,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=planificar\" class=\"_item_rpgqp_33\" title=\"Planificar el dinero ",
      "presentacion": "pagina"
@@ -17673,7 +17130,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «consejo»"
      ],
-     "ms": 759,
+     "ms": 689,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=tareas\" class=\"_item_rpgqp_33\" title=\"Tareas de varios pasos\" d",
      "presentacion": "pagina"
@@ -17686,7 +17143,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «investigar»"
      ],
-     "ms": 750,
+     "ms": 691,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=consejo\" class=\"_item_rpgqp_33\" title=\"Consejo del hogar\" data-",
      "presentacion": "pagina"
@@ -17699,7 +17156,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «expediente»"
      ],
-     "ms": 706,
+     "ms": 679,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/\" class=\"_item_rpgqp_33\" data-panel=\"conversacion\" aria-current=\"page\"",
      "presentacion": "pagina"
@@ -17713,7 +17170,7 @@
       "Abrir «Más»",
       "Elegir «preferencias» en el menú"
      ],
-     "ms": 1060,
+     "ms": 950,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=expediente\" class=\"_item_rpgqp_33\" title=\"Tu expediente\" data-p",
      "presentacion": "hoja"
@@ -17727,7 +17184,7 @@
       "Abrir «Más»",
       "Elegir «recuerdos» en el menú"
      ],
-     "ms": 998,
+     "ms": 961,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -17741,7 +17198,7 @@
       "Abrir «Más»",
       "Elegir «movil» en el menú"
      ],
-     "ms": 995,
+     "ms": 954,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -17755,7 +17212,7 @@
       "Abrir «Más»",
       "Elegir «navegador» en el menú"
      ],
-     "ms": 1068,
+     "ms": 952,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -17769,7 +17226,7 @@
       "Abrir «Más»",
       "Elegir «revision» en el menú"
      ],
-     "ms": 982,
+     "ms": 944,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -21790,23 +21247,23 @@
      "clave": "inicio",
      "id": "inicio--escritorio--oscuro",
      "captura": "capturas/primer/inicio--escritorio--oscuro.png",
-     "elementos": 198,
+     "elementos": 199,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 32,
+       "12.3px": 33,
        "10.5px": 15,
        "13px": 1,
        "14px": 3,
        "17.5px": 1
       },
       "pesoFuente": {
-       "400": 29,
+       "400": 30,
        "500": 9,
        "600": 13,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 32,
+       "18.4px": 33,
        "14.7px": 1,
        "13px": 1,
        "21px": 3,
@@ -21816,7 +21273,7 @@
        "28.4px": 1
       },
       "familia": {
-       "Mona Sans VF": 51,
+       "Mona Sans VF": 52,
        "ui-monospace": 1
       },
       "espaciado": {
@@ -21831,6 +21288,7 @@
        "-3.5px": 1,
        "59px": 2,
        "1.8px": 4,
+       "-1px": 4,
        "70px": 2,
        "35px": 2,
        "-0.9px": 3,
@@ -21866,7 +21324,7 @@
       "colorTexto": {
        "#86d6cc": 12,
        "#ffffff": 2,
-       "#e9edf2": 23,
+       "#e9edf2": 24,
        "#96a0ae": 15
       },
       "colorFondo": {
@@ -21887,29 +21345,29 @@
      },
      "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "conversacion",
      "id": "conversacion--escritorio--oscuro",
      "captura": "capturas/primer/conversacion--escritorio--oscuro.png",
-     "elementos": 291,
+     "elementos": 292,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 52,
+       "12.3px": 53,
        "10.5px": 35,
        "13px": 1,
        "14px": 2,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 45,
+       "400": 46,
        "500": 17,
        "600": 28,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -21922,7 +21380,7 @@
        "17.5px": 6
       },
       "familia": {
-       "Mona Sans VF": 86,
+       "Mona Sans VF": 87,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -21937,6 +21395,7 @@
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 4,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -21980,7 +21439,7 @@
       "colorTexto": {
        "#86d6cc": 13,
        "#ffffff": 4,
-       "#e9edf2": 50,
+       "#e9edf2": 51,
        "#96a0ae": 20,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -22010,20 +21469,7 @@
        "#624b1c": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -22031,23 +21477,23 @@
      "clave": "menu-mas",
      "id": "menu-mas--escritorio--oscuro",
      "captura": "capturas/primer/menu-mas--escritorio--oscuro.png",
-     "elementos": 340,
+     "elementos": 335,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 57,
-       "10.5px": 40,
+       "12.3px": 58,
+       "10.5px": 37,
        "13px": 1,
        "14px": 2,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 53,
+       "400": 51,
        "500": 17,
        "600": 30,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -22055,13 +21501,13 @@
        "17.1px": 4,
        "20px": 6,
        "14px": 12,
-       "16px": 6,
+       "16px": 3,
        "16.8px": 2,
        "17.5px": 6,
        "18px": 2
       },
       "familia": {
-       "Mona Sans VF": 96,
+       "Mona Sans VF": 94,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -22070,12 +21516,13 @@
        "7px": 207,
        "14px": 56,
        "21px": 12,
-       "3.5px": 54,
+       "3.5px": 48,
        "5.3px": 68,
        "1.8px": 9,
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -22084,8 +21531,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 1,
-       "-1px": 8
+       "-7px": 1
       },
       "radio": {
        "6px": 1,
@@ -22110,22 +21556,21 @@
        "25px": 7,
        "45px": 2,
        "19px": 2,
-       "31px": 2,
-       "50px": 3
+       "31px": 5
       },
       "alturaCampo": {
        "56px": 1
       },
       "objetivoTactil": {
-       "24-43px": 30,
-       "≥44px": 5,
+       "24-43px": 33,
+       "≥44px": 2,
        "<24px": 3
       },
       "colorTexto": {
        "#86d6cc": 13,
        "#ffffff": 4,
-       "#e9edf2": 55,
-       "#96a0ae": 25,
+       "#e9edf2": 56,
+       "#96a0ae": 22,
        "#76d0a0": 2,
        "#ecbc60": 1,
        "#f28874": 1
@@ -22156,38 +21601,6 @@
      },
      "violaciones": [
       {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 3,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_1l_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1o_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_1p_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      },
-      {
        "id": "region",
        "impacto": "moderate",
        "nodos": 1,
@@ -22207,23 +21620,23 @@
      "clave": "panel-avisos",
      "id": "panel-avisos--escritorio--oscuro",
      "captura": "capturas/primer/panel-avisos--escritorio--oscuro.png",
-     "elementos": 429,
+     "elementos": 430,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 59,
+       "12.3px": 60,
        "10.5px": 65,
        "13px": 1,
        "14px": 6,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 62,
+       "400": 63,
        "500": 35,
        "600": 34,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 51,
+       "18.4px": 52,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 23,
@@ -22237,7 +21650,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 127,
+       "Mona Sans VF": 128,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -22252,6 +21665,7 @@
        "10.5px": 21,
        "-3.5px": 4,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -22261,7 +21675,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "194px": 1,
        "184.5px": 1,
        "190.8px": 1
@@ -22301,7 +21714,7 @@
       "colorTexto": {
        "#86d6cc": 16,
        "#ffffff": 4,
-       "#e9edf2": 73,
+       "#e9edf2": 74,
        "#96a0ae": 31,
        "#76d0a0": 3,
        "#ecbc60": 3,
@@ -22333,40 +21746,27 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-modulos",
      "id": "panel-modulos--escritorio--oscuro",
      "captura": "capturas/primer/panel-modulos--escritorio--oscuro.png",
-     "elementos": 283,
+     "elementos": 285,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 46,
+       "12.3px": 47,
        "10.5px": 26,
        "13px": 1,
        "14px": 2,
        "17.5px": 2
       },
       "pesoFuente": {
-       "400": 42,
+       "400": 41,
        "500": 11,
-       "600": 23,
+       "600": 25,
        "700": 1
       },
       "alturaLinea": {
@@ -22376,7 +21776,7 @@
        "10.5px": 12,
        "21px": 2,
        "17.1px": 3,
-       "20px": 8,
+       "20px": 9,
        "14px": 6,
        "28.4px": 2,
        "18px": 2,
@@ -22384,16 +21784,16 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 76,
+       "Mona Sans VF": 77,
        "ui-monospace": 1
       },
       "espaciado": {
        "8px": 2,
        "12px": 2,
-       "7px": 146,
+       "7px": 144,
        "14px": 41,
        "21px": 15,
-       "3.5px": 19,
+       "3.5px": 20,
        "5.3px": 62,
        "1.8px": 11,
        "10.5px": 10,
@@ -22433,8 +21833,8 @@
       "colorTexto": {
        "#86d6cc": 11,
        "#ffffff": 3,
-       "#e9edf2": 45,
-       "#96a0ae": 18
+       "#e9edf2": 47,
+       "#96a0ae": 17
       },
       "colorFondo": {
        "#10141a": 4,
@@ -22459,38 +21859,9 @@
        "#8c5a04": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "label-content-name-mismatch",
-       "impacto": "serious",
-       "nodos": 2,
-       "ayuda": "Elements must have their visible text as part of their accessible name",
-       "ejemplos": [
-        {
-         "objetivo": "#_r_2k_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        },
-        {
-         "objetivo": "#_r_2o_",
-         "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-        }
-       ]
-      },
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-simulador",
@@ -22602,20 +21973,7 @@
        "#186a46": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -22725,22 +22083,9 @@
        "#1a7a73": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 24
     },
     {
      "clave": "panel-optimizador",
@@ -22849,20 +22194,7 @@
        "#197a7366": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -22972,22 +22304,9 @@
        "#1a7a73": 12
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "panel-tareas",
@@ -23093,22 +22412,9 @@
        "#1a7a73": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "panel-consejo",
@@ -23212,20 +22518,7 @@
        "#1a7a73": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -23276,7 +22569,6 @@
        "1.8px": 10,
        "10.5px": 14,
        "-3.5px": 1,
-       "59px": 2,
        "-1px": 8,
        "1px": 2,
        "4px": 8
@@ -23338,22 +22630,9 @@
        "#626c761a": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 32
+     "inpMs": 16
     },
     {
      "clave": "panel-expediente",
@@ -23453,31 +22732,18 @@
        "#1a7a73": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 16
+     "inpMs": 32
     },
     {
      "clave": "panel-preferencias",
      "id": "panel-preferencias--escritorio--oscuro",
      "captura": "capturas/primer/panel-preferencias--escritorio--oscuro.png",
-     "elementos": 320,
+     "elementos": 321,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 52,
+       "12.3px": 53,
        "10.5px": 38,
        "13px": 1,
        "14px": 4,
@@ -23485,13 +22751,13 @@
        "17.5px": 1
       },
       "pesoFuente": {
-       "400": 48,
+       "400": 49,
        "500": 18,
        "600": 30,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 44,
+       "18.4px": 45,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -23506,7 +22772,7 @@
        "28.4px": 1
       },
       "familia": {
-       "Mona Sans VF": 92,
+       "Mona Sans VF": 93,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -23521,6 +22787,7 @@
        "10.5px": 21,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -23530,7 +22797,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "28px": 4,
        "63.5px": 2
       },
@@ -23569,7 +22835,7 @@
       "colorTexto": {
        "#86d6cc": 13,
        "#ffffff": 4,
-       "#e9edf2": 53,
+       "#e9edf2": 54,
        "#96a0ae": 23,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -23600,20 +22866,7 @@
        "#624b1c": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 24
     },
@@ -23621,23 +22874,23 @@
      "clave": "panel-recuerdos",
      "id": "panel-recuerdos--escritorio--oscuro",
      "captura": "capturas/primer/panel-recuerdos--escritorio--oscuro.png",
-     "elementos": 378,
+     "elementos": 379,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 62,
+       "12.3px": 63,
        "10.5px": 48,
        "13px": 1,
        "14px": 3,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 57,
+       "400": 58,
        "500": 20,
        "600": 37,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 53,
+       "18.4px": 54,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 16,
@@ -23651,7 +22904,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 110,
+       "Mona Sans VF": 111,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -23666,6 +22919,7 @@
        "10.5px": 27,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 22,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -23675,7 +22929,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 18,
        "1px": 1,
        "4px": 4
       },
@@ -23717,7 +22970,7 @@
       "colorTexto": {
        "#86d6cc": 14,
        "#ffffff": 4,
-       "#e9edf2": 65,
+       "#e9edf2": 66,
        "#96a0ae": 26,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -23753,20 +23006,7 @@
        "#b23826": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 24
     },
@@ -23774,23 +23014,23 @@
      "clave": "panel-movil",
      "id": "panel-movil--escritorio--oscuro",
      "captura": "capturas/primer/panel-movil--escritorio--oscuro.png",
-     "elementos": 322,
+     "elementos": 323,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 54,
+       "12.3px": 55,
        "10.5px": 37,
        "13px": 1,
        "14px": 3,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 48,
+       "400": 49,
        "500": 18,
        "600": 29,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 46,
+       "18.4px": 47,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 15,
@@ -23804,7 +23044,7 @@
        "15.8px": 2
       },
       "familia": {
-       "Mona Sans VF": 91,
+       "Mona Sans VF": 92,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -23819,6 +23059,7 @@
        "10.5px": 25,
        "-3.5px": 1,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -23827,8 +23068,7 @@
        "-15px": 1,
        "4.5px": 1,
        "16px": 1,
-       "-7px": 1,
-       "-1px": 8
+       "-7px": 1
       },
       "radio": {
        "6px": 1,
@@ -23865,7 +23105,7 @@
       "colorTexto": {
        "#86d6cc": 13,
        "#ffffff": 4,
-       "#e9edf2": 52,
+       "#e9edf2": 53,
        "#96a0ae": 23,
        "#76d0a0": 2,
        "#ecbc60": 1,
@@ -23896,20 +23136,7 @@
        "#624b1c": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 16
     },
@@ -24011,20 +23238,7 @@
        "#624b1c": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 32
     },
@@ -24134,22 +23348,9 @@
        "#1a7a73": 6
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 16
     },
     {
      "clave": "expediente-editando",
@@ -24226,20 +23427,7 @@
        "#626b78": 2
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
      "inpMs": 24
     },
@@ -24308,44 +23496,31 @@
        "#626b78": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 24
+     "inpMs": 32
     },
     {
      "clave": "avisos-tras-leer",
      "id": "avisos-tras-leer--escritorio--oscuro",
      "captura": "capturas/primer/avisos-tras-leer--escritorio--oscuro.png",
-     "elementos": 423,
+     "elementos": 424,
      "inventario": {
       "tamanoFuente": {
-       "12.3px": 59,
+       "12.3px": 60,
        "10.5px": 63,
        "13px": 1,
        "14px": 6,
        "16px": 1
       },
       "pesoFuente": {
-       "400": 62,
+       "400": 63,
        "500": 33,
        "600": 34,
        "700": 1
       },
       "alturaLinea": {
-       "18.4px": 51,
+       "18.4px": 52,
        "14.7px": 1,
        "13px": 1,
        "10.5px": 22,
@@ -24359,7 +23534,7 @@
        "15.8px": 1
       },
       "familia": {
-       "Mona Sans VF": 125,
+       "Mona Sans VF": 126,
        "ui-monospace": 5
       },
       "espaciado": {
@@ -24374,6 +23549,7 @@
        "10.5px": 21,
        "-3.5px": 4,
        "59px": 2,
+       "-1px": 12,
        "49px": 2,
        "4.2px": 4,
        "1.6px": 2,
@@ -24383,7 +23559,6 @@
        "4.5px": 1,
        "16px": 1,
        "-7px": 1,
-       "-1px": 8,
        "246.1px": 1,
        "184.5px": 1,
        "190.8px": 1
@@ -24423,7 +23598,7 @@
       "colorTexto": {
        "#86d6cc": 15,
        "#ffffff": 4,
-       "#e9edf2": 72,
+       "#e9edf2": 73,
        "#96a0ae": 31,
        "#76d0a0": 3,
        "#ecbc60": 3,
@@ -24455,22 +23630,9 @@
        "#b23826": 1
       }
      },
-     "violaciones": [
-      {
-       "id": "landmark-unique",
-       "impacto": "moderate",
-       "nodos": 1,
-       "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-       "ejemplos": [
-        {
-         "objetivo": ".prc-PageLayout-Pane-AyzHK",
-         "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-        }
-       ]
-      }
-     ],
+     "violaciones": [],
      "foco": null,
-     "inpMs": 112
+     "inpMs": 48
     }
    ],
    "flujos": {
@@ -24485,7 +23647,7 @@
       "Escribir la contraseña",
       "Pulsar «Entrar»"
      ],
-     "ms": 1961
+     "ms": 1721
     },
     "preguntar": {
      "clics": 2,
@@ -24497,8 +23659,8 @@
       "Escribir la pregunta",
       "Pulsar «Enviar»"
      ],
-     "msPrimerTexto": 1135,
-     "msRespuestaCompleta": 2291
+     "msPrimerTexto": 817,
+     "msRespuestaCompleta": 1395
     },
     "abrir-avisos": {
      "clics": 1,
@@ -24508,7 +23670,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «avisos»"
      ],
-     "ms": 1086,
+     "ms": 697,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -24521,7 +23683,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «modulos»"
      ],
-     "ms": 444,
+     "ms": 731,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=avisos\" class=\"_item_rpgqp_33 focus-visible\" title=\"Avisos de t",
      "presentacion": "pagina"
@@ -24534,7 +23696,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «simulador»"
      ],
-     "ms": 1035,
+     "ms": 718,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=modulos\" class=\"_item_rpgqp_33\" title=\"Módulos del hogar\" data-",
      "presentacion": "pagina"
@@ -24547,7 +23709,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «autonomos»"
      ],
-     "ms": 814,
+     "ms": 688,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=simulador\" class=\"_item_rpgqp_33\" title=\"Simulador de IRPF\" dat",
      "presentacion": "pagina"
@@ -24560,7 +23722,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «optimizador»"
      ],
-     "ms": 725,
+     "ms": 699,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=autonomos\" class=\"_item_rpgqp_33\" title=\"Autónomos: tu benefici",
      "presentacion": "pagina"
@@ -24573,7 +23735,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «planificar»"
      ],
-     "ms": 944,
+     "ms": 701,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=optimizador\" class=\"_item_rpgqp_33\" title=\"Optimizar tus impues",
      "presentacion": "pagina"
@@ -24586,7 +23748,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «tareas»"
      ],
-     "ms": 758,
+     "ms": 690,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=planificar\" class=\"_item_rpgqp_33\" title=\"Planificar el dinero ",
      "presentacion": "pagina"
@@ -24599,7 +23761,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «consejo»"
      ],
-     "ms": 788,
+     "ms": 703,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=tareas\" class=\"_item_rpgqp_33\" title=\"Tareas de varios pasos\" d",
      "presentacion": "pagina"
@@ -24612,7 +23774,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «investigar»"
      ],
-     "ms": 883,
+     "ms": 695,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=consejo\" class=\"_item_rpgqp_33\" title=\"Consejo del hogar\" data-",
      "presentacion": "pagina"
@@ -24625,7 +23787,7 @@
      "detalle": [
       "Pulsar la pestaña del panel «expediente»"
      ],
-     "ms": 726,
+     "ms": 698,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/\" class=\"_item_rpgqp_33\" data-panel=\"conversacion\" aria-current=\"page\"",
      "presentacion": "pagina"
@@ -24639,7 +23801,7 @@
       "Abrir «Más»",
       "Elegir «preferencias» en el menú"
      ],
-     "ms": 1020,
+     "ms": 968,
      "focoVuelve": true,
      "disparadorPrevio": "<a href=\"/?panel=expediente\" class=\"_item_rpgqp_33\" title=\"Tu expediente\" data-p",
      "presentacion": "hoja"
@@ -24653,7 +23815,7 @@
       "Abrir «Más»",
       "Elegir «recuerdos» en el menú"
      ],
-     "ms": 1445,
+     "ms": 1037,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -24667,7 +23829,7 @@
       "Abrir «Más»",
       "Elegir «movil» en el menú"
      ],
-     "ms": 1055,
+     "ms": 977,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "hoja"
@@ -24681,7 +23843,7 @@
       "Abrir «Más»",
       "Elegir «navegador» en el menú"
      ],
-     "ms": 993,
+     "ms": 1034,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -24695,7 +23857,7 @@
       "Abrir «Más»",
       "Elegir «revision» en el menú"
      ],
-     "ms": 1057,
+     "ms": 985,
      "focoVuelve": true,
      "disparadorPrevio": "<button data-component=\"ActionMenu.Button\" type=\"button\" aria-haspopup=\"true\" ar",
      "presentacion": "pagina"
@@ -28706,7 +27868,7 @@
    "vacio": {
     "explicado": true,
     "texto": "Cada módulo calcula con datos oficiales y sus propias fuentes. El asistente nunca suma cifras de módulos distintos si ningún módulo ha calculado esa combinación",
-    "longitudTexto": 664
+    "longitudTexto": 666
    }
   },
   "expediente": {
@@ -28808,7 +27970,7 @@
    "error": {
     "indicador": true,
     "conRoleAlert": true,
-    "reintentar": false,
+    "reintentar": true,
     "texto": "Error interno del servicio (simulado para la medición)."
    },
    "vacio": {
@@ -28976,36 +28138,38 @@
   {
    "pantalla": "entrar",
    "viewport": "movil",
-   "rendimiento": 90,
+   "rendimiento": 91,
    "accesibilidad": 100,
    "buenasPracticas": 96,
-   "fcpMs": 1562,
-   "lcpMs": 3532,
+   "fcpMs": 1510,
+   "lcpMs": 3464,
    "cls": 0,
-   "tbtMs": 0,
-   "siMs": 1562,
-   "ttiMs": 3532,
-   "bytesTotales": 365066,
-   "jsSinUsarBytes": 137562,
+   "tbtMs": 17,
+   "siMs": 1510,
+   "ttiMs": 3464,
+   "bytesTotales": 365072,
+   "jsSinUsarBytes": 137570,
    "lcpElemento": null,
    "clsElementos": []
   },
   {
    "pantalla": "inicio",
    "viewport": "movil",
-   "rendimiento": 90,
+   "rendimiento": 86,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1524,
-   "lcpMs": 3528,
-   "cls": 0,
+   "fcpMs": 1508,
+   "lcpMs": 3499,
+   "cls": 0.128,
    "tbtMs": 0,
-   "siMs": 1612,
-   "ttiMs": 3528,
-   "bytesTotales": 367407,
-   "jsSinUsarBytes": 124747,
+   "siMs": 1508,
+   "ttiMs": 3499,
+   "bytesTotales": 367413,
+   "jsSinUsarBytes": 124748,
    "lcpElemento": null,
-   "clsElementos": []
+   "clsElementos": [
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
+   ]
   },
   {
    "pantalla": "panel-avisos",
@@ -29013,14 +28177,14 @@
    "rendimiento": 86,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1514,
-   "lcpMs": 3468,
+   "fcpMs": 1506,
+   "lcpMs": 3458,
    "cls": 0.128,
-   "tbtMs": 2,
-   "siMs": 1770,
-   "ttiMs": 3468,
-   "bytesTotales": 387870,
-   "jsSinUsarBytes": 117363,
+   "tbtMs": 0,
+   "siMs": 1715,
+   "ttiMs": 3458,
+   "bytesTotales": 387871,
+   "jsSinUsarBytes": 117364,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29029,21 +28193,19 @@
   {
    "pantalla": "panel-modulos",
    "viewport": "movil",
-   "rendimiento": 83,
+   "rendimiento": 87,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1516,
-   "lcpMs": 3997,
-   "cls": 0.124,
-   "tbtMs": 25,
-   "siMs": 1516,
-   "ttiMs": 3997,
-   "bytesTotales": 398796,
-   "jsSinUsarBytes": 93316,
+   "fcpMs": 1509,
+   "lcpMs": 3957,
+   "cls": 0,
+   "tbtMs": 0,
+   "siMs": 1509,
+   "ttiMs": 3957,
+   "bytesTotales": 398821,
+   "jsSinUsarBytes": 93320,
    "lcpElemento": null,
-   "clsElementos": [
-    "<div class=\"flex min-w-0 flex-1 flex-col gap-6\">"
-   ]
+   "clsElementos": []
   },
   {
    "pantalla": "panel-expediente",
@@ -29051,14 +28213,14 @@
    "rendimiento": 85,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1518,
-   "lcpMs": 3664,
+   "fcpMs": 1506,
+   "lcpMs": 3641,
    "cls": 0.128,
    "tbtMs": 0,
-   "siMs": 1518,
-   "ttiMs": 3664,
-   "bytesTotales": 373378,
-   "jsSinUsarBytes": 117363,
+   "siMs": 1599,
+   "ttiMs": 3641,
+   "bytesTotales": 373384,
+   "jsSinUsarBytes": 117273,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29067,17 +28229,17 @@
   {
    "pantalla": "panel-simulador",
    "viewport": "movil",
-   "rendimiento": 76,
+   "rendimiento": 77,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1525,
-   "lcpMs": 3825,
+   "fcpMs": 1504,
+   "lcpMs": 3789,
    "cls": 0.236,
    "tbtMs": 0,
-   "siMs": 1525,
-   "ttiMs": 3825,
-   "bytesTotales": 386674,
-   "jsSinUsarBytes": 112365,
+   "siMs": 1680,
+   "ttiMs": 3789,
+   "bytesTotales": 386675,
+   "jsSinUsarBytes": 111997,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
@@ -29087,37 +28249,38 @@
   {
    "pantalla": "panel-autonomos",
    "viewport": "movil",
-   "rendimiento": 82,
+   "rendimiento": 78,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1525,
-   "lcpMs": 3681,
-   "cls": 0.164,
+   "fcpMs": 1503,
+   "lcpMs": 3643,
+   "cls": 0.231,
    "tbtMs": 0,
-   "siMs": 1525,
-   "ttiMs": 3681,
-   "bytesTotales": 388462,
-   "jsSinUsarBytes": 111577,
+   "siMs": 1625,
+   "ttiMs": 3643,
+   "bytesTotales": 388461,
+   "jsSinUsarBytes": 111948,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
+    "<div role=\"tabpanel\" id=\"autonomos-tabpanel\" aria-labelledby=\"autonomos-tab-actividad\" class=\"grid i",
     "<div class=\"flex min-w-0 flex-col gap-6\">"
    ]
   },
   {
    "pantalla": "panel-optimizador",
    "viewport": "movil",
-   "rendimiento": 78,
+   "rendimiento": 83,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1540,
-   "lcpMs": 4188,
+   "fcpMs": 1506,
+   "lcpMs": 3943,
    "cls": 0.128,
-   "tbtMs": 185,
-   "siMs": 2307,
-   "ttiMs": 4188,
-   "bytesTotales": 398741,
-   "jsSinUsarBytes": 112105,
+   "tbtMs": 0,
+   "siMs": 1506,
+   "ttiMs": 3943,
+   "bytesTotales": 398739,
+   "jsSinUsarBytes": 112356,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29126,91 +28289,85 @@
   {
    "pantalla": "panel-planificar",
    "viewport": "movil",
-   "rendimiento": 78,
+   "rendimiento": 89,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1590,
-   "lcpMs": 4024,
-   "cls": 0.128,
-   "tbtMs": 224,
-   "siMs": 2506,
-   "ttiMs": 4024,
+   "fcpMs": 1507,
+   "lcpMs": 3650,
+   "cls": 0,
+   "tbtMs": 0,
+   "siMs": 1612,
+   "ttiMs": 3650,
    "bytesTotales": 383298,
-   "jsSinUsarBytes": 111535,
+   "jsSinUsarBytes": 111258,
    "lcpElemento": null,
-   "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
-   ]
+   "clsElementos": []
   },
   {
    "pantalla": "panel-tareas",
    "viewport": "movil",
-   "rendimiento": 90,
+   "rendimiento": 84,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1533,
-   "lcpMs": 3568,
+   "fcpMs": 1511,
+   "lcpMs": 3875,
    "cls": 0,
-   "tbtMs": 24,
-   "siMs": 1533,
-   "ttiMs": 3568,
-   "bytesTotales": 377513,
-   "jsSinUsarBytes": 117069,
+   "tbtMs": 210,
+   "siMs": 1715,
+   "ttiMs": 3875,
+   "bytesTotales": 377581,
+   "jsSinUsarBytes": 117348,
    "lcpElemento": null,
    "clsElementos": []
   },
   {
    "pantalla": "panel-preferencias",
    "viewport": "movil",
-   "rendimiento": 77,
+   "rendimiento": 90,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1555,
-   "lcpMs": 1555,
-   "cls": 0.128,
-   "tbtMs": 701,
-   "siMs": 2586,
-   "ttiMs": 4106,
-   "bytesTotales": 372588,
-   "jsSinUsarBytes": 117086,
+   "fcpMs": 1507,
+   "lcpMs": 3612,
+   "cls": 0,
+   "tbtMs": 0,
+   "siMs": 1768,
+   "ttiMs": 3612,
+   "bytesTotales": 372594,
+   "jsSinUsarBytes": 117457,
    "lcpElemento": null,
-   "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
-   ]
+   "clsElementos": []
   },
   {
    "pantalla": "panel-recuerdos",
    "viewport": "movil",
-   "rendimiento": 86,
+   "rendimiento": 87,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1527,
-   "lcpMs": 3487,
-   "cls": 0.128,
-   "tbtMs": 0,
-   "siMs": 1527,
-   "ttiMs": 3487,
-   "bytesTotales": 387087,
-   "jsSinUsarBytes": 116348,
+   "fcpMs": 1510,
+   "lcpMs": 3811,
+   "cls": 0,
+   "tbtMs": 144,
+   "siMs": 1999,
+   "ttiMs": 3811,
+   "bytesTotales": 387085,
+   "jsSinUsarBytes": 116259,
    "lcpElemento": null,
-   "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
-   ]
+   "clsElementos": []
   },
   {
    "pantalla": "panel-movil",
    "viewport": "movil",
-   "rendimiento": 40,
+   "rendimiento": 80,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1813,
-   "lcpMs": 4880,
-   "cls": 0.19,
-   "tbtMs": 2355,
-   "siMs": 4997,
-   "ttiMs": 6453,
+   "fcpMs": 1536,
+   "lcpMs": 3718,
+   "cls": 0.128,
+   "tbtMs": 240,
+   "siMs": 1931,
+   "ttiMs": 3755,
    "bytesTotales": 371852,
-   "jsSinUsarBytes": 114128,
+   "jsSinUsarBytes": 114430,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29222,14 +28379,14 @@
    "rendimiento": 86,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1532,
-   "lcpMs": 3536,
+   "fcpMs": 1508,
+   "lcpMs": 3496,
    "cls": 0.128,
    "tbtMs": 0,
-   "siMs": 1532,
-   "ttiMs": 3536,
-   "bytesTotales": 370193,
-   "jsSinUsarBytes": 117524,
+   "siMs": 1540,
+   "ttiMs": 3496,
+   "bytesTotales": 370198,
+   "jsSinUsarBytes": 117434,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29238,56 +28395,56 @@
   {
    "pantalla": "panel-investigar",
    "viewport": "movil",
+   "rendimiento": 90,
+   "accesibilidad": 100,
+   "buenasPracticas": 100,
+   "fcpMs": 1506,
+   "lcpMs": 3610,
+   "cls": 0,
+   "tbtMs": 0,
+   "siMs": 1506,
+   "ttiMs": 3610,
+   "bytesTotales": 379988,
+   "jsSinUsarBytes": 113470,
+   "lcpElemento": null,
+   "clsElementos": []
+  },
+  {
+   "pantalla": "panel-navegador",
+   "viewport": "movil",
    "rendimiento": 86,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1507,
-   "lcpMs": 3493,
+   "fcpMs": 1504,
+   "lcpMs": 3488,
    "cls": 0.128,
    "tbtMs": 0,
-   "siMs": 1507,
-   "ttiMs": 3493,
-   "bytesTotales": 379982,
-   "jsSinUsarBytes": 113748,
+   "siMs": 1504,
+   "ttiMs": 3488,
+   "bytesTotales": 374322,
+   "jsSinUsarBytes": 117436,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
    ]
   },
   {
-   "pantalla": "panel-navegador",
-   "viewport": "movil",
-   "rendimiento": 89,
-   "accesibilidad": 100,
-   "buenasPracticas": 100,
-   "fcpMs": 1508,
-   "lcpMs": 3665,
-   "cls": 0,
-   "tbtMs": 0,
-   "siMs": 1508,
-   "ttiMs": 3665,
-   "bytesTotales": 374319,
-   "jsSinUsarBytes": 117436,
-   "lcpElemento": null,
-   "clsElementos": []
-  },
-  {
    "pantalla": "panel-revision",
    "viewport": "movil",
-   "rendimiento": 84,
+   "rendimiento": 88,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 1519,
-   "lcpMs": 3817,
-   "cls": 0.128,
+   "fcpMs": 1507,
+   "lcpMs": 3800,
+   "cls": 0.005,
    "tbtMs": 0,
-   "siMs": 1519,
-   "ttiMs": 3817,
-   "bytesTotales": 384896,
+   "siMs": 1522,
+   "ttiMs": 3800,
+   "bytesTotales": 384901,
    "jsSinUsarBytes": 117205,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
+    "<p class=\"m-0 text-xs text-fg-muted\">"
    ]
   },
   {
@@ -29296,34 +28453,33 @@
    "rendimiento": 100,
    "accesibilidad": 100,
    "buenasPracticas": 96,
-   "fcpMs": 373,
-   "lcpMs": 737,
+   "fcpMs": 365,
+   "lcpMs": 767,
    "cls": 0,
    "tbtMs": 0,
-   "siMs": 373,
-   "ttiMs": 737,
-   "bytesTotales": 365066,
-   "jsSinUsarBytes": 139970,
+   "siMs": 365,
+   "ttiMs": 767,
+   "bytesTotales": 365072,
+   "jsSinUsarBytes": 137570,
    "lcpElemento": null,
    "clsElementos": []
   },
   {
    "pantalla": "inicio",
    "viewport": "escritorio",
-   "rendimiento": 99,
+   "rendimiento": 100,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 372,
-   "lcpMs": 748,
-   "cls": 0.043,
+   "fcpMs": 371,
+   "lcpMs": 746,
+   "cls": 0,
    "tbtMs": 0,
-   "siMs": 372,
-   "ttiMs": 748,
-   "bytesTotales": 367407,
-   "jsSinUsarBytes": 124747,
+   "siMs": 416,
+   "ttiMs": 746,
+   "bytesTotales": 367413,
+   "jsSinUsarBytes": 124739,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
     "<li>"
    ]
   },
@@ -29333,14 +28489,14 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 369,
-   "lcpMs": 859,
+   "fcpMs": 370,
+   "lcpMs": 860,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 468,
-   "ttiMs": 859,
-   "bytesTotales": 387870,
-   "jsSinUsarBytes": 116993,
+   "siMs": 413,
+   "ttiMs": 860,
+   "bytesTotales": 387871,
+   "jsSinUsarBytes": 116995,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29352,14 +28508,14 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 370,
-   "lcpMs": 857,
+   "fcpMs": 367,
+   "lcpMs": 869,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 370,
-   "ttiMs": 857,
-   "bytesTotales": 398970,
-   "jsSinUsarBytes": 92854,
+   "siMs": 439,
+   "ttiMs": 869,
+   "bytesTotales": 398821,
+   "jsSinUsarBytes": 92836,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
@@ -29371,36 +28527,36 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 381,
-   "lcpMs": 835,
+   "fcpMs": 367,
+   "lcpMs": 772,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 415,
-   "ttiMs": 835,
-   "bytesTotales": 373378,
-   "jsSinUsarBytes": 117272,
+   "siMs": 444,
+   "ttiMs": 772,
+   "bytesTotales": 373384,
+   "jsSinUsarBytes": 117273,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
-    "<li>"
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
    ]
   },
   {
    "pantalla": "panel-simulador",
    "viewport": "escritorio",
-   "rendimiento": 99,
+   "rendimiento": 100,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 378,
-   "lcpMs": 841,
-   "cls": 0,
+   "fcpMs": 370,
+   "lcpMs": 734,
+   "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 470,
-   "ttiMs": 841,
-   "bytesTotales": 386674,
-   "jsSinUsarBytes": 112365,
+   "siMs": 398,
+   "ttiMs": 734,
+   "bytesTotales": 386675,
+   "jsSinUsarBytes": 111997,
    "lcpElemento": null,
    "clsElementos": [
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
     "<li>"
    ]
   },
@@ -29410,17 +28566,18 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 386,
-   "lcpMs": 895,
-   "cls": 0.044,
+   "fcpMs": 367,
+   "lcpMs": 823,
+   "cls": 0.045,
    "tbtMs": 0,
-   "siMs": 446,
-   "ttiMs": 895,
-   "bytesTotales": 388462,
-   "jsSinUsarBytes": 111855,
+   "siMs": 367,
+   "ttiMs": 823,
+   "bytesTotales": 388461,
+   "jsSinUsarBytes": 111857,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
+    "<p class=\"m-0 text-xs text-fg-muted\">",
     "<p class=\"m-0 text-xs text-fg-muted\">"
    ]
   },
@@ -29430,14 +28587,14 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 373,
-   "lcpMs": 874,
+   "fcpMs": 368,
+   "lcpMs": 862,
    "cls": 0,
    "tbtMs": 0,
-   "siMs": 493,
-   "ttiMs": 874,
-   "bytesTotales": 398741,
-   "jsSinUsarBytes": 112105,
+   "siMs": 437,
+   "ttiMs": 862,
+   "bytesTotales": 398739,
+   "jsSinUsarBytes": 112591,
    "lcpElemento": null,
    "clsElementos": [
     "<li>"
@@ -29449,36 +28606,36 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 378,
-   "lcpMs": 808,
+   "fcpMs": 371,
+   "lcpMs": 830,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 469,
-   "ttiMs": 808,
+   "siMs": 387,
+   "ttiMs": 830,
    "bytesTotales": 383298,
-   "jsSinUsarBytes": 111535,
+   "jsSinUsarBytes": 111536,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
-    "<li>"
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
    ]
   },
   {
    "pantalla": "panel-tareas",
    "viewport": "escritorio",
-   "rendimiento": 100,
+   "rendimiento": 96,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 370,
-   "lcpMs": 817,
-   "cls": 0,
-   "tbtMs": 0,
-   "siMs": 377,
-   "ttiMs": 817,
-   "bytesTotales": 377513,
-   "jsSinUsarBytes": 117069,
+   "fcpMs": 575,
+   "lcpMs": 1279,
+   "cls": 0.043,
+   "tbtMs": 3,
+   "siMs": 1021,
+   "ttiMs": 1279,
+   "bytesTotales": 377581,
+   "jsSinUsarBytes": 117740,
    "lcpElemento": null,
    "clsElementos": [
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
     "<li>"
    ]
   },
@@ -29488,14 +28645,14 @@
    "rendimiento": 100,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 369,
-   "lcpMs": 816,
+   "fcpMs": 368,
+   "lcpMs": 814,
    "cls": 0,
    "tbtMs": 0,
-   "siMs": 497,
-   "ttiMs": 816,
-   "bytesTotales": 372588,
-   "jsSinUsarBytes": 117455,
+   "siMs": 503,
+   "ttiMs": 814,
+   "bytesTotales": 372594,
+   "jsSinUsarBytes": 117386,
    "lcpElemento": null,
    "clsElementos": [
     "<li>"
@@ -29507,17 +28664,16 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 372,
-   "lcpMs": 836,
-   "cls": 0.003,
+   "fcpMs": 370,
+   "lcpMs": 859,
+   "cls": 0,
    "tbtMs": 0,
-   "siMs": 421,
-   "ttiMs": 836,
-   "bytesTotales": 387087,
-   "jsSinUsarBytes": 115979,
+   "siMs": 503,
+   "ttiMs": 859,
+   "bytesTotales": 387085,
+   "jsSinUsarBytes": 116350,
    "lcpElemento": null,
    "clsElementos": [
-    "<p class=\"m-0 text-xs text-fg-muted\">",
     "<li>"
    ]
   },
@@ -29529,15 +28685,14 @@
    "buenasPracticas": 100,
    "fcpMs": 366,
    "lcpMs": 824,
-   "cls": 0.043,
+   "cls": 0,
    "tbtMs": 0,
-   "siMs": 478,
+   "siMs": 473,
    "ttiMs": 824,
    "bytesTotales": 371852,
-   "jsSinUsarBytes": 114252,
+   "jsSinUsarBytes": 113974,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
     "<li>"
    ]
   },
@@ -29547,14 +28702,14 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 365,
+   "fcpMs": 366,
    "lcpMs": 778,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 365,
+   "siMs": 366,
    "ttiMs": 778,
-   "bytesTotales": 370193,
-   "jsSinUsarBytes": 117433,
+   "bytesTotales": 370198,
+   "jsSinUsarBytes": 117434,
    "lcpElemento": null,
    "clsElementos": [
     "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
@@ -29567,17 +28722,18 @@
    "rendimiento": 100,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 368,
-   "lcpMs": 731,
+   "fcpMs": 370,
+   "lcpMs": 734,
    "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 368,
-   "ttiMs": 731,
-   "bytesTotales": 379982,
-   "jsSinUsarBytes": 113470,
+   "siMs": 453,
+   "ttiMs": 734,
+   "bytesTotales": 379988,
+   "jsSinUsarBytes": 113839,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing",
+    "<li>"
    ]
   },
   {
@@ -29586,17 +28742,18 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 376,
-   "lcpMs": 842,
-   "cls": 0.043,
+   "fcpMs": 380,
+   "lcpMs": 846,
+   "cls": 0.001,
    "tbtMs": 0,
-   "siMs": 376,
-   "ttiMs": 842,
-   "bytesTotales": 374319,
+   "siMs": 455,
+   "ttiMs": 846,
+   "bytesTotales": 374322,
    "jsSinUsarBytes": 117436,
    "lcpElemento": null,
    "clsElementos": [
-    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
+    "<p class=\"m-0 flex gap-2 text-xs text-fg-muted\">",
+    "<li>"
    ]
   },
   {
@@ -29605,17 +28762,17 @@
    "rendimiento": 99,
    "accesibilidad": 100,
    "buenasPracticas": 100,
-   "fcpMs": 372,
-   "lcpMs": 834,
-   "cls": 0,
+   "fcpMs": 367,
+   "lcpMs": 824,
+   "cls": 0.043,
    "tbtMs": 0,
-   "siMs": 480,
-   "ttiMs": 834,
-   "bytesTotales": 384896,
-   "jsSinUsarBytes": 117205,
+   "siMs": 367,
+   "ttiMs": 824,
+   "bytesTotales": 384901,
+   "jsSinUsarBytes": 117296,
    "lcpElemento": null,
    "clsElementos": [
-    "<p class=\"m-0 text-xs text-fg-muted\">"
+    "<div class=\"prc-PageLayout-PageLayoutRoot--KH-d flex-1\" data-component=\"PageLayout\" style=\"--spacing"
    ]
   }
  ],
@@ -29624,76 +28781,11 @@
   "axe": {
    "porImpacto": {
     "critical": 0,
-    "serious": 34,
-    "moderate": 58,
+    "serious": 0,
+    "moderate": 4,
     "minor": 0
    },
    "reglas": [
-    {
-     "id": "landmark-unique",
-     "impacto": "moderate",
-     "ayuda": "Landmarks should have a unique role or role/label/title (i.e. accessible name) combination",
-     "nodos": 40,
-     "pantallas": [
-      "conversacion",
-      "menu-mas",
-      "panel-avisos",
-      "panel-modulos",
-      "panel-simulador",
-      "panel-autonomos",
-      "panel-optimizador",
-      "panel-planificar",
-      "panel-tareas",
-      "panel-consejo",
-      "panel-investigar",
-      "panel-expediente",
-      "panel-preferencias",
-      "panel-recuerdos",
-      "panel-movil",
-      "panel-navegador",
-      "panel-revision",
-      "expediente-editando",
-      "expediente-guardado",
-      "avisos-tras-leer"
-     ],
-     "ejemplo": {
-      "objetivo": ".prc-PageLayout-Pane-AyzHK",
-      "resumen": "Fix any of the following:\n  The landmark must have a unique aria-label, aria-labelledby, or title to make landmarks distinguishable"
-     }
-    },
-    {
-     "id": "label-content-name-mismatch",
-     "impacto": "serious",
-     "ayuda": "Elements must have their visible text as part of their accessible name",
-     "nodos": 34,
-     "pantallas": [
-      "menu-mas",
-      "panel-modulos"
-     ],
-     "ejemplo": {
-      "objetivo": "#_r_1k_",
-      "resumen": "Fix any of the following:\n  Text inside the element is not included in the accessible name"
-     }
-    },
-    {
-     "id": "heading-order",
-     "impacto": "moderate",
-     "ayuda": "Heading levels should only increase by one",
-     "nodos": 14,
-     "pantallas": [
-      "conversacion",
-      "menu-mas",
-      "panel-avisos",
-      "panel-preferencias",
-      "panel-recuerdos",
-      "panel-movil",
-      "avisos-tras-leer"
-     ],
-     "ejemplo": {
-      "objetivo": "._propio_1ykq8_65 > ._cabecera_1ykq8_52 > h3",
-      "resumen": "Fix any of the following:\n  Heading order invalid"
-     }
-    },
     {
      "id": "region",
      "impacto": "moderate",
@@ -29716,11 +28808,11 @@
     "valores": [
      [
       "12.3px",
-      4158
+      4194
      ],
      [
       "10.5px",
-      2270
+      2244
      ],
      [
       "14px",
@@ -29753,11 +28845,11 @@
     "valores": [
      [
       "400",
-      3654
+      3656
      ],
      [
       "600",
-      2296
+      2304
      ],
      [
       "500",
@@ -29774,7 +28866,7 @@
     "valores": [
      [
       "18.4px",
-      3216
+      3248
      ],
      [
       "17.5px",
@@ -29802,11 +28894,7 @@
      ],
      [
       "20px",
-      98
-     ],
-     [
-      "16px",
-      96
+      102
      ],
      [
       "15px",
@@ -29818,6 +28906,10 @@
      ],
      [
       "28.4px",
+      70
+     ],
+     [
+      "16px",
       70
      ],
      [
@@ -29851,7 +28943,7 @@
     "valores": [
      [
       "Mona Sans VF",
-      6680
+      6690
      ],
      [
       "ui-monospace",
@@ -29864,7 +28956,7 @@
     "valores": [
      [
       "7px",
-      11448
+      11440
      ],
      [
       "14px",
@@ -29872,7 +28964,7 @@
      ],
      [
       "3.5px",
-      3358
+      3310
      ],
      [
       "5.3px",
@@ -29887,16 +28979,16 @@
       806
      ],
      [
+      "-1px",
+      552
+     ],
+     [
       "21px",
       546
      ],
      [
       "-0.9px",
       528
-     ],
-     [
-      "-1px",
-      424
      ],
      [
       "8px",
@@ -29924,7 +29016,7 @@
      ],
      [
       "59px",
-      74
+      70
      ],
      [
       "17.5px",
@@ -30131,7 +29223,7 @@
     ]
    },
    "alturaBoton": {
-    "distintos": 13,
+    "distintos": 12,
     "valores": [
      [
       "28px",
@@ -30154,16 +29246,12 @@
       56
      ],
      [
-      "50px",
-      26
+      "31px",
+      34
      ],
      [
       "24px",
       16
-     ],
-     [
-      "31px",
-      8
      ],
      [
       "58px",
@@ -30217,7 +29305,7 @@
     "valores": [
      [
       "24-43px",
-      2442
+      2468
      ],
      [
       "<24px",
@@ -30225,7 +29313,7 @@
      ],
      [
       "≥44px",
-      118
+      92
      ]
     ]
    },
@@ -30234,19 +29322,19 @@
     "valores": [
      [
       "#e9edf2",
-      2017
+      2037
      ],
      [
       "#1b2330",
-      1851
+      1867
      ],
      [
       "#5e6774",
-      939
+      924
      ],
      [
       "#96a0ae",
-      939
+      924
      ],
      [
       "#14635e",
@@ -30262,7 +29350,7 @@
      ],
      [
       "#25292e",
-      166
+      170
      ],
      [
       "#186a46",
@@ -30520,11 +29608,11 @@
      "valores": [
       [
        "12.3px",
-       2079
+       2097
       ],
       [
        "10.5px",
-       1135
+       1122
       ],
       [
        "14px",
@@ -30557,11 +29645,11 @@
      "valores": [
       [
        "400",
-       1827
+       1828
       ],
       [
        "600",
-       1148
+       1152
       ],
       [
        "500",
@@ -30578,7 +29666,7 @@
      "valores": [
       [
        "18.4px",
-       1608
+       1624
       ],
       [
        "17.5px",
@@ -30606,11 +29694,7 @@
       ],
       [
        "20px",
-       49
-      ],
-      [
-       "16px",
-       48
+       51
       ],
       [
        "15px",
@@ -30622,6 +29706,10 @@
       ],
       [
        "28.4px",
+       35
+      ],
+      [
+       "16px",
        35
       ],
       [
@@ -30655,7 +29743,7 @@
      "valores": [
       [
        "Mona Sans VF",
-       3340
+       3345
       ],
       [
        "ui-monospace",
@@ -30668,7 +29756,7 @@
      "valores": [
       [
        "7px",
-       5724
+       5720
       ],
       [
        "14px",
@@ -30676,7 +29764,7 @@
       ],
       [
        "3.5px",
-       1679
+       1655
       ],
       [
        "5.3px",
@@ -30691,16 +29779,16 @@
        403
       ],
       [
+       "-1px",
+       276
+      ],
+      [
        "21px",
        273
       ],
       [
        "-0.9px",
        264
-      ],
-      [
-       "-1px",
-       212
       ],
       [
        "8px",
@@ -30728,7 +29816,7 @@
       ],
       [
        "59px",
-       36
+       34
       ],
       [
        "17.5px",
@@ -30907,7 +29995,7 @@
      ]
     },
     "alturaBoton": {
-     "distintos": 13,
+     "distintos": 12,
      "valores": [
       [
        "28px",
@@ -30930,16 +30018,12 @@
        28
       ],
       [
-       "50px",
-       13
+       "31px",
+       17
       ],
       [
        "24px",
        8
-      ],
-      [
-       "31px",
-       4
       ],
       [
        "58px",
@@ -30993,7 +30077,7 @@
      "valores": [
       [
        "24-43px",
-       1221
+       1234
       ],
       [
        "<24px",
@@ -31001,7 +30085,7 @@
       ],
       [
        "≥44px",
-       59
+       46
       ]
      ]
     },
@@ -31010,11 +30094,11 @@
      "valores": [
       [
        "#1b2330",
-       1851
+       1867
       ],
       [
        "#5e6774",
-       939
+       924
       ],
       [
        "#14635e",
@@ -31022,7 +30106,7 @@
       ],
       [
        "#25292e",
-       166
+       170
       ],
       [
        "#ffffff",
@@ -31171,11 +30255,11 @@
      "valores": [
       [
        "12.3px",
-       2079
+       2097
       ],
       [
        "10.5px",
-       1135
+       1122
       ],
       [
        "14px",
@@ -31208,11 +30292,11 @@
      "valores": [
       [
        "400",
-       1827
+       1828
       ],
       [
        "600",
-       1148
+       1152
       ],
       [
        "500",
@@ -31229,7 +30313,7 @@
      "valores": [
       [
        "18.4px",
-       1608
+       1624
       ],
       [
        "17.5px",
@@ -31257,11 +30341,7 @@
       ],
       [
        "20px",
-       49
-      ],
-      [
-       "16px",
-       48
+       51
       ],
       [
        "15px",
@@ -31273,6 +30353,10 @@
       ],
       [
        "28.4px",
+       35
+      ],
+      [
+       "16px",
        35
       ],
       [
@@ -31306,7 +30390,7 @@
      "valores": [
       [
        "Mona Sans VF",
-       3340
+       3345
       ],
       [
        "ui-monospace",
@@ -31319,7 +30403,7 @@
      "valores": [
       [
        "7px",
-       5724
+       5720
       ],
       [
        "14px",
@@ -31327,7 +30411,7 @@
       ],
       [
        "3.5px",
-       1679
+       1655
       ],
       [
        "5.3px",
@@ -31342,16 +30426,16 @@
        403
       ],
       [
+       "-1px",
+       276
+      ],
+      [
        "21px",
        273
       ],
       [
        "-0.9px",
        264
-      ],
-      [
-       "-1px",
-       212
       ],
       [
        "8px",
@@ -31379,7 +30463,7 @@
       ],
       [
        "59px",
-       38
+       36
       ],
       [
        "17.5px",
@@ -31554,7 +30638,7 @@
      ]
     },
     "alturaBoton": {
-     "distintos": 13,
+     "distintos": 12,
      "valores": [
       [
        "28px",
@@ -31577,16 +30661,12 @@
        28
       ],
       [
-       "50px",
-       13
+       "31px",
+       17
       ],
       [
        "24px",
        8
-      ],
-      [
-       "31px",
-       4
       ],
       [
        "58px",
@@ -31640,7 +30720,7 @@
      "valores": [
       [
        "24-43px",
-       1221
+       1234
       ],
       [
        "<24px",
@@ -31648,7 +30728,7 @@
       ],
       [
        "≥44px",
-       59
+       46
       ]
      ]
     },
@@ -31657,11 +30737,11 @@
      "valores": [
       [
        "#e9edf2",
-       2017
+       2037
       ],
       [
        "#96a0ae",
-       939
+       924
       ],
       [
        "#86d6cc",
@@ -31869,10 +30949,10 @@
     {
      "motivo": "Nombre de control muy largo",
      "texto": "¿Tengo que hacer la declaración de la renta si gano 34.00… , hace 1 min",
-     "donde": "panel-recuerdos, panel-movil, panel-navegador"
+     "donde": "avisos-tras-leer, panel-navegador, panel-revision"
     }
    ]
   }
  },
- "duracionS": 780
+ "duracionS": 587
 }
