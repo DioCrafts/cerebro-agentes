@@ -9,6 +9,12 @@ import pytest
 # Switched off through the environment, before ``settings`` is first imported, so that it also holds
 # for module- and session-scoped fixtures and survives the tests that reload ``settings``.
 os.environ["FORMAT_WATCH"] = "false"
+# The API's edge defaults (asistente/plataforma/api/security.py) are for real deployments: the TestClient's
+# host is "testserver", one process sends thousands of requests and most tests run without authentication.
+# Tests of those defaults set or remove these variables themselves.
+os.environ.setdefault("API_ALLOWED_HOSTS", "localhost,127.0.0.1,testserver")
+os.environ.setdefault("API_RATE_LIMIT_PER_MIN", "0")
+os.environ.setdefault("PERMITIR_SIN_AUTENTICACION", "1")
 os.environ["FORMAT_STATE_PATH"] = os.path.join(tempfile.gettempdir(), "hacienda-tests-formatos", "_estado.json")
 os.environ["FORMAT_DIR"] = os.path.join(tempfile.gettempdir(), "hacienda-tests-formatos", "formatos")
 # Same for the baseline of the household modules' BOE sources (params-check).

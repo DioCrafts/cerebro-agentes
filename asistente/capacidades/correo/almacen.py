@@ -263,13 +263,16 @@ def guardar_estado_oauth(
 
 
 def consumir_estado_oauth(estado: str, db_path: str | None = None) -> dict[str, Any] | None:
-    """The request in flight for ``estado`` (deleted: single use), or None when unknown or expired."""
+    """The request in flight for ``estado`` (deleted: single use), or None when unknown or expired.
+
+    One atomic ``DELETE … RETURNING``: two callbacks racing with the same ``state`` cannot both get it."""
     with conectar(db_path) as conn:
-        fila = conn.execute("SELECT * FROM correo_oauth_estados WHERE estado_hash = ?", (_hash(estado),)).fetchone()
-        if fila is None:
-            return None
-        conn.execute("DELETE FROM correo_oauth_estados WHERE estado_hash = ?", (_hash(estado),))
-    datos = dict(fila)
+        filas = conn.execute(
+            "DELETE FROM correo_oauth_estados WHERE estado_hash = ? RETURNING *", (_hash(estado),)
+        ).fetchall()  # read to the end: the statement is finished before the commit
+    if not filas:
+        return None
+    datos = dict(filas[0])
     if datetime.fromisoformat(datos["creado"]) < datetime.now(UTC) - VIDA_ESTADO_OAUTH:
         return None
     return datos

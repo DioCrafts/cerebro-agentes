@@ -18,6 +18,7 @@ from asistente.conocimiento import formatos
 from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler  # re-export
 from asistente.conocimiento.crawler.boletin_autonomico import RegionalBoletinCrawler  # re-export
 from asistente.conocimiento.crawler.cendoj import CENDOJCrawler  # re-export
+from asistente.conocimiento.crawler.middlewares import peticion_fallida
 from asistente.conocimiento.crawler.teac import TEACCrawler  # re-export
 
 __all__ = [
@@ -76,8 +77,24 @@ def extraer_enlaces(reglas: ReglasSedeAeat, html: str, url: str | None = None) -
     return [link.url for link in extractor.extract_links(response)]
 
 
+def ruta_dentro(carpeta: str, relativa: str) -> str:
+    """``relativa`` under ``carpeta``; ValueError when it would land outside (``..``, absolute, links)."""
+    base = os.path.realpath(carpeta)
+    destino = os.path.realpath(os.path.join(base, relativa))
+    if destino == base or os.path.commonpath([base, destino]) != base:
+        raise ValueError(f"ruta fuera de la carpeta del rastreo: {relativa!r}")
+    return destino
+
+
 class AgenciaTributariaWebCrawler(scrapy.Spider):
     name = "AgenciaTributariaWebCrawler"
+    # The sede's pages are built by scripts: this crawler (and only this one) downloads through Chromium.
+    custom_settings = {
+        "DOWNLOAD_HANDLERS": {
+            "http": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+            "https": "scrapy_playwright.handler.ScrapyPlaywrightDownloadHandler",
+        },
+    }
     urls = [
         "https://sede.agenciatributaria.gob.es/",
         "https://sede.agenciatributaria.gob.es/Sede/irpf.html",
@@ -137,6 +154,7 @@ class AgenciaTributariaWebCrawler(scrapy.Spider):
         yield from self._follow_domain_links(response)
 
     def _semilla_fallida(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
         request = getattr(failure, "request", None)
         status = failure.value.response.status if failure.check(HttpError) else None
         self._semillas_fallidas.append({"url": request.url if request else "?", "http": status})
@@ -170,14 +188,27 @@ class AgenciaTributariaWebCrawler(scrapy.Spider):
         os.makedirs(self.folder, exist_ok=True)
 
     def _save_response_to_file(self, response: Response) -> None:
-        with open(self._generate_file_path(response), "wb") as file_pointer:
+        try:
+            ruta = self._generate_file_path(response)
+        except ValueError as exc:
+            self.logger.warning("Not saved: %s", exc)
+            return
+        with open(ruta, "wb") as file_pointer:
             file_pointer.write(response.body)
 
     def _follow_domain_links(self, response: Response) -> Generator[scrapy.Request]:
         link_extractor = LinkExtractor(allow=self.allowed_patterns, allow_domains=list(self.reglas.dominios))
         # Scrapy types callbacks with the base Response; pages here are HTML (TextResponse).
         for link in link_extractor.extract_links(response):  # type: ignore[arg-type]
-            yield scrapy.Request(url=link.url, meta=self._get_meta_for_request(link.url), callback=self.parse)
+            yield scrapy.Request(
+                url=link.url,
+                meta=self._get_meta_for_request(link.url),
+                callback=self.parse,
+                errback=self._fallida,
+            )
+
+    def _fallida(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
 
     def _generate_screenshot_path(self, url: str) -> str:
         return os.path.join(self.folder, f"{hashlib.md5(url.encode()).hexdigest()}.png")
@@ -191,7 +222,9 @@ class AgenciaTributariaWebCrawler(scrapy.Spider):
 
     def _generate_structure_file_path(self, response: Response) -> str:
         parsed_url = urlparse(response.url)
-        full_path = os.path.join(self.folder, sanitize_filepath(parsed_url.path[1:]))
+        relativa = sanitize_filepath(parsed_url.path.lstrip("/")) or "index.html"
+        # A path with ``..`` (or a link planted in the folder) must not write outside the snapshot folder.
+        full_path = ruta_dentro(self.folder, relativa)
         os.makedirs(os.path.dirname(full_path), exist_ok=True)
         return full_path
 
@@ -213,22 +246,23 @@ class AgenciaTributariaPDFCrawler(scrapy.Spider):
 
     def parse(self, response: Response) -> Generator[scrapy.Request]:
         self.seen_urls.add(response.url)
-        extractor = LinkExtractor(allow_domains=[self._extract_domain_from_start_url()], unique=True)
+        # ``deny_extensions=[]``: the LinkExtractor's default list drops ``.pdf`` links, which are what we want.
+        extractor = LinkExtractor(
+            allow_domains=[self._extract_domain_from_start_url()], unique=True, deny_extensions=[]
+        )
         # Scrapy types callbacks with the base Response; pages here are HTML (TextResponse).
         for link in extractor.extract_links(response):  # type: ignore[arg-type]
             if link.url in self.seen_urls:
                 continue
             self.seen_urls.add(link.url)
             callback = self.parse_pdf if self._is_pdf_url(link.url) else self.parse
-            yield scrapy.Request(link.url, callback=callback)
+            yield scrapy.Request(link.url, callback=callback, errback=self._fallida)
+
+    def _fallida(self, failure: Any) -> None:
+        peticion_fallida(self, failure)
 
     def parse_pdf(self, response: Response) -> None:
-        # Persist the bytes Scrapy already fetched. We deliberately do NOT use
-        # Scrapy's FilesPipeline: every HTTPS request in this project is forced
-        # through scrapy-playwright (the stock TLS downloader is broken on the
-        # pinned stack), so a FilesPipeline-issued request would re-render the
-        # PDF in Chromium instead of returning raw bytes. Writing response.body
-        # here mirrors how AgenciaTributariaWebCrawler saves HTML.
+        # Persist the bytes Scrapy already fetched (its own downloader: raw PDF bytes, no browser).
         if not self._is_pdf_response(response):
             return
         self._recuento["respuestas_pdf"] += 1

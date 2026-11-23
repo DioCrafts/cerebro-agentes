@@ -29,10 +29,12 @@ Once the dispatcher gives up on the encargo (its time ran out) nothing more is w
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 import json
 import logging
 from typing import Any
 
+from asistente.capacidades.peticion import contiene_no_confiable
 from asistente.nucleo.agent.especialistas import READ_PROFILE_TOOL
 from asistente.nucleo.agent.especialistas import _render as renderizar_resultado
 from asistente.nucleo.agent.providers.base import ToolCall, ToolSpec
@@ -200,15 +202,25 @@ class _Caja:
             return _error(f"Herramienta no disponible: {call.name}.")
         if herramienta.efecto == "actua":
             return self._proponer_accion(herramienta, call.arguments)
+        # After third-party data, a draft may still be computed but its writes are only captured here: they
+        # become a pending action the user confirms (nothing an e-mail asks for reaches the case on its own).
+        retenidos: list[Mapping[str, Any]] = []
+        contexto = self._contexto_modulo()
+        if herramienta.efecto == "prepara" and self._turno.leyo_no_confiable and contexto.registrar is not None:
+            contexto = replace(contexto, registrar=retenidos.append)
         try:
-            resultado = herramienta.ejecutar(call.arguments, self._contexto_modulo())
+            resultado = herramienta.ejecutar(call.arguments, contexto)
         except Exception as exc:  # a module bug is reported to the model, never crashes the turn
             logger.exception("module tool %s failed", call.name)
             return _error(f"La herramienta {call.name} falló: {type(exc).__name__}: {exc}")
         if not isinstance(resultado, ResultadoHerramienta):
             return _error(f"La herramienta {call.name} no devolvió un resultado válido.")
+        if contiene_no_confiable(resultado.contenido):
+            self._turno.leyo_no_confiable = True
         if resultado.es_error:
             return _error(resultado.contenido or resultado.resumen or f"La herramienta {call.name} devolvió un error.")
+        if retenidos:
+            return self._proponer_accion(herramienta, call.arguments)
         return self._registrar(call.name, herramienta, resultado)
 
     # ------------------------------------------------------------------ tools

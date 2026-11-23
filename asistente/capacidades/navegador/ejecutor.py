@@ -302,8 +302,15 @@ class Ejecutor:
             contexto.route("**/*", self._ruta)
             try:
                 contexto.route_web_socket("**/*", self._ruta_ws)
-            except (AttributeError, PlaywrightError):  # older Playwright: websockets stay behind the page CSP
-                pass
+            except (AttributeError, PlaywrightError):
+                # Without the filter a page could open a websocket to any host and carry data out of the
+                # allowed origins: the task does not run (Playwright >= 1.48 is required).
+                resultado.estado = "fallido"
+                resultado.mensaje = (
+                    "No se ha podido activar el filtro de conexiones del navegador (websockets); "
+                    "la tarea no se ejecuta. Actualiza Playwright."
+                )
+                return
 
             def nueva_pagina(pagina: Any) -> None:
                 # The agent drives one tab; any other one opened while it works is closed at once.

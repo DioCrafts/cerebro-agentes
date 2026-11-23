@@ -23,7 +23,7 @@ What the core guarantees, whatever the module does:
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 import json
 import logging
 from typing import Any
@@ -102,6 +102,12 @@ def _render(resultado: ResultadoHerramienta) -> str:
     return texto
 
 
+def _contiene_no_confiable(texto: str | None) -> bool:
+    from asistente.capacidades.peticion import contiene_no_confiable
+
+    return contiene_no_confiable(texto)
+
+
 class ModuleToolbox:
     """The specialist's tool set: its module's tools plus ``leer_expediente``. Duck-types :class:`Toolbox`."""
 
@@ -123,15 +129,24 @@ class ModuleToolbox:
             return _error(f"Herramienta no disponible: {call.name}.")
         if herramienta.efecto == "actua":
             return self._coordinador.proponer_accion(self._modulo, herramienta, call.arguments)
+        # After third-party data a draft's writes are captured and wait for the user (see colaboracion/modulos.py).
+        retenidos: list[Mapping[str, Any]] = []
+        contexto = self._coordinador.contexto(self._modulo)
+        if herramienta.efecto == "prepara" and self._coordinador.leyo_no_confiable and contexto.registrar is not None:
+            contexto = replace(contexto, registrar=retenidos.append)
         try:
-            resultado = herramienta.ejecutar(call.arguments, self._coordinador.contexto(self._modulo))
+            resultado = herramienta.ejecutar(call.arguments, contexto)
         except Exception as exc:  # a module bug is reported to the model, never crashes the turn
             logger.exception("module tool %s failed", call.name)
             return _error(f"La herramienta {call.name} falló: {type(exc).__name__}: {exc}")
         if not isinstance(resultado, ResultadoHerramienta):
             return _error(f"La herramienta {call.name} no devolvió un resultado válido.")
+        if _contiene_no_confiable(resultado.contenido):
+            self._coordinador.leyo_no_confiable = True
         if resultado.es_error:
             return _error(resultado.contenido or resultado.resumen or f"La herramienta {call.name} devolvió un error.")
+        if retenidos:
+            return self._coordinador.proponer_accion(self._modulo, herramienta, call.arguments)
         texto = _render(resultado)
         if herramienta.efecto == "prepara":
             texto = "BORRADOR (no se ha enviado, firmado ni contratado nada):\n" + texto
@@ -168,6 +183,8 @@ class Coordinador:
     max_steps: int = field(default_factory=lambda: settings.ESPECIALISTA_MAX_STEPS)
     runs: list[SubagentRun] = field(default_factory=list)
     acciones: list[AccionPendiente] = field(default_factory=list)
+    # True once a specialist of this run read third-party data (see ModuleToolbox.execute).
+    leyo_no_confiable: bool = False
     _toolbox: Toolbox | None = None
 
     @classmethod
