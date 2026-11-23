@@ -20,7 +20,7 @@
 #   NUM_WORKERS   procesos de Docling                 (8)
 #   SALTAR        pasos a omitir, separados por comas (p. ej. "dgt,aeat")
 #
-# Uso:  scripts/actualizar_corpus.sh            (ver docs en el README, sección 1.c)
+# Uso:  scripts/actualizar_corpus.sh            (ver docs/referencia.md, sección 1.c)
 set -euo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
