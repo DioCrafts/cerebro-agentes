@@ -15,11 +15,19 @@ vi.mock("../api", async (original) => ({
 import * as api from "../api";
 import { CasePanel } from "./CasePanel";
 
+function tipoDe(value: Fact["value"]): Fact["value_type"] {
+  if (Array.isArray(value)) return "array";
+  if (typeof value === "string") return "string";
+  if (typeof value === "number") return "number";
+  if (typeof value === "boolean") return "boolean";
+  return "object";
+}
+
 const hecho = (name: string, value: Fact["value"]): Fact => ({
   fact_id: name,
   name,
   value,
-  value_type: typeof value,
+  value_type: tipoDe(value),
   source: "user",
   confidence: 1,
   updated_at: "2026-11-01",

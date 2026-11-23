@@ -12,6 +12,11 @@ const cita: Citation = {
   vigencia: "discutida",
   vigencia_resumen: "El TS matizó el criterio en 2024.",
   snippet: "Se consideran rendimientos íntegros del trabajo…",
+  authority: "Jefatura del Estado",
+  date: "2006-11-28",
+  reference: "BOE-A-2006-20764",
+  section: "Artículo 17",
+  source_type: "ley",
 };
 
 describe("SourceCardList", () => {

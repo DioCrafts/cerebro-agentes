@@ -36,6 +36,16 @@ const paso = (extra: Partial<Paso>): Paso => ({
   intentos: 0,
   error: null,
   terminado: null,
+  argumentos: {},
+  capacidad: null,
+  espera: null,
+  herramienta: null,
+  iniciado: null,
+  modulo: null,
+  operacion: null,
+  parametros: {},
+  pregunta: null,
+  siguiente_intento: null,
   ...extra,
 });
 
@@ -53,9 +63,18 @@ const detalle = (estado: ResumenTarea["estado"], pasos: Paso[]): TareaDetalle =>
     proxima_revision: null,
     pasos,
     motivo_cancelacion: null,
+    aceptada: "2026-11-01",
+    actualizada: "2026-11-02",
+    ambito_decision: null,
+    parametros: {},
+    plantilla_version: 1,
+    terminada: null,
+    user_id: null,
+    version: 1,
+    vinculos: { acciones: [], avisos: [], decisiones: [] },
   },
   resumen: resumen({ estado }),
-  historial: [{ seq: 1, momento: "2026-11-01", evento: "aceptada", paso_id: null }],
+  historial: [{ seq: 1, tarea_id: "t1", momento: "2026-11-01", evento: "aceptada", paso_id: null, detalle: {} }],
   avisos: [],
 });
 
@@ -63,7 +82,7 @@ const esperando = paso({
   id: "p2",
   titulo: "Ir a la comisaría",
   estado: "esperando",
-  espera_actual: { motivo: "usuario", desde: "2026-11-02", hasta: null, accion_id: null, detalle: "", reintentar: false },
+  espera_actual: { motivo: "usuario", desde: "2026-11-02", hasta: null, accion_id: null, aviso_clave: null, detalle: "", reintentar: false },
 });
 
 beforeEach(() => {
@@ -109,7 +128,7 @@ describe("TareasPanel", () => {
       titulo: "Cambiar de tarifa",
       tipo: "accion",
       estado: "esperando",
-      espera_actual: { motivo: "accion", desde: "", hasta: null, accion_id: "a9", detalle: "", reintentar: false },
+      espera_actual: { motivo: "accion", desde: "", hasta: null, accion_id: "a9", aviso_clave: null, detalle: "", reintentar: false },
     });
     vi.spyOn(api, "getTarea").mockResolvedValue(detalle("esperando_usuario", [accion]));
     const operar = vi.spyOn(api, "operarTarea").mockResolvedValue(detalle("completada", [paso({ id: "p3" })]));

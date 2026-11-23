@@ -27,6 +27,10 @@ const modulo = (extra: Partial<ModuloInfo>): ModuloInfo => ({
   hechos: [{ nombre: "luz_potencia", tipo: "number", etiqueta: "Potencia contratada", descripcion: "En kW", sensible: false }],
   herramientas: [],
   fuentes: [],
+  capacidad: null,
+  elegido_el: null,
+  herramienta_de_documento: null,
+  lee_documentos: false,
   ...extra,
 });
 
@@ -41,6 +45,9 @@ const accion: AccionPendiente = {
   resumen: "Cambiar a la tarifa PVPC",
   estado: "pendiente",
   created_at: new Date().toISOString(),
+  decided_at: null,
+  iniciada_at: null,
+  resultado: null,
   es_error: false,
 };
 

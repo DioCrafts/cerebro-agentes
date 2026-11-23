@@ -26,6 +26,10 @@ const tarea = (extra: Partial<TareaInfo> = {}): TareaInfo => ({
   resumen_envio: [],
   importacion_error: false,
   origenes_bloqueados: [],
+  accion_id: null,
+  importacion: null,
+  mensaje: null,
+  terminada: null,
   ...extra,
 });
 
@@ -47,6 +51,7 @@ const estado = (extra: Partial<EstadoNavegador> = {}): EstadoNavegador => ({
       sitios: ["datadis.es"],
       parametros: [{ nombre: "cups", tipo: "cups", etiqueta: "CUPS", obligatorio: true, opciones: [], personal: true }],
       final: "descarga",
+      modulo_destino: "luz",
     },
   ],
   max_tareas_dia: 5,

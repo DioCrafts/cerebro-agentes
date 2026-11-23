@@ -2,11 +2,12 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 
-import type { InformeCerebro, ProgressEvent } from "../api";
+import type { Citation, InformeCerebro, ProgressEvent } from "../api";
 import { ConsultadosLinea, PlanEnVivo, ProcedenciaRespuesta } from "./ProcedenciaRespuesta";
 
-const cerebro = {
-  intencion: { tipo: "cruzada", encargos: [], necesita_memoria: false, confianza: 1, origen: "reglas", resumen: "" },
+const cerebro: InformeCerebro = {
+  conversacion_id: "conv1",
+  intencion: { tipo: "cruzada", encargos: [], necesita_memoria: false, confianza: 1, origen: "reglas", resumen: "", aclaracion: null },
   ruta: "sintesis",
   informes: [
     {
@@ -14,25 +15,39 @@ const cerebro = {
       especialista: "hipoteca",
       nombre: "Hipoteca",
       estado: "ok",
-      cifras: [{ id: "c1", especialista: "hipoteca", concepto: "Cuota mensual", valor: "650", literal: "650 €", herramienta: "cuota", fragment_id: "F3" }],
+      cifras: [{ id: "c1", especialista: "hipoteca", concepto: "Cuota mensual", valor: "650", literal: "650 €", herramienta: "cuota", fragment_id: "F3", unidad: "EUR/mes", ejercicio: null }],
       fragment_ids: [],
       duracion_ms: 1,
+      modo: null,
     },
-    { encargo_id: "e2", especialista: "fiscal", nombre: "Impuestos", estado: "error", cifras: [], fragment_ids: [], duracion_ms: 1 },
+    { encargo_id: "e2", especialista: "fiscal", nombre: "Impuestos", estado: "error", cifras: [], fragment_ids: [], duracion_ms: 1, modo: null },
   ],
   peticiones: [],
   puerta: {
     violaciones: [],
     atribuciones: [
-      { literal: "650 €", valor: "650", cifra_id: "c1", especialista: "hipoteca", del_usuario: false },
-      { literal: "30.000 €", valor: "30000", del_usuario: true },
+      { literal: "650 €", valor: "650", cifra_id: "c1", especialista: "hipoteca", fragment_id: "F3", del_usuario: false },
+      { literal: "30.000 €", valor: "30000", cifra_id: null, especialista: null, fragment_id: null, del_usuario: true },
     ],
     ignorados: [],
   },
   recuerdos_usados: [],
   revisiones_sintesis: 1,
   duracion_ms: 1,
-} as InformeCerebro;
+};
+
+const cita = (extra: Pick<Citation, "title" | "locator" | "fragment_id">): Citation => ({
+  authority: null,
+  binding: null,
+  date: null,
+  reference: null,
+  section: null,
+  snippet: null,
+  source_type: null,
+  vigencia: null,
+  vigencia_resumen: null,
+  ...extra,
+});
 
 describe("ConsultadosLinea", () => {
   it("names who answered and who could not", () => {
@@ -48,7 +63,7 @@ describe("ProcedenciaRespuesta", () => {
   it("lists every figure with its origin, and opens the source", async () => {
     const user = userEvent.setup();
     const onCite = vi.fn();
-    render(<ProcedenciaRespuesta cerebro={cerebro} citations={[{ title: "Ley Hipotecaria", locator: "x", fragment_id: "F3" }]} onCite={onCite} />);
+    render(<ProcedenciaRespuesta cerebro={cerebro} citations={[cita({ title: "Ley Hipotecaria", locator: "x", fragment_id: "F3" })]} onCite={onCite} />);
     await user.click(screen.getByText("¿De dónde sale cada cifra?"));
     const [primera, segunda] = screen.getAllByRole("listitem") as [HTMLElement, HTMLElement];
     expect(primera).toHaveTextContent("650 €");

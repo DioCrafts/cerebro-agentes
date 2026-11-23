@@ -28,6 +28,7 @@ export function resumen(extra: Partial<ResumenSesion> = {}): ResumenSesion {
 export function sesion(extra: Partial<SesionConsejo> = {}): SesionConsejo {
   return {
     ...resumen(),
+    confirmada_ahora: null,
     miembros: ["Prudente", "Inversor"],
     motivo: "Importe grande y difícil de deshacer",
     opciones_sugeridas: [],
@@ -44,7 +45,7 @@ export function sesion(extra: Partial<SesionConsejo> = {}): SesionConsejo {
         { id: "b", descripcion: "Invertir los ahorros" },
       ],
       hechos: [],
-      cifras: [{ id: "c1", especialista: "hipoteca", concepto: "Ahorro en intereses", valor: "3200", literal: "3.200 €" }],
+      cifras: [{ id: "c1", especialista: "hipoteca", concepto: "Ahorro en intereses", valor: "3200", literal: "3.200 €", unidad: "EUR", ejercicio: 2026, fragment_id: null, herramienta: "simular_amortizacion" }],
       fragment_ids: [],
       perfil_minimo: { edad: "40-49" },
       restricciones: [],
@@ -53,8 +54,8 @@ export function sesion(extra: Partial<SesionConsejo> = {}): SesionConsejo {
       anonimizado: ["Nombre y dirección"],
     },
     propuestas: [
-      { miembro_id: "m1", ronda: 1, recomendacion: "a", confianza: 0.8, razonamiento: "Reduce el riesgo.", supuestos: [], riesgos: [], que_me_haria_cambiar: [], cifras_usadas: [] },
-      { miembro_id: "m2", ronda: 1, recomendacion: "b", confianza: 0.6, razonamiento: "Más rentabilidad.", supuestos: [], riesgos: [], que_me_haria_cambiar: [], cifras_usadas: [] },
+      { miembro_id: "m1", ronda: 1, recomendacion: "a", confianza: 0.8, razonamiento: "Reduce el riesgo.", supuestos: [], riesgos: [], que_me_haria_cambiar: [], cifras_usadas: [], cambios: null, condicion: null },
+      { miembro_id: "m2", ronda: 1, recomendacion: "b", confianza: 0.6, razonamiento: "Más rentabilidad.", supuestos: [], riesgos: [], que_me_haria_cambiar: [], cifras_usadas: [], cambios: null, condicion: null },
     ],
     criticas: [],
     rankings: [],
@@ -64,6 +65,7 @@ export function sesion(extra: Partial<SesionConsejo> = {}): SesionConsejo {
       confianza: 0.72,
       consenso: "mayoria",
       acuerdo: 0.5,
+      condicion: null,
       resumen: "Conviene **amortizar**.",
       posturas: [
         { opcion_id: "a", a_favor: ["Menos riesgo"], en_contra: [], miembros: ["m1"] },
@@ -73,10 +75,10 @@ export function sesion(extra: Partial<SesionConsejo> = {}): SesionConsejo {
       supuestos_decisivos: ["El tipo de interés no baja"],
       sensibilidad: [],
       datos_que_resolverian: [],
-      puerta: { violaciones: [], atribuciones: [{ literal: "3.200 €", valor: "3200", cifra_id: "c1", especialista: "hipoteca", del_usuario: false }] },
+      puerta: { violaciones: [], ignorados: [], atribuciones: [{ literal: "3.200 €", valor: "3200", cifra_id: "c1", especialista: "hipoteca", fragment_id: null, del_usuario: false }] },
       miembros: [
-        { rol: { id: "m1", nombre: "Prudente", mandato: "", proposito: "" }, proveedor: "proveedor-a", modelo: "modelo-a" },
-        { rol: { id: "m2", nombre: "Inversor", mandato: "", proposito: "" }, proveedor: "proveedor-b", modelo: "modelo-b" },
+        { rol: { id: "m1", nombre: "Prudente", mandato: "", proposito: "", familia_preferida: null }, proveedor: "proveedor-a", modelo: "modelo-a" },
+        { rol: { id: "m2", nombre: "Inversor", mandato: "", proposito: "", familia_preferida: null }, proveedor: "proveedor-b", modelo: "modelo-b" },
       ],
       autoria: { A: "m1", B: "m2" },
       avisos: [],

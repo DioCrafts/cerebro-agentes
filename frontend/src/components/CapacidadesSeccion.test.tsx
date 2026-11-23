@@ -25,6 +25,8 @@ const capacidad = (extra: Partial<CapacidadInfo>): CapacidadInfo => ({
   elegida: false,
   usada_por: ["fiscal"],
   operaciones: [],
+  elegida_el: null,
+  modulo: null,
   ...extra,
 });
 

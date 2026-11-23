@@ -14,14 +14,14 @@ vi.mock("../apiEvaluacion", () => ({
   retirarFeedback: vi.fn(),
 }));
 
-const respuesta = { id: "f1", guardado_para_evaluacion: false, estado: "ok", etiquetas: [], mensaje: "Gracias por tu valoración." };
+const respuesta = { id: "f1", candidato: false, guardado_para_evaluacion: false, estado: "ok", etiquetas: [], mensaje: "Gracias por tu valoración." };
 
 describe("EvaluacionFeedback", () => {
   beforeEach(() => {
     vi.mocked(enviarFeedback).mockReset().mockResolvedValue(respuesta);
     vi.mocked(getConsentimientoEvaluacion)
       .mockReset()
-      .mockResolvedValue({ version: "v1", texto: "Guardar esta conversación para mejorar el asesor", tipos: [{ clave: "cifra_erronea", etiqueta: "Cifra equivocada" }] });
+      .mockResolvedValue({ version: "v1", texto: "Guardar esta conversación para mejorar el asesor", aprendizaje_version: "v1", aprendizaje_texto: "Usar mis correcciones para que el asesor aprenda", tipos: [{ clave: "cifra_erronea", etiqueta: "Cifra equivocada" }] });
   });
 
   it("records a thumbs up", async () => {

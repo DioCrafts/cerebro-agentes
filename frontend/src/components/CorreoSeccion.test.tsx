@@ -32,6 +32,11 @@ const estado = (extra: Partial<EstadoCorreo>): EstadoCorreo => ({
   propuestas_pendientes: 0,
   ventana_dias: 30,
   solo_lectura: true,
+  conectada_el: null,
+  cuenta: null,
+  estado: null,
+  ultima_sincronizacion: null,
+  ultimo_error: null,
   ...extra,
 });
 

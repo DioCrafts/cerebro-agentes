@@ -80,6 +80,7 @@ def test_modules_list_marks_the_capability_fronts(client: TestClient) -> None:
 def test_the_modules_panel_reads_capabilities_with_the_shape_the_api_returns() -> None:
     """«Módulos» shows the capabilities apart (frontend/src/components/CapacidadesSeccion.tsx): the TypeScript
     shapes it reads are the API's (every field of ``CapacidadInfo`` / ``OperacionInfo``, nothing invented)."""
+    import json
     from pathlib import Path
     import re
 
@@ -87,15 +88,13 @@ def test_the_modules_panel_reads_capabilities_with_the_shape_the_api_returns() -
 
     raiz = Path(__file__).resolve().parents[2] / "frontend" / "src"
     fuente = (raiz / "apiModulos.ts").read_text(encoding="utf-8")
-
-    def campos(interfaz: str) -> set[str]:
-        cuerpo = re.search(rf"export interface {interfaz} \{{(.*?)\n\}}", fuente, re.S)
-        assert cuerpo is not None, interfaz
-        return set(re.findall(r"^\s+(\w+)\??:", cuerpo.group(1), re.M))
-
-    assert campos("CapacidadInfo") == set(CapacidadInfo.model_fields)
-    assert campos("OperacionCapacidadInfo") == set(OperacionInfo.model_fields)
-    assert campos("CapacidadesResponse") == set(CapacidadesResponse.model_fields)
+    # The TypeScript shapes are generated from the API's OpenAPI (make tipos-check fails on drift): the panel's
+    # types must be the generated ones, and the committed schema must carry every field of the models.
+    assert re.search(r'export type CapacidadesResponse = Respuesta<"/capacidades", "get">;', fuente)
+    assert "export type CapacidadInfo = CapacidadesResponse[" in fuente
+    esquema = json.loads((raiz.parent / "openapi.json").read_text(encoding="utf-8"))["components"]["schemas"]
+    for modelo in (CapacidadInfo, OperacionInfo, CapacidadesResponse):
+        assert set(esquema[modelo.__name__]["properties"]) == set(modelo.model_fields), modelo.__name__
     seccion = (raiz / "components" / "CapacidadesSeccion.tsx").read_text(encoding="utf-8")
     assert "getCapacidades" in seccion and "setCapacidad" in seccion
     assert "<CapacidadesSeccion" in (raiz / "components" / "ModulosPanel.tsx").read_text(encoding="utf-8")

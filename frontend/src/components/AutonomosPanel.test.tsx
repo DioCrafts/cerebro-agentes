@@ -8,7 +8,7 @@ import { simularMatchMedia } from "./calculos/entornoPruebas";
 
 simularMatchMedia();
 
-const base = { ejercicio: 2026, lineas: [{ concepto: "Ingresos", importe: "20000.00", referencia: "art. 28 LIRPF" }], avisos: [], parametros_no_verificados: [], fuente: "Ley 35/2006" };
+const base = { ejercicio: 2026, lineas: [{ clave: null, concepto: "Ingresos", importe: "20000.00", referencia: "art. 28 LIRPF" }], avisos: [], parametros_no_verificados: [], fuente: "Ley 35/2006" };
 
 describe("AutonomosPanel", () => {
   beforeEach(() => {
