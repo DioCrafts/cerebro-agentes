@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Obligation card: a tax obligation the rules engine thinks may apply to the
 // user, with the thing people actually need first — the deadline.
 

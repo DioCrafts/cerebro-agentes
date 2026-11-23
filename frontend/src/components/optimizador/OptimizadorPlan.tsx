@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Tu plan»: the best combination of the choices the law leaves to the household, as the
 // optimiser computed it. Every figure is the plan's; standalone savings are never added up.
 

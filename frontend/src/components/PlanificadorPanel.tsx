@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Planificar el hogar»: what to do with a sum of money — repay the mortgage early (term or
 // instalment), contribute to pension plans, donate within a budget or keep it liquid —, from the
 // deterministic planner behind POST /planificar. No model call: every figure is the plan's; the

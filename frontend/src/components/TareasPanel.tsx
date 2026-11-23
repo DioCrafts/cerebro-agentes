@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Tareas»: the user's long-running tasks (renew the passport, prepare the tax return, change the electricity
 // tariff…). A list, and for each task the timeline of its steps with what each one produced, what it waits for
 // and the buttons the user decides with: start a proposal, mark a step done (with a date when it asks for one),

@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Validity of the doctrine an answer relies on: shown when the question has no
 // settled criterion, or when a cited source has been superseded or is disputed.
 

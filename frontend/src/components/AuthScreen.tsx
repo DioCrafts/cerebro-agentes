@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Login / register screen, shown only when the backend requires an account.
 
 import { LogIn, UserPlus } from "lucide-react";

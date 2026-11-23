@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // "Módulos": the household areas the assistant can help with beyond taxes (electricity, expiries,
 // subscriptions…). The user switches each one on or off, fills in its data with a form built from the
 // module's own fact declarations, reads a document with it when it can, and decides on the actions its

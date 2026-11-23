@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Feedback under each answer: 👍 / 👎 and «Corregir» (what was wrong, and optionally the right answer or
 // figure). Storing the conversation for evaluation is a separate, unticked checkbox with its consent text,
 // for THIS answer only; without it only the vote is recorded (unless the user switched on «aprender de los

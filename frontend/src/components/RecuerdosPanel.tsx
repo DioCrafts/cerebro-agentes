@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Lo que sé de ti»: what the assistant remembers from earlier conversations, grouped by kind, each item with
 // where it came from («Me lo dijiste el 12/11/2026: “…”»). The user can correct any item (their wording wins),
 // forget one or everything, pause the memory, and see or delete the earlier conversations with their summaries.

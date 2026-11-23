@@ -1,0 +1,125 @@
+/*
+  Primer's colour roles, painted with the app's colours.
+
+  The colours themselves live in src/index.css (`--paper`, `--surface`, `--ink`, `--primary`… as RGB
+  triplets, light under :root and dark under .dark). This file only says which app colour plays each
+  Primer role: canvas (bgColor-*), fg, border, accent, success, attention, danger, done and neutral.
+  Everything else in Primer (typography, spacing, radii, shadows, focus, density) is left as Primer ships it.
+
+  Selector: three attributes (0,3,0) beat Primer's own theme blocks (0,2,0) whatever the load order.
+  <html> carries them (src/lib/theme.ts and public/tema.js), so portals and overlays inherit them.
+
+  Contrast (WCAG AA), measured on the canvas they sit on, light / dark:
+    fg-default 15.8 / 15.7 · fg-muted 5.2 / 6.3 · fg-accent 6.4 / 9.9 · fg-success 6.0 / 8.9
+    fg-attention 5.3 / 9.4 · fg-danger 5.5 / 6.7 · fg-done 10.5 / 5.9 · fg-neutral 6.5 / 8.1
+    white on every *-emphasis ≥ 5.1 · control border (inputs) ≥ 3.1 · focus ring ≥ 3.2
+  See docs/ui/sistema-de-diseno.md.
+*/
+
+[data-color-mode][data-light-theme][data-dark-theme] {
+  /* Canvas: in light, white page and warm grey for the quiet areas (headers, sidebar, code). */
+  --bgColor-default: rgb(var(--surface));
+  --bgColor-muted: rgb(var(--paper));
+  --bgColor-inset: rgb(var(--paper));
+  --bgColor-emphasis: rgb(var(--ink));
+
+  --fgColor-default: rgb(var(--ink));
+  --fgColor-muted: rgb(var(--muted));
+  --fgColor-accent: rgb(var(--primary));
+  --fgColor-success: rgb(var(--cited-fg));
+  --fgColor-attention: rgb(var(--uncited-fg));
+  --fgColor-danger: rgb(var(--risk-high-fg));
+  --fgColor-severe: rgb(var(--risk-high-fg));
+  --fgColor-done: rgb(var(--navy));
+  --fgColor-neutral: rgb(var(--abstain-fg));
+
+  --borderColor-default: rgb(var(--line));
+  --borderColor-muted: color-mix(in srgb, rgb(var(--line)) 70%, transparent);
+  /* Strong enough (≥ 3:1) to outline a text box. */
+  --borderColor-emphasis: color-mix(in srgb, rgb(var(--muted)) 70%, rgb(var(--line)));
+
+  /* accent: the app's teal. */
+  --bgColor-accent-emphasis: rgb(var(--primary));
+  --bgColor-accent-muted: rgb(var(--primary-soft));
+  --borderColor-accent-emphasis: rgb(var(--primary));
+  --borderColor-accent-muted: color-mix(in srgb, rgb(var(--primary)) 40%, transparent);
+
+  /* success: "cited" green. */
+  --bgColor-success-emphasis: rgb(var(--enfasis-exito));
+  --bgColor-success-muted: rgb(var(--cited-bg));
+  --borderColor-success-emphasis: rgb(var(--enfasis-exito));
+  --borderColor-success-muted: rgb(var(--cited-bd));
+
+  /* attention: "uncited" amber. */
+  --bgColor-attention-emphasis: rgb(var(--enfasis-atencion));
+  --bgColor-attention-muted: rgb(var(--uncited-bg));
+  --borderColor-attention-emphasis: rgb(var(--enfasis-atencion));
+  --borderColor-attention-muted: rgb(var(--uncited-bd));
+
+  /* danger (and severe): "high risk" red. */
+  --bgColor-danger-emphasis: rgb(var(--enfasis-peligro));
+  --bgColor-danger-muted: rgb(var(--risk-high-bg));
+  --borderColor-danger-emphasis: rgb(var(--enfasis-peligro));
+  --borderColor-danger-muted: color-mix(in srgb, rgb(var(--risk-high-fg)) 35%, transparent);
+  --bgColor-severe-emphasis: var(--bgColor-danger-emphasis);
+  --bgColor-severe-muted: var(--bgColor-danger-muted);
+  --borderColor-severe-emphasis: var(--borderColor-danger-emphasis);
+  --borderColor-severe-muted: var(--borderColor-danger-muted);
+
+  /* done: the app's navy (GitHub's purple has no counterpart here). */
+  --bgColor-done-emphasis: rgb(var(--navy));
+  --bgColor-done-muted: color-mix(in srgb, rgb(var(--navy)) 10%, rgb(var(--surface)));
+  --borderColor-done-emphasis: rgb(var(--navy));
+  --borderColor-done-muted: color-mix(in srgb, rgb(var(--navy)) 35%, transparent);
+
+  /* neutral: "abstain" slate. */
+  --bgColor-neutral-emphasis: rgb(var(--enfasis-neutro));
+  --bgColor-neutral-muted: rgb(var(--abstain-bg));
+  --borderColor-neutral-emphasis: rgb(var(--enfasis-neutro));
+  --borderColor-neutral-muted: rgb(var(--abstain-bd));
+
+  /* Component tokens that Primer writes as literal GitHub blue/green. */
+  --button-primary-bgColor-rest: var(--bgColor-accent-emphasis);
+  --button-primary-bgColor-hover: rgb(var(--primary-hover));
+  --button-primary-bgColor-active: rgb(var(--primary-hover));
+  --button-primary-bgColor-disabled: color-mix(in srgb, var(--bgColor-accent-emphasis) 50%, var(--bgColor-default));
+  --button-outline-bgColor-hover: var(--bgColor-accent-emphasis);
+  --button-outline-bgColor-active: rgb(var(--primary-hover));
+  --button-outline-fgColor-disabled: color-mix(in srgb, var(--fgColor-accent) 50%, transparent);
+  --control-checked-bgColor-hover: rgb(var(--primary-hover));
+  --control-checked-bgColor-active: rgb(var(--primary-hover));
+  --control-bgColor-rest: var(--bgColor-muted);
+  --control-bgColor-hover: color-mix(in srgb, var(--bgColor-muted) 50%, rgb(var(--line)));
+  --control-bgColor-active: rgb(var(--line));
+  --control-borderColor-rest: var(--borderColor-emphasis);
+  --underlineNav-borderColor-active: var(--borderColor-accent-emphasis);
+  --selectMenu-bgColor-active: var(--bgColor-accent-muted);
+  --timelineBadge-bgColor: var(--bgColor-muted);
+  --skeletonLoader-bgColor: color-mix(in srgb, rgb(var(--line)) 70%, transparent);
+  --overlay-bgColor: rgb(var(--surface));
+  --overlay-backdrop-bgColor: color-mix(in srgb, rgb(var(--ink)) 40%, transparent);
+  --header-bgColor: var(--bgColor-muted);
+}
+
+[data-color-mode="dark"][data-light-theme][data-dark-theme] {
+  /* Dark: the page is the darker `paper`; boxes and headers the lighter `surface`. */
+  --bgColor-default: rgb(var(--paper));
+  --bgColor-muted: rgb(var(--surface));
+  --bgColor-inset: rgb(var(--paper));
+  --bgColor-emphasis: rgb(var(--abstain-bd));
+
+  --fgColor-accent: rgb(var(--primary-dark));
+  --fgColor-done: color-mix(in srgb, rgb(var(--navy)) 50%, rgb(var(--ink)));
+  --borderColor-emphasis: color-mix(in srgb, rgb(var(--muted)) 50%, rgb(var(--line)));
+  --bgColor-done-muted: color-mix(in srgb, rgb(var(--navy)) 25%, rgb(var(--paper)));
+
+  /* The lighter teal of dark mode is too light under white text: hover goes darker. */
+  --button-primary-bgColor-hover: rgb(var(--enfasis-acento));
+  --button-primary-bgColor-active: rgb(var(--enfasis-acento));
+  --button-outline-fgColor-rest: var(--fgColor-accent);
+  --button-outline-fgColor-hover: var(--fgColor-onEmphasis);
+  --button-outline-bgColor-active: rgb(var(--enfasis-acento));
+  --control-checked-bgColor-hover: rgb(var(--enfasis-acento));
+  --control-checked-bgColor-active: rgb(var(--enfasis-acento));
+  --overlay-backdrop-bgColor: color-mix(in srgb, black 55%, transparent);
+}

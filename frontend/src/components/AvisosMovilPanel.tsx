@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Avisos en el móvil»: receive the advisor's notices on this device (Web Push), opt-in.
 //
 // What the user agrees to is spelled out before the switch: the notification only says «Tienes un aviso…:

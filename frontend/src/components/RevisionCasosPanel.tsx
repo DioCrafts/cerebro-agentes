@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Revisión de casos»: what the assistant got wrong, as masked candidate cases, so it does not happen again.
 // The owner of the case (or the operator) reads the masked conversation, the brain's plan and what went wrong,
 // writes the expected behaviour and accepts it (it becomes a PRIVATE regression case, never part of the code)

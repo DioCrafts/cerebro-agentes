@@ -3,10 +3,11 @@
 // (Chrome, Edge, Samsung Internet on Android; Chrome/Edge on a computer), offer an «Instalar» button.
 // Dismissed for 30 days.
 
-import { Download, Share, X } from "lucide-react";
 import { useState } from "react";
 
 import { enModoApp, esIOS, instalar, usePwa } from "../lib/pwa";
+import { Button, Flash, IconButton } from "../ui";
+import { DesktopDownloadIcon, ShareIcon, XIcon } from "../ui/iconos";
 
 const CLAVE = "haciendagpt_instalar_descartado";
 const DIAS = 30;
@@ -24,7 +25,7 @@ function descartadoRecientemente(): boolean {
 export function InstruccionesIOS() {
   return (
     <span>
-      En Safari, pulsa <Share size={14} aria-label="Compartir" className="inline align-[-2px]" /> <strong>Compartir</strong> y luego{" "}
+      En Safari, pulsa <ShareIcon size={14} aria-label="Compartir" className="inline align-[-2px]" /> <strong>Compartir</strong> y luego{" "}
       <strong>«Añadir a pantalla de inicio»</strong>. En iPhone y iPad los avisos en el móvil solo funcionan con la app añadida a la
       pantalla de inicio (iOS 16.4 o posterior).
     </span>
@@ -47,24 +48,20 @@ export function AvisoInstalar() {
   }
 
   return (
-    <aside aria-label="Instalar la aplicación" className="flex items-start gap-3 border-b border-line bg-primary-soft px-3 py-2.5 text-[13px] text-ink sm:px-6">
-      <Download size={16} aria-hidden className="mt-0.5 shrink-0 text-primary-dark" />
-      <p className="min-w-0 flex-1 leading-snug">
-        <strong>Instala HaciendaGPT en este dispositivo.</strong>{" "}
-        {ios ? <InstruccionesIOS /> : "Se abre como una aplicación y puede avisarte de lo que vence."}
-      </p>
-      {!ios && (
-        <button
-          type="button"
-          onClick={() => void instalar()}
-          className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-[12.5px] font-semibold text-white hover:bg-primary-hover"
-        >
-          Instalar
-        </button>
-      )}
-      <button type="button" onClick={descartar} aria-label="Ahora no" title="Ahora no" className="shrink-0 rounded-lg p-1 text-muted hover:bg-line/60 hover:text-ink">
-        <X size={16} aria-hidden />
-      </button>
+    <aside aria-label="Instalar la aplicación" className="px-4 pt-4 md:px-6">
+      <Flash className="flex items-start gap-3">
+        <DesktopDownloadIcon className="mt-0.5 shrink-0" />
+        <p className="m-0 min-w-0 flex-1">
+          <strong>Instala HaciendaGPT en este dispositivo.</strong>{" "}
+          {ios ? <InstruccionesIOS /> : "Se abre como una aplicación y puede avisarte de lo que vence."}
+        </p>
+        {!ios && (
+          <Button size="small" variant="primary" onClick={() => void instalar()}>
+            Instalar
+          </Button>
+        )}
+        <IconButton icon={XIcon} aria-label="Ahora no" variant="invisible" size="small" onClick={descartar} />
+      </Flash>
     </aside>
   );
 }

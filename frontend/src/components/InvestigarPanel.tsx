@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Investigar»: research a question with sources (corpus legal, BOE and, if the user consents, the web).
 //
 // The report shows ONLY what passed the server's citation gate: each claim with its literal quotes and the ids of

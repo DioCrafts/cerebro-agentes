@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Consejo»: the household council's sessions of this case — the convocations waiting for the user, the ones running
 // (live), the rulings, and those that could not finish — plus a way to put a decision to the council directly. Each
 // session opens its card (estimate and confirmation, progress, ruling); a finished one can be deleted.

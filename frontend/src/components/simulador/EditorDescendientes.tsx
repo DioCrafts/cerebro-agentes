@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The detail of each child in the simulator: one card per child (date or age, stage, disability,
 // adoption and the child's own expenses). The rows are validated in lib/simulador/descendientes.
 

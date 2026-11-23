@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The verdict banner above every answer: how far this answer can be trusted,
 // in one line plus a plain-language explanation.
 

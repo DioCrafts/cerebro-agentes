@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Plain-language summary of what the service does with the user's data, shown
 // from the register screen and the privacy panel. It describes what the
 // SOFTWARE does; the operator's legal privacy notice (who the controller is,

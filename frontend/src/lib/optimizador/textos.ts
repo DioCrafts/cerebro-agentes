@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Pure helpers of the «Optimizar mis impuestos» screen: labels, error wording,
 // and how a plan maps onto the simulator's figures. No React here, so the
 // component file only exports components.

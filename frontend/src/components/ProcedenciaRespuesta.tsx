@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // What the household brain did for one answer, in the user's terms:
 //   · «Consulté a: Hipoteca · Impuestos» — which specialists answered (and which could not);
 //   · «¿De dónde sale cada cifra?» — every figure of the answer, whose it is and the source it was read from

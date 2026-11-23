@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Optimizar mis impuestos»: the best COMBINATION of the choices the law leaves to a household
 // (filing jointly or not, pension contributions, the donation and the latent losses), from the
 // deterministic optimiser behind POST /optimize — no model call. Every figure on this screen is

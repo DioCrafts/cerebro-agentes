@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // The brain's weekly (or daily) digest in the inbox: what matters now, in the order code ranked it, why, where
 // each thing comes from, and what it proposes. Every proposal is answered through its OWN existing endpoint
 // (pending actions, tasks, mail proposals): this card never acts by itself, and an action that reaches outside the

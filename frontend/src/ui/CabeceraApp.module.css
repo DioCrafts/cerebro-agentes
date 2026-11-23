@@ -1,0 +1,137 @@
+/* GitHub's global header: one row (menu, mark, context, search, actions) over the section tabs, on the
+   muted canvas, closed by a border. */
+.cabecera {
+  background: var(--bgColor-muted);
+  box-shadow: inset 0 calc(var(--borderWidth-thin) * -1) 0 var(--borderColor-default);
+}
+.fila {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+  padding: var(--base-size-16) var(--base-size-16) var(--base-size-8);
+}
+@media (min-width: 768px) {
+  .fila {
+    padding-left: var(--base-size-24);
+    padding-right: var(--base-size-24);
+  }
+}
+.contexto {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: var(--base-size-8);
+  min-width: 0;
+}
+.acciones {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-8);
+}
+.saltar {
+  position: absolute;
+  left: var(--base-size-8);
+  top: var(--base-size-8);
+  z-index: var(--zIndex-skipLink);
+  padding: var(--base-size-8) var(--base-size-16);
+  color: var(--fgColor-onEmphasis);
+  background: var(--bgColor-accent-emphasis);
+  border-radius: var(--borderRadius-medium);
+  transform: translateY(-200%);
+}
+.saltar:focus {
+  transform: none;
+}
+.migas {
+  display: flex;
+  align-items: center;
+  gap: var(--base-size-4);
+  min-width: 0;
+  margin: 0;
+  font-size: var(--text-body-size-medium);
+  font-weight: var(--base-text-weight-normal);
+  color: var(--fgColor-default);
+}
+.migaRaiz {
+  flex-shrink: 0;
+  color: var(--fgColor-default);
+}
+.separador {
+  flex-shrink: 0;
+  color: var(--fgColor-muted);
+}
+.migaActual {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--base-text-weight-semibold);
+}
+.separadorVertical {
+  width: var(--borderWidth-thin);
+  height: var(--base-size-20);
+  background: var(--borderColor-default);
+}
+
+/* Search / command field (GitHub's "Type / to search"). */
+.buscar {
+  display: none;
+  align-items: center;
+  gap: var(--base-size-8);
+  width: 18rem;
+  height: var(--control-medium-size, 32px);
+  padding: 0 var(--base-size-8);
+  color: var(--fgColor-muted);
+  font: inherit;
+  text-align: left;
+  background: var(--bgColor-default);
+  border: var(--borderWidth-thin) solid var(--control-borderColor-rest);
+  border-radius: var(--borderRadius-medium);
+  cursor: pointer;
+}
+.buscar:hover {
+  border-color: var(--borderColor-emphasis);
+}
+.buscar:focus-visible {
+  outline: 2px solid var(--focus-outlineColor);
+  outline-offset: -1px;
+}
+@media (min-width: 1012px) {
+  .buscar {
+    display: inline-flex;
+  }
+  .buscarIcono {
+    display: none;
+  }
+}
+.buscarTexto {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tecla {
+  padding: 0 var(--base-size-4);
+  font-family: var(--fontStack-monospace);
+  font-size: var(--text-body-size-small);
+  line-height: 1.4;
+  border: var(--borderWidth-thin) solid var(--borderColor-default);
+  border-radius: var(--borderRadius-small);
+}
+
+/* A dot on an icon button (unread notices). */
+.conPunto {
+  position: relative;
+}
+.punto {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  background: var(--bgColor-accent-emphasis);
+  border: var(--borderWidth-thick) solid var(--bgColor-muted);
+  border-radius: var(--borderRadius-full);
+  box-sizing: content-box;
+  pointer-events: none;
+}

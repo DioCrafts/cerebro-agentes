@@ -20,10 +20,12 @@ import { cacheAuthMode, cachedAuthMode, historyOwner, setHistoryOwner, tomarToke
 import { borrarConversaciones, loadConversations, saveConversations } from "./lib/storage";
 import { useTheme } from "./lib/theme";
 import { Asesor } from "./shell/Asesor";
+import { Spinner } from "./ui";
 
 function Splash({ message }: { message?: string }) {
   return (
-    <div role="status" className="flex h-dvh w-screen items-center justify-center bg-paper px-6 text-center text-[13.5px] text-muted">
+    <div role="status" className="flex h-dvh w-full flex-col items-center justify-center gap-3 px-6 text-center text-fg-muted">
+      <Spinner size="medium" srText={message ? null : "Cargando"} />
       {message}
     </div>
   );

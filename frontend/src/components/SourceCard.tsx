@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Source card: one per fragment the answer cites. Shows who issued it, when,
 // whether it binds the Administration, and the literal passage — and is the
 // jump target of the [F#] chips in the answer.

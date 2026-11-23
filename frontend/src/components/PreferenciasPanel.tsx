@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Lo que sé de tus preferencias»: every decision the assistant remembers about the user (what they
 // rejected, cannot do, prefer or already did), with their words, the date and until when it holds.
 // The user can add, edit or forget any of them; forgetting erases their words (only a trace that

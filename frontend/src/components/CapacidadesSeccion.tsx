@@ -1,3 +1,4 @@
+/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Capacidades» inside «Módulos»: the means any module can use (mail, browser, documents, research), apart from the
 // modules themselves, with the user's consent to each. A capability that is also a module (mail, browser) keeps its
 // one switch on its module card; here it only says so. Read when the panel opens, so a change made elsewhere shows.

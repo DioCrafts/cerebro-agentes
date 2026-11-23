@@ -4,7 +4,7 @@
 // actions); a panel module receives all of it as `ctx` and maps it onto its component's props. A new panel
 // therefore needs no change in the shell: one component file plus one entry in registro.ts.
 
-import type { LucideIcon } from "lucide-react";
+import type { Icon } from "@primer/octicons-react";
 import type { ComponentType } from "react";
 
 import type { AdvisorNotification, CaseState, Fact, ObligationCandidate } from "../api";
@@ -91,7 +91,20 @@ export interface DefinicionPanel {
   etiqueta: string;
   /** Longer description: the button's accessible name and tooltip. */
   titulo: string;
-  icono: LucideIcon;
+  /** An Octicon (src/ui/iconos.ts). */
+  icono: Icon;
+  /**
+   * How the shell shows it (docs/ui/sistema-de-diseno.md, «Página o diálogo»):
+   *   "pagina"  — in the main column, instead of the conversation, under its tab; for work that takes a while.
+   *   "dialogo" — a side sheet over the conversation (HojaLateral); for a quick look or a quick change.
+   *   absent    — a panel not yet migrated: it draws its own overlay, as before.
+   * A migrated panel's component renders only its content: the shell puts the title, icon and frame.
+   */
+  presentacion?: "pagina" | "dialogo";
+  /** Subtitle of the sheet or description of the page (migrated panels). */
+  descripcion?: string;
+  /** Width of the side sheet ("dialogo"): 480px by default. */
+  ancho?: "medium" | "large" | "xlarge";
   /** Order in the navigation (lower first). */
   orden: number;
   /** Always in the top bar, at every width (the rest go to «Más» when space runs out). */
