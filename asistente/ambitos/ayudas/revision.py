@@ -11,42 +11,26 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import date, timedelta
 import json
-import time
 from typing import Any
-from urllib.error import HTTPError, URLError
-import urllib.request
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from asistente.ambitos.ayudas import almacen as almacen_mod
 from asistente.ambitos.ayudas import bdns
 from asistente.ambitos.ayudas.convocatorias import Convocatoria, Plazo, Senal, analizar, candidatas
+from asistente.conocimiento.boe import cliente as boe
 
-SUMARIO_URL = "https://www.boe.es/datosabiertos/api/boe/sumario/{dia}"
-XML_URL = "https://www.boe.es/diario_boe/xml.php?id={id}"
-_USER_AGENT = "hacienda-asesor/0.1 (ayudas)"
+SUMARIO_URL = boe.SUMARIO_URL
+XML_URL = boe.XML_URL
 DIAS_MAX = 7
 
 SumarioDe = Callable[[date], Mapping[str, Any] | None]
 XmlDe = Callable[[str], str | bytes | None]
 
 
-def _get(url: str, accept: str, timeout: int = 60, intentos: int = 3) -> bytes | None:
-    request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": _USER_AGENT})
-    for intento in range(intentos):
-        try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                return bytes(response.read())
-        except HTTPError as exc:
-            if exc.code == 404:
-                return None
-            if intento == intentos - 1:
-                raise
-        except (URLError, ConnectionError, TimeoutError):
-            if intento == intentos - 1:
-                raise
-        time.sleep(2 * (intento + 1))
-    return None
+def _get(url: str, accept: str, timeout: int = 60) -> bytes | None:
+    """GET a www.boe.es ``url`` through the shared client (retries, pause per host); None on 404."""
+    return boe.descargar(url, accept, timeout=timeout)
 
 
 def sumario_boe(dia: date) -> Mapping[str, Any] | None:
@@ -59,7 +43,6 @@ def sumario_boe(dia: date) -> Mapping[str, Any] | None:
 
 
 def xml_boe(boe_id: str) -> bytes | None:
-    time.sleep(0.3)
     return _get(XML_URL.format(id=boe_id), "application/xml")
 
 

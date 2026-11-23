@@ -49,24 +49,25 @@ from pathlib import Path
 import re
 import time
 from typing import Any
+import urllib.parse
 
 import click
+import httpx
 from pydantic import BaseModel, ConfigDict, field_validator
-import requests
 
 from asistente.conocimiento import formatos
+from asistente.plataforma import http
 
 logger = logging.getLogger(__name__)
 
 _BASE = "https://petete.tributos.hacienda.gob.es"
-_USER_AGENT = "hacienda-asesor/0.1 (RAG corpus refresh; contacto@hacienda-asesor.local)"
 
 # The petete server requires this header on /do/document or it 401s.
 _REQUIRED_HEADERS = {
     "X-Requested-With": "XMLHttpRequest",
     "Referer": f"{_BASE}/consultas/",
-    "User-Agent": _USER_AGENT,
 }
+_FORM = {"Content-Type": "application/x-www-form-urlencoded"}
 
 _DOC_ID_RE = re.compile(r'id="doc_(\d+)"')
 _TOTAL_PAGES_RE = re.compile(r'id="total_pages">(\d+)<')
@@ -206,14 +207,13 @@ class _RunStats:
     failed_doc_ids: list[str] = field(default_factory=list)
 
 
-def _build_session() -> requests.Session:
+def _build_session() -> http.Cliente:
     """Build a long-lived session that the petete server will accept.
 
     We hit ``/consultas/`` (to obtain JSESSIONID) and then ``/do/form``
     (to activate Knosys form state); without both, ``/do/document``
     returns 401.
     """
-    session = requests.Session()
     # Keep TLS verification ON. ``petete.tributos.hacienda.gob.es`` is a public
     # host with a publicly-trusted certificate, so the old ``verify=False`` (and
     # the global ``disable_warnings`` that hid it) needlessly exposed this ingest
@@ -221,23 +221,22 @@ def _build_session() -> requests.Session:
     # genuinely sits behind a TLS-intercepting proxy with a private CA, point
     # ``DGT_CA_BUNDLE`` at that bundle rather than disabling verification.
     ca_bundle = os.environ.get("DGT_CA_BUNDLE")
-    if ca_bundle:
-        session.verify = ca_bundle
-    session.headers.update(_REQUIRED_HEADERS)
+    # A client of its own: it carries the JSESSIONID cookie and the form state of this crawl.
+    session = http.Cliente(verify=ca_bundle or True, cabeceras=_REQUIRED_HEADERS)
 
     # Bootstrap the JSESSIONID cookie.
     resp = session.get(f"{_BASE}/consultas/", timeout=30)
     resp.raise_for_status()
 
     # Activate form state.
-    resp = session.post(f"{_BASE}/consultas/do/form", data="", timeout=30)
+    resp = session.post(f"{_BASE}/consultas/do/form", content=b"", timeout=30)
     resp.raise_for_status()
 
     return session
 
 
 def _search_month(
-    session: requests.Session,
+    session: http.Cliente,
     year: int,
     month: int,
     page: int,
@@ -302,7 +301,13 @@ def _search_month(
     # /do/info reports max query latency around 450s server-side, so we
     # keep the read timeout generous; the polite per-doc ``delay`` already
     # protects against accidental hammering.
-    resp = session.post(f"{_BASE}/consultas/do/search", data=data, timeout=180)
+    resp = session.post(
+        f"{_BASE}/consultas/do/search",
+        content=urllib.parse.urlencode(data),
+        cabeceras=_FORM,
+        timeout=180,
+        reintentar=True,
+    )
     resp.raise_for_status()
     html = resp.text
 
@@ -326,17 +331,18 @@ def _search_month(
 
 
 def _fetch_document(
-    session: requests.Session,
+    session: http.Cliente,
     query: str,
     doc_id: str,
 ) -> str:
     """Fetch one consulta document by Knosys id, returning the inner HTML
-    block. Raises ``requests.HTTPError`` on non-2xx; the caller decides
+    block. Raises ``httpx.HTTPError`` on non-2xx; the caller decides
     whether to retry or skip."""
     resp = session.post(
         f"{_BASE}/consultas/do/document",
         data={"query": query, "doc": doc_id, "tab": "2"},
         timeout=60,
+        reintentar=True,
     )
     resp.raise_for_status()
     return resp.text
@@ -530,7 +536,7 @@ def cli(
             consecutive_failures = 0
             refresh_backoff_step = 0
             logger.info("Session refreshed; resuming crawl.")
-        except requests.RequestException as exc:
+        except httpx.HTTPError as exc:
             wait = backoff_seconds[min(refresh_backoff_step, len(backoff_seconds) - 1)]
             logger.error(
                 "Session refresh itself failed (backoff step %d): %s — sleeping %ds",
@@ -550,13 +556,13 @@ def cli(
                 try:
                     rows, total_pages, query = _search_month(session, year, month, page)
                     consecutive_failures = 0
-                except requests.RequestException as e:
-                    # RequestException catches the whole tree (HTTPError,
-                    # ReadTimeout, ConnectTimeout, ChunkedEncodingError…)
+                except httpx.HTTPError as e:
+                    # httpx.HTTPError catches the whole tree (HTTPStatusError,
+                    # ReadTimeout, ConnectTimeout, RemoteProtocolError…)
                     # so a single transient blip doesn't kill the crawl.
                     consecutive_failures += 1
                     logger.warning(
-                        "Search failed for %04d-%02d page %d: %s " "(consecutive=%d) — retrying once after 30s",
+                        "Search failed for %04d-%02d page %d: %s (consecutive=%d) — retrying once after 30s",
                         year,
                         month,
                         page,
@@ -570,7 +576,7 @@ def cli(
                     try:
                         rows, total_pages, query = _search_month(session, year, month, page)
                         consecutive_failures = 0
-                    except requests.RequestException:
+                    except httpx.HTTPError:
                         consecutive_failures += 1
                         logger.error("Skipping %04d-%02d page %d after retry failure", year, month, page)
                         break
@@ -597,14 +603,14 @@ def cli(
                         stats.docs_fetched += 1
                         continue
 
-                    # Widen the except to ``RequestException`` so a single
+                    # Widen the except to ``httpx.HTTPError`` so a single
                     # transient ReadTimeout or ConnectError does not abort
                     # a multi-hour crawl; the consecutive-failure counter
                     # still escalates to session-refresh when it persists.
                     try:
                         html = _fetch_document(session, query, doc_id)
                         consecutive_failures = 0
-                    except requests.RequestException as e:
+                    except httpx.HTTPError as e:
                         stats.docs_failed += 1
                         stats.failed_doc_ids.append(doc_id)
                         consecutive_failures += 1

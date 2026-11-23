@@ -18,13 +18,11 @@ from datetime import date
 import json
 import os
 from typing import Any
-import urllib.request
 
 from pydantic import BaseModel, ConfigDict, Field
 
 URL_CONVOCATORIA = "https://www.infosubvenciones.es/bdnstrans/api/convocatorias?numConv={id}"
 URL_FICHA = "https://www.infosubvenciones.es/bdnstrans/GE/es/convocatoria/{id}"
-_USER_AGENT = "hacienda-asesor/0.1 (ayudas)"
 
 # Field -> path in the BDNS JSON ("*" walks a list).
 RUTAS: dict[str, tuple[str, ...]] = {
@@ -119,12 +117,12 @@ ObtenerBDNS = Callable[[str], Mapping[str, Any] | None]
 
 def descargar(bdns_id: str, timeout: int = 20) -> Mapping[str, Any] | None:
     """GET the call from the BDNS API; None on any failure (the host may be unreachable)."""
-    request = urllib.request.Request(
-        URL_CONVOCATORIA.format(id=bdns_id), headers={"Accept": "application/json", "User-Agent": _USER_AGENT}
-    )
+    from asistente.plataforma import http
+
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
-            datos = json.loads(response.read())
+        respuesta = http.cliente().get(URL_CONVOCATORIA.format(id=bdns_id), accept="application/json", timeout=timeout)
+        respuesta.raise_for_status()
+        datos = json.loads(respuesta.content)
     except Exception:
         return None
     return datos if isinstance(datos, Mapping) else ({"content": datos} if isinstance(datos, list) else None)

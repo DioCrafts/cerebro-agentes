@@ -27,7 +27,6 @@ from pathlib import Path
 from uuid import uuid4
 
 from langchain_core.messages import AIMessage, HumanMessage
-import requests
 import streamlit as st
 
 from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
@@ -37,6 +36,7 @@ from asistente.nucleo.decision.schemas import CaseState, RiskLevel
 from asistente.nucleo.decision.state_store import CaseVersionConflictError
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.decision.turn_service import TurnOutcome, process_turn
+from asistente.plataforma import http
 from asistente.plataforma.settings import API_BASE_URL, DECISION_DEBUG_MODE, DECISION_STATE_DB_PATH, UI_USE_API
 from asistente.plataforma.utils import MissingOpenAIAPIKeyError, configure_logging, get_openai_api_key
 
@@ -139,7 +139,7 @@ def _api_create_case_if_needed() -> str:
         "jurisdiction": "ES",
         "tax_period": str(datetime.now(UTC).year),
     }
-    r = requests.post(f"{API_BASE_URL}/cases", json=payload, timeout=20)
+    r = http.cliente().post(f"{API_BASE_URL}/cases", json=payload, timeout=20)
     r.raise_for_status()
     case_id: str = r.json()["case_id"]
     st.session_state["api_case_id"] = case_id
@@ -148,7 +148,7 @@ def _api_create_case_if_needed() -> str:
 
 def _api_process_turn(user_input: str, chat_history: list[dict[str, str]] | None = None) -> dict:
     case_id = _api_create_case_if_needed()
-    r = requests.post(
+    r = http.cliente().post(
         f"{API_BASE_URL}/cases/{case_id}/turn",
         json={"user_input": user_input, "chat_history": chat_history or []},
         timeout=30,
@@ -251,10 +251,7 @@ def _render_source_cards(envelope: AnswerEnvelope) -> None:
     heading = f"Fuentes citadas ({count})"
     cards_html = "".join(_format_source_card(c) for c in envelope.citations)
     st.markdown(
-        f'<div class="sources-block">'
-        f'<div class="sources-heading">{html.escape(heading)}</div>'
-        f"{cards_html}"
-        f"</div>",
+        f'<div class="sources-block"><div class="sources-heading">{html.escape(heading)}</div>{cards_html}</div>',
         unsafe_allow_html=True,
     )
 
@@ -332,8 +329,7 @@ def _build_obligation_cards(case_state: CaseState) -> list[dict[str, str]]:
 
 def _format_obligation_card(card: dict[str, str]) -> str:
     missing_block = (
-        f'<div class="label">Dato que falta para confirmar</div>'
-        f'<div class="missing-q">{card["missing_question"]}</div>'
+        f'<div class="label">Dato que falta para confirmar</div><div class="missing-q">{card["missing_question"]}</div>'
         if card["missing_question"]
         else ""
     )
@@ -413,7 +409,7 @@ def _render_sidebar_scope() -> None:
     so the user immediately understands the scope."""
     chips_html = "".join(f'<span class="chip">{html.escape(t)}</span>' for t in _TOPICS_SUPPORTED)
     st.sidebar.markdown(
-        f'<div class="scope-label">Qué cubre hoy</div>' f'<div class="chip-row">{chips_html}</div>',
+        f'<div class="scope-label">Qué cubre hoy</div><div class="chip-row">{chips_html}</div>',
         unsafe_allow_html=True,
     )
 

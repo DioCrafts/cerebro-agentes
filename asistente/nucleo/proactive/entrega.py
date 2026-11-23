@@ -32,10 +32,9 @@ import ssl
 from threading import RLock
 from typing import Any, Protocol
 from urllib.parse import urlsplit
-import urllib.request
 
 from asistente.nucleo.proactive.store import Notification, NotificationStore
-from asistente.plataforma import settings
+from asistente.plataforma import http, settings
 from asistente.plataforma.migraciones import asegurar_esquema
 
 logger = logging.getLogger(__name__)
@@ -96,9 +95,9 @@ class WebhookCanal:
             titulo = asunto if asunto.isascii() else Header(asunto, "utf-8").encode(maxlinelen=10_000)
             headers = {"Content-Type": "text/plain; charset=utf-8", "Title": titulo}
         # The scheme was validated in __init__, so this never opens file:// and the like.
-        request = urllib.request.Request(self._url, data=data, headers=headers, method="POST")
-        with urllib.request.urlopen(request, timeout=self._timeout) as response:
-            response.read()
+        # Not retried: a webhook that timed out may still have delivered the message.
+        respuesta = http.cliente().post(self._url, content=data, cabeceras=headers, timeout=self._timeout)
+        respuesta.raise_for_status()
 
 
 class SmtpCanal:

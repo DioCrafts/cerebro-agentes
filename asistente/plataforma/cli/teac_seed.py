@@ -21,23 +21,21 @@ import json
 import logging
 from pathlib import Path
 import re
-import time
-from urllib.error import HTTPError, URLError
 import urllib.parse
-import urllib.request
 
 import click
+import httpx
 from pydantic import BaseModel, ConfigDict, field_validator
 
 from asistente.conocimiento import formatos
 from asistente.conocimiento.crawler.teac import observar_criterio, parse_teac_criterio
+from asistente.plataforma import http
 
 logger = logging.getLogger(__name__)
 
 
-_USER_AGENT = "hacienda-asesor/0.1 (TEAC corpus refresh; contacto@hacienda-asesor.local)"
 _LIST_URL_TMPL = (
-    "https://serviciostelematicosext.hacienda.gob.es/TEAC/DYCTEA/criterios.aspx" "?s=1&fd={fd}&fh={fh}&tc=1&c=2&pg={pg}"
+    "https://serviciostelematicosext.hacienda.gob.es/TEAC/DYCTEA/criterios.aspx?s=1&fd={fd}&fh={fh}&tc=1&c=2&pg={pg}"
 )
 _CRITERIO_URL_TMPL = "https://serviciostelematicosext.hacienda.gob.es/TEAC/DYCTEA/criterio.aspx?id={id}"
 
@@ -82,20 +80,15 @@ def _reglas_listado() -> ReglasListadoTeac:
         return ReglasListadoTeac(patron_enlace="(?i)" + _CRITERIO_LINK_RE.pattern)
 
 
-def _http_get(url: str, *, retries: int = 2, backoff_s: float = 1.0) -> bytes:
-    last: Exception | None = None
-    for attempt in range(retries + 1):
-        req = urllib.request.Request(url, headers={"User-Agent": _USER_AGENT})
-        try:
-            with urllib.request.urlopen(req, timeout=30) as response:
-                body: bytes = response.read()
-                return body
-        except (HTTPError, URLError, TimeoutError) as exc:
-            last = exc
-            logger.warning("Attempt %d for %s failed: %s", attempt + 1, url, exc)
-            if attempt < retries:
-                time.sleep(backoff_s * (attempt + 1))
-    raise click.ClickException(f"Could not fetch {url}: {last}")
+def _http_get(url: str) -> bytes:
+    """GET ``url`` through the shared client (its retries and pauses); a ClickException when it cannot."""
+    try:
+        respuesta = http.cliente().get(url, timeout=30)
+        respuesta.raise_for_status()
+    except httpx.HTTPError as exc:
+        logger.warning("Download of %s failed: %s", url, exc)
+        raise click.ClickException(f"Could not fetch {url}: {exc}") from exc
+    return respuesta.content
 
 
 def collect_criterio_ids(

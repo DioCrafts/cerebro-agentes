@@ -29,9 +29,8 @@ import re
 from types import TracebackType
 from typing import Any
 from urllib.parse import urlsplit
-import urllib.request
 
-from asistente.plataforma import settings
+from asistente.plataforma import http, settings
 
 logger = logging.getLogger(__name__)
 
@@ -146,9 +145,11 @@ def avisar_healthcheck(nombre: str, *, ok: bool, detalle: str = "") -> bool:
         if not ok:
             url = url.rstrip("/") + "/fail"
         data = detalle[:_MAX_DETAIL_CHARS].encode("utf-8") if detalle and not ok else None
-        request = urllib.request.Request(url, data=data, method="POST" if data else "GET")
-        with urllib.request.urlopen(request, timeout=_PING_TIMEOUT_SECONDS) as response:
-            response.read()
+        if data:
+            respuesta = http.cliente().post(url, content=data, timeout=_PING_TIMEOUT_SECONDS)
+        else:
+            respuesta = http.cliente().get(url, timeout=_PING_TIMEOUT_SECONDS)
+        respuesta.raise_for_status()
     except Exception as exc:  # the ping is best effort: it must never break the job
         # The URL is a secret of sorts (anyone holding it can fake a ping): do not log it.
         logger.warning("Healthcheck ping for %s failed: %s: %s", nombre, type(exc).__name__, exc)

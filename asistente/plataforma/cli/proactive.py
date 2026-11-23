@@ -31,12 +31,11 @@ from pathlib import Path
 import re
 import time
 from typing import Any
-from urllib.error import HTTPError, URLError
-import urllib.request
 
 import click
 
 from asistente.ambitos.fiscal.calculo.params import DATA_DIR, ejercicios_disponibles, load_params
+from asistente.conocimiento.boe import cliente as boe
 from asistente.conocimiento.fuentes import desactualizadas, normas_de_parametros
 from asistente.conocimiento.recodificacion import (
     AlmacenPropuestas,
@@ -435,50 +434,19 @@ def _revisar_fuentes_de_modulos(fetch_metadata: Any, *, marcar_revisadas: bool) 
 
 REGISTRO_NOVEDADES = "_boe_novedades.json"
 ESTADO_PILOTO = "_params_autopilot.json"
-_SUMARIO_URL = "https://www.boe.es/datosabiertos/api/boe/sumario/{dia}"
-_XML_URL = "https://www.boe.es/diario_boe/xml.php?id={id}"
-_USER_AGENT = "hacienda-asesor/0.1 (novedades tributarias)"
 
 
-def _get(url: str, *, accept: str, timeout: int = 60, intentos: int = 3) -> bytes | None:
-    """GET ``url`` with a couple of retries; None on 404 (no BOE that day)."""
-    request = urllib.request.Request(url, headers={"Accept": accept, "User-Agent": _USER_AGENT})
-    for intento in range(intentos):
-        try:
-            with urllib.request.urlopen(request, timeout=timeout) as response:
-                return bytes(response.read())
-        except HTTPError as exc:
-            if exc.code == 404:
-                return None
-            if intento == intentos - 1:
-                raise
-        except (URLError, ConnectionError, TimeoutError):
-            if intento == intentos - 1:
-                raise
-        time.sleep(2 * (intento + 1))
-    return None
+def _get(url: str, *, accept: str, timeout: int = 60) -> bytes | None:
+    """GET a www.boe.es ``url`` (retries and pauses: the shared HTTP client); None on 404."""
+    return boe.descargar(url, accept, timeout=timeout)
 
 
 def _sumario(dia: date) -> dict[str, Any] | None:
-    raw = _get(_SUMARIO_URL.format(dia=dia.strftime("%Y%m%d")), accept="application/json")
-    time.sleep(0.3)
-    if not raw:
-        return None
-    try:
-        payload: dict[str, Any] = json.loads(raw)
-    except ValueError:
-        # An HTML error page served with 200 never reaches the parser: tell the format watch before failing.
-        from asistente.conocimiento import formatos
-
-        formatos.observar("boe_sumario", raw.decode("utf-8", errors="replace"), contexto=dia.isoformat())
-        raise
-    return payload
+    return boe.sumario(dia)
 
 
 def _xml(boe_id: str) -> bytes | None:
-    raw = _get(_XML_URL.format(id=boe_id), accept="application/xml")
-    time.sleep(0.3)
-    return raw
+    return boe.xml(boe_id)
 
 
 def _vigiladas() -> frozenset[str]:
