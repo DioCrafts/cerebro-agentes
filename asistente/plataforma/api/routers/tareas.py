@@ -95,7 +95,6 @@ class Cancelacion(_Modelo):
 def proveedor_planificador() -> LLMProvider:
     """The model that proposes custom plans (tests override this dependency)."""
     from asistente.nucleo.agent.providers import create_provider
-
     from asistente.plataforma.ops.consumo import medir
 
     try:
@@ -221,9 +220,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
                 from asistente.plataforma.ops.consumo import contexto_consumo
 
                 with contexto_consumo(user_id=_user_id(access), case_id=payload.case_id):
-                    titulo, pasos, _avisos = proponer_con_modelo(
-                        provider, objetivo=payload.objetivo, modulos=modulos
-                    )
+                    titulo, pasos, _avisos = proponer_con_modelo(provider, objetivo=payload.objetivo, modulos=modulos)
                 tarea, avisos = servicio.proponer_plan(
                     motor.store,
                     case_id=payload.case_id,

@@ -183,7 +183,6 @@ def consultor_por_defecto(modulo: Modulo, pregunta: str, case: CaseState) -> tup
     from asistente.nucleo.agent.especialistas import Coordinador
     from asistente.nucleo.agent.evidence import EvidenceLedger
     from asistente.nucleo.agent.providers import create_provider
-
     from asistente.plataforma.ops.consumo import contexto_consumo, medir
 
     ledger = EvidenceLedger()

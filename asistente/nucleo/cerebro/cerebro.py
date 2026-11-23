@@ -49,10 +49,10 @@ from typing import Any
 from asistente.conocimiento.llm.security import neutralizar_inyeccion
 from asistente.nucleo.agent import enrutado
 from asistente.nucleo.agent.agent import (
+    TRUNCATED_WARNING,
     AgentMode,
     AgentResult,
     TaxAgent,
-    TRUNCATED_WARNING,
     ToolTraceEntry,
     _doctrine_issues,
 )

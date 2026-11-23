@@ -40,7 +40,7 @@ from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.eventos import emitir_cambio_modulo
 from asistente.nucleo.memoria.almacen import almacen, tabla_existe
 from asistente.nucleo.memoria.servicio import desde_accion
-from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore, describir
+from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore, completar_accion, describir
 from asistente.nucleo.modulos.contrato import ContextoModulo, Modulo, ResultadoHerramienta
 from asistente.nucleo.modulos.ganchos import directas_de, ganchos_de, obligatorio
 from asistente.nucleo.modulos.perfil import HechoInvalidoError, perfil_de, registrar_hechos_de_modulo
@@ -324,6 +324,10 @@ def build_router(
         access.check(case_id)
         if cases.get_case(case_id) is None:
             raise HTTPException(status_code=404, detail="case not found")
+        try:  # a confirmation whose process died half-way is shown as failed, never stuck «ejecutando»
+            acciones.recuperar_atascadas()
+        except Exception:
+            logger.exception("stuck actions could not be recovered")
         return AccionesResponse(case_id=case_id, acciones=acciones.list(case_id))
 
     @router.get("/propuestas", response_model=PropuestasResponse, dependencies=[Depends(require_api_key)])
@@ -379,37 +383,43 @@ def build_router(
         if acciones.transicion(accion_id, desde="pendiente", hacia="ejecutando") is None:
             raise HTTPException(status_code=409, detail="Esta acción ya se decidió; no se puede ejecutar de nuevo.")
 
-        escrito: dict[str, Any] = {"case": case, "cambiado": False}
+        valores_escritos: list[Any] = []
+        escrito: dict[str, Any] = {"case": case}
 
         def registrar(valores: Any) -> None:
+            # Validated now (an invalid fact fails the action); written by ``guardar`` on the case as it is then.
             escrito["case"] = registrar_hechos_de_modulo(
                 escrito["case"], modulo, valores, fuente=f"modulo:{modulo.clave}"
             )
-            escrito["cambiado"] = True
+            valores_escritos.append(valores)
 
         contexto = ContextoModulo(
             perfil=perfil_de(case), hoy=hoy_en_espana(), case_id=case.case_id, registrar=registrar
         )
-        try:
-            resultado = herramienta.ejecutar(dict(accion.argumentos), contexto)
+
+        def ejecutar() -> tuple[str, bool]:
+            try:
+                resultado = herramienta.ejecutar(dict(accion.argumentos), contexto)
+            except HechoInvalidoError as exc:
+                return f"No se pudo completar: {exc}", True
             if not isinstance(resultado, ResultadoHerramienta):
                 raise TypeError("la herramienta no devolvió un ResultadoHerramienta")
-            texto, es_error = resultado.contenido, resultado.es_error
-        except HechoInvalidoError as exc:
-            texto, es_error = f"No se pudo completar: {exc}", True
-        except Exception:  # the action failed: recorded, never retried silently
-            # The exception's text stays in the log (docs/seguridad.md, S-11): what is stored is shown to the user.
-            logger.exception("action %s failed", accion_id)
-            texto, es_error = "La acción falló por un error interno. No se ha cambiado nada; inténtalo más tarde.", True
-        if escrito["cambiado"] and not es_error:
-            cases.save_case(escrito["case"])
-        final = acciones.transicion(
-            accion_id,
-            desde="ejecutando",
-            hacia="fallida" if es_error else "ejecutada",
-            resultado=texto,
-            es_error=es_error,
-        )
+            return resultado.contenido, resultado.es_error
+
+        def guardar() -> None:
+            if not valores_escritos:
+                return
+            # Re-read on every attempt: another turn may have saved the case while the tool ran.
+            actual = cases.get_case(accion.case_id)
+            if actual is None:
+                raise LookupError(accion.case_id)
+            for valores in valores_escritos:
+                actual = registrar_hechos_de_modulo(actual, modulo, valores, fuente=f"modulo:{modulo.clave}")
+            cases.save_case(actual)
+
+        # Always leaves the action decided, saving with retries on a version conflict (asistente/nucleo/modulos).
+        final = completar_accion(acciones, accion_id, ejecutar=ejecutar, guardar=guardar)
+        es_error = final.es_error
         if not es_error:  # remembered as done (asistente/nucleo/memoria; never raises)
             desde_accion(
                 cases.db_path,
@@ -431,7 +441,6 @@ def build_router(
                 "estado": "fallida" if es_error else "ejecutada",
             },
         )
-        assert final is not None
         return final
 
     @router.post(

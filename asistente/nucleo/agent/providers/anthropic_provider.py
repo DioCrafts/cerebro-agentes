@@ -45,6 +45,8 @@ def limites_cliente() -> tuple[float, int]:
         return float(explicito), _REINTENTOS
     encargo = float(getattr(settings, "CEREBRO_TIMEOUT_ENCARGO_S", 180) or 180)
     return max(10.0, encargo / (_REINTENTOS + 1) - 5.0), _REINTENTOS
+
+
 _MAX_TOKENS_STREAMING = 64000
 
 # Models whose safety classifiers can decline a request with

@@ -23,6 +23,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
+import threading
 from typing import Any
 
 from langchain_core.embeddings import Embeddings
@@ -64,6 +65,7 @@ class MLXEmbeddings(Embeddings):
         self._model, self._tokenizer = load(str(path))
         self._batch_size = batch_size
         self._max_seq_length = max_seq_length
+        self._lock = threading.Lock()
 
         # Optional sentence-transformers-style prompts. Qwen3-Embedding's
         # config maps ``query`` → instruction prefix and ``document`` → "".
@@ -81,7 +83,7 @@ class MLXEmbeddings(Embeddings):
                 )
 
         logger.info(
-            "MLX embedder ready: model=%s  batch_size=%d  max_seq_length=%d  " "query_prefix=%r",
+            "MLX embedder ready: model=%s  batch_size=%d  max_seq_length=%d  query_prefix=%r",
             model_path,
             batch_size,
             max_seq_length,
@@ -103,6 +105,12 @@ class MLXEmbeddings(Embeddings):
     def _encode(self, texts: list[str], *, prefix: str) -> list[list[float]]:
         if not texts:
             return []
+        # The model is shared by the whole process (see ``create_embeddings``) and MLX is not safe to call from two
+        # threads at once.
+        with self._lock:
+            return self._encode_sin_cerrojo(texts, prefix=prefix)
+
+    def _encode_sin_cerrojo(self, texts: list[str], *, prefix: str) -> list[list[float]]:
         if prefix:
             texts = [f"{prefix} {t}" for t in texts]
 
@@ -135,8 +143,20 @@ def create_embeddings(model: str | None = None) -> Embeddings:
         model: Override for ``settings.EMBEDDING_MODEL`` — a path to a
             locally converted MLX model directory.
     """
-    return MLXEmbeddings(
-        model_path=model or settings.EMBEDDING_MODEL,
-        batch_size=settings.EMBEDDING_BATCH_SIZE,
-        max_seq_length=settings.EMBEDDING_MAX_SEQ_LENGTH,
+    clave = (
+        str(model or settings.EMBEDDING_MODEL),
+        int(settings.EMBEDDING_BATCH_SIZE),
+        int(settings.EMBEDDING_MAX_SEQ_LENGTH),
     )
+    # ONE embedder per process and model: loading the weights twice doubles the memory, and two copies on one GPU
+    # thrash it. The lock also makes two threads asking at once load it only once.
+    with _CACHE_LOCK:
+        embedder = _CACHE.get(clave)
+        if embedder is None:
+            embedder = MLXEmbeddings(model_path=clave[0], batch_size=clave[1], max_seq_length=clave[2])
+            _CACHE[clave] = embedder
+        return embedder
+
+
+_CACHE: dict[tuple[str, int, int], MLXEmbeddings] = {}
+_CACHE_LOCK = threading.Lock()

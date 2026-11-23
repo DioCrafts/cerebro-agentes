@@ -13,6 +13,7 @@ from dataclasses import dataclass
 import logging
 from pathlib import Path
 import re
+import threading
 from typing import Any, Protocol
 
 from langchain_core.documents import Document
@@ -125,9 +126,32 @@ class FaissCorpusSearcher:
         self._vectorstore = vectorstore
         self._reranker = reranker
         self._first_stage_k = first_stage_k
+        # ONE lock for every caller (agent runs, researcher threads, the council): the embedder and the reranker
+        # are not safe to call from two threads, and the searcher is shared by the whole process.
+        self._lock = threading.Lock()
 
     @classmethod
     def from_settings(cls) -> FaissCorpusSearcher | SinCorpus:
+        """The process's shared searcher for the configured index (loaded once; later calls reuse it)."""
+        from asistente.plataforma import settings
+
+        clave = (
+            str(settings.FAISS_INDEX_PATH),
+            bool(settings.RERANKER_ENABLED),
+            str(settings.RERANKER_MODEL),
+            int(settings.RERANKER_TOP_K),
+            int(settings.RERANKER_FIRST_STAGE_K),
+        )
+        with _BUSCADORES_LOCK:
+            buscador = _BUSCADORES.get(clave)
+            if buscador is None:
+                buscador = cls._cargar()
+                if isinstance(buscador, FaissCorpusSearcher):  # a missing index is looked for again next time
+                    _BUSCADORES[clave] = buscador
+            return buscador
+
+    @classmethod
+    def _cargar(cls) -> FaissCorpusSearcher | SinCorpus:
         from langchain_community.vectorstores import FAISS
 
         from asistente.conocimiento.llm.embeddings import create_embeddings
@@ -164,8 +188,13 @@ class FaissCorpusSearcher:
             # FAISS applies the filter AFTER fetching fetch_k neighbours; a
             # selective filter (e.g. only binding doctrine) needs a deep pool.
             kwargs["fetch_k"] = max(first_stage_k * 20, 500)
-        docs = self._vectorstore.similarity_search(query, **kwargs)
-        if self._reranker is not None and docs:
-            docs = list(self._reranker.compress_documents(docs, query))
+        with self._lock:
+            docs = self._vectorstore.similarity_search(query, **kwargs)
+            if self._reranker is not None and docs:
+                docs = list(self._reranker.compress_documents(docs, query))
         # Retrieved text is untrusted input to the model: redact injection bait.
         return _sanitize_context_documents(list(docs[:k]))
+
+
+_BUSCADORES: dict[tuple[Any, ...], FaissCorpusSearcher] = {}
+_BUSCADORES_LOCK = threading.Lock()

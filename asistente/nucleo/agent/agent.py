@@ -32,7 +32,6 @@ from asistente.nucleo.agent.providers.base import LLMProvider, ProviderError, To
 from asistente.nucleo.agent.search import CorpusSearcher
 from asistente.nucleo.agent.team import (
     RESEARCH_TOOLS,
-    LockedSearcher,
     Plan,
     SubagentRun,
     TeamReport,
@@ -679,7 +678,8 @@ class TeamAgent(TaxAgent):
     ) -> AgentResult:
         ledger = self._nuevo_ledger()
         make_toolbox = new_toolbox_factory(
-            searcher=LockedSearcher(self._searcher),
+            # The corpus searcher serialises itself (one lock per process, see FaissCorpusSearcher): no per-run lock.
+            searcher=self._searcher,
             ledger=ledger,
             case=case,
             default_k=self._default_k,

@@ -625,8 +625,7 @@ class Presupuesto:
             and self.store.coste_del_dia(dia, user_id=user_id) >= self.diario_por_usuario_usd
         ):
             raise PresupuestoAgotadoError(
-                "Has alcanzado tu límite diario de uso de modelos de IA. "
-                f"Se restablece {_formato_reinicio(reinicio)}.",
+                f"Has alcanzado tu límite diario de uso de modelos de IA. Se restablece {_formato_reinicio(reinicio)}.",
                 limite="diario_por_usuario",
                 se_restablece=reinicio,
             )
