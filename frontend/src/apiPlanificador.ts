@@ -6,6 +6,7 @@
 
 import { request } from "./api";
 import type { PlanOptimo, TextoLegal } from "./apiOptimizador";
+import { isRecord } from "./lib/guards";
 
 export type PalancaId = "amortizar_hipoteca" | "plan_pensiones_contribuyente" | "plan_pensiones_conyuge" | "donativo";
 export type Modalidad = "plazo" | "cuota";
@@ -183,10 +184,6 @@ export interface PlanHogar {
   textos_legales: TextoLegal[];
   busqueda: BusquedaPlan;
   explicacion: string;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function isPlanHogar(value: unknown): value is PlanHogar {

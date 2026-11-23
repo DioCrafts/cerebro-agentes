@@ -34,7 +34,7 @@ export function VerificationPanel({ claims, otherWarnings, onCite }: Verificatio
           key={`w-${i}`}
           className="flex gap-2 rounded-lg border border-grounding-uncited-bd bg-grounding-uncited-bg px-3 py-2 text-[13px] text-ink-soft"
         >
-          <AlertTriangle size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-grounding-uncited-fg" />
+          <AlertTriangle size={15} aria-hidden className="mt-0.5 shrink-0 text-grounding-uncited-fg" />
           {warning}
         </p>
       ))}
@@ -49,7 +49,7 @@ export function VerificationPanel({ claims, otherWarnings, onCite }: Verificatio
                 </span>
               )}
             </span>
-            <ChevronDown size={16} aria-hidden className="flex-shrink-0 text-muted transition group-open:rotate-180" />
+            <ChevronDown size={16} aria-hidden className="shrink-0 text-muted transition group-open:rotate-180" />
           </summary>
           <ul className="divide-y divide-line border-t border-line">
             {ordered.map((claim, i) => {
@@ -57,7 +57,7 @@ export function VerificationPanel({ claims, otherWarnings, onCite }: Verificatio
               const Icon = style.icon;
               return (
                 <li key={i} className="flex gap-3 px-4 py-3">
-                  <Icon size={17} aria-hidden className={clsx("mt-0.5 flex-shrink-0", style.tone)} />
+                  <Icon size={17} aria-hidden className={clsx("mt-0.5 shrink-0", style.tone)} />
                   <div className="min-w-0 text-[13.5px] leading-snug">
                     <p className="text-ink">{claim.text}</p>
                     <p className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-[12px]">
@@ -68,7 +68,7 @@ export function VerificationPanel({ claims, otherWarnings, onCite }: Verificatio
                           type="button"
                           onClick={() => onCite(id)}
                           aria-label={`Ver la fuente ${id}`}
-                          className="rounded bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
+                          className="rounded-sm bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
                         >
                           {id}
                         </button>

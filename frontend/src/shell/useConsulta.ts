@@ -1,5 +1,5 @@
 // The conversations kept in this browser, the one on screen, and asking the advisor (streamed turn by turn).
-// Moved out of App.tsx unchanged: same requests, same history format, same error handling.
+// The running turn is kept in an external store (turnoEnCurso.ts) so streamed tokens repaint only its bubble.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -11,23 +11,17 @@ import { newId } from "../lib/id";
 import { activityRows, sourceAnchorId } from "../lib/presentation";
 import { type ChatTurn, type Conversation, emptyConversation, loadConversations, saveConversations } from "../lib/storage";
 import { errorMessage } from "./errores";
+import { crearAlmacenTurno } from "./turnoEnCurso";
+
+
+/** Why the running turn was cancelled: the user pressed stop, or moved to another conversation. */
+type MotivoParada = "usuario" | "cambio";
 
 // The household brain's own events: shown as its live plan, kept apart from the advisor's activity timeline.
 const EVENTOS_CEREBRO: ReadonlySet<string> = new Set(["plan", "especialista", "peticion", "sintesis", "puerta"]);
 
 function esEventoCerebro(event: ProgressEvent): boolean {
   return EVENTOS_CEREBRO.has(event.type);
-}
-
-// A turn that is still running: the question plus the agent's live progress.
-export interface PendingTurn {
-  text: string;
-  events: ProgressEvent[];
-  startedAt: number;
-  // The answer text streamed so far for the current model step (unverified).
-  draft: string;
-  // The household brain's events (plan, specialists, synthesis, figures gate), kept apart from the activity rows.
-  cerebro?: ProgressEvent[];
 }
 
 export function useConsulta({
@@ -42,7 +36,10 @@ export function useConsulta({
   const [conversations, setConversations] = useState<Conversation[]>(loadConversations);
   // Back from Google's consent screen (mail module): reopen the conversation whose case was connecting.
   const [activeId, setActiveId] = useState<string>(() => conversacionDeVuelta(conversations) ?? newId());
-  const [pending, setPending] = useState<PendingTurn | null>(null);
+  // The running turn lives outside React state (see turnoEnCurso.ts); only `busy` re-renders the shell.
+  const [turno] = useState(crearAlmacenTurno);
+  const setPending = turno.set;
+  const [busy, setBusy] = useState(false);
   const [highlightedId, setHighlightedId] = useState<string | null>(null);
   const [removingFact, setRemovingFact] = useState<string | null>(null);
   const [caseError, setCaseError] = useState<string | null>(null);
@@ -61,7 +58,6 @@ export function useConsulta({
     () => conversations.find((c) => c.id === activeId) ?? emptyConversation(activeId),
     [conversations, activeId],
   );
-  const busy = pending !== null;
 
   // Stable per-browser identity. There is no auth yet, so a generated id
   // persisted in localStorage lets the backend group this user's cases.
@@ -80,14 +76,8 @@ export function useConsulta({
 
   useEffect(() => saveConversations(conversations), [conversations]);
 
-  // While the advisor works, follow its progress at the bottom. When the answer
-  // lands, bring its START into view instead: a long answer must be read from
-  // the top, not from its last source card.
-  // (The draft grows token by token; re-scroll only every ~120 characters.)
-  const draftBucket = Math.floor((pending?.draft.length ?? 0) / 120);
-  useEffect(() => {
-    if (busy) bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [busy, pending?.events.length, draftBucket]);
+  // When the answer lands, bring its START into view: a long answer must be read from the top, not
+  // from its last source card. (While it runs, Hilo's live bubble follows it at the bottom.)
   useEffect(() => {
     lastTurnRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [active.turns.length, activeId]);
@@ -95,7 +85,7 @@ export function useConsulta({
   // Cancel the in-flight request and pending timers if the app unmounts.
   useEffect(
     () => () => {
-      abortRef.current?.abort();
+      abortRef.current?.abort("cambio");
       if (highlightTimer.current) clearTimeout(highlightTimer.current);
     },
     [],
@@ -128,6 +118,7 @@ export function useConsulta({
     const events: ProgressEvent[] = [];
     const eventosCerebro: ProgressEvent[] = [];
     setPending({ text, events: [], startedAt, draft: "", cerebro: [] });
+    setBusy(true);
     if (replaceTurnId) {
       upsert(conversation.id, (c) => ({ ...c, turns: c.turns.filter((t) => t.id !== replaceTurnId) }));
     }
@@ -206,9 +197,9 @@ export function useConsulta({
         if (resp.pending_actions && resp.pending_actions.length > 0) alPrepararAcciones();
       } catch (err) {
         if (controller.signal.aborted) {
-          // Stopped by the user: no turn is recorded and the question goes back
-          // into the composer so it is not lost.
-          setComposerSeed((seed) => ({ id: seed.id + 1, text }));
+          // No turn is recorded. Stopped by the user: the question goes back into the composer so it
+          // is not lost. Cancelled by a move to another conversation: it stays out of the new one.
+          if ((controller.signal.reason as MotivoParada | undefined) === "usuario") setComposerSeed((seed) => ({ id: seed.id + 1, text }));
           return;
         }
         console.error("agent turn failed", err);
@@ -235,15 +226,16 @@ export function useConsulta({
       if (abortRef.current === controller) abortRef.current = null;
       busyRef.current = false;
       setPending(null);
+      setBusy(false);
     }
   }
 
-  function stop() {
-    abortRef.current?.abort();
+  function stop(motivo: MotivoParada = "usuario") {
+    abortRef.current?.abort(motivo);
   }
 
   function switchTo(id: string) {
-    stop();
+    stop("cambio");
     setActiveId(id);
     alCambiarDeConversacion();
     setCaseError(null);
@@ -290,7 +282,7 @@ export function useConsulta({
     conversations,
     active,
     activeId,
-    pending,
+    turno,
     busy,
     highlightedId,
     removingFact,

@@ -22,6 +22,7 @@ import {
   silenciar,
   sincronizarCorreo,
 } from "../apiCorreo";
+import { esConsentimientoGoogle } from "../lib/urls";
 
 const BUTTON_PRIMARY =
   "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
@@ -141,6 +142,12 @@ export function CorreoSeccion({ caseId, onCaseUpdated, disabled }: { caseId: str
     setError(null);
     try {
       const url = await iniciarConexion(caseId);
+      // Only ever to Google's consent screen: a different address from the server is refused.
+      if (!esConsentimientoGoogle(url)) {
+        setError("El servidor ha devuelto una dirección de conexión inesperada. No se ha abierto.");
+        setBusy(false);
+        return;
+      }
       recordarCasoConectando(caseId);
       window.location.assign(url);
     } catch (err) {

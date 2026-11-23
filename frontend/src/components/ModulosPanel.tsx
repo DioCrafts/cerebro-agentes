@@ -14,9 +14,10 @@ import { getPropuestas, readModuleDocument, runModuleTool } from "../apiModulos"
 import { fileToBase64, relativeTime } from "../lib/presentation";
 import { CapacidadesSeccion } from "./CapacidadesSeccion";
 import { CorreoSeccion } from "./CorreoSeccion";
+import { textoDeValor } from "../lib/guards";
 
 const FIELD_CLASS =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
+  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 const BUTTON_PRIMARY =
   "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
 const BUTTON_QUIET =
@@ -162,7 +163,7 @@ function Propuestas({
   const [items, setItems] = useState<PropuestaHecho[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
-  const factsKey = facts.map((f) => `${f.name}=${String(f.value)}`).join("&");
+  const factsKey = facts.map((f) => `${f.name}=${textoDeValor(f.value)}`).join("&");
   useEffect(() => {
     const controller = new AbortController();
     getPropuestas(caseId, controller.signal).then(setItems, () => setItems([]));
@@ -312,7 +313,7 @@ function ModuloCard({
               modulo.activo ? "bg-primary" : "bg-line",
             )}
           >
-            <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", modulo.activo ? "left-6" : "left-1")} />
+            <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all", modulo.activo ? "left-6" : "left-1")} />
           </button>
         )}
       </div>
@@ -418,7 +419,7 @@ function initialText(hecho: HechoInfo, fact: Fact | undefined): string {
       return fact.value;
     }
   }
-  return String(fact.value);
+  return textoDeValor(fact.value);
 }
 
 function HechoField({

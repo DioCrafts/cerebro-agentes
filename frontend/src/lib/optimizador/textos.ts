@@ -2,27 +2,16 @@
 // and how a plan maps onto the simulator's figures. No React here, so the
 // component file only exports components.
 
-import type { CausaNoDisponible, Naturaleza, PalancaElegida, PlanOptimo, ResultadoHogar, TipoActivo } from "../apiOptimizador";
-import { factLabel } from "./presentation";
+import type { CausaNoDisponible, Declaracion, Naturaleza, PalancaElegida, PlanOptimo, ResultadoHogar, TipoActivo } from "../../apiOptimizador";
+import { factLabel } from "../presentation";
 
-/** "1.500,50", "1500.5", "1.500 €" → 1500.5; empty or unreadable → null. */
-export function parseAmount(raw: string | undefined): number | null {
-  const cleaned = (raw ?? "").trim().replace(/[€\s]/g, "").replace(/\.(?=\d{3}(\D|$))/g, "").replace(",", ".");
-  if (!cleaned || cleaned === "-") return null;
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : null;
-}
-
-/** 1500.5 → "1500,5": how the simulator's boxes show a figure. */
-export function amountText(n: number): string {
-  return String(Math.round(n * 100) / 100).replace(".", ",");
-}
+export { amountText, parseAmount } from "../formulario";
 
 /** "1082.46" → "1.082,46 €": always with the thousands point, like the plan's own sentences. */
 export function eur(value: string | number): string {
   const n = typeof value === "number" ? value : Number(value);
   if (!Number.isFinite(n)) return String(value);
-  const [whole, cents] = Math.abs(n).toFixed(2).split(".");
+  const [whole = "0", cents = "00"] = Math.abs(n).toFixed(2).split(".");
   const sign = n < 0 && Math.abs(n) >= 0.005 ? "-" : "";
   return `${sign}${whole.replace(/\B(?=(\d{3})+(?!\d))/g, ".")},${cents}\u00a0€`;
 }
@@ -140,7 +129,7 @@ export function splitQuotes(text: string): Array<{ text: string; quote: boolean 
   let last = 0;
   for (let m = re.exec(text); m !== null; m = re.exec(text)) {
     if (m.index > last) out.push({ text: text.slice(last, m.index), quote: false });
-    out.push({ text: m[1], quote: true });
+    out.push({ text: m[1] ?? "", quote: true });
     last = m.index + m[0].length;
   }
   if (last < text.length) out.push({ text: text.slice(last), quote: false });
@@ -164,17 +153,17 @@ const PLAIN_FIELDS = new Set(["edad", "fecha", "ejercicio", "retenciones", "dona
 
 function pathLabel(path: string): string | null {
   const parts = path.split(".");
-  if (parts[0] === "restricciones" && parts.length > 1) {
-    const name = parts[1];
+  const [raiz, name, indice, campo] = parts;
+  if (raiz === "restricciones" && name !== undefined) {
     const label = RESTRICCION_LABEL[name];
     if (!label) return null;
-    if (parts.length >= 4 && /^\d+$/.test(parts[2])) {
+    if (indice !== undefined && campo !== undefined && /^\d+$/.test(indice)) {
       const kind = name === "ganancias_latentes" ? "Inversión con ganancias" : "Inversión con pérdidas";
-      return `${kind} n.º ${Number(parts[2]) + 1} (${POSICION_CAMPO[parts[3]] ?? parts[3]})`;
+      return `${kind} n.º ${Number(indice) + 1} (${POSICION_CAMPO[campo] ?? campo})`;
     }
     return label;
   }
-  if (parts[0] === "descendientes" && parts.length === 3) return `Detalle de los hijos, ${parts[1]} (${factLabel(parts[2]).toLowerCase()})`;
+  if (raiz === "descendientes" && parts.length === 3 && name !== undefined && indice !== undefined) return `Detalle de los hijos, ${name} (${factLabel(indice).toLowerCase()})`;
   if (parts.length === 1 && (path.includes("_") || PLAIN_FIELDS.has(path))) {
     if (path === "fecha") return "Fecha del plan";
     return factLabel(path);
@@ -191,7 +180,7 @@ export function humanizeOptimizeError(message: string, status: number | null): s
   const clean = message.replace(/\s*\((?:Input|String|Value|Field|Decimal|Extra|Unable)[^)]*\)/g, "").trim();
   const match = /^Datos no válidos(?: para el cálculo)?:\s*([\s\S]*?)\.?$/.exec(clean);
   if (!match) return clean;
-  const parts = match[1].split("; ").map((part) => {
+  const parts = (match[1] ?? "").split("; ").map((part) => {
     const at = part.indexOf(": ");
     if (at < 0) return part;
     const path = part.slice(0, at);
@@ -261,4 +250,16 @@ export function enMinuscula(texto: string): string {
   const primera = texto.split(/\s/, 1)[0] ?? "";
   if (primera.length > 1 && primera === primera.toUpperCase() && /[A-ZÁÉÍÓÚÑ]/.test(primera)) return texto;
   return texto.charAt(0).toLowerCase() + texto.slice(1);
+}
+
+export function euroPorEuro(value: string): string {
+  const n = Number(value);
+  return Number.isFinite(n) ? `${n.toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €` : value;
+}
+
+/** The title of one tax return of a household, as the plan shows it. */
+export function declaracionTitulo(hogar: ResultadoHogar, d: Declaracion): string {
+  if (d.titular === "conjunta") return hogar.tributacion === "conjunta_monoparental" ? "Declaración conjunta monoparental" : "Declaración conjunta";
+  if (d.titular === "conyuge") return "Declaración de tu cónyuge";
+  return hogar.declaraciones.length > 1 ? "Tu declaración individual" : hogar.tributacion === "individual" ? "Tu declaración" : "Tu declaración conjunta";
 }

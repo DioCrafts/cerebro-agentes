@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import type { AdvisorNotification, Fact } from "../api";
 import { getNotifications, markNotificationRead, runProactive } from "../api";
 import { errorMessage } from "./errores";
+import { textoDeValor } from "../lib/guards";
 
 export interface Avisos {
   items: AdvisorNotification[];
@@ -23,7 +24,7 @@ export function useAvisos(caseId: string | null, facts: Fact[]): Avisos {
   const [error, setError] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
 
-  const factsKey = facts.map((f) => `${f.name}=${String(f.value)}`).join("&");
+  const factsKey = facts.map((f) => `${f.name}=${textoDeValor(f.value)}`).join("&");
   const key = `${caseId ?? ""}|${factsKey}|${tick}`;
   const cargando = caseId !== null && settled !== key;
 

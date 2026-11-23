@@ -1,10 +1,15 @@
 # Variables de entorno de HaciendaGPT (plantilla). Copia a .env, rellena y protege: chmod 600 .env.
+# docker-compose.yml exige que .env exista (env_file con required: true).
 # La tabla completa, con valores por defecto y propósito, está en docs/despliegue.md.
 
 DOMINIO=hacienda.example.org
 AUTH_MODE=required
 
 # Claves (secretos: nunca en el repositorio ni en los registros).
+# HACIENDA_API_KEY: clave compartida que la API exige en la cabecera X-API-Key a TODA petición. La
+# interfaz web no la envía: déjala vacía si el navegador habla con la API a través de Caddy (lo normal
+# con AUTH_MODE=required, donde cada usuario entra con su cuenta). Rellénala solo si la API la usan
+# clientes de máquina a máquina o si otro proxy delante de Caddy añade la cabecera.
 HACIENDA_API_KEY=
 HACIENDA_OPERATOR_KEY=
 ANTHROPIC_API_KEY=
@@ -26,6 +31,13 @@ PUSH_VAPID_SUBJECT=
 
 # Vigilancia externa de las tareas programadas (healthchecks.io o similar).
 HEALTHCHECK_URL=
+
+# Límite de peticiones por minuto y cliente (por proceso). 0 = sin límite: no lo dejes así en un
+# servicio expuesto a Internet.
+API_RATE_LIMIT_PER_MIN=60
+
+# Linux no tiene MLX: sin modelos de embeddings, la memoria se ordena sin ellos.
+MEMORIA_EMBEDDINGS=false
 
 # Plataforma.
 MIGRACIONES_AUTOMATICAS=true

@@ -60,7 +60,7 @@ interface TareasPanelProps {
 const BOTON = "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold disabled:opacity-50";
 const PRIMARIO = clsx(BOTON, "bg-primary text-white hover:bg-primary-hover");
 const SECUNDARIO = clsx(BOTON, "border border-line bg-surface text-ink hover:bg-line/40");
-const INPUT = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-none focus:border-primary";
+const INPUT = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-hidden focus:border-primary";
 
 const TONO: Record<EstadoTarea, string> = {
   propuesta: "bg-primary-soft text-ink",
@@ -122,7 +122,7 @@ function PasoTimeline({
   const idFecha = `fecha-${paso.id}`;
   return (
     <li className="relative border-l-2 border-line pb-4 pl-5 last:pb-0">
-      <span className="absolute -left-[9px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-paper">
+      <span className="absolute left-[-9px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-paper">
         <IconoPaso paso={paso} />
       </span>
       <div className="flex flex-wrap items-baseline gap-x-2">
@@ -314,7 +314,7 @@ export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: Tarea
               </button>
               <div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <h3 id="tarea-titulo" ref={tituloRef} tabIndex={-1} className="font-serif text-[17px] font-bold text-ink outline-none">
+                  <h3 id="tarea-titulo" ref={tituloRef} tabIndex={-1} className="font-serif text-[17px] font-bold text-ink outline-hidden">
                     {tarea.titulo}
                   </h3>
                   <Insignia estado={tarea.estado} />

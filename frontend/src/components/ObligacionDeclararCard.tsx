@@ -14,7 +14,7 @@ const VERDICT = {
   no_se_sabe: { text: "Falta un dato", className: "bg-grounding-abstain-bg text-grounding-abstain-fg" },
 } as const;
 
-const SELECT_CLASS = "mt-1 w-full rounded-lg border bg-surface px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[13.5px]";
+const SELECT_CLASS = "mt-1 w-full rounded-lg border bg-surface px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[13.5px]";
 
 interface Props {
   obligacion: ObligacionDeclarar;
@@ -39,7 +39,7 @@ export function ObligacionDeclararCard({ obligacion, value, onChange, dirty }: P
           <Scale size={15} aria-hidden className="text-primary-dark" />
           ¿Estás obligado a declarar?
         </h3>
-        <span data-verdict={obligacion.obligado} className={clsx("flex-shrink-0 rounded-pill px-2 py-0.5 text-[12px] font-bold", verdict.className)}>{verdict.text}</span>
+        <span data-verdict={obligacion.obligado} className={clsx("shrink-0 rounded-pill px-2 py-0.5 text-[12px] font-bold", verdict.className)}>{verdict.text}</span>
       </div>
       <p className="mt-1.5 text-[13px] leading-snug text-ink-soft">{obligacion.respuesta}</p>
       {obligacion.recomendacion && (

@@ -124,9 +124,9 @@ export function ProcedenciaRespuesta({
           const Icono = ICONO[fila.icono];
           return (
             <li key={`${fila.literal}-${i}`} className="flex flex-col gap-0.5 px-3 py-2 text-[13px] sm:flex-row sm:items-baseline sm:gap-3">
-              <span className="font-mono text-[13px] font-semibold tabular-nums text-ink sm:w-36 sm:flex-shrink-0">{fila.literal}</span>
+              <span className="font-mono text-[13px] font-semibold tabular-nums text-ink sm:w-36 sm:shrink-0">{fila.literal}</span>
               <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-1.5 text-ink-soft">
-                <Icono size={13} aria-hidden className="relative top-0.5 flex-shrink-0 text-primary-dark" />
+                <Icono size={13} aria-hidden className="relative top-0.5 shrink-0 text-primary-dark" />
                 <span className="font-medium">{fila.quien}</span>
                 {fila.concepto && <span className="text-muted">· {fila.concepto}</span>}
                 {fila.herramienta && <span className="text-muted">· cálculo «{fila.herramienta}»</span>}
@@ -134,7 +134,7 @@ export function ProcedenciaRespuesta({
                   <button
                     type="button"
                     onClick={() => onCite?.(fila.fragmentId as string)}
-                    className="rounded px-1 font-mono text-[12px] text-primary-dark underline-offset-2 hover:underline focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                    className="rounded-sm px-1 font-mono text-[12px] text-primary-dark underline-offset-2 hover:underline focus:outline-hidden focus-visible:ring-2 focus-visible:ring-primary"
                     aria-label={`Ver la fuente ${fila.fragmentId}${fila.fuente ? `: ${fila.fuente}` : ""}`}
                   >
                     [{fila.fragmentId}]

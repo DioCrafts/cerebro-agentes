@@ -25,6 +25,7 @@ import {
   type TipoFuente,
 } from "../apiInvestigacion";
 import { formatDate } from "../lib/presentation";
+import { enlaceWeb } from "../lib/urls";
 
 interface InvestigarPanelProps {
   open: boolean;
@@ -56,12 +57,13 @@ function mensaje(err: unknown): string {
 
 function Fuente({ fuente }: { fuente: FuenteInforme }) {
   const donde = fuente.referencia ?? fuente.dominio;
+  const url = enlaceWeb(fuente.url);
   return (
     <li id={`fuente-${fuente.id}`} className="rounded-lg border border-line bg-surface px-3 py-2">
       <div className="flex flex-wrap items-baseline gap-x-2">
         <span className="font-mono text-[12px] font-bold text-ink">{fuente.id}</span>
-        {fuente.url ? (
-          <a href={fuente.url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
+        {url ? (
+          <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
             {fuente.titulo}
             <ExternalLink size={12} aria-hidden />
           </a>

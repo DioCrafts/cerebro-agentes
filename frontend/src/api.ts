@@ -3,11 +3,12 @@
 // These shapes mirror the Pydantic models in
 //   asistente/conocimiento/llm/grounding.py        -> AnswerEnvelope, Citation
 //   asistente/nucleo/decision/schemas.py     -> ObligationCandidate, RiskLevel
-//   asistente/plataforma/api/api.py              -> QARequest, TurnResponse
+//   asistente/plataforma/api/api.py              -> AgentResponse (streamed by /agent/stream)
 // so if the backend grows a new field, only this file changes.
 
 import { trimHistory } from "./lib/historial";
 import { type AuthMode, getSessionToken } from "./lib/session";
+import { isRecord } from "./lib/guards";
 
 // "cited" / "uncited" come from the legacy /qa grounding gate; the rest are
 // the /agent verdicts (asistente/nucleo/agent/agent.py -> AgentMode).
@@ -208,9 +209,8 @@ export interface ObligationCandidate {
 }
 
 // Decision-engine shapes. These mirror asistente/nucleo/decision/schemas.py
-// (Fact, MissingFact, CaseState) and the /cases/{id}/turn response in
-// asistente/plataforma/api/api.py (TurnResponse). We only declare the fields the
-// web UI reads; the backend may send more (extra keys are ignored).
+// (Fact, MissingFact, CaseState). We only declare the fields the web UI reads;
+// the backend may send more (extra keys are ignored).
 export type CaseStatus = "open" | "in_review" | "closed";
 
 export interface Fact {
@@ -240,17 +240,6 @@ export interface CaseState {
   obligation_candidates: ObligationCandidate[];
 }
 
-export interface TurnResponse {
-  case_id: string;
-  facts: Fact[];
-  missing_facts: MissingFact[];
-  candidate_obligation_ids: string[];
-  obligations: ObligationCandidate[];
-  next_questions: string[];
-  degraded: boolean;
-  degraded_facts: string[];
-}
-
 // The FastAPI default is http://127.0.0.1:8000; Vite proxies /api/* to
 // avoid CORS in dev. In production both should be served under the same
 // origin so this remains an empty prefix.
@@ -259,13 +248,6 @@ const API_BASE = (import.meta.env.VITE_API_BASE as string) || "/api";
 // Abort any single request that outlives this budget, so a hung backend
 // surfaces a clear timeout instead of leaving the UI stuck on "Consultando…".
 const DEFAULT_TIMEOUT_MS = 30_000;
-// The agent runs several search → reason → verify rounds per question; a
-// thorough answer legitimately takes a few minutes.
-const AGENT_TIMEOUT_MS = 300_000;
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
-}
 
 // With accounts on (AUTH_MODE=required) every request carries the session
 // token. With accounts off there is no token and the headers are as before.
@@ -289,16 +271,6 @@ export function onSessionExpired(handler: (() => void) | null): void {
 // blindly to the typed interface — that would defer the failure to a confusing
 // `undefined.map` deep in render. We validate the fields the UI actually reads
 // (extra keys are ignored) and throw a clear error otherwise.
-function isAnswerEnvelope(value: unknown): value is AnswerEnvelope {
-  return (
-    isRecord(value) &&
-    typeof value.answer === "string" &&
-    (value.mode === "cited" || value.mode === "uncited" || value.mode === "abstained") &&
-    Array.isArray(value.citations) &&
-    typeof value.min_citations_required === "number"
-  );
-}
-
 const AGENT_MODES: ReadonlySet<string> = new Set([
   "verified",
   "partially_verified",
@@ -319,16 +291,6 @@ function isAgentResponse(value: unknown): value is AgentResponse {
     Array.isArray(value.tool_trace) &&
     Array.isArray(value.obligations) &&
     Array.isArray(value.facts)
-  );
-}
-
-function isTurnResponse(value: unknown): value is TurnResponse {
-  return (
-    isRecord(value) &&
-    typeof value.case_id === "string" &&
-    Array.isArray(value.obligations) &&
-    Array.isArray(value.next_questions) &&
-    Array.isArray(value.candidate_obligation_ids)
   );
 }
 
@@ -403,16 +365,6 @@ export async function request<T>(
   return data;
 }
 
-interface QAOptions {
-  query: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  signal?: AbortSignal;
-}
-
-export function postQA({ query, chatHistory = [], signal }: QAOptions): Promise<AnswerEnvelope> {
-  return request("/qa", { query, chat_history: trimHistory(chatHistory) }, isAnswerEnvelope, { signal });
-}
-
 export function createCase(opts: {
   userId: string;
   taxPeriod: string;
@@ -425,36 +377,6 @@ export function createCase(opts: {
     isCaseState,
     { signal: opts.signal },
   );
-}
-
-export function postTurn(opts: {
-  caseId: string;
-  userInput: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  signal?: AbortSignal;
-}): Promise<TurnResponse> {
-  return request(
-    `/cases/${encodeURIComponent(opts.caseId)}/turn`,
-    { user_input: opts.userInput, chat_history: trimHistory(opts.chatHistory ?? []) },
-    isTurnResponse,
-    { signal: opts.signal },
-  );
-}
-
-export function postAgent(opts: {
-  query: string;
-  chatHistory?: Array<{ role: "user" | "assistant"; content: string }>;
-  // Attach the case so the agent can read/record the user's facts and run the
-  // rules engine; omit to get a search-only answer.
-  caseId?: string | null;
-  // This chat's id (one per conversation): the household brain's conversation memory.
-  conversacionId?: string | null;
-  signal?: AbortSignal;
-}): Promise<AgentResponse> {
-  const body: Record<string, unknown> = { query: opts.query, chat_history: trimHistory(opts.chatHistory ?? []) };
-  if (opts.caseId) body.case_id = opts.caseId;
-  if (opts.conversacionId && CONVERSACION_ID.test(opts.conversacionId)) body.conversacion_id = opts.conversacionId;
-  return request("/agent", body, isAgentResponse, { signal: opts.signal, timeoutMs: AGENT_TIMEOUT_MS });
 }
 
 // The shape the backend accepts for a chat's id (AgentRequest.conversacion_id); anything else is not sent.
@@ -851,7 +773,7 @@ export interface Repaso {
 }
 
 function isRepaso(value: unknown): value is { repaso: Repaso } {
-  return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso as Record<string, unknown>).puntos);
+  return isRecord(value) && isRecord(value.repaso) && Array.isArray((value.repaso).puntos);
 }
 
 /** The structured digest of a `resumen_semanal` notification (404 when the brain did not write it). */

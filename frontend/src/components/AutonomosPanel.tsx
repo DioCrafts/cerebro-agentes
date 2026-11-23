@@ -20,12 +20,17 @@ const TABS: Array<{ id: Tab; label: string }> = [
   { id: "m130", label: "Pago trimestral (130)" },
   { id: "m303", label: "IVA trimestral (303)" },
 ];
-const TRIMESTRES: Array<{ value: Trimestre; label: string; meses: string; hasta: string }> = [
-  { value: 1, label: "1.º", meses: "enero a marzo", hasta: "31 de marzo" },
-  { value: 2, label: "2.º", meses: "abril a junio", hasta: "30 de junio" },
-  { value: 3, label: "3.º", meses: "julio a septiembre", hasta: "30 de septiembre" },
-  { value: 4, label: "4.º", meses: "octubre a diciembre", hasta: "31 de diciembre" },
-];
+const TRIMESTRES: Record<Trimestre, { value: Trimestre; label: string; meses: string; hasta: string }> = {
+  1: { value: 1, label: "1.º", meses: "enero a marzo", hasta: "31 de marzo" },
+  2: { value: 2, label: "2.º", meses: "abril a junio", hasta: "30 de junio" },
+  3: { value: 3, label: "3.º", meses: "julio a septiembre", hasta: "30 de septiembre" },
+  4: { value: 4, label: "4.º", meses: "octubre a diciembre", hasta: "31 de diciembre" },
+};
+
+/** «1.º»…«4.º» for a quarter sent by the server (empty if it is out of range). */
+function etiquetaTrimestre(n: number): string {
+  return n === 1 || n === 2 || n === 3 || n === 4 ? TRIMESTRES[n].label : "";
+}
 
 interface FieldDef {
   name: string;
@@ -147,7 +152,7 @@ function MoneyField({ field, values, onChange }: { field: FieldDef; values: Valu
           onChange={(e) => onChange(field.name, e.target.value)}
           inputMode="decimal"
           placeholder="0"
-          className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-7 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+          className="w-full rounded-lg border border-line bg-surface px-3 py-2 pr-7 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
         />
         <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted">€</span>
       </span>
@@ -190,12 +195,12 @@ function Optional({ title, children }: { title: string; children: ReactNode }) {
 }
 
 function QuarterPicker({ value, onChange, cumulative }: { value: Trimestre; onChange: (value: Trimestre) => void; cumulative: boolean }) {
-  const current = TRIMESTRES[value - 1];
+  const current = TRIMESTRES[value];
   return (
     <div>
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">Trimestre</p>
       <div role="radiogroup" aria-label="Trimestre" className="grid grid-cols-4 gap-2">
-        {TRIMESTRES.map((t) => (
+        {Object.values(TRIMESTRES).map((t) => (
           <button
             key={t.value}
             type="button"
@@ -264,7 +269,7 @@ function Detail({ lineas, avisos }: { lineas: CalcLine[]; avisos: string[] }) {
 function ResultCard({ title, amount, suffix, good, children }: { title: string; amount: string | number; suffix?: string; good?: boolean; children?: ReactNode }) {
   return (
     <section aria-live="polite" className="z-10 rounded-xl sm:sticky sm:top-0 border border-line bg-surface px-4 py-4 shadow-pop">
-      <p className="text-[12px] font-semibold uppercase tracking-[0.1em] text-muted">{title}</p>
+      <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">{title}</p>
       <p className={clsx("mt-1 font-serif text-[30px] font-bold leading-none", good ? "text-grounding-cited-fg" : "text-ink")}>
         {formatMoney(amount)}
         {suffix && <span className="ml-2 text-[14px] font-semibold text-ink-soft">{suffix}</span>}
@@ -277,7 +282,7 @@ function ResultCard({ title, amount, suffix, good, children }: { title: string; 
 function ErrorNote({ message }: { message: string }) {
   return (
     <p role="alert" className="flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-      <TriangleAlert size={15} aria-hidden className="mt-0.5 flex-shrink-0 text-risk-high-fg" />
+      <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
       {message}
     </p>
   );
@@ -290,7 +295,7 @@ function CeutaSelect({ value, onChange }: { value: string; onChange: (value: str
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+        className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
       >
         <option value="">No</option>
         <option value="ceuta">Sí, en Ceuta</option>
@@ -591,7 +596,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
             <select
               value={discapacidad}
               onChange={(e) => setDiscapacidad(e.target.value)}
-              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]"
+              className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]"
             >
               <option value="no">No</option>
               <option value="si">Sí</option>
@@ -612,7 +617,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
     return (
       <>
         {r && (
-          <ResultCard title={`Pago del ${TRIMESTRES[r.trimestre - 1]?.label ?? ""} trimestre (modelo 130)`} amount={r.a_ingresar} suffix={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"} good={Number(r.a_ingresar) === 0}>
+          <ResultCard title={`Pago del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 130)`} amount={r.a_ingresar} suffix={Number(r.a_ingresar) > 0 ? "a ingresar" : "nada que ingresar"} good={Number(r.a_ingresar) === 0}>
             <p className="mt-2 text-[13px] text-ink-soft">
               Beneficio acumulado {formatMoney(r.rendimiento_neto_acumulado)} · pago a cuenta sobre ese beneficio {formatMoney(r.pago_sobre_rendimiento)}
             </p>
@@ -711,7 +716,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
       <>
         {r && (
           <ResultCard
-            title={`IVA del ${TRIMESTRES[r.trimestre - 1]?.label ?? ""} trimestre (modelo 303)`}
+            title={`IVA del ${etiquetaTrimestre(r.trimestre)} trimestre (modelo 303)`}
             amount={Math.abs(resultado)}
             suffix={r.tipo_resultado === "a_ingresar" ? "a ingresar" : r.tipo_resultado === "a_compensar" ? "a tu favor" : "sin nada que pagar"}
             good={r.tipo_resultado !== "a_ingresar"}
@@ -756,7 +761,7 @@ export function AutonomosPanel({ open, onClose, onUse, taxPeriod = null, caseId 
                   aria-label="Ejercicio"
                   value={ejercicio}
                   onChange={(e) => setEjercicioEdit(Number(e.target.value))}
-                  className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-primary focus:outline-none"
+                  className="rounded-lg border border-line bg-surface px-2 py-1.5 text-[13px] text-ink focus:border-primary focus:outline-hidden"
                 >
                   {ejercicios.map((year) => (
                     <option key={year} value={year}>

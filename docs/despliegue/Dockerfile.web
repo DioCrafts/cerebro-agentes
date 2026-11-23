@@ -1,14 +1,26 @@
 # Interfaz web (React + Vite, PWA) compilada y servida por Caddy, que además hace de proxy inverso con TLS
-# hacia la API. Ejemplo (docs/despliegue.md).
+# hacia la API. Ejemplo (docs/despliegue.md). Desde la raíz del repositorio (lee /.dockerignore):
 #
 #   docker build -f docs/despliegue/Dockerfile.web -t haciendagpt-web .
-FROM node:22-slim AS compilacion
+#
+# Imágenes fijadas a una versión exacta. Para fijarlas además por digest (recomendado en producción):
+#   docker buildx imagetools inspect node:22.20.0-slim     → FROM node:22.20.0-slim@sha256:…
+FROM node:22.20.0-slim AS compilacion
 WORKDIR /app
 COPY frontend/package.json frontend/package-lock.json ./
 RUN npm ci
 COPY frontend/ ./
 RUN npm run build
 
-FROM caddy:2.10
+FROM caddy:2.10.2-alpine
+# Sin root: un usuario propio dueño de los datos de Caddy (certificados) y sin la capacidad de fichero
+# cap_net_bind_service del binario (con no-new-privileges y cap_drop: ALL, exec fallaría con ella).
+# Los puertos 80/443 se abren gracias al sysctl net.ipv4.ip_unprivileged_port_start de docker-compose.yml.
+RUN addgroup -S -g 10002 web \
+    && adduser -S -D -H -u 10002 -G web web \
+    && setcap -r /usr/bin/caddy \
+    && mkdir -p /data/caddy /config/caddy \
+    && chown -R web:web /data /config
 COPY --from=compilacion /app/dist /srv/web
 COPY docs/despliegue/Caddyfile /etc/caddy/Caddyfile
+USER web

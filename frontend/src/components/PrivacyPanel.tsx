@@ -249,7 +249,7 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
                   autoComplete="current-password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-none transition focus:border-primary"
+                  className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-hidden transition focus:border-primary"
                 />
               </label>
               <label className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-soft">

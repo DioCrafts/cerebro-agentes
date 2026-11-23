@@ -31,6 +31,7 @@ interface SourceCardProps {
 }
 
 function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
+  const vigencia = citation.vigencia ? VIGENCIA_BADGE[citation.vigencia] : undefined;
   const Icon = SOURCE_ICON[classifySource(citation)];
   const issuer = authorityLabel(citation.authority);
   const date = formatDate(citation.date);
@@ -45,13 +46,13 @@ function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
         highlighted ? "animate-flash border-primary" : "border-line",
       )}
     >
-      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary-soft text-primary-dark">
         <Icon size={20} aria-hidden />
       </div>
       <div className="min-w-0 flex-1">
         <h4 className="font-semibold leading-snug text-ink">
           {citation.fragment_id && (
-            <span className="mr-2 rounded bg-primary-soft px-1.5 py-0.5 font-mono text-[12px] text-primary-dark">
+            <span className="mr-2 rounded-sm bg-primary-soft px-1.5 py-0.5 font-mono text-[12px] text-primary-dark">
               {citation.fragment_id}
             </span>
           )}
@@ -65,12 +66,9 @@ function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
               Vinculante
             </span>
           )}
-          {citation.vigencia && VIGENCIA_BADGE[citation.vigencia] && (
-            <span
-              title={citation.vigencia_resumen ?? undefined}
-              className={clsx("rounded-pill px-2 py-px text-[11px] font-semibold", VIGENCIA_BADGE[citation.vigencia].cls)}
-            >
-              {VIGENCIA_BADGE[citation.vigencia].label}
+          {vigencia && (
+            <span title={citation.vigencia_resumen ?? undefined} className={clsx("rounded-pill px-2 py-px text-[11px] font-semibold", vigencia.cls)}>
+              {vigencia.label}
             </span>
           )}
           {citation.binding === false && (
@@ -79,7 +77,7 @@ function SourceCard({ citation, scope, highlighted }: SourceCardProps) {
             </span>
           )}
         </p>
-        {citation.vigencia && VIGENCIA_BADGE[citation.vigencia] && citation.vigencia_resumen && (
+        {vigencia && citation.vigencia_resumen && (
           <p className="mt-1 text-[12.5px] text-ink-soft">{citation.vigencia_resumen}</p>
         )}
         {citation.snippet && (

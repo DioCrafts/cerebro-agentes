@@ -59,7 +59,7 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
           }}
           placeholder="Escribe tu consulta fiscal…"
           aria-label="Escribe tu consulta"
-          className="max-h-[180px] flex-1 resize-none self-center bg-transparent py-1.5 text-[16px] leading-snug sm:text-[15px] text-ink placeholder:text-muted focus:outline-none"
+          className="max-h-[180px] flex-1 resize-none self-center bg-transparent py-1.5 text-[16px] leading-snug sm:text-[15px] text-ink placeholder:text-muted focus:outline-hidden"
         />
         {busy ? (
           <button
@@ -67,7 +67,7 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
             onClick={onStop}
             aria-label="Detener la respuesta"
             title="Detener"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:opacity-80"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ink text-paper transition hover:opacity-80"
           >
             <Square size={13} fill="currentColor" />
           </button>
@@ -76,7 +76,7 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "" }: Composer
             type="submit"
             disabled={!value.trim()}
             aria-label="Enviar"
-            className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-40"
           >
             <ArrowUp size={18} />
           </button>

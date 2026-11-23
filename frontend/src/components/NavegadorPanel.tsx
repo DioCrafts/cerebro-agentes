@@ -25,7 +25,7 @@ import {
 } from "../apiNavegador";
 
 const FIELD =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
+  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 const PRIMARY =
   "inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50";
 const QUIET =
@@ -386,16 +386,29 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
 
   useEffect(() => {
     if (!activa) return;
+    // One request at a time: the next one is scheduled when the previous answers (a slow server
+    // never piles up requests, as a fixed interval would).
     const ctrl = new AbortController();
-    const id = window.setInterval(() => {
+    let id: number | undefined;
+    const consultar = () => {
       getTarea(tarea.id, ctrl.signal).then(
-        (t) => avisar.current(t),
-        (err) => !ctrl.signal.aborted && setError(mensaje(err)),
+        (t) => {
+          if (ctrl.signal.aborted) return;
+          setError(null);
+          avisar.current(t);
+          id = window.setTimeout(consultar, 1000);
+        },
+        (err: unknown) => {
+          if (ctrl.signal.aborted) return;
+          setError(mensaje(err));
+          id = window.setTimeout(consultar, 3000);
+        },
       );
-    }, 1000);
+    };
+    id = window.setTimeout(consultar, 1000);
     return () => {
       ctrl.abort();
-      window.clearInterval(id);
+      window.clearTimeout(id);
     };
   }, [activa, tarea.id]);
 
@@ -466,7 +479,7 @@ function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaInfo; onA
       {tarea.resumen_envio.length > 0 && (
         <div>
           <h4 className="text-[13px] font-bold text-ink">Lo que se enviaría (no se ha enviado)</h4>
-          <dl className="mt-1 grid grid-cols-[auto,1fr] gap-x-3 gap-y-0.5 text-[12.5px]">
+          <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[12.5px]">
             {tarea.resumen_envio.map((f, i) => (
               <div key={i} className="contents">
                 <dt className="text-muted">{f.etiqueta}</dt>

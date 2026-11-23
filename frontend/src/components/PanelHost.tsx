@@ -27,7 +27,7 @@ function componenteDe(panel: DefinicionPanel): LazyExoticComponent<ComponentType
 
 function dialogoActivo(contenedor: HTMLElement | null): HTMLElement | null {
   const dialogos = contenedor?.querySelectorAll<HTMLElement>('[role="dialog"]');
-  return dialogos && dialogos.length > 0 ? dialogos[dialogos.length - 1] : null;
+  return dialogos && dialogos.length > 0 ? (dialogos[dialogos.length - 1] ?? null) : null;
 }
 
 function FocoEnDialogo({ open, contenedor }: { open: boolean; contenedor: RefObject<HTMLDivElement | null> }) {
@@ -49,7 +49,8 @@ function FocoEnDialogo({ open, contenedor }: { open: boolean; contenedor: RefObj
       const enfocables = Array.from(actual.querySelectorAll<HTMLElement>(ENFOCABLES)).filter((el) => el.offsetParent !== null);
       if (enfocables.length === 0) return;
       const primero = enfocables[0];
-      const ultimo = enfocables[enfocables.length - 1];
+      const ultimo = enfocables.at(-1);
+      if (!primero || !ultimo) return;
       if (!actual.contains(document.activeElement)) {
         e.preventDefault();
         primero.focus();

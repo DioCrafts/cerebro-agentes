@@ -41,7 +41,7 @@ function parseBlocks(text: string): Block[] {
     const heading = HEADING_RE.exec(line);
     if (heading) {
       flush();
-      blocks.push({ kind: "heading", level: heading[1].length, text: heading[2] });
+      blocks.push({ kind: "heading", level: heading[1]?.length ?? 1, text: heading[2] ?? "" });
       continue;
     }
     const bullet = BULLET_RE.exec(line);
@@ -49,7 +49,7 @@ function parseBlocks(text: string): Block[] {
     if (bullet || ordered) {
       flush();
       const isOrdered = !bullet;
-      const item = (bullet ?? ordered)![1];
+      const item = (bullet ?? ordered)?.[1] ?? "";
       const last = blocks[blocks.length - 1];
       if (last?.kind === "list" && last.ordered === isOrdered) last.items.push(item);
       else blocks.push({ kind: "list", ordered: isOrdered, items: [item] });
@@ -79,7 +79,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
     const citation = byId.get(id);
     if (draft) {
       return (
-        <span key={key} className="ml-0.5 rounded bg-line/70 px-1.5 py-px font-mono text-[11px] font-semibold text-muted">
+        <span key={key} className="ml-0.5 rounded-sm bg-line/70 px-1.5 py-px font-mono text-[11px] font-semibold text-muted">
           {id}
         </span>
       );
@@ -90,7 +90,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         <span
           key={key}
           title="Esta referencia no corresponde a ninguna fuente recuperada"
-          className="mx-0.5 rounded bg-risk-high-bg px-1 font-mono text-[11px] text-risk-high-fg line-through"
+          className="mx-0.5 rounded-sm bg-risk-high-bg px-1 font-mono text-[11px] text-risk-high-fg line-through"
         >
           {id}
         </span>
@@ -103,7 +103,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         onClick={() => onCite?.(id)}
         title={`${citation.title}${citation.section && citation.section !== "general" ? ` · ${citation.section}` : ""}`}
         aria-label={`Ver la fuente ${id}: ${citation.title}`}
-        className="ml-0.5 inline-flex translate-y-[-1px] items-center rounded bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
+        className="ml-0.5 inline-flex -translate-y-px items-center rounded-sm bg-primary-soft px-1.5 py-px font-mono text-[11px] font-semibold text-primary-dark transition hover:bg-primary hover:text-white"
       >
         {id}
       </button>
@@ -130,7 +130,7 @@ export function RichText({ text, citations = [], onCite, draft = false }: RichTe
         nodes.push(<em key={key}>{match[3]}</em>);
       } else if (match[4]) {
         nodes.push(
-          <code key={key} className="rounded bg-line/70 px-1 py-px font-mono text-[0.9em]">
+          <code key={key} className="rounded-sm bg-line/70 px-1 py-px font-mono text-[0.9em]">
             {match[4]}
           </code>,
         );

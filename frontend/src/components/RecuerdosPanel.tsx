@@ -33,9 +33,9 @@ interface RecuerdosPanelProps {
 type Pestana = "recuerdos" | "conversaciones";
 
 const BOTON =
-  "inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-primary focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary";
+  "inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-primary focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary";
 const BOTON_PELIGRO =
-  "inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-risk-high-fg hover:text-risk-high-fg focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary";
+  "inline-flex items-center gap-1 rounded-lg border border-line px-2 py-1 text-[12px] font-semibold text-ink-soft hover:border-risk-high-fg hover:text-risk-high-fg focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-primary";
 
 function origenTexto(r: Recuerdo): string {
   const fecha = formatDate(r.origen.fecha) ?? r.origen.fecha;
@@ -74,14 +74,14 @@ function Edicion({
         rows={3}
         value={texto}
         onChange={(e) => setTexto(e.target.value)}
-        className="block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink"
+        className="block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink"
       />
       <label className="block text-[12.5px] text-ink-soft">
         Tipo
         <select
           value={tipo}
           onChange={(e) => setTipo(e.target.value as TipoRecuerdo)}
-          className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink"
+          className="mt-1 block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink"
         >
           {TIPOS_RECUERDO.map((t) => (
             <option key={t} value={t}>
@@ -269,7 +269,7 @@ export function RecuerdosPanel({ open, onClose, caseId }: RecuerdosPanelProps) {
                     activa ? "bg-primary" : "bg-line",
                   )}
                 >
-                  <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow transition-all", activa ? "left-6" : "left-1")} />
+                  <span className={clsx("absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all", activa ? "left-6" : "left-1")} />
                 </button>
               </div>
               <details className="mt-2 text-[12px] leading-relaxed text-ink-soft">

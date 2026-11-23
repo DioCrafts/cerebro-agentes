@@ -69,7 +69,7 @@ function Formulario({
       {!inicial && (
         <label className="block text-[12.5px] text-ink-soft">
           Sobre qué
-          <select value={ambito} onChange={(e) => setAmbito(e.target.value)} className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink">
+          <select value={ambito} onChange={(e) => setAmbito(e.target.value)} className="mt-1 block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink">
             {catalogo.map((c) => (
               <option key={c.ambito} value={c.ambito}>
                 {c.etiqueta}
@@ -80,7 +80,7 @@ function Formulario({
       )}
       <label className="block text-[12.5px] text-ink-soft">
         Qué decides
-        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDecision)} className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink">
+        <select value={tipo} onChange={(e) => setTipo(e.target.value as TipoDecision)} className="mt-1 block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink">
           {TIPOS.map((t) => (
             <option key={t} value={t}>
               {TIPO_LABEL[t]}
@@ -97,7 +97,7 @@ function Formulario({
           value={razon}
           onChange={(e) => setRazon(e.target.value)}
           placeholder="p. ej. no quiero planes de pensiones porque necesito liquidez"
-          className="mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink"
+          className="mt-1 block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink"
         />
       </label>
       <div className="flex flex-wrap items-end gap-3 text-[12.5px] text-ink-soft">
@@ -108,7 +108,7 @@ function Formulario({
             value={caducidad}
             disabled={sinFecha}
             onChange={(e) => setCaducidad(e.target.value)}
-            className="mt-1 block rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink disabled:opacity-50"
+            className="mt-1 block rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink disabled:opacity-50"
           />
         </label>
         <label className="inline-flex items-center gap-1.5 pb-1">

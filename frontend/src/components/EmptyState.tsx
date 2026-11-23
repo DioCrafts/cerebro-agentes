@@ -42,7 +42,7 @@ export function EmptyState({ onPick }: { onPick: (prompt: string) => void }) {
       <ul className="mt-8 grid w-full gap-4 text-left sm:grid-cols-3">
         {HOW_IT_WORKS.map(({ icon: Icon, title, text }) => (
           <li key={title} className="flex gap-3 sm:flex-col sm:gap-2">
-            <Icon size={18} aria-hidden className="mt-0.5 flex-shrink-0 text-primary-dark" />
+            <Icon size={18} aria-hidden className="mt-0.5 shrink-0 text-primary-dark" />
             <div>
               <p className="text-[13.5px] font-semibold text-ink">{title}</p>
               <p className="text-[12.5px] leading-snug text-muted">{text}</p>

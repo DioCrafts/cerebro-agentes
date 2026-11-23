@@ -5,6 +5,7 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type TipoRecuerdo = "dato" | "preferencia" | "contexto";
 
@@ -80,10 +81,6 @@ export const TIPO_RECUERDO_LABEL: Record<TipoRecuerdo, string> = {
 };
 
 export const TIPOS_RECUERDO: TipoRecuerdo[] = ["preferencia", "dato", "contexto"];
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
 
 function isRecuerdo(value: unknown): value is Recuerdo {
   return isRecord(value) && typeof value.id === "string" && typeof value.texto === "string" && isRecord(value.origen);

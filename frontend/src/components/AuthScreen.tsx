@@ -17,7 +17,7 @@ interface AuthScreenProps {
 }
 
 const INPUT =
-  "mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-none transition focus:border-primary";
+  "mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-hidden transition focus:border-primary";
 
 function failure(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -77,7 +77,7 @@ export function AuthScreen({ config, notice, onSignedIn }: AuthScreenProps) {
   }
 
   return (
-    <div className="flex min-h-[100dvh] w-screen items-center justify-center bg-paper px-4 py-8">
+    <div className="flex min-h-dvh w-screen items-center justify-center bg-paper px-4 py-8">
       <main className="w-full max-w-[420px]">
         <div className="flex justify-center">
           <BrandHeader />

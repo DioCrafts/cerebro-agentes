@@ -7,6 +7,7 @@
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
 import { request } from "./api";
+import { isRecord } from "./lib/guards";
 
 export type TipoCorreccion =
   | "cifra_erronea"
@@ -47,10 +48,6 @@ export interface FeedbackPayload {
   cifraCorrecta?: string;
   // Only with the consent version the user accepted for this answer.
   versionConsentimiento?: string | null;
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
 }
 
 function isConsentimiento(value: unknown): value is ConsentimientoEvaluacion {

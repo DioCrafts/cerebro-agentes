@@ -15,15 +15,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <title>HaciendaGPT — Asesor fiscal con fuentes verificadas</title>
     <meta name="description" content="Asesor fiscal para España: responde con la normativa aplicable y verifica cada afirmación contra su fuente." />
-    <script>
-      // Apply the saved (or OS) theme before first paint to avoid a flash.
-      try {
-        var t = localStorage.getItem("haciendagpt_theme");
-        if (t === "dark" || (!t && matchMedia("(prefers-color-scheme: dark)").matches)) {
-          document.documentElement.classList.add("dark");
-        }
-      } catch (e) {}
-    </script>
+    <!-- Applies the saved (or OS) theme before first paint; a file, not inline, for the CSP. -->
+    <script src="/tema.js"></script>
   </head>
   <body>
     <div id="root"></div>

@@ -33,7 +33,7 @@ export function TrustStrip({ mode, detail }: TrustStripProps) {
         aria-hidden
         strokeWidth={2.25}
         className={clsx(
-          "mt-0.5 flex-shrink-0",
+          "mt-0.5 shrink-0",
           copy.cls === "cited" && "text-grounding-cited-fg",
           copy.cls === "uncited" && "text-grounding-uncited-fg",
           copy.cls === "abstain" && "text-grounding-abstain-fg",

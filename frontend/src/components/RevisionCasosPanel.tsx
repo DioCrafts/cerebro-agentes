@@ -58,7 +58,7 @@ function fecha(iso: string): string {
   return Number.isNaN(d.getTime()) ? iso : d.toLocaleDateString("es-ES", { day: "2-digit", month: "2-digit", year: "numeric" });
 }
 
-const campo = "mt-1 block w-full rounded border border-line bg-paper px-2 py-1 text-[13px] text-ink";
+const campo = "mt-1 block w-full rounded-sm border border-line bg-paper px-2 py-1 text-[13px] text-ink";
 const etiqueta = "block text-[12.5px] text-ink-soft";
 const boton = "rounded-lg px-3 py-1.5 text-[12.5px] font-semibold disabled:opacity-50";
 
@@ -368,7 +368,7 @@ function Formulario({
             <button type="submit" disabled={enviando} className={`${boton} bg-primary text-white`}>
               {enviando ? "Guardando…" : "Aceptar como prueba"}
             </button>
-            <input value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} placeholder="Motivo para rechazar" aria-label="Motivo para rechazar" className="min-w-0 flex-1 rounded border border-line bg-paper px-2 py-1 text-[12.5px]" />
+            <input value={motivo} onChange={(e) => setMotivo(e.target.value)} maxLength={500} placeholder="Motivo para rechazar" aria-label="Motivo para rechazar" className="min-w-0 flex-1 rounded-sm border border-line bg-paper px-2 py-1 text-[12.5px]" />
             <button type="button" disabled={enviando} onClick={rechazar} className={`${boton} border border-line text-ink-soft hover:border-risk-high-fg hover:text-risk-high-fg`}>
               Rechazar
             </button>

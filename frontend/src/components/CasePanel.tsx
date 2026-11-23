@@ -9,6 +9,7 @@ import type { Fact, ObligationCandidate } from "../api";
 import { STRUCTURED_FACTS } from "../lib/expediente";
 import { factInput, factLabel, factValue, formatDate } from "../lib/presentation";
 import { DeadlinesSection, DocumentSection } from "./CaseExtras";
+import { textoDeValor } from "../lib/guards";
 
 type FactValue = string | number | boolean;
 
@@ -32,7 +33,7 @@ interface CasePanelProps {
 const HIDDEN_FACTS = new Set(["menciona_ingresos"]);
 
 const FIELD_CLASS =
-  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-none sm:text-[14px]";
+  "w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]";
 
 interface EditorProps {
   fact: Pick<Fact, "name" | "value">;
@@ -43,7 +44,7 @@ interface EditorProps {
 
 function FactEditor({ fact, busy, onSave, onCancel }: EditorProps) {
   const input = factInput(fact);
-  const [draft, setDraft] = useState<string>(() => String(fact.value));
+  const [draft, setDraft] = useState<string>(() => textoDeValor(fact.value));
   const label = factLabel(fact.name);
 
   function save() {
@@ -57,6 +58,8 @@ function FactEditor({ fact, busy, onSave, onCancel }: EditorProps) {
   }
 
   return (
+    // Escape inside the editor cancels the edit (the inputs are the interactive part).
+    // eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions
     <form
       className="flex flex-col gap-2"
       onSubmit={(e) => {
@@ -76,6 +79,8 @@ function FactEditor({ fact, busy, onSave, onCancel }: EditorProps) {
         {label}
       </label>
       {input.kind === "choice" ? (
+        // The editor opens on the user's click: focus goes to the box being edited.
+        // eslint-disable-next-line jsx-a11y/no-autofocus
         <select id={`fact-${fact.name}`} autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} className={FIELD_CLASS}>
           {input.options.map((o) => (
             <option key={String(o.value)} value={String(o.value)}>
@@ -86,6 +91,7 @@ function FactEditor({ fact, busy, onSave, onCancel }: EditorProps) {
       ) : (
         <input
           id={`fact-${fact.name}`}
+          // eslint-disable-next-line jsx-a11y/no-autofocus -- opened by the user's click
           autoFocus
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
@@ -186,6 +192,7 @@ export function CasePanel({ open, onClose, facts, taxPeriod, obligations, caseId
                         <p className="min-w-0 flex-1 text-[13.5px] text-ink">¿Eliminar «{label}»?</p>
                         <button
                           type="button"
+                          // eslint-disable-next-line jsx-a11y/no-autofocus -- the confirmation the user just asked for
                           autoFocus
                           onClick={() => void save(row.name, null)}
                           disabled={saving !== null}
@@ -206,7 +213,7 @@ export function CasePanel({ open, onClose, facts, taxPeriod, obligations, caseId
                     <li key={row.name} className="flex items-center gap-1 py-2.5 pl-3.5 pr-2">
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] text-muted">{label}</p>
-                        <p className={structured ? "text-[14px] font-medium leading-snug text-ink [overflow-wrap:anywhere]" : "truncate text-[14px] font-medium text-ink"}>
+                        <p className={structured ? "text-[14px] font-medium leading-snug text-ink wrap-anywhere" : "truncate text-[14px] font-medium text-ink"}>
                           {factValue(row)}
                         </p>
                       </div>
@@ -261,7 +268,7 @@ export function CasePanel({ open, onClose, facts, taxPeriod, obligations, caseId
           <DocumentSection caseId={caseId} disabled={disabled || saving !== null} onApply={(name, value) => onChangeFact(name, value)} />
 
           {/* Re-fetched whenever the facts change: a new fact can add obligations. */}
-          <DeadlinesSection caseId={caseId} refreshKey={facts.map((f) => `${f.name}=${String(f.value)}`).join("&")} />
+          <DeadlinesSection caseId={caseId} refreshKey={facts.map((f) => `${f.name}=${textoDeValor(f.value)}`).join("&")} />
 
           {obligations.length > 0 && (
             <section>
