@@ -3,7 +3,10 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import * as api from "../api";
+import { simularMatchMedia } from "./calculos/entornoPruebas";
 import { SimulatorPanel } from "./SimulatorPanel";
+
+simularMatchMedia();
 
 const fact = (name: string, value: api.Fact["value"]): api.Fact => ({ fact_id: name, name, value, value_type: "number", source: "user", confidence: 1, updated_at: "" });
 
@@ -16,7 +19,7 @@ describe("SimulatorPanel", () => {
     const onSaveFact = vi.fn().mockResolvedValue(false);
     const user = userEvent.setup();
     render(
-      <SimulatorPanel open onClose={() => undefined} caseId="c1" facts={[fact("rendimiento_trabajo_bruto", 30000)]} taxPeriod="2026" onSaveFact={onSaveFact} busy={false} />,
+      <SimulatorPanel open caseId="c1" facts={[fact("rendimiento_trabajo_bruto", 30000)]} taxPeriod="2026" onSaveFact={onSaveFact} busy={false} />,
     );
     const salario = screen.getByLabelText(/^Salario bruto/);
     await user.clear(salario);

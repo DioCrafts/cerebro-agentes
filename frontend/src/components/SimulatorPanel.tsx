@@ -1,26 +1,30 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Simulator: change a figure, see the tax change. Everything here is the
 // deterministic calculator (POST /simulate) — no model call, so it answers as
 // you type. The saved case is the baseline; edits are compared against it.
+//
+// Shown as a page (registro.ts: presentacion "pagina"): the shell puts the title and the frame. On wide
+// screens the result and the ways to pay less sit in a sidebar that follows the form, like a repository's
+// «About» column; on phones the result comes first.
 
-import { Calculator, ChevronDown, Lightbulb, RotateCcw, Save, TriangleAlert, X } from "lucide-react";
-import clsx from "clsx";
-import { useEffect } from "react";
+import { Fragment } from "react";
 
 import type { Benefit, Fact } from "../api";
-import { ObligacionDeclararCard } from "./ObligacionDeclararCard";
 import { parseAmount } from "../lib/formulario";
 import type { ObligacionDeclarar } from "../lib/obligacion";
 import { COMUNIDADES, formatMoney } from "../lib/presentation";
 import { FIELDS, type FieldDef, LEVER_PRESET, TRIBUTACION, gruposDeComunidad } from "../lib/simulador/campos";
+import { Button, Caja, Flash, Label } from "../ui";
+import { HistoryIcon, LightBulbIcon } from "../ui/iconos";
+import { CampoCasilla, CampoCifra, CampoSelector, Plegable, Resultado, SeccionFormulario, TablaCifras } from "./calculos/piezas";
+import { ObligacionDeclararCard } from "./ObligacionDeclararCard";
 import { EditorDescendientes } from "./simulador/EditorDescendientes";
 import { type SimulatorSeed, useSimulacion } from "./simulador/useSimulacion";
 
 export type { SimulatorSeed };
 
 interface SimulatorPanelProps {
+  /** The page is on screen: the calculator only runs while it is. */
   open: boolean;
-  onClose: () => void;
   caseId: string | null;
   facts: Fact[];
   taxPeriod: string | null;
@@ -29,22 +33,21 @@ interface SimulatorPanelProps {
   busy: boolean;
   seed?: SimulatorSeed | null;
 }
-const INPUT_CLASS = "w-full rounded-lg border bg-surface px-3 py-2 text-[16px] text-ink focus:outline-hidden sm:text-[14px]";
 
-export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSaveFact, busy, seed = null }: SimulatorPanelProps) {
+function ayudaComunidad(comunidad: string): string {
+  if (comunidad === "Madrid") return "Se aplican la escala, los mínimos y varias deducciones de Madrid.";
+  if (comunidad === "Otra") {
+    return "Los territorios forales tienen su propio impuesto y Ceuta y Melilla una deducción específica: aquí la parte autonómica es solo una aproximación.";
+  }
+  if (comunidad) return "Se aplican la escala, los mínimos y las deducciones más habituales de tu comunidad (abajo).";
+  return "Sin comunidad, la parte autonómica se aproxima con la escala estatal.";
+}
+
+export function SimulatorPanel({ open, caseId, facts, taxPeriod, onSaveFact, busy, seed = null }: SimulatorPanelProps) {
   const s = useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed });
   const { state, acciones, baseline, derived, value, partsSum, totalProblem, invalid, cambios, changed, comunidad, year } = s;
   const { edits, tributacion, childrenEdit, openParts, simulation, error, saving, saveError } = state;
   const groups = gruposDeComunidad(comunidad);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  if (!open) return null;
 
   const base = simulation?.escenarios[0];
   const sim = simulation?.escenarios[1] ?? base;
@@ -58,30 +61,24 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
   function lever(benefit: Benefit) {
     const preset = LEVER_PRESET[benefit.id];
     return (
-      <li key={benefit.id} className="rounded-xl border border-line bg-surface px-3.5 py-3">
-        <div className="flex items-start justify-between gap-3">
-          <p className="text-[14px] font-semibold text-ink">{benefit.nombre}</p>
-          {benefit.ahorro_estimado && Number(benefit.ahorro_estimado) > 0 && (
-            <span className="shrink-0 rounded-pill bg-grounding-cited-bg px-2 py-0.5 text-[12px] font-bold text-grounding-cited-fg">
-              hasta −{formatMoney(benefit.ahorro_estimado)}
-            </span>
-          )}
+      <Caja.Fila key={benefit.id} className="flex flex-col gap-1 text-sm">
+        <div className="flex items-start justify-between gap-2">
+          <p className="m-0 font-semibold">{benefit.nombre}</p>
+          {benefit.ahorro_estimado && Number(benefit.ahorro_estimado) > 0 && <Label variant="success">hasta −{formatMoney(benefit.ahorro_estimado)}</Label>}
         </div>
-        <p className="mt-1 text-[13px] leading-snug text-ink-soft">{benefit.detalle}</p>
-        <p className="mt-1.5 text-[11.5px] text-muted">
+        <p className="m-0">{benefit.detalle}</p>
+        <p className="m-0 text-xs text-fg-muted">
           {benefit.referencia}
           {!benefit.verificado && " · cifras pendientes de contrastar"}
         </p>
         {preset && (
-          <button
-            type="button"
-            onClick={() => acciones.setEdit(preset.field, preset.value)}
-            className="mt-2 rounded-lg border border-line px-2.5 py-1 text-[12.5px] font-semibold text-primary-dark transition hover:border-primary"
-          >
-            Probar en la simulación
-          </button>
+          <div className="mt-1">
+            <Button size="small" onClick={() => acciones.setEdit(preset.field, preset.value)}>
+              Probar en la simulación
+            </Button>
+          </div>
         )}
-      </li>
+      </Caja.Fila>
     );
   }
 
@@ -90,281 +87,197 @@ export function SimulatorPanel({ open, onClose, caseId, facts, taxPeriod, onSave
     const dirty = field.name in cambios;
     if (field.kind === "flag") {
       return (
-        <label key={field.name} className="flex items-start gap-2.5 sm:col-span-2">
-          <input
-            type="checkbox"
-            checked={current === "true"}
-            onChange={(e) => acciones.setEdit(field.name, String(e.target.checked))}
-            className="mt-0.5 h-4 w-4 accent-[rgb(var(--primary))]"
-          />
-          <span>
-            <span className={clsx("text-[13.5px]", dirty ? "font-semibold text-primary-dark" : "text-ink")}>{field.label}</span>
-            {field.hint && <span className="block text-[11.5px] leading-snug text-muted">{field.hint}</span>}
-          </span>
-        </label>
+        <CampoCasilla
+          key={field.name}
+          etiqueta={field.label}
+          ayuda={field.hint}
+          marcada={current === "true"}
+          onCambio={(marcada) => acciones.setEdit(field.name, String(marcada))}
+          cambiado={dirty}
+        />
       );
     }
     const fromChildren = field.name in derived;
     const sum = partsSum(field);
     const problem = totalProblem(field);
     const autoTotal = !!(field.parts || field.sumOf) && sum > 0 && !(parseAmount(current) ?? 0);
+    const ayuda = fromChildren
+      ? "Sale del detalle de cada hijo."
+      : autoTotal
+        ? field.sumOf
+          ? `Vacío, se toma la suma de los indicados en «Familia»: ${sum}.`
+          : `Sin total, se toma la suma del desglose: ${formatMoney(sum)}.`
+        : field.hint;
     const input = (
-      <label className="block">
-        <span className="text-[12.5px] text-ink-soft">{field.label}</span>
-        <span className="relative mt-1 block">
-          <input
-            value={current}
-            onChange={(e) => acciones.setEdit(field.name, e.target.value)}
-            readOnly={fromChildren}
-            aria-invalid={problem ? true : undefined}
-            aria-describedby={problem ? `problem-${field.name}` : undefined}
-            inputMode={field.kind === "money" ? "decimal" : "numeric"}
-            maxLength={field.kind === "year" ? 4 : undefined}
-            placeholder={autoTotal ? String(Math.round(sum * 100) / 100).replace(".", ",") : field.kind === "year" ? "AAAA" : "0"}
-            className={clsx(
-              INPUT_CLASS,
-              field.kind === "money" && "pr-7",
-              fromChildren && "cursor-default bg-line/40 text-ink-soft",
-              problem ? "border-risk-high-fg" : dirty ? "border-primary" : "border-line focus:border-primary",
-            )}
-          />
-          {field.kind === "money" && <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-[13px] text-muted">€</span>}
-        </span>
-        {fromChildren ? (
-          <span className="mt-1 block text-[11.5px] leading-snug text-muted">Sale del detalle de cada hijo.</span>
-        ) : problem ? (
-          <span id={`problem-${field.name}`} role="alert" className="mt-1 block text-[11.5px] font-semibold leading-snug text-risk-high-fg">
-            {problem}
-          </span>
-        ) : autoTotal ? (
-          <span className="mt-1 block text-[11.5px] leading-snug text-muted">
-            {field.sumOf ? `Vacío, se toma la suma de los indicados en «Familia»: ${sum}.` : `Sin total, se toma la suma del desglose: ${formatMoney(sum)}.`}
-          </span>
-        ) : (
-          field.hint && <span className="mt-1 block text-[11.5px] leading-snug text-muted">{field.hint}</span>
-        )}
-      </label>
+      <CampoCifra
+                etiqueta={field.label}
+        tipo={field.kind === "money" ? "dinero" : field.kind === "year" ? "ano" : "numero"}
+        valor={current}
+        onCambio={(raw) => acciones.setEdit(field.name, raw)}
+        soloLectura={fromChildren}
+        maxLength={field.kind === "year" ? 4 : undefined}
+        placeholder={autoTotal ? String(Math.round(sum * 100) / 100).replace(".", ",") : field.kind === "year" ? "AAAA" : "0"}
+        ayuda={ayuda}
+        error={problem}
+        cambiado={dirty}
+      />
     );
-    if (!field.parts) return <div key={field.name}>{input}</div>;
+    if (!field.parts) return input;
     const isOpen = openParts[field.name] ?? (sum > 0 || problem !== null);
     return (
-      <div key={field.name} className="sm:col-span-2">
+      <div key={field.name} className="flex flex-col gap-2 sm:col-span-2">
         {input}
-        <details open={isOpen} className="group/parts mt-1.5">
-          <summary
-            // Opened and closed through state: a re-render (a new result arriving) must not undo the click.
-            onClick={(e) => {
-              e.preventDefault();
-              acciones.setDesglose(field.name, !isOpen);
-            }}
-            className="flex cursor-pointer list-none items-center gap-1 text-[12.5px] font-semibold text-primary-dark [&::-webkit-details-marker]:hidden"
-          >
-            <ChevronDown size={14} aria-hidden className="transition group-open/parts:rotate-180" />
-            Desglose por tipo{sum > 0 ? ` · ${formatMoney(sum)}` : " (opcional)"}
-          </summary>
-          <div className="mt-2 grid gap-3 border-l-2 border-line pl-3 sm:grid-cols-2">{field.parts.map(renderField)}</div>
-          <p className="mt-1.5 pl-3 text-[11.5px] leading-snug text-muted">Algunas deducciones solo admiten una parte de estos gastos. Cada importe va en una sola casilla.</p>
-        </details>
+        <Plegable
+          abierto={isOpen}
+          onAlternar={() => acciones.setDesglose(field.name, !isOpen)}
+          titulo={`Desglose por tipo${sum > 0 ? ` · ${formatMoney(sum)}` : " (opcional)"}`}
+        >
+          <div className="grid gap-4 sm:grid-cols-2">{field.parts.map(renderField)}</div>
+          <p className="m-0 mt-3 text-xs text-fg-muted">Algunas deducciones solo admiten una parte de estos gastos. Cada importe va en una sola casilla.</p>
+        </Plegable>
       </div>
     );
   }
 
+  const resultadoCaja = sim && (
+    <Resultado
+      titulo={`Resultado estimado${simulation ? ` · IRPF ${simulation.ejercicio}` : ""}`}
+      cifra={formatMoney(Math.abs(resultado))}
+      sufijo={resultado > 0 ? "a pagar" : resultado < 0 ? "a devolver" : undefined}
+      favorable={resultado <= 0}
+    >
+      <p className="m-0 text-sm text-fg-muted">
+        Cuota del año: {formatMoney(sim.resultado.cuota_liquida)} · tipo medio {sim.resultado.tipo_medio_efectivo.replace(".", ",")} %
+      </p>
+      {invalid ? (
+        <Flash variant="danger" role="status">
+          Hay datos que no cuadran (marcados en rojo). Este resultado no incluye tus últimos cambios.
+        </Flash>
+      ) : (
+        changed && (
+          <Flash variant={ahorro > 0 ? "success" : ahorro < 0 ? "warning" : "default"}>
+            <strong>
+              {ahorro > 0 ? `Con estos cambios pagas ${formatMoney(ahorro)} menos` : ahorro < 0 ? `Con estos cambios pagas ${formatMoney(-ahorro)} más` : "Estos cambios no alteran el resultado"}
+            </strong>
+            {base && <> (antes: {formatMoney(base.resultado.resultado)})</>}
+          </Flash>
+        )
+      )}
+      {!hasIncome && <p className="m-0 text-sm text-fg-muted">Introduce al menos tu salario bruto para obtener una estimación.</p>}
+    </Resultado>
+  );
+
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar el simulador" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-label="Simulador de IRPF" className="relative flex h-full w-full max-w-[520px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div>
-            <h2 className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <Calculator size={18} aria-hidden className="text-primary-dark" />
-              Simulador de IRPF{simulation ? ` ${simulation.ejercicio}` : ""}
-            </h2>
-            <p className="text-[12.5px] text-muted">Cambia una cifra y mira cómo cambia tu declaración</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-5 overflow-y-auto px-5 pb-5 pt-3">
-          {error && !invalid && (
-            <p role="alert" className="flex gap-2 rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-              <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0 text-risk-high-fg" />
-              <span>
-                {error}
-                {simulation && <span className="block text-[12px] text-muted">El resultado de abajo es el del último cálculo válido.</span>}
-              </span>
-            </p>
-          )}
-
-          {seed?.note && changed && (
-            <p role="status" className="rounded-lg border border-primary/30 bg-primary-soft px-3 py-2 text-[13px] leading-snug text-primary-dark">
-              {seed.note}
-            </p>
-          )}
-
-          {sim && (
-            <section aria-live="polite" className="sticky top-0 z-10 rounded-xl border border-line bg-surface px-4 py-4 shadow-pop">
-              <p className="text-[12px] font-semibold uppercase tracking-widest text-muted">Resultado estimado</p>
-              <p className={clsx("mt-1 font-serif text-[30px] font-bold leading-none", resultado > 0 ? "text-ink" : "text-grounding-cited-fg")}>
-                {formatMoney(Math.abs(resultado))}
-                <span className="ml-2 text-[14px] font-semibold text-ink-soft">{resultado > 0 ? "a pagar" : resultado < 0 ? "a devolver" : ""}</span>
-              </p>
-              <p className="mt-2 text-[13px] text-ink-soft">
-                Cuota del año: {formatMoney(sim.resultado.cuota_liquida)} · tipo medio {sim.resultado.tipo_medio_efectivo.replace(".", ",")} %
-              </p>
-              {invalid ? (
-                <p role="status" className="mt-2 flex gap-2 rounded-lg bg-risk-high-bg px-3 py-1.5 text-[13px] font-semibold text-risk-high-fg">
-                  <TriangleAlert size={15} aria-hidden className="mt-0.5 shrink-0" />
-                  Hay datos que no cuadran (marcados en rojo más abajo). Este resultado no incluye tus últimos cambios.
-                </p>
-              ) : (
-                changed && (
-                  <p className={clsx("mt-2 rounded-lg px-3 py-1.5 text-[13.5px] font-semibold", ahorro > 0 ? "bg-grounding-cited-bg text-grounding-cited-fg" : ahorro < 0 ? "bg-grounding-uncited-bg text-grounding-uncited-fg" : "bg-grounding-abstain-bg text-grounding-abstain-fg")}>
-                    {ahorro > 0 ? `Con estos cambios pagas ${formatMoney(ahorro)} menos` : ahorro < 0 ? `Con estos cambios pagas ${formatMoney(-ahorro)} más` : "Estos cambios no alteran el resultado"}
-                    {base && <span className="font-normal"> (antes: {formatMoney(base.resultado.resultado)})</span>}
-                  </p>
-                )
-              )}
-              {!hasIncome && <p className="mt-2 text-[12.5px] text-muted">Introduce al menos tu salario bruto para obtener una estimación.</p>}
-            </section>
-          )}
-
-          {obligacion && hasIncome && (
-            <ObligacionDeclararCard
-              obligacion={obligacion}
-              value={(name) => edits[name] ?? baseline[name] ?? ""}
-              onChange={acciones.setEdit}
-              dirty={(name) => name in cambios}
-            />
-          )}
-
-          {groups.map((group) => (
-            <fieldset key={group.title}>
-              <legend className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">{group.title}</legend>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {group.fields.map(renderField)}
-                {group.title === "Familia" && (
-                  <EditorDescendientes rows={s.children} problems={s.childProblems} year={year} brokenSaved={s.savedChildren.broken && childrenEdit === null} onChange={acciones.setChildren} />
-                )}
-                {group.title === "Familia" && (
-                  <label className="block sm:col-span-2">
-                    <span className="text-[12.5px] text-ink-soft">Comunidad autónoma</span>
-                    <select value={comunidad} onChange={(e) => acciones.setComunidad(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]">
-                      {COMUNIDADES.map((c) => (
-                        <option key={c.value} value={c.value}>
-                          {c.label}
-                        </option>
-                      ))}
-                    </select>
-                    <span className="mt-1 block text-[11.5px] leading-snug text-muted">
-                      {comunidad === "Madrid"
-                        ? "Se aplican la escala, los mínimos y varias deducciones de Madrid."
-                        : comunidad === "Otra"
-                          ? "Los territorios forales tienen su propio impuesto y Ceuta y Melilla una deducción específica: aquí la parte autonómica es solo una aproximación."
-                          : comunidad
-                            ? "Se aplican la escala, los mínimos y las deducciones más habituales de tu comunidad (abajo)."
-                            : "Sin comunidad, la parte autonómica se aproxima con la escala estatal."}
-                    </span>
-                  </label>
-                )}
-                {group.title === "Familia" && (
-                  <label className="block sm:col-span-2">
-                    <span className="text-[12.5px] text-ink-soft">Tipo de declaración</span>
-                    <select value={tributacion} onChange={(e) => acciones.setTributacion(e.target.value)} className="mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[16px] text-ink focus:border-primary focus:outline-hidden sm:text-[14px]">
-                      {TRIBUTACION.map((t) => (
-                        <option key={t.value} value={t.value}>
-                          {t.label}
-                        </option>
-                      ))}
-                    </select>
-                    {tributacion !== "individual" && (
-                      <span className="mt-1 block text-[11.5px] leading-snug text-muted">
-                        En conjunta, las cifras deben sumar las rentas de toda la unidad familiar.
-                      </span>
-                    )}
-                  </label>
-                )}
-              </div>
-            </fieldset>
-          ))}
-
-          {changed && (
-            <div className="flex flex-wrap gap-2">
-              {caseId && (
-                <button type="button" onClick={() => void acciones.saveAll()} disabled={saving || busy || invalid} className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-[13px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50">
-                  <Save size={14} aria-hidden />
-                  {saving ? "Guardando…" : "Guardar en mi expediente"}
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={acciones.deshacer}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-2 text-[13px] font-semibold text-ink-soft hover:bg-line/60"
-              >
-                <RotateCcw size={14} aria-hidden />
-                Deshacer cambios
-              </button>
-              {saveError && (
-                <p role="alert" className="w-full text-[12.5px] font-semibold text-risk-high-fg">
-                  {saveError}
-                </p>
-              )}
-            </div>
-          )}
-
-          {levers.length > 0 && (
-            <section>
-              <h3 className="mb-2 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.12em] text-muted">
-                <Lightbulb size={13} aria-hidden />
+    <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+      <aside aria-label="Resultado y formas de pagar menos" className="flex min-w-0 flex-col gap-4 lg:sticky lg:top-4 lg:order-2">
+        {error && !invalid && (
+          <Flash variant="danger" role="alert">
+            {error}
+            {simulation && <span className="block text-xs">El resultado es el del último cálculo válido.</span>}
+          </Flash>
+        )}
+        {seed?.note && changed && (
+          <Flash role="status" variant="default">
+            {seed.note}
+          </Flash>
+        )}
+        {resultadoCaja}
+        {levers.length > 0 && (
+          <Caja as="section" aria-labelledby="sim-palancas">
+            <Caja.Cabecera>
+              <LightBulbIcon className="text-fg-muted" />
+              <h3 id="sim-palancas" className="m-0 flex-1 text-sm font-semibold">
                 Formas de pagar menos
               </h3>
-              <ul className="space-y-2">{levers.map(lever)}</ul>
-            </section>
-          )}
+            </Caja.Cabecera>
+            <Caja.Lista>{levers.map(lever)}</Caja.Lista>
+          </Caja>
+        )}
+      </aside>
 
-          {sim && (
-            <details className="group rounded-xl border border-line bg-surface">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-ink-soft [&::-webkit-details-marker]:hidden">
-                Desglose del cálculo
-                <ChevronDown size={16} aria-hidden className="text-muted transition group-open:rotate-180" />
-              </summary>
-              <table className="w-full border-t border-line text-[12.5px]">
-                <tbody>
-                  {sim.resultado.lineas.map((line, i) => (
-                    <tr key={i} className="border-b border-line last:border-0">
-                      <td className="px-4 py-1.5 text-ink-soft">
-                        {line.concepto}
-                        {line.referencia && <span className="block text-[11px] text-muted">{line.referencia}</span>}
-                      </td>
-                      <td className="whitespace-nowrap px-4 py-1.5 text-right font-mono tabular-nums text-ink">{formatMoney(line.importe)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </details>
-          )}
+      <div className="flex min-w-0 flex-col gap-6">
+        {obligacion && hasIncome && (
+          <ObligacionDeclararCard
+            obligacion={obligacion}
+            value={(name) => edits[name] ?? baseline[name] ?? ""}
+            onChange={acciones.setEdit}
+            dirty={(name) => name in cambios}
+          />
+        )}
 
-          {sim && sim.resultado.avisos.length > 0 && (
-            <details open className="group rounded-xl border border-grounding-uncited-bd bg-grounding-uncited-bg">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-2.5 text-[13px] font-semibold text-grounding-uncited-fg [&::-webkit-details-marker]:hidden">
-                Qué no incluye esta estimación ({sim.resultado.avisos.length})
-                <ChevronDown size={16} aria-hidden className="transition group-open:rotate-180" />
-              </summary>
-              <ul className="list-disc space-y-1.5 px-4 pb-3 pl-8 text-[12.5px] leading-snug text-ink-soft">
-                {sim.resultado.avisos.map((aviso, i) => (
-                  <li key={i}>{aviso}</li>
-                ))}
-              </ul>
-            </details>
-          )}
-        </div>
+        {groups.map((group) => (
+          <SeccionFormulario key={group.title} titulo={group.title}>
+            {group.fields.map((field) => (
+              <Fragment key={field.name}>{renderField(field)}</Fragment>
+            ))}
+            {group.title === "Familia" && (
+              <>
+                <EditorDescendientes rows={s.children} problems={s.childProblems} year={year} brokenSaved={s.savedChildren.broken && childrenEdit === null} onChange={acciones.setChildren} />
+                <CampoSelector
+                  etiqueta="Comunidad autónoma"
+                  valor={comunidad}
+                  onCambio={acciones.setComunidad}
+                  opciones={COMUNIDADES}
+                  ayuda={ayudaComunidad(comunidad)}
+                  className="sm:col-span-2"
+                />
+                <CampoSelector
+                  etiqueta="Tipo de declaración"
+                  valor={tributacion}
+                  onCambio={acciones.setTributacion}
+                  opciones={TRIBUTACION}
+                  ayuda={tributacion !== "individual" ? "En conjunta, las cifras deben sumar las rentas de toda la unidad familiar." : undefined}
+                  className="sm:col-span-2"
+                />
+              </>
+            )}
+          </SeccionFormulario>
+        ))}
 
-        <footer className="border-t border-line px-5 py-3 text-[11.5px] leading-relaxed text-muted">
+        {changed && (
+          <div className="flex flex-col gap-2 border-t border-border-default pt-4">
+            <div className="flex flex-wrap gap-2">
+              {caseId && (
+                <Button variant="primary" onClick={() => void acciones.saveAll()} disabled={saving || busy || invalid} loading={saving}>
+                  Guardar en mi expediente
+                </Button>
+              )}
+              <Button leadingVisual={HistoryIcon} onClick={acciones.deshacer}>
+                Deshacer cambios
+              </Button>
+            </div>
+            {saveError && (
+              <Flash variant="danger" role="alert">
+                {saveError}
+              </Flash>
+            )}
+          </div>
+        )}
+
+        {sim && (
+          <Plegable titulo="Desglose del cálculo" sinRelleno>
+            <TablaCifras
+              titulo="Desglose del cálculo"
+              filas={sim.resultado.lineas.map((line) => ({ concepto: line.concepto, referencia: line.referencia, cifras: [formatMoney(line.importe)] }))}
+            />
+          </Plegable>
+        )}
+
+        {sim && sim.resultado.avisos.length > 0 && (
+          <Plegable tono="aviso" abiertoAlInicio titulo={`Qué no incluye esta estimación (${sim.resultado.avisos.length})`}>
+            <ul className="m-0 flex list-disc flex-col gap-1 pl-5">
+              {sim.resultado.avisos.map((aviso, i) => (
+                <li key={i}>{aviso}</li>
+              ))}
+            </ul>
+          </Plegable>
+        )}
+
+        <p className="m-0 text-xs text-fg-muted">
           Cálculo determinista con los parámetros estatales del ejercicio. No sustituye al borrador de la Agencia Tributaria.
           {sim && <span className="block">{sim.resultado.fuente}.</span>}
-        </footer>
-      </aside>
+        </p>
+      </div>
     </div>
   );
 }
