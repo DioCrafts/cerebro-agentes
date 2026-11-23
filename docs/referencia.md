@@ -926,6 +926,9 @@ export ANTHROPIC_EFFORT="high"             # low | medium | high | xhigh | max
 export LLM_PROVIDER="openai"
 export OPENAI_API_KEY="sk-..."
 export OPENAI_AGENT_MODEL="gpt-4o"         # por defecto: OPENAI_MODEL
+# API de OpenAI: responses (por defecto con OpenAI) | chat (Chat Completions).
+# Vacío = chat si LLM_PROVIDER=local o si OPENAI_BASE_URL apunta a localhost.
+export OPENAI_API_STYLE=""
 
 # Modelo local: cualquier servidor compatible con la API de OpenAI
 # (Ollama, LM Studio, mlx_lm.server, vLLM, llama.cpp…)

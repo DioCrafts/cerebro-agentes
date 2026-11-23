@@ -149,7 +149,7 @@ def test_openai_sends_pdf_pages_as_images() -> None:
     completions = _Recorder(response)
     client = type("C", (), {"chat": type("Chat", (), {"completions": completions})()})()
 
-    OpenAIProvider(model="m", client=client).complete_json(
+    OpenAIProvider(model="m", client=client, api_style="chat").complete_json(
         system="S",
         user="U",
         schema={"type": "object"},

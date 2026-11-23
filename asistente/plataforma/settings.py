@@ -134,6 +134,10 @@ ANTHROPIC_EFFORT = os.environ.get("ANTHROPIC_EFFORT", "high")
 # (server-side fallback). Only applied to models that support it.
 ANTHROPIC_REFUSAL_FALLBACK = _env_bool("ANTHROPIC_REFUSAL_FALLBACK", default=True)
 OPENAI_AGENT_MODEL = os.environ.get("OPENAI_AGENT_MODEL", "gpt-4o-mini")
+# Which OpenAI wire API the openai/local providers speak: "responses" (OpenAI's own API) or
+# "chat" (Chat Completions, what Ollama, LM Studio, mlx_lm.server and vLLM implement).
+# Empty = automatic: chat for the local provider and for a local OPENAI_BASE_URL, else responses.
+OPENAI_API_STYLE = os.environ.get("OPENAI_API_STYLE", "").strip().lower()
 LOCAL_LLM_BASE_URL = os.environ.get("LOCAL_LLM_BASE_URL", "http://127.0.0.1:11434/v1")  # Ollama default
 LOCAL_LLM_MODEL = os.environ.get("LOCAL_LLM_MODEL", "")
 LOCAL_LLM_API_KEY = os.environ.get("LOCAL_LLM_API_KEY", "local")
