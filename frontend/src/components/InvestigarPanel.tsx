@@ -1,4 +1,3 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Investigar»: research a question with sources (corpus legal, BOE and, if the user consents, the web).
 //
 // The report shows ONLY what passed the server's citation gate: each claim with its literal quotes and the ids of
@@ -6,11 +5,13 @@
 // what could not be verified and what it cost. The privacy note says what is sent to the model provider. The
 // web needs the operator's switch AND the user's consent, given or withdrawn here.
 //
+// Migrated to the design system (docs/ui/sistema-de-diseno.md): the sources are a list of links with their
+// domain, as GitHub lists references. The shell shows it as a page (registro.ts: presentacion "pagina"), which
+// stays mounted while the user looks elsewhere: a research in progress goes on, and is aborted on unmount.
+//
 // Self-contained: it reads and writes only through apiInvestigacion.ts; the shell passes the case (to charge the
 // cost to it) through paneles/investigar.tsx.
 
-import clsx from "clsx";
-import { BookOpenCheck, CircleAlert, ExternalLink, Loader2, ShieldAlert, X } from "lucide-react";
 import { type FormEvent, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../api";
@@ -27,14 +28,26 @@ import {
 } from "../apiInvestigacion";
 import { formatDate } from "../lib/presentation";
 import { enlaceWeb } from "../lib/urls";
+import {
+  Button,
+  Caja,
+  Checkbox,
+  CheckboxGroup,
+  CounterLabel,
+  Flash,
+  FormControl,
+  Heading,
+  Label,
+  Link,
+  SegmentedControl,
+  Textarea,
+} from "../ui";
+import { AlertIcon, LinkExternalIcon, ShieldIcon, TelescopeIcon } from "../ui/iconos";
 
 interface InvestigarPanelProps {
   open: boolean;
-  onClose: () => void;
   caseId: string | null;
 }
-
-const BOTON = "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold disabled:opacity-50";
 
 const NOMBRE_FUENTE: Record<TipoFuente, string> = {
   corpus: "Corpus legal de la app",
@@ -42,12 +55,13 @@ const NOMBRE_FUENTE: Record<TipoFuente, string> = {
   web: "Web (buscador del proveedor)",
 };
 
+const PROFUNDIDADES: Profundidad[] = ["rapida", "normal", "a_fondo"];
 const PROFUNDIDAD: Record<Profundidad, string> = { rapida: "Rápida", normal: "Normal", a_fondo: "A fondo" };
 
-const CONFIANZA: Record<Confianza, { texto: string; clase: string }> = {
-  alta: { texto: "Confianza alta", clase: "bg-risk-low-bg text-risk-low-fg" },
-  media: { texto: "Confianza media", clase: "bg-risk-medium-bg text-risk-medium-fg" },
-  baja: { texto: "Confianza baja", clase: "bg-risk-high-bg text-risk-high-fg" },
+const CONFIANZA: Record<Confianza, { texto: string; variante: "success" | "attention" | "danger" }> = {
+  alta: { texto: "Confianza alta", variante: "success" },
+  media: { texto: "Confianza media", variante: "attention" },
+  baja: { texto: "Confianza baja", variante: "danger" },
 };
 
 function mensaje(err: unknown): string {
@@ -56,97 +70,107 @@ function mensaje(err: unknown): string {
   return "No se pudo completar la investigación.";
 }
 
-function Fuente({ fuente }: { fuente: FuenteInforme }) {
-  const donde = fuente.referencia ?? fuente.dominio;
+/** The domain shown under a source's title: the server's, or the link's host. */
+function dominioDe(fuente: Pick<FuenteInforme, "dominio" | "url">): string | null {
+  if (fuente.dominio) return fuente.dominio;
   const url = enlaceWeb(fuente.url);
+  return url ? new URL(url).hostname.replace(/^www\./, "") : null;
+}
+
+function Fuente({ fuente }: { fuente: FuenteInforme }) {
+  const url = enlaceWeb(fuente.url);
+  const dominio = dominioDe(fuente);
   return (
-    <li id={`fuente-${fuente.id}`} className="rounded-lg border border-line bg-surface px-3 py-2">
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <span className="font-mono text-[12px] font-bold text-ink">{fuente.id}</span>
+    <Caja.Fila id={`fuente-${fuente.id}`} className="flex gap-3">
+      <span className="shrink-0 font-mono text-xs font-semibold text-fg-muted">{fuente.id}</span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
         {url ? (
-          <a href={url} target="_blank" rel="noopener noreferrer nofollow" className="inline-flex items-center gap-1 font-semibold text-primary hover:underline">
-            {fuente.titulo}
-            <ExternalLink size={12} aria-hidden />
-          </a>
+          <Link href={url} target="_blank" rel="noopener noreferrer nofollow" className="font-semibold">
+            {fuente.titulo} <LinkExternalIcon size={12} />
+            <span className="sr-only"> (se abre en otra pestaña)</span>
+          </Link>
         ) : (
-          <span className="font-semibold text-ink">{fuente.titulo}</span>
+          <span className="font-semibold">{fuente.titulo}</span>
         )}
-      </div>
-      <p className="mt-0.5 flex flex-wrap gap-x-2 text-[12px] text-muted">
-        <span>{NOMBRE_FUENTE[fuente.tipo]}</span>
-        {donde && <span>{donde}</span>}
-        <span className={fuente.oficial ? "font-semibold text-risk-low-fg" : "font-semibold text-risk-medium-fg"}>
-          {fuente.oficial ? "oficial" : "no oficial"}
+        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-fg-muted">
+          {dominio && <span className="font-mono">{dominio}</span>}
+          {fuente.referencia && fuente.referencia !== dominio && <span>{fuente.referencia}</span>}
+          <span>{NOMBRE_FUENTE[fuente.tipo]}</span>
+          <span>consultada el {formatDate(fuente.recuperada_el)}</span>
         </span>
-        <span>consultada el {formatDate(fuente.recuperada_el)}</span>
-        {!fuente.citada && <span>no citada</span>}
-      </p>
-      {fuente.sospechosa && (
-        <p className="mt-1 flex items-center gap-1 text-[12px] font-semibold text-risk-high-fg">
-          <ShieldAlert size={13} aria-hidden /> Contenía instrucciones incrustadas: se han ignorado.
-        </p>
-      )}
-      {fuente.nota && <p className="mt-1 text-[12px] text-ink-soft">{fuente.nota}</p>}
-    </li>
+        <span className="flex flex-wrap gap-1">
+          {fuente.oficial ? <Label variant="success">oficial</Label> : <Label variant="attention">no oficial</Label>}
+          {!fuente.citada && <Label variant="secondary">no citada</Label>}
+          {fuente.sospechosa && <Label variant="danger">instrucciones incrustadas ignoradas</Label>}
+        </span>
+        {fuente.nota && <p className="m-0 text-xs">{fuente.nota}</p>}
+      </div>
+    </Caja.Fila>
   );
 }
 
-function InformeVista({ informe }: { informe: Informe }) {
+export function InformeVista({ informe }: { informe: Informe }) {
   const confianza = CONFIANZA[informe.confianza];
   const coste = informe.coste;
   return (
-    <section aria-labelledby="informe-titulo" className="space-y-4">
+    <section aria-labelledby="informe-titulo" className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2">
-        <h3 id="informe-titulo" className="font-serif text-[17px] font-bold text-ink">
+        <Heading as="h3" variant="small" id="informe-titulo">
           Resultado
-        </h3>
-        <span className={clsx("rounded-pill px-2 py-0.5 text-[12px] font-semibold", confianza.clase)}>{confianza.texto}</span>
-        {informe.desde_cache && <span className="text-[12px] text-muted">guardado de hoy: no ha costado nada esta vez</span>}
+        </Heading>
+        <Label variant={confianza.variante}>{confianza.texto}</Label>
+        {informe.desde_cache && <span className="text-xs text-fg-muted">guardado de hoy: no ha costado nada esta vez</span>}
       </div>
 
       {informe.afirmaciones.length === 0 ? (
-        <p className="rounded-lg bg-grounding-abstain-bg px-3 py-2 text-grounding-abstain-fg">{informe.respuesta}</p>
+        <Flash>{informe.respuesta}</Flash>
       ) : (
-        <ol className="space-y-2">
-          {informe.afirmaciones.map((afirmacion, i) => (
-            <li key={i} className="rounded-lg border border-line bg-surface px-3 py-2">
-              <p className="text-ink">
-                {afirmacion.texto}{" "}
-                {[...new Set(afirmacion.citas.map((c) => c.fuente))].map((id) => (
-                  <a key={id} href={`#fuente-${id}`} className="font-mono text-[12px] font-bold text-primary hover:underline">
-                    [{id}]
-                  </a>
-                ))}
-                {!afirmacion.oficial && <span className="ml-1 text-[12px] text-risk-medium-fg">(solo fuentes no oficiales)</span>}
-              </p>
-              <details className="mt-1 text-[12.5px]">
-                <summary className="cursor-pointer text-muted">Cita literal</summary>
-                {afirmacion.citas.map((cita, j) => (
-                  <blockquote key={j} className="mt-1 border-l-2 border-line pl-2 text-ink-soft">
-                    «{cita.cita}» <span className="font-mono text-[11px]">({cita.fuente})</span>
-                  </blockquote>
-                ))}
-              </details>
-            </li>
-          ))}
-        </ol>
+        <Caja as="section" aria-label="Afirmaciones">
+          <Caja.Lista>
+            {informe.afirmaciones.map((afirmacion, i) => (
+              <Caja.Fila key={i} className="flex flex-col gap-1">
+                <p className="m-0">
+                  {afirmacion.texto}{" "}
+                  {[...new Set(afirmacion.citas.map((c) => c.fuente))].map((id) => (
+                    <Link key={id} href={`#fuente-${id}`} className="mr-1 font-mono text-xs font-semibold">
+                      [{id}]
+                    </Link>
+                  ))}
+                  {!afirmacion.oficial && (
+                    <Label variant="attention" className="ml-1">
+                      solo fuentes no oficiales
+                    </Label>
+                  )}
+                </p>
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-fg-muted">Cita literal</summary>
+                  {afirmacion.citas.map((cita, j) => (
+                    <blockquote key={j} className="m-0 mt-1 border-l-2 border-border-default pl-2 text-fg-muted">
+                      «{cita.cita}» <span className="font-mono">({cita.fuente})</span>
+                    </blockquote>
+                  ))}
+                </details>
+              </Caja.Fila>
+            ))}
+          </Caja.Lista>
+        </Caja>
       )}
 
       {informe.conflictos.length > 0 && (
-        <div className="rounded-lg bg-risk-medium-bg px-3 py-2 text-risk-medium-fg">
-          <p className="font-semibold">Las fuentes no coinciden</p>
-          <ul className="mt-1 list-disc pl-5">
+        <Flash variant="warning">
+          <p className="m-0 font-semibold">Las fuentes no coinciden</p>
+          <ul className="m-0 mt-1 list-disc pl-5">
             {informe.conflictos.map((c, i) => (
               <li key={i}>{c.descripcion}</li>
             ))}
           </ul>
-        </div>
+        </Flash>
       )}
 
       {informe.no_verificado.length > 0 && (
-        <details className="text-[12.5px]">
-          <summary className="cursor-pointer font-semibold text-ink">Lo que no se ha podido verificar ({informe.no_verificado.length})</summary>
-          <ul className="mt-1 list-disc pl-5 text-ink-soft">
+        <details className="text-xs">
+          <summary className="cursor-pointer font-semibold">Lo que no se ha podido verificar ({informe.no_verificado.length})</summary>
+          <ul className="m-0 mt-1 list-disc pl-5">
             {informe.no_verificado.map((t, i) => (
               <li key={i}>{t}</li>
             ))}
@@ -155,34 +179,34 @@ function InformeVista({ informe }: { informe: Informe }) {
       )}
 
       {informe.avisos.length > 0 && (
-        <ul className="space-y-1 text-[12.5px] text-ink-soft">
+        <ul className="m-0 flex list-none flex-col gap-1 p-0 text-xs">
           {informe.avisos.map((a, i) => (
-            <li key={i} className="flex gap-1.5">
-              <CircleAlert size={14} className="mt-0.5 shrink-0" aria-hidden /> {a}
+            <li key={i} className="flex gap-2">
+              <AlertIcon className="mt-0.5 shrink-0 text-fg-attention" /> {a}
             </li>
           ))}
         </ul>
       )}
 
-      <div>
-        <h4 className="mb-1 text-[13px] font-semibold text-ink">Fuentes</h4>
+      <Caja as="section" aria-label="Fuentes">
+        <Caja.Cabecera titulo="Fuentes" nivel={4} acciones={<CounterLabel>{informe.fuentes.length}</CounterLabel>} />
         {informe.fuentes.length === 0 ? (
-          <p className="text-[12.5px] text-muted">No se ha encontrado ninguna fuente.</p>
+          <Caja.Cuerpo className="text-fg-muted">No se ha encontrado ninguna fuente.</Caja.Cuerpo>
         ) : (
-          <ul className="space-y-1.5">
+          <Caja.Lista>
             {informe.fuentes.map((f) => (
               <Fuente key={f.id} fuente={f} />
             ))}
-          </ul>
+          </Caja.Lista>
         )}
         {informe.web.vistas_sin_leer.length > 0 && (
-          <p className="mt-1 text-[12px] text-muted">
+          <Caja.Pie className="text-xs text-fg-muted">
             Otras páginas vistas en el buscador pero no leídas (no se citan): {informe.web.vistas_sin_leer.join(" · ")}
-          </p>
+          </Caja.Pie>
         )}
-      </div>
+      </Caja>
 
-      <p className="text-[12px] text-muted">
+      <p className="m-0 text-xs text-fg-muted">
         Coste: {coste.llamadas_modelo} llamada(s) al modelo · {coste.tokens_entrada + coste.tokens_salida} tokens
         {coste.busquedas_web > 0 ? ` · ${coste.busquedas_web} búsqueda(s) web` : ""} ·{" "}
         {coste.usd === null ? "importe desconocido (algún modelo sin precio)" : `${coste.usd} USD`}
@@ -192,7 +216,7 @@ function InformeVista({ informe }: { informe: Informe }) {
   );
 }
 
-export function InvestigarPanel({ open, onClose, caseId }: InvestigarPanelProps) {
+export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
   const [estado, setEstado] = useState<EstadoInvestigacion | null>(null);
   const [pregunta, setPregunta] = useState("");
   const [fuentes, setFuentes] = useState<Record<TipoFuente, boolean>>({ corpus: true, boe: true, web: false });
@@ -212,17 +236,8 @@ export function InvestigarPanel({ open, onClose, caseId }: InvestigarPanelProps)
     return () => c.abort();
   }, [open]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      control.current?.abort();
-    };
-  }, [open, onClose]);
-
-  if (!open) return null;
+  // A research in progress is aborted when the panel goes away (another conversation, or the app closes).
+  useEffect(() => () => control.current?.abort(), []);
 
   const webOfrecida = Boolean(estado?.fuentes.web);
   const webLista = webOfrecida && Boolean(estado?.web_consentida);
@@ -261,127 +276,112 @@ export function InvestigarPanel({ open, onClose, caseId }: InvestigarPanelProps)
   }
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar Investigar" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-labelledby="investigar-titulo" className="relative flex h-full w-full max-w-[600px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div className="min-w-0">
-            <h2 id="investigar-titulo" className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <BookOpenCheck size={18} aria-hidden /> Investigar
-            </h2>
-            <p className="text-[12.5px] text-muted">Respuestas con fuentes: cada afirmación lleva su cita literal comprobada</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
+    <div className="flex flex-col gap-4">
+      {error && (
+        <Flash variant="danger" role="alert">
+          {error}
+        </Flash>
+      )}
 
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 text-[13.5px] leading-relaxed text-ink-soft">
-          {error && (
-            <p role="alert" className="rounded-lg bg-risk-high-bg px-3 py-2 text-risk-high-fg">
-              {error}
-            </p>
-          )}
+      <Caja as="section" aria-label="Nueva investigación">
+        <Caja.Cuerpo>
+          <form onSubmit={enviar} className="flex flex-col gap-4">
+            <FormControl>
+              <FormControl.Label>Pregunta</FormControl.Label>
+              <Textarea
+                block
+                value={pregunta}
+                onChange={(e) => setPregunta(e.target.value)}
+                rows={3}
+                maxLength={1000}
+                placeholder="Por ejemplo: ¿qué documentos necesito para renovar el pasaporte?"
+              />
+              <FormControl.Caption>
+                {estado?.privacidad ??
+                  "Lo que escribes se envía al proveedor del modelo de IA. No se envían los datos de tu expediente: no los incluyas en la pregunta."}
+              </FormControl.Caption>
+            </FormControl>
 
-          <form onSubmit={enviar} className="space-y-3">
-            <label htmlFor="investigar-pregunta" className="block text-[13px] font-semibold text-ink">
-              Pregunta
-            </label>
-            <textarea
-              id="investigar-pregunta"
-              value={pregunta}
-              onChange={(e) => setPregunta(e.target.value)}
-              rows={3}
-              maxLength={1000}
-              placeholder="Por ejemplo: ¿qué documentos necesito para renovar el pasaporte?"
-              className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-ink"
-            />
-            <p className="text-[12px] text-muted">
-              {estado?.privacidad ??
-                "Lo que escribes se envía al proveedor del modelo de IA. No se envían los datos de tu expediente: no los incluyas en la pregunta."}
-            </p>
-
-            <fieldset className="space-y-1.5">
-              <legend className="text-[13px] font-semibold text-ink">Fuentes</legend>
+            <CheckboxGroup>
+              <CheckboxGroup.Label>Fuentes</CheckboxGroup.Label>
               {(Object.keys(NOMBRE_FUENTE) as TipoFuente[]).map((tipo) => {
                 const disponible = tipo === "web" ? webLista : estado?.fuentes[tipo] !== false;
                 return (
-                  <label key={tipo} className={clsx("flex items-center gap-2", !disponible && "text-muted")}>
-                    <input
-                      type="checkbox"
-                      checked={fuentes[tipo] && disponible}
-                      disabled={!disponible}
-                      onChange={(e) => setFuentes((f) => ({ ...f, [tipo]: e.target.checked }))}
-                    />
-                    {NOMBRE_FUENTE[tipo]}
-                    {tipo !== "web" && !disponible && " (no disponible en este servidor)"}
-                  </label>
+                  <FormControl key={tipo} disabled={!disponible}>
+                    <Checkbox checked={fuentes[tipo] && disponible} onChange={(e) => setFuentes((f) => ({ ...f, [tipo]: e.target.checked }))} />
+                    <FormControl.Label>
+                      {NOMBRE_FUENTE[tipo]}
+                      {tipo !== "web" && !disponible && " (no disponible en este servidor)"}
+                    </FormControl.Label>
+                  </FormControl>
                 );
               })}
               {fuentes.web && webLista && (
-                <label className="ml-6 flex items-center gap-2">
-                  <input type="checkbox" checked={soloOficiales} onChange={(e) => setSoloOficiales(e.target.checked)} />
-                  Solo webs oficiales
-                </label>
+                <FormControl className="ml-6">
+                  <Checkbox checked={soloOficiales} onChange={(e) => setSoloOficiales(e.target.checked)} />
+                  <FormControl.Label>Solo webs oficiales</FormControl.Label>
+                </FormControl>
               )}
-            </fieldset>
+            </CheckboxGroup>
 
-            <div className="rounded-lg border border-line bg-surface px-3 py-2 text-[12.5px]">
+            <div className="flex flex-wrap items-center gap-2 rounded-medium border border-border-default bg-canvas-muted p-3 text-xs">
+              <ShieldIcon className="shrink-0 text-fg-muted" />
               {!estado ? (
-                <p className="text-muted">Comprobando la búsqueda web…</p>
+                <span className="text-fg-muted">Comprobando la búsqueda web…</span>
               ) : !webOfrecida ? (
-                <p>Búsqueda web no disponible: {estado.web_motivo ?? "desactivada en este servicio."}</p>
+                <span>Búsqueda web no disponible: {estado.web_motivo ?? "desactivada en este servicio."}</span>
               ) : estado.web_consentida ? (
-                <p>
-                  Has permitido buscar en la web: la pregunta se envía también al buscador del proveedor del modelo. Las páginas son
-                  datos, nunca instrucciones.{" "}
-                  <button type="button" className="font-semibold text-primary hover:underline" onClick={() => void consentir(false)}>
+                <>
+                  <span className="min-w-0 flex-1">
+                    Has permitido buscar en la web: la pregunta se envía también al buscador del proveedor del modelo. Las páginas son datos,
+                    nunca instrucciones.
+                  </span>
+                  <Button size="small" onClick={() => void consentir(false)}>
                     Retirar el permiso
-                  </button>
-                </p>
+                  </Button>
+                </>
               ) : (
-                <p>
-                  Para buscar en la web, la pregunta (nunca tu expediente) se enviará al buscador del proveedor del modelo. Cada búsqueda
-                  cuesta unos {estado.limites.precio_busqueda_web_usd} USD.{" "}
-                  <button type="button" className="font-semibold text-primary hover:underline" onClick={() => void consentir(true)}>
+                <>
+                  <span className="min-w-0 flex-1">
+                    Para buscar en la web, la pregunta (nunca tu expediente) se enviará al buscador del proveedor del modelo. Cada búsqueda
+                    cuesta unos {estado.limites.precio_busqueda_web_usd} USD.
+                  </span>
+                  <Button size="small" onClick={() => void consentir(true)}>
                     Permitir la búsqueda web
-                  </button>
-                </p>
+                  </Button>
+                </>
               )}
             </div>
 
             <div className="flex flex-wrap items-end gap-3">
-              <label className="flex flex-col gap-1 text-[12px] text-muted">
-                Profundidad
-                <select
-                  value={profundidad}
-                  onChange={(e) => setProfundidad(e.target.value as Profundidad)}
-                  className="rounded-lg border border-line bg-surface px-2 py-1 text-[13px] text-ink"
-                >
-                  {(Object.keys(PROFUNDIDAD) as Profundidad[]).map((p) => (
-                    <option key={p} value={p}>
+              <div className="flex flex-col gap-1">
+                <span id="investigar-profundidad" className="text-sm font-semibold">
+                  Profundidad
+                </span>
+                <SegmentedControl aria-labelledby="investigar-profundidad" size="small" onChange={(i) => setProfundidad(PROFUNDIDADES[i] ?? "normal")}>
+                  {PROFUNDIDADES.map((p) => (
+                    <SegmentedControl.Button key={p} selected={profundidad === p}>
                       {PROFUNDIDAD[p]}
-                    </option>
+                    </SegmentedControl.Button>
                   ))}
-                </select>
-              </label>
-              <button
+                </SegmentedControl>
+              </div>
+              <Button
                 type="submit"
-                disabled={ocupado || pregunta.trim().length < 5 || elegidas.length === 0}
-                className={clsx(BOTON, "bg-primary text-white hover:bg-primary-hover")}
+                variant="primary"
+                leadingVisual={TelescopeIcon}
+                loading={ocupado}
+                disabled={pregunta.trim().length < 5 || elegidas.length === 0}
               >
-                {ocupado ? <Loader2 size={14} className="animate-spin" aria-hidden /> : <BookOpenCheck size={14} aria-hidden />}
                 {ocupado ? "Investigando…" : "Investigar"}
-              </button>
-              {estado && (
-                <span className="text-[12px] text-muted">Límite por investigación: {estado.limites.max_usd} USD</span>
-              )}
+              </Button>
+              {estado && <span className="text-xs text-fg-muted">Límite por investigación: {estado.limites.max_usd} USD</span>}
             </div>
           </form>
+        </Caja.Cuerpo>
+      </Caja>
 
-          {informe && <InformeVista informe={informe} />}
-        </div>
-      </aside>
+      {informe && <InformeVista informe={informe} />}
     </div>
   );
 }
