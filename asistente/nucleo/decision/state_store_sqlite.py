@@ -12,6 +12,7 @@ from typing import Any
 from asistente.nucleo.decision.schemas import CaseState
 from asistente.nucleo.decision.state_store import CaseStateStore, CaseVersionConflictError
 from asistente.plataforma.migraciones import asegurar_esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 # Hooks run on the store's connection INSIDE the save / delete transaction, before the write: whatever they
 # write commits or rolls back with the case. The event bus (asistente/nucleo/eventos) writes its outbox here.
@@ -43,9 +44,7 @@ class SQLiteCaseStateStore(CaseStateStore):
         """
         if self._conn is None:
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-            conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-            conn.row_factory = sqlite3.Row
-            conn.execute("PRAGMA journal_mode=WAL;")
+            conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
             conn.execute("PRAGMA foreign_keys=ON;")
             # Overwrite deleted content instead of leaving it in free pages: erasing a case, or a fact from
             # its audit trail, should not leave the old bytes readable in the file.

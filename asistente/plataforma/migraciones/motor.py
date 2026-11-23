@@ -43,6 +43,8 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from asistente.plataforma.sqlite import abrir_sqlite
+
 BASE_CASOS = "casos"
 BASE_DOCTRINA = "doctrina"
 BASES = (BASE_CASOS, BASE_DOCTRINA)
@@ -385,10 +387,7 @@ def _abrir(ruta: str, *, solo_lectura: bool) -> sqlite3.Connection | None:
         return sqlite3.connect(f"file:{Path(ruta).resolve()}?mode=ro", uri=True, timeout=30.0)
     if ruta != ":memory:":
         Path(ruta).parent.mkdir(parents=True, exist_ok=True)
-    conn = sqlite3.connect(ruta, timeout=30.0)
-    if ruta != ":memory:":
-        conn.execute("PRAGMA journal_mode=WAL;")
-    return conn
+    return abrir_sqlite(ruta, timeout=30.0)
 
 
 @contextmanager

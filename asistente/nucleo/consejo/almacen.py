@@ -53,6 +53,7 @@ from asistente.nucleo.consejo.contrato import (
 )
 from asistente.plataforma.migraciones import asegurar_esquema
 from asistente.plataforma.migraciones.catalogo import consejo as esquema
+from asistente.plataforma.sqlite import abrir_sqlite
 
 EN_MARCHA: tuple[EstadoSesion, ...] = ("instruyendo", "deliberando", "sintetizando")
 TERMINALES: tuple[EstadoSesion, ...] = ("terminada", "fallida", "cancelada", "rechazada")
@@ -167,10 +168,8 @@ class AlmacenConsejo:
     @contextmanager
     def _conectar(self) -> Iterator[sqlite3.Connection]:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
-        conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None)
-        conn.row_factory = sqlite3.Row
+        conn = abrir_sqlite(self.db_path, timeout=30.0, isolation_level=None, filas=True)
         try:
-            conn.execute("PRAGMA journal_mode=WAL;")
             # Erased deliberations are overwritten in the file, not just unlinked.
             conn.execute("PRAGMA secure_delete=ON;")
             conn.execute("BEGIN")

@@ -197,7 +197,7 @@ def es_cita_correcta(doc: Document, espera: dict) -> bool:
       articles, so the unit the grounding gate would cite is the page itself.
     """
     if "pagina" in espera:
-        return pagina_aeat(doc) == espera["pagina"]
+        return bool(pagina_aeat(doc) == espera["pagina"])
     fuente, articulo = cita_de(doc)
     norma = str((doc.metadata or {}).get("norma") or "").upper()
     for o in (espera, *espera.get("alternativas", [])):

@@ -48,6 +48,7 @@ from asistente.nucleo.eventos.tipos import (
     validar,
 )
 from asistente.plataforma import settings
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -201,9 +202,7 @@ class Bus:
         self.db_path = str(Path(self.db_path))
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = threading.RLock()
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, isolation_level=None, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL;")
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, isolation_level=None, check_same_thread=False, filas=True)
         self._conn.execute("PRAGMA secure_delete=ON;")
         with self._lock:
             crear_tablas(self._conn)

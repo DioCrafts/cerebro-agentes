@@ -181,10 +181,11 @@ def descargar_manual(
             cuenta["existentes"] += 1
             html = destino.read_text(encoding="utf-8", errors="replace")
         else:
-            html = descargador.get(url)
-            if html is None:
+            descargado = descargador.get(url)
+            if descargado is None:
                 cuenta["fallidas"] += 1
                 continue
+            html = descargado
             # El índice solo se usa para descubrir enlaces: es la tabla de contenidos
             # entera (cientos de KB de títulos) y metería ruido en la recuperación.
             if not es_indice and not dry_run:

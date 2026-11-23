@@ -24,6 +24,7 @@ from threading import RLock
 from typing import Any
 
 from asistente.capacidades.investigacion.modelo import Informe, PeticionInvestigacion
+from asistente.plataforma.sqlite import abrir_sqlite
 
 logger = logging.getLogger(__name__)
 
@@ -77,11 +78,8 @@ class AlmacenInvestigacion:
         if self.db_path != ":memory:":
             Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         self._lock = RLock()
-        self._conn = sqlite3.connect(self.db_path, timeout=30.0, check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
+        self._conn = abrir_sqlite(self.db_path, timeout=30.0, check_same_thread=False, filas=True)
         with self._lock, self._conn:
-            if self.db_path != ":memory:":
-                self._conn.execute("PRAGMA journal_mode=WAL;")
             for sentencia in _ESQUEMA:
                 self._conn.execute(sentencia)
 

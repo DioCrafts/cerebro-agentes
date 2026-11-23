@@ -5,9 +5,9 @@ Also figures: every number in a claim must appear in one of its quotes (a model 
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 import re
 import unicodedata
-from collections.abc import Mapping, Sequence
 
 from asistente.investigador.modelo import Fuente
 

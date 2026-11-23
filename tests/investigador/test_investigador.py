@@ -5,8 +5,6 @@ from __future__ import annotations
 import json
 import threading
 
-import pytest
-
 from asistente.investigador import Documento, Presupuesto, investigar
 from asistente.nucleo.agent.providers.base import ModelTurn
 
