@@ -47,7 +47,7 @@ from pathlib import Path
 import re
 import sqlite3
 from threading import RLock
-from typing import Any, Literal
+from typing import Any, Literal, TypeIs
 import unicodedata
 from uuid import uuid4
 
@@ -122,6 +122,12 @@ ETIQUETAS_FALLO: dict[str, str] = {
     "repregunta": "El usuario volvió a preguntar",
     "abstencion": "No respondió",
 }
+
+
+def _es_tipo_fallo(valor: object) -> TypeIs[TipoFallo]:
+    return valor in ETIQUETAS_FALLO
+
+
 _SENAL_A_FALLO: dict[str, TipoFallo] = {
     "puerta_cifras": "puerta_cifras",
     "afirmacion_rechazada": "verificador",
@@ -697,7 +703,7 @@ def nuevo_candidato(
 
 
 def tipo_de_correccion(tipo: str | None) -> TipoFallo:
-    return tipo if tipo in ETIQUETAS_FALLO and tipo not in _SENAL_A_FALLO.values() else "otro"  # type: ignore[return-value]
+    return tipo if _es_tipo_fallo(tipo) and tipo not in _SENAL_A_FALLO.values() else "otro"
 
 
 # --------------------------------------------------------------------------- #
@@ -1181,7 +1187,9 @@ def _contar_al_usuario(cases: Any, candidato: Candidato, datos: dict[str, Any]) 
         pass
 
 
-def _marcar_feedback(db_path: str, candidato: Candidato, estado: str, caso: str | None) -> None:
+def _marcar_feedback(
+    db_path: str, candidato: Candidato, estado: Literal["promovido", "descartado"], caso: str | None
+) -> None:
     if candidato.feedback_id is None:
         return
     from asistente.nucleo.evaluacion.captura import FeedbackStore
@@ -1190,7 +1198,7 @@ def _marcar_feedback(db_path: str, candidato: Candidato, estado: str, caso: str 
     try:
         registro = feedback.get(candidato.feedback_id)
         if registro is not None and registro.estado == "pendiente":
-            registro.estado = estado  # type: ignore[assignment]
+            registro.estado = estado
             registro.revisado_el = datetime.now(UTC)
             registro.caso_suite = caso
             feedback.actualizar(registro)

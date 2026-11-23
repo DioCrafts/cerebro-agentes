@@ -24,7 +24,7 @@ call in flight (or several concurrent ones) can take the day slightly over.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field, replace
@@ -671,7 +671,7 @@ _CAPTURA: ContextVar[list[Usage] | None] = ContextVar("consumo_captura", default
 @contextmanager
 def contexto_consumo(
     *, user_id: str | None = None, case_id: str | None = None, cancelacion: Event | None = None
-) -> Iterator[ContextoConsumo]:
+) -> Generator[ContextoConsumo]:
     """Attribute the model calls made inside the block to one user question.
 
     For providers that live longer than a question (the API builds its agent
@@ -730,7 +730,7 @@ def _instalar_captura(provider: Any) -> None:
             previo(usage)
             _capturar(usage)
 
-        ambos.captura_consumo = True  # type: ignore[attr-defined]
+        ambos.captura_consumo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
         provider.on_usage = ambos
 
 

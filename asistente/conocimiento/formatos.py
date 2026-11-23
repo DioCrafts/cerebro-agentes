@@ -29,7 +29,7 @@ point used from the parsers swallows its own errors.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator, Sequence
+from collections.abc import Callable, Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -377,7 +377,7 @@ def _reglas_actuales(fuente: Fuente, directorio: str | Path | None = None) -> tu
 
 
 @contextmanager
-def _locked(target: Path) -> Iterator[None]:
+def _locked(target: Path) -> Generator[None]:
     target.parent.mkdir(parents=True, exist_ok=True)
     with open(target.with_name(target.name + ".lock"), "w") as handle:
         fcntl.flock(handle, fcntl.LOCK_EX)

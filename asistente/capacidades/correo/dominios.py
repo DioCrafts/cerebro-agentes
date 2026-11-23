@@ -102,8 +102,8 @@ def _extra_del_entorno() -> dict[str, set[str]]:
 
 
 @lru_cache(maxsize=1)
-def _crudo() -> dict:  # type: ignore[type-arg]
-    datos: dict = json.loads(DATOS.read_text(encoding="utf-8"))  # type: ignore[type-arg]
+def _crudo() -> dict:
+    datos: dict = json.loads(DATOS.read_text(encoding="utf-8"))
     return datos
 
 

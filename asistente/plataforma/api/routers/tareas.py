@@ -19,7 +19,7 @@ Built by :func:`build_router` with the case store passed in (see ``api.py``). No
 annotations``: FastAPI resolves the local aliases.
 """
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from datetime import date
 import logging
@@ -111,7 +111,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
     guarded = [Depends(require_api_key)]
 
     @contextmanager
-    def _motor(cases: SQLiteCaseStateStore, access: CaseAccess) -> Iterator[Motor]:
+    def _motor(cases: SQLiteCaseStateStore, access: CaseAccess) -> Generator[Motor]:
         motor = Motor(cases.db_path, ejecutar_consultas=False, auth=access.store)
         try:
             yield motor

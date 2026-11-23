@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
 import json
@@ -64,7 +64,7 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
             holder.clear()
             error_holder.clear()
 
-    wrapper.cache_clear = cache_clear  # type: ignore[attr-defined]
+    wrapper.cache_clear = cache_clear  # ty: ignore[missing-attribute]  # attribute stored on the function object, which type checkers do not model
     return wrapper
 
 
@@ -164,7 +164,7 @@ _logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager
-async def _arranque(_app: FastAPI) -> AsyncIterator[None]:
+async def _arranque(_app: FastAPI) -> AsyncGenerator[None]:
     """Refuses to serve with no authentication at all (see ``comprobar_arranque``)."""
     comprobar_arranque()
     yield

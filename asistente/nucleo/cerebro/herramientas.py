@@ -129,7 +129,7 @@ def encargos_de_llamada(argumentos: Mapping[str, Any], activos: Sequence[str], *
             }
         )
     try:
-        plan = Intencion(tipo="cruzada", encargos=encargos, confianza=1.0, origen="modelo")  # type: ignore[arg-type]
+        plan = Intencion(tipo="cruzada", encargos=encargos, confianza=1.0, origen="modelo")
     except ValidationError as exc:
         return f"Plan no válido: {exc.errors()[0].get('msg', 'error')}."
     return list(plan.encargos)

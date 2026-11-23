@@ -10,6 +10,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from datetime import date
 from decimal import Decimal
+from functools import wraps
 from typing import Any
 
 from pydantic import ValidationError
@@ -127,6 +128,7 @@ def _describe(p: Prestamo) -> str:
 def _ejecutar(
     funcion: Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta],
 ) -> Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta]:
+    @wraps(funcion)
     def envoltura(args: Mapping[str, Any], contexto: ContextoModulo) -> ResultadoHerramienta:
         try:
             return funcion(args, contexto)
@@ -139,7 +141,6 @@ def _ejecutar(
                 es_error=True,
             )
 
-    envoltura.__name__ = funcion.__name__
     return envoltura
 
 

@@ -39,12 +39,17 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+from typing import TYPE_CHECKING
 
 import click
 
 from asistente.nucleo.evaluacion import suite as suite_mod
 from asistente.nucleo.evaluacion.modelos import CasoEvaluacion
 from asistente.plataforma import settings
+
+if TYPE_CHECKING:
+    from asistente.nucleo.evaluacion.revision import EstadoCandidato
+    from asistente.nucleo.evaluacion.variantes import Rol
 
 _CASOS = click.option(
     "--casos",
@@ -113,7 +118,7 @@ def _seleccion(casos_dir: Path, categorias: tuple[str, ...], ids: tuple[str, ...
     return casos
 
 
-def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: bool, sin_juez: bool):  # type: ignore[no-untyped-def]
+def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: bool, sin_juez: bool):
     from asistente.nucleo.evaluacion.runner import (
         Entorno,
         buscador_por_defecto,
@@ -138,7 +143,7 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
         if aviso:
             avisos.append(aviso)
 
-    def juez():  # type: ignore[no-untyped-def]
+    def juez():
         # The judge is the configured model, the same for baseline and candidate.
         from asistente.nucleo.agent.providers import create_provider
 
@@ -158,7 +163,7 @@ def _entorno(reproduccion: bool, *, presupuesto: Decimal | None, sin_corpus: boo
     )
 
 
-def _variante(config: Path | None):  # type: ignore[no-untyped-def]
+def _variante(config: Path | None):
     from asistente.nucleo.evaluacion.variantes import VarianteInvalidaError, cargar_variante, variante_activa
 
     if config is None:
@@ -169,7 +174,7 @@ def _variante(config: Path | None):  # type: ignore[no-untyped-def]
         raise click.ClickException(str(exc)) from exc
 
 
-def _progreso(caso: CasoEvaluacion, resultado) -> None:  # type: ignore[no-untyped-def]
+def _progreso(caso: CasoEvaluacion, resultado) -> None:
     if resultado.omitido:
         click.echo(f"  – {caso.id} [{caso.categoria}] omitido: {resultado.motivo_omision}")
         return
@@ -193,8 +198,8 @@ _CASOS_REALES_OPCIONES = (
 )
 
 
-def _componer(*opciones):  # type: ignore[no-untyped-def]
-    def decorar(funcion):  # type: ignore[no-untyped-def]
+def _componer(*opciones):
+    def decorar(funcion):
         for opcion in reversed(opciones):
             funcion = opcion(funcion)
         return funcion
@@ -305,7 +310,7 @@ def run(
             abort=True,
         )
     entorno = _entorno(reproduccion, presupuesto=presupuesto_usd, sin_corpus=sin_corpus, sin_juez=sin_juez)
-    entorno.motor = motor  # type: ignore[assignment]
+    entorno.motor = motor
     informe = evaluar(
         casos,
         variante,
@@ -485,7 +490,7 @@ def _roles() -> list[str]:
     help="Decisión de promote (…-decision.json) o informe de una candidata con el texto nuevo que no empeora.",
 )
 @click.option("--sin-evaluar", "motivo", help="Registrar sin evaluación; el motivo queda escrito en el registro.")
-def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> None:
+def prompts_registrar(rol: Rol, informe: Path | None, motivo: str | None) -> None:
     """Registra como versión nueva el texto actual de un prompt de prompts.py."""
     from asistente.nucleo.evaluacion.runner import cargar_informe
     from asistente.nucleo.evaluacion.variantes import huella, registrar_version, texto_integrado
@@ -502,7 +507,7 @@ def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> Non
         candidata = informe.with_name(informe.name.replace("-decision.json", f"-candidata-{decision.candidata}.json"))
         if not candidata.exists():
             raise click.ClickException(f"Falta el informe de la candidata junto a la decisión ({candidata.name}).")
-        if cargar_informe(candidata).huellas_prompts.get(rol) != huella(texto_integrado(rol)):  # type: ignore[arg-type]
+        if cargar_informe(candidata).huellas_prompts.get(rol) != huella(texto_integrado(rol)):
             raise click.ClickException("El informe no evaluó este texto del prompt (la huella no coincide).")
         evaluacion = {
             "variante": decision.candidata,
@@ -515,7 +520,7 @@ def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> Non
         }
     elif informe is not None:
         datos = cargar_informe(informe)
-        actual = huella(texto_integrado(rol))  # type: ignore[arg-type]
+        actual = huella(texto_integrado(rol))
         if datos.huellas_prompts.get(rol) != actual:
             raise click.ClickException("El informe no evaluó este texto del prompt (la huella no coincide).")
         if datos.modo != "modelo" or datos.incompleto or datos.comparacion is None:
@@ -542,7 +547,7 @@ def prompts_registrar(rol: str, informe: Path | None, motivo: str | None) -> Non
         }
     try:
         nueva = registrar_version(
-            rol,  # type: ignore[arg-type]
+            rol,
             nota=motivo or f"Evaluado: {informe}",
             evaluacion=evaluacion,
         )
@@ -607,7 +612,7 @@ def casos() -> None:
     """Revisión de los casos que los usuarios han guardado para evaluación (nunca automática)."""
 
 
-def _stores(db_path: str):  # type: ignore[no-untyped-def]
+def _stores(db_path: str):
     from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
     from asistente.nucleo.evaluacion.captura import FeedbackStore
 
@@ -638,7 +643,7 @@ def pendientes(db_path: str) -> None:
         )
 
 
-def _registro(store, feedback_id: str):  # type: ignore[no-untyped-def]
+def _registro(store, feedback_id: str):
     registro = store.get(feedback_id)
     if registro is None:
         raise click.ClickException(f"No existe la valoración {feedback_id} (o el usuario la retiró).")
@@ -788,7 +793,7 @@ def descartar(db_path: str, feedback_id: str) -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _candidatos(db_path: str):  # type: ignore[no-untyped-def]
+def _candidatos(db_path: str):
     from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
     from asistente.nucleo.evaluacion.revision import CandidatoStore
 
@@ -813,12 +818,12 @@ def detectar(db_path: str) -> None:
 @casos.command()
 @_DB
 @click.option("--estado", type=click.Choice(["pendiente", "aceptado", "rechazado"]), default="pendiente")
-def cola(db_path: str, estado: str) -> None:
+def cola(db_path: str, estado: EstadoCandidato) -> None:
     """La cola de revisión: candidatos agrupados (sin duplicados), por prioridad."""
     from asistente.nucleo.evaluacion.revision import ETIQUETAS_FALLO, agrupar
 
     _cases, store = _candidatos(db_path)
-    grupos = agrupar(store.todos(), estado=estado)  # type: ignore[arg-type]
+    grupos = agrupar(store.todos(), estado=estado)
     if not grupos:
         click.echo(f"No hay casos candidatos en estado «{estado}».")
     for g in grupos:
@@ -831,7 +836,7 @@ def cola(db_path: str, estado: str) -> None:
         click.echo(f"    {'; '.join(g.motivos_prioridad)}")
 
 
-def _candidato(store, candidato_id: str):  # type: ignore[no-untyped-def]
+def _candidato(store, candidato_id: str):
     candidato = store.get(candidato_id)
     if candidato is None:
         raise click.ClickException(f"No existe el caso candidato {candidato_id}.")
@@ -911,7 +916,7 @@ def casos_reales() -> None:
     """Casos reales aceptados (base privada, nunca en el repositorio)."""
 
 
-def _reales_de(reales_db: str | None, desde: Path | None):  # type: ignore[no-untyped-def]
+def _reales_de(reales_db: str | None, desde: Path | None):
     """Accepted real cases from the private database, or from a JSON list (synthetic fixtures in CI)."""
     from asistente.nucleo.evaluacion.privado import CasoReal, store_para
 

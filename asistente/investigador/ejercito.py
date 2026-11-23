@@ -224,9 +224,8 @@ class Ejercito:
         for c in datos.get("criticas") or []:
             if not isinstance(c, dict) or c.get("hallazgo") not in self.hallazgos:
                 continue
-            veredicto: Veredicto = (
-                c["veredicto"] if c.get("veredicto") in ("sostenido", "dudoso", "refutado") else "dudoso"
-            )
+            propuesto = c.get("veredicto")
+            veredicto: Veredicto = propuesto if propuesto in ("sostenido", "refutado") else "dudoso"
             critica = Critica(c["hallazgo"], veredicto, str(c.get("motivo", ""))[:400])
             self.criticas.append(critica)
             self._emitir(

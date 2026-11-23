@@ -27,7 +27,7 @@ the account erasure (it also checkpoints the WAL). Retention: :meth:`purgar` dro
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Sequence
+from collections.abc import Generator, Sequence
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -166,7 +166,7 @@ class AlmacenConsejo:
     # -- connection -----------------------------------------------------------------------------------------
 
     @contextmanager
-    def _conectar(self) -> Iterator[sqlite3.Connection]:
+    def _conectar(self) -> Generator[sqlite3.Connection]:
         Path(self.db_path).parent.mkdir(parents=True, exist_ok=True)
         conn = abrir_sqlite(self.db_path, timeout=30.0, isolation_level=None, filas=True)
         try:
@@ -191,7 +191,7 @@ class AlmacenConsejo:
             conn.close()
 
     @contextmanager
-    def _transaccion(self, *, inmediata: bool = False) -> Iterator[sqlite3.Connection]:
+    def _transaccion(self, *, inmediata: bool = False) -> Generator[sqlite3.Connection]:
         with self._lock, self._conectar() as conn:
             conn.execute("BEGIN IMMEDIATE" if inmediata else "BEGIN")
             try:

@@ -10,7 +10,7 @@ stored — a copy of the database does not let anyone impersonate a user.
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 import hashlib
@@ -173,14 +173,14 @@ class AuthStore:
         return self._conn
 
     @contextmanager
-    def _write(self) -> Iterator[sqlite3.Connection]:
+    def _write(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             conn = self._get_conn()
             with conn:  # commit, or roll back on error
                 yield conn
 
     @contextmanager
-    def _read(self) -> Iterator[sqlite3.Connection]:
+    def _read(self) -> Generator[sqlite3.Connection]:
         with self._lock:
             yield self._get_conn()
 

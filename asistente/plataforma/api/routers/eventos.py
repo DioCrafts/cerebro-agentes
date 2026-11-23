@@ -7,7 +7,7 @@ starts, so a change wakes its modules within seconds.
 
 # No ``from __future__ import annotations``: FastAPI must see the ``Depends`` of a provider that is local
 # to ``build_router``.
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncGenerator, Callable
 from contextlib import asynccontextmanager
 import logging
 import sqlite3
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRouter:
     @asynccontextmanager
-    async def ciclo_de_vida(_app: Any) -> AsyncIterator[None]:
+    async def ciclo_de_vida(_app: Any) -> AsyncGenerator[None]:
         productores.instalar()
         try:
             despacho.habilitar(get_case_store().db_path)

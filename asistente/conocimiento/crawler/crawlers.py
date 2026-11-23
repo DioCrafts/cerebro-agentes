@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from pathvalidate import sanitize_filepath
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 import scrapy
-from scrapy.http import HtmlResponse, Response
+from scrapy.http import HtmlResponse, Response, TextResponse
 from scrapy.linkextractors import LinkExtractor
 from scrapy.spidermiddlewares.httperror import HttpError
 from scrapy_playwright.page import PageMethod
@@ -142,7 +142,7 @@ class AgenciaTributariaWebCrawler(scrapy.Spider):
                 url, meta=self._get_meta_for_request(url), callback=self.parse, errback=self._semilla_fallida
             )
 
-    def parse(self, response: Response) -> Generator[scrapy.Request]:
+    def parse(self, response: Response) -> Generator[scrapy.Request]:  # ty: ignore[incompatible-mutable-override]  # scrapy declares ``parse`` as a callable attribute
         self._save_response_to_file(response)
         self._paginas += 1
         if response.url in self._semillas:
@@ -197,9 +197,12 @@ class AgenciaTributariaWebCrawler(scrapy.Spider):
             file_pointer.write(response.body)
 
     def _follow_domain_links(self, response: Response) -> Generator[scrapy.Request]:
+        # A binary answer (a PDF or an image behind an extension-less address) has no links, and the
+        # LinkExtractor would fail on it (no ``base_url``).
+        if not isinstance(response, TextResponse):
+            return
         link_extractor = LinkExtractor(allow=self.allowed_patterns, allow_domains=list(self.reglas.dominios))
-        # Scrapy types callbacks with the base Response; pages here are HTML (TextResponse).
-        for link in link_extractor.extract_links(response):  # type: ignore[arg-type]
+        for link in link_extractor.extract_links(response):
             yield scrapy.Request(
                 url=link.url,
                 meta=self._get_meta_for_request(link.url),
@@ -244,14 +247,17 @@ class AgenciaTributariaPDFCrawler(scrapy.Spider):
         # Format watch: PDF answers, how many were not a PDF (a rendered viewer) and how many were saved.
         self._recuento = {"respuestas_pdf": 0, "no_pdf": 0, "guardados": 0, "duplicados": 0}
 
-    def parse(self, response: Response) -> Generator[scrapy.Request]:
+    def parse(self, response: Response) -> Generator[scrapy.Request]:  # ty: ignore[incompatible-mutable-override]  # scrapy declares ``parse`` as a callable attribute
         self.seen_urls.add(response.url)
+        if not isinstance(response, TextResponse):
+            # A PDF served from an address without ``.pdf`` arrives here: keep it instead of failing on links.
+            self.parse_pdf(response)
+            return
         # ``deny_extensions=[]``: the LinkExtractor's default list drops ``.pdf`` links, which are what we want.
         extractor = LinkExtractor(
             allow_domains=[self._extract_domain_from_start_url()], unique=True, deny_extensions=[]
         )
-        # Scrapy types callbacks with the base Response; pages here are HTML (TextResponse).
-        for link in extractor.extract_links(response):  # type: ignore[arg-type]
+        for link in extractor.extract_links(response):
             if link.url in self.seen_urls:
                 continue
             self.seen_urls.add(link.url)

@@ -246,7 +246,7 @@ class ServicioMemoria:
                 Documento(
                     id=r.id,
                     tipo=r.tipo,
-                    terminos=(terminos_items.get(r.id) or "").split(),
+                    terminos=terminos_items.get(r.id, "").split(),
                     fecha=fecha,
                     conversacion_id=r.origen.conversacion_id,
                     corregido=r.corregido,
@@ -262,7 +262,7 @@ class ServicioMemoria:
                 Documento(
                     id=f"conv-{c.id}",
                     tipo="resumen",
-                    terminos=(terminos_conv.get(c.id) or "").split(),
+                    terminos=terminos_conv.get(c.id, "").split(),
                     fecha=fecha_local(c.actualizada),
                     conversacion_id=c.id,
                     vector=vectores.get(f"c:{c.id}"),

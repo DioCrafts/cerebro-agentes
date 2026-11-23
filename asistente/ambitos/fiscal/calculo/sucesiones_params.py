@@ -606,7 +606,10 @@ def _miles(entero: int) -> str:
     return f"{entero:,}".replace(",", ".")
 
 
-def escrituras(valor: Decimal | int, clase: Literal["importe", "porcentaje", "coeficiente", "entero"]) -> list[str]:
+ClaseCifra = Literal["importe", "porcentaje", "coeficiente", "entero"]
+
+
+def escrituras(valor: Decimal | int, clase: ClaseCifra) -> list[str]:
     """The ways the law may print a stored figure ("16.000", "99 por 100" -> "99", "1,0500", "veintiún")."""
     if clase == "entero":
         return [str(valor), *_en_palabras(int(valor))]
@@ -644,7 +647,7 @@ def _clase_de(campo: str) -> Literal["importe", "porcentaje", "coeficiente"]:
     return "coeficiente" if campo in get_args(Grupo) else "importe"
 
 
-def _cifras(value: object, ruta: str = "", campo: str = "") -> list[tuple[str, Decimal | int, str]]:
+def _cifras(value: object, ruta: str = "", campo: str = "") -> list[tuple[str, Decimal | int, ClaseCifra]]:
     """Every figure inside a rule: (path, value, how to read it)."""
     if isinstance(value, bool) or value is None or isinstance(value, str):
         return []
@@ -688,7 +691,7 @@ def comprobar_normativa(
                 elif cita not in planos[origen.boe_id]:
                     problemas.append(f"{donde}: la cita «{cita[:60]}…» no aparece literal en {origen.boe_id}")
         for ruta, valor, clase in _cifras(regla):
-            formas = escrituras(valor, clase)  # type: ignore[arg-type]
+            formas = escrituras(valor, clase)
             if not any(_aparece(forma, cita) for forma in formas for cita in citas):
                 problemas.append(f"{donde}: la cifra {ruta} = {valor} no aparece en ninguna cita ({formas[0]})")
         if isinstance(regla, ReglaTarifa):

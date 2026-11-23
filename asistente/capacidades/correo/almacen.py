@@ -18,7 +18,7 @@ transaction) and exported with :func:`exportar` (without the token).
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Generator
 from contextlib import contextmanager
 from datetime import UTC, date, datetime, timedelta
 import hashlib
@@ -175,7 +175,7 @@ _lock = threading.RLock()
 
 
 @contextmanager
-def conectar(db_path: str | None = None) -> Iterator[sqlite3.Connection]:
+def conectar(db_path: str | None = None) -> Generator[sqlite3.Connection]:
     ruta = db_path or ruta_db()
     Path(ruta).parent.mkdir(parents=True, exist_ok=True)
     conn = abrir_sqlite(ruta, timeout=30.0, filas=True)

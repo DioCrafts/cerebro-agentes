@@ -35,10 +35,10 @@ from typing import Any
 from asistente.nucleo.repaso.priorizacion import Priorizacion, Punto, eur, fecha_es, priorizar
 from asistente.nucleo.repaso.puerta import plano
 from asistente.nucleo.repaso.redaccion import cuerpo, periodo_de, redactar
-from asistente.nucleo.repaso.senales import Fuente, Hechos, Senal, limpiar
+from asistente.nucleo.repaso.senales import Fuente, Hechos, Senal, TipoSenal, limpiar
 
 # Evaluation signal kind -> (domain, signal kind, the date is a deadline, official deadline, untrusted text).
-TIPOS: dict[str, tuple[str, str, bool, bool, bool]] = {
+TIPOS: dict[str, tuple[str, TipoSenal, bool, bool, bool]] = {
     "plazo": ("fiscal", "aviso", True, True, False),
     "caducidad": ("caducidades", "aviso", True, False, False),
     "luz": ("luz", "aviso", True, False, False),
@@ -52,7 +52,7 @@ TIPOS: dict[str, tuple[str, str, bool, bool, bool]] = {
     "evento": ("eventos", "novedad", False, False, False),
     "decision": ("memoria", "decision", True, False, False),
 }
-POR_DEFECTO = ("hogar", "aviso", True, False, False)
+POR_DEFECTO: tuple[str, TipoSenal, bool, bool, bool] = ("hogar", "aviso", True, False, False)
 SIN_NOVEDADES = "Esta semana no hay nada que necesite tu atención."
 
 
@@ -87,7 +87,7 @@ def a_senal(datos: Mapping[str, Any], *, hoy: date) -> Senal:
     return Senal(
         id=id_,
         ambito=ambito,
-        tipo=tipo,  # type: ignore[arg-type]
+        tipo=tipo,
         titulo=texto,
         hechos=hechos,
         fuente=Fuente(tipo="aviso", id=id_, modulo=ambito, fecha=hechos.fecha, titulo=texto),

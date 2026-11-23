@@ -15,6 +15,7 @@ case can leave them behind.
 
 from __future__ import annotations
 
+import builtins
 from collections.abc import Iterable
 from datetime import date
 import json
@@ -160,7 +161,7 @@ class DecisionStore:
             )
         return Decision.model_validate_json(fila["payload_json"]) if fila else None
 
-    def list(self, case_id: str) -> list[Decision]:
+    def list(self, case_id: str) -> builtins.list[Decision]:
         """Decisions of a case, newest first."""
         with self._lock:
             filas = (

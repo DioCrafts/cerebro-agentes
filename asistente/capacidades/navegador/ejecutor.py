@@ -458,10 +458,11 @@ class Ejecutor:
         info = localizador.first.evaluate(JS_ELEMENTO) if cuantos == 1 else None
         return localizador, cuantos, info
 
-    def _elemento(self, pagina: Any, paso: Paso, resultado: ResultadoEjecucion) -> tuple[Any, dict[str, Any], bool]:
+    def _elemento(
+        self, pagina: Any, paso: PasoEsperar | PasoRellenar | PasoPulsar, resultado: ResultadoEjecucion
+    ) -> tuple[Any, dict[str, Any], bool]:
         """(locator, element facts, repaired?) of a step's element, or :class:`_FalloPasoError`."""
-        selector: str = paso.selector  # type: ignore[union-attr]
-        localizador, cuantos, info = self._localizar(pagina, selector)
+        localizador, cuantos, info = self._localizar(pagina, paso.selector)
         if cuantos == 1 and info is not None:
             return localizador, info, False
         if cuantos > 1:

@@ -407,5 +407,5 @@ def cargar_consumo(valor: Any) -> ConsumoGuardado | None:
 
 def zona_valida(valor: Any) -> Zona:
     if valor in ZONAS:
-        return valor  # type: ignore[no-any-return]
+        return valor
     raise ValueError(f"zona desconocida «{valor}»: usa una de {', '.join(ZONAS)}")

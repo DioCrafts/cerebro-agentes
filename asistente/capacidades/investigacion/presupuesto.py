@@ -15,7 +15,7 @@ The web search fee (per search, not per token) is added from ``INVESTIGACION_PRE
 
 from __future__ import annotations
 
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Generator
 from contextlib import contextmanager
 from contextvars import ContextVar
 from dataclasses import dataclass, field
@@ -57,16 +57,16 @@ def observar(proveedor: Any) -> bool:
         previo(usage)
         _observar(usage)
 
-    ambos.observa_investigacion = True  # type: ignore[attr-defined]
+    ambos.observa_investigacion = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     # The metering capture is already inside ``previo``: tell ops/consumo.py not to chain it again.
     if getattr(previo, "__name__", "") == "_capturar" or getattr(previo, "captura_consumo", False):
-        ambos.captura_consumo = True  # type: ignore[attr-defined]
+        ambos.captura_consumo = True  # ty: ignore[missing-attribute]  # flag stored on the function object, which type checkers do not model
     proveedor.on_usage = ambos
     return True
 
 
 @contextmanager
-def capturar() -> Iterator[list[Usage]]:
+def capturar() -> Generator[list[Usage]]:
     """The usages reported by the providers inside the block (in this context)."""
     usos: list[Usage] = []
     token = _USOS.set(usos)

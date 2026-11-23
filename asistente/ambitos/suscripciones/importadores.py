@@ -18,7 +18,7 @@ from asistente.ambitos.suscripciones.ofx import codificacion_declarada, es_ofx, 
 from asistente.ambitos.suscripciones.tablas import filas_csv, filas_xlsx, tabla_a_extracto
 
 Formato = Literal["auto", "norma43", "csv", "xlsx", "ofx", "qfx", "camt053"]
-FORMATOS: tuple[str, ...] = Formato.__args__  # type: ignore[attr-defined]
+FORMATOS: tuple[str, ...] = Formato.__args__
 
 
 def bytes_de_entrada(contenido: str | None, contenido_base64: str | None) -> bytes:

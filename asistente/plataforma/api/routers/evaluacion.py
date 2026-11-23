@@ -473,7 +473,7 @@ def build_router(*, get_case_store: Callable[[], SQLiteCaseStateStore]) -> APIRo
             if case is not None:
                 detectados += len(revision.detectar_en_caso(candidatos, cases, case, user_id=case.user_id))
         visibles = candidatos.todos() if quien.case_ids is None else candidatos.de_casos(sorted(quien.case_ids))
-        grupos = revision.agrupar(visibles, estado=estado)  # type: ignore[arg-type]
+        grupos = revision.agrupar(visibles, estado=estado)
         return ColaRevision(
             grupos=[
                 GrupoResumen(

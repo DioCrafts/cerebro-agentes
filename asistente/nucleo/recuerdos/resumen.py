@@ -44,15 +44,16 @@ from asistente.nucleo.agent.procedencia import cita_valida, numeros_del_usuario
 from asistente.nucleo.memoria.modelo import normalizar_texto
 from asistente.nucleo.recuerdos import privacidad, prompts
 from asistente.nucleo.recuerdos.almacen import (
-    TIPOS_GUARDADOS,
     AlmacenRecuerdos,
     Conversacion,
     FilaLote,
     Fuente,
     Mensaje,
     Recuerdo,
+    TipoGuardado,
     Titular,
     en_utc,
+    es_tipo_guardado,
     fecha_local,
     nuevo_id,
 )
@@ -100,7 +101,7 @@ class EntradaResumen:
 
 @dataclass(frozen=True)
 class Aceptado:
-    tipo: str
+    tipo: TipoGuardado
     clave: str
     texto: str
     cita: str
@@ -203,7 +204,7 @@ def puerta_candidato(
     texto = " ".join(str(candidato.get("texto") or "").split())
     cita = _limpia_cita(str(candidato.get("cita") or ""))
     clave = normalizar_clave(str(candidato.get("clave") or ""), texto)
-    if tipo not in TIPOS_GUARDADOS or not texto or not cita or len(texto) > MAX_TEXTO or len(cita) > MAX_CITA:
+    if not es_tipo_guardado(tipo) or not texto or not cita or len(texto) > MAX_TEXTO or len(cita) > MAX_CITA:
         return Rechazo("invalido", clave)
     if privacidad.es_inyeccion(texto) or privacidad.es_inyeccion(cita):
         return Rechazo("inyeccion", clave)
@@ -373,7 +374,7 @@ def aplicar(
                 continue
         nuevo = Recuerdo(
             id=nuevo_id(),
-            tipo=a.tipo,  # type: ignore[arg-type]
+            tipo=a.tipo,
             clave=a.clave,
             texto=a.texto,
             origen=fuente,

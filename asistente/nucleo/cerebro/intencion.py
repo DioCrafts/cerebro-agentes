@@ -749,7 +749,7 @@ def validar_del_modelo(datos: Any, activos: Sequence[str], *, consulta: str) -> 
     if tipo == "cruzada" and len({e["especialista"] for e in limpios}) == 1:
         tipo, reparado = "ambito", True
     try:
-        confianza = float(datos.get("confianza"))  # type: ignore[arg-type]  # TypeError handled below
+        confianza = float(datos.get("confianza"))  # TypeError handled below
     except TypeError, ValueError:
         confianza, reparado = 0.5, True
     if not 0.0 <= confianza <= 1.0:

@@ -30,7 +30,7 @@ install it with :func:`usar`.
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable, Generator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
@@ -364,7 +364,7 @@ class ClienteAsincrono:
     ) -> httpx.Response:
         intentos = self._politica.reintenta(metodo, reintentar) + 1
         cabeceras_finales = self._politica.cabeceras(accept, cabeceras)
-        extra = {
+        extra: dict[str, Any] = {
             k: v
             for k, v in {"params": params, "data": data, "content": content, "json": json, "timeout": timeout}.items()
             if v is not None
@@ -428,7 +428,7 @@ def cliente() -> Cliente:
 
 
 @contextmanager
-def usar(nuevo: Cliente) -> Iterator[Cliente]:
+def usar(nuevo: Cliente) -> Generator[Cliente]:
     """Install ``nuevo`` as the process-wide client for the duration of the block (tests, fakes)."""
     with _cerrojo_defecto:
         anterior = list(_por_defecto)

@@ -7,6 +7,7 @@ refuses a second write for the same ``(case_id, key)``.
 
 from __future__ import annotations
 
+import builtins
 from datetime import UTC, date, datetime
 from decimal import Decimal
 from pathlib import Path
@@ -127,7 +128,7 @@ class NotificationStore:
             avisar_al_escribir(self.db_path, notification)
         return nueva
 
-    def list(self, case_id: str, *, unread_only: bool = False) -> list[Notification]:
+    def list(self, case_id: str, *, unread_only: bool = False) -> builtins.list[Notification]:
         """Notifications of a case, newest first."""
         query = "SELECT payload_json, read_at FROM notifications WHERE case_id = ?"
         if unread_only:
