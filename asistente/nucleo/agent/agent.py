@@ -71,6 +71,9 @@ REFUSAL_MESSAGE = "El modelo ha declinado responder a esta consulta."
 _STEPS_PER_REVISION = 3
 
 
+TRUNCATED_WARNING = "La respuesta se cortó por el límite de longitud del modelo; puede estar incompleta."
+
+
 class AgentMode(str, Enum):
     VERIFIED = "verified"  # every normative claim is backed by its cited fragment
     PARTIALLY_VERIFIED = "partially_verified"  # some claims are flagged in `warnings`
@@ -348,10 +351,16 @@ class TaxAgent:
         usage: dict[str, int] = {}
         steps = 0
         revisions = 0
+        truncated = False
         budget = self._max_steps
         critic_pending = critic is not None
 
         def finish(**fields: Any) -> AgentResult:
+            if truncated and fields.get("mode") is AgentMode.VERIFIED:
+                # A draft cut by max_tokens may have lost a caveat or a claim at its end: never fully verified.
+                fields["mode"] = AgentMode.PARTIALLY_VERIFIED
+            if truncated and fields.get("mode") is not AgentMode.ABSTAINED:
+                fields["warnings"] = [*fields.get("warnings", []), TRUNCATED_WARNING]
             total = dict(usage)
             full_trace = list(trace)
             if especialistas is not None:
@@ -430,6 +439,7 @@ class TaxAgent:
                 continue
 
             answer = turn.text
+            truncated = bool(answer) and turn.stop_reason == "max_tokens"
             if not answer:
                 reason = (
                     "La respuesta se truncó por límite de tokens."
@@ -624,17 +634,28 @@ class TeamAgent(TaxAgent):
                     "fuentes de rango comparable siguen discrepando, dilo."
                 ),
             )
-            team_result = self._run_team(
-                query,
-                plan,
-                "conflicto",
-                chat_history=chat_history,
-                # Facts the first pass recorded must not be lost.
-                case=result.updated_case or case,
-                on_event=on_event,
-                emit=emit,
-                modulos=modulos,
-            )
+            try:
+                team_result = self._run_team(
+                    query,
+                    plan,
+                    "conflicto",
+                    chat_history=chat_history,
+                    # Facts the first pass recorded must not be lost.
+                    case=result.updated_case or case,
+                    on_event=on_event,
+                    emit=emit,
+                    modulos=modulos,
+                )
+            except ProviderError as exc:
+                # The escalation failed: the first answer (already paid for) is still worth giving, with a warning.
+                logger.warning("team escalation failed: %s", exc)
+                emit("team", stage="escalation", agent="planificador", status="error")
+                result.warnings = [
+                    *result.warnings,
+                    "No se pudo contrastar con el equipo la vigencia de las fuentes discutidas; "
+                    "la respuesta es la primera, sin esa revisión.",
+                ]
+                return result
             for key, value in result.usage.items():
                 team_result.usage[key] = team_result.usage.get(key, 0) + value
             if team_result.updated_case is None:

@@ -184,14 +184,19 @@ def consultor_por_defecto(modulo: Modulo, pregunta: str, case: CaseState) -> tup
     from asistente.nucleo.agent.evidence import EvidenceLedger
     from asistente.nucleo.agent.providers import create_provider
 
+    from asistente.plataforma.ops.consumo import contexto_consumo, medir
+
     ledger = EvidenceLedger()
-    coordinador = Coordinador.para(create_provider(), ledger, [modulo], lambda *_a, **_k: None)
+    # Metered and capped against the case's owner, like a chat question (a task runs with nobody watching).
+    proveedor = medir(create_provider(), "tareas:consulta")
+    coordinador = Coordinador.para(proveedor, ledger, [modulo], lambda *_a, **_k: None)
     if coordinador is None:
         raise RuntimeError(f"el módulo {modulo.clave} no tiene especialista")
     caja = SimpleNamespace(case=case, case_changed=False, ledger=ledger)
     coordinador.vincular(caja)  # type: ignore[arg-type]
     _spec, consultar = coordinador.herramientas()[0]
-    salida = consultar({"pregunta": pregunta})
+    with contexto_consumo(user_id=case.user_id, case_id=case.case_id):
+        salida = consultar({"pregunta": pregunta})
     if salida.is_error:
         raise RuntimeError(salida.content[:300])
     texto = salida.content
@@ -214,6 +219,8 @@ class _Pasada:
 
     eventos: list[Evento_] = field(default_factory=list)
     senales: list[int] = field(default_factory=list)
+    # A costly step was saved mid-pass (see :meth:`Motor._guardar_avance`).
+    guardada: bool = False
 
     def anotar(self, evento: str, paso: Paso | None = None, **detalle: Any) -> None:
         self.eventos.append((evento, paso.id if paso is not None else None, detalle))
@@ -382,7 +389,12 @@ class Motor:
         tarea.proxima_revision = self._proxima_revision(tarea)
         if tarea.estado != estado_anterior:
             pasada.anotar("estado", estado=tarea.estado, antes=estado_anterior)
-        if not pasada.eventos and tarea.proxima_revision == original.proxima_revision and not pasada.senales:
+        if (
+            not pasada.eventos
+            and not pasada.guardada
+            and tarea.proxima_revision == original.proxima_revision
+            and not pasada.senales
+        ):
             return original  # nothing moved: no write
         guardada = self.store.guardar(tarea, eventos=pasada.eventos)
         self.store.marcar_senales(pasada.senales)
@@ -436,6 +448,7 @@ class Motor:
                     return self._modulo_apagado(tarea, paso, str(paso.modulo), pasada)
                 texto, evidencias = self.consultor(modulo, paso.pregunta or paso.titulo, case)
                 self._cerrar(tarea, paso, pasada, Resultado(resumen=texto[:4000], evidencias=list(evidencias)[:30]))
+                self._guardar_avance(tarea, pasada)
             elif paso.tipo == "capacidad":
                 return self._capacidad(tarea, paso, case, modulos, pasada)
             elif paso.tipo == "espera":
@@ -448,10 +461,22 @@ class Motor:
                     EsperaActual(motivo="usuario", detalle=paso.descripcion or paso.titulo),
                     aviso=(paso.descripcion or paso.titulo) + " Márcalo en «Tareas» o dímelo en el chat.",
                 )
+        except ConflictoDeVersionError:
+            raise
         except Exception as exc:
             logger.exception("Step %s of task %s failed", paso.id, tarea.id)
             self._fallo(tarea, paso, pasada, f"Error interno ({type(exc).__name__}).")
         return True
+
+    def _guardar_avance(self, tarea: Tarea, pasada: _Pasada) -> None:
+        """Save right after a step that cost a model call, and renew the lease: a crash or an expired lease later
+        in the pass never throws away (and pays again for) a finished consultation."""
+        guardada = self.store.guardar(tarea, eventos=pasada.eventos)
+        tarea.version = guardada.version
+        tarea.actualizada = guardada.actualizada
+        pasada.eventos.clear()
+        pasada.guardada = True
+        self.store.reclamar(tarea.id, self.trabajador, segundos=self.config.arriendo_s)
 
     # ------------------------------------------------------------------ step kinds
 

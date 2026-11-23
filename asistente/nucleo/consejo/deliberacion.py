@@ -220,10 +220,11 @@ class Contabilidad:
         return self._precios
 
     def _coste(self, usage: Usage) -> Decimal | None:
-        from asistente.plataforma.ops.consumo import calcular_coste
+        from asistente.plataforma.ops.consumo import coste_prudente
 
         try:
-            return calcular_coste(usage, self._tabla())
+            # Same pricing as the run's ControlSesion: an unknown price counts at the dearest one of the table.
+            return coste_prudente(usage, self._tabla())
         except Exception:  # a broken price table never breaks the session
             logger.warning("could not price a council call", exc_info=True)
             return None

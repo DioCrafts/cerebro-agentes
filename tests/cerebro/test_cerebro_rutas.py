@@ -14,7 +14,7 @@ import pytest
 
 from asistente.nucleo.agent import agent as agent_mod
 from asistente.nucleo.agent.agent import AgentMode, TaxAgent, TeamAgent
-from asistente.nucleo.agent.providers.base import ProviderError
+from asistente.nucleo.agent.providers.base import ModelTurn, ProviderError
 from asistente.nucleo.cerebro import cerebro as cerebro_mod
 from asistente.nucleo.cerebro.cerebro import MARCA_RETIRADA, Cerebro, tope_de_informes
 from asistente.nucleo.cerebro.contrato import (
@@ -533,8 +533,30 @@ def test_without_the_collaboration_runtime_the_plan_still_runs(monkeypatch: pyte
     resultado = cerebro(sintesis=sintesis, verificador=verificador, especialistas={"luz": luz}).run(
         "¿Qué tarifa de luz me conviene?", modulos=modulos(LUZ)
     )
-    assert resultado.mode is AgentMode.VERIFIED and resultado.cerebro is not None
-    assert resultado.cerebro.puerta is None  # no gate to run: said in the log, the verifier still ran
+    # The gate could not run: it never fails open; capped at partially verified and said.
+    assert resultado.mode is AgentMode.PARTIALLY_VERIFIED and resultado.cerebro is not None
+    assert resultado.cerebro.puerta is None
+    assert cerebro_mod.AVISO_PUERTA_CAIDA in resultado.warnings
+
+
+def test_a_final_draft_cut_by_max_tokens_is_never_fully_verified() -> None:
+    luz = _luz()
+    sintesis = Grabador(
+        [
+            lambda: ModelTurn(
+                text=f"Con el PVPC pagarías 41,20 € al mes [{_fid(luz)}].",
+                tool_calls=[],
+                stop_reason="max_tokens",
+                usage={"input_tokens": 10, "output_tokens": 5},
+            )
+        ]
+    )
+    verificador = Grabador([], [verdict("respuesta", ("pvpc", ["F1"], "respaldada"))])
+    resultado = cerebro(sintesis=sintesis, verificador=verificador, especialistas={"luz": luz}).run(
+        "¿Qué tarifa de luz me conviene?", modulos=modulos(LUZ)
+    )
+    assert resultado.mode is AgentMode.PARTIALLY_VERIFIED
+    assert cerebro_mod.TRUNCATED_WARNING in resultado.warnings
 
 
 def test_a_figure_the_user_gave_in_an_earlier_conversation_is_theirs() -> None:

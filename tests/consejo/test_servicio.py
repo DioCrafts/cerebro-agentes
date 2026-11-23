@@ -345,3 +345,38 @@ def test_a_stop_before_round_one_had_three_proposals_is_a_failure(db: str) -> No
     final = servicio.obtener(sesion.id, case_id="c1").sesion
     assert final.estado == "fallida" and final.dictamen is None
     assert "límite diario de uso." in (final.error or "") and "propuestas suficientes" in (final.error or "")
+
+
+def test_the_cap_is_per_session_not_per_attempt(db: str) -> None:
+    import sqlite3
+
+    from asistente.nucleo.consejo.contrato import CosteSesion
+
+    control_visto: list[ControlSesion] = []
+    fabrica = FabricaFalsa()
+    original = fabrica.entorno
+
+    def entorno(*a: Any, **k: Any) -> Any:
+        control_visto.append(k["control"])
+        return original(*a, **k)
+
+    fabrica.entorno = entorno  # type: ignore[method-assign]
+    servicio = _servicio(db, fabrica)
+    sesion = servicio.convocar(case=_caso(db), pregunta=PREGUNTA)
+    servicio.confirmar(sesion.id, case_id="c1")
+    previo = CosteSesion(llamadas=7, usd=Decimal("0.25"), tokens_entrada=100, tokens_salida=10)
+    with sqlite3.connect(db) as conn:  # what an earlier, interrupted run already spent
+        conn.execute("UPDATE consejo_sesiones SET coste_json = ? WHERE id = ?", (previo.model_dump_json(), sesion.id))
+    servicio.ejecutar_pendientes()
+    assert control_visto[-1].inicial.usd == Decimal("0.25") and control_visto[-1].inicial.llamadas == 7
+    final = servicio.obtener(sesion.id, case_id="c1").sesion
+    assert final.coste.usd >= Decimal("0.25") and final.coste.llamadas >= 7  # never overwritten by the new run
+
+
+def test_a_seeded_control_stops_at_the_session_cap() -> None:
+    from asistente.nucleo.consejo.contrato import CosteSesion
+
+    control = ControlSesion(tope_usd=Decimal("0.10"), inicial=CosteSesion(llamadas=3, usd=Decimal("0.10")))
+    with pytest.raises(PresupuestoAgotadoError):
+        control.comprobar()
+    assert control.motivo == "tope"
