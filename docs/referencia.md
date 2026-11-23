@@ -1,0 +1,2314 @@
+# 🧠 Cerebro personal fiable
+
+> **Un cerebro central que investiga a fondo por ti: cada afirmación con su fuente y cada cifra verificada.**
+>
+> *Nombre de producto propuesto: **Criterio** (ver [ADR 0005](adr/0005-cerebro-personal-y-openhands.md)). El
+> código conserva sus nombres de paquete (`asistente/`).*
+
+Este proyecto nació como «HaciendaGPT», un asistente RAG sobre la Agencia Tributaria. Hoy es otra cosa: un
+**cerebro personal** que entiende lo que le preguntas, reparte el trabajo entre un **ejército de agentes
+investigadores** y **módulos especializados**, y solo te enseña lo que puede respaldar. Hacienda es **el primer
+módulo**, no el producto: junto a él están la luz, la hipoteca, las ayudas, las caducidades y las suscripciones.
+
+---
+
+## ✨ La visión
+
+### 1. Un cerebro central
+
+Recibe la pregunta, decide qué hace falta saber, encarga el trabajo (en paralelo cuando es independiente, en cadena
+cuando una pieza necesita la cifra de otra), une los informes en una sola respuesta y la comprueba antes de
+enseñarla. Recuerda lo que sabe de ti —con su origen, visible y borrable— y te avisa sin que preguntes cuando algo
+cambia. La orquestación de agentes es un bucle propio; el SDK de OpenHands se probó y se retiró al medir que no aportaba
+nada ([ADR 0006](adr/0006-un-solo-runtime-propio.md)). Detalle: [arquitectura del
+cerebro](cerebro/arquitectura.md), [colaboración](cerebro/colaboracion.md),
+[memoria](cerebro/memoria.md), [repaso proactivo](cerebro/repaso.md).
+
+### 2. Un ejército investigador
+
+Agentes que buscan, leen y contrastan fuentes primarias (BOE, sedes oficiales, documentos del usuario, la web)
+hasta poder responder con pruebas o decir con honestidad que no se sabe. Para decisiones difíciles, un
+[consejo](consejo/arquitectura.md) de varias IA independientes delibera con críticas anónimas y devuelve
+consenso **y** disenso. Detalle: [investigación](capacidades/investigacion.md).
+
+### 3. Módulos especializados
+
+Cada módulo es dueño de sus datos, sus calculadoras y sus avisos, y se integra por un contrato común
+([módulos](modulos/README.md)):
+
+| Módulo | Qué hace |
+|---|---|
+| **Fiscal (Hacienda)** — el primero | IRPF y otros impuestos con citas del BOE, calculadora, optimizador, calendario, doctrina y jurisprudencia. Es la mayor parte de la referencia técnica de abajo. |
+| [Luz](modulos/luz.md) | Facturas y consumo, comparación de tarifas. |
+| [Hipoteca](modulos/hipoteca.md) | Amortizar o invertir, revisiones, condiciones. |
+| [Ayudas](modulos/ayudas.md) | Ayudas y bonos a los que puedes tener derecho. |
+| [Caducidades](modulos/caducidades.md) | Documentos, garantías y plazos que vencen. |
+| [Suscripciones](modulos/suscripciones.md) | Cargos recurrentes que conviene revisar. |
+
+### 4. Garantías de fiabilidad
+
+La propuesta de valor es la confianza, así que las garantías se aplican **en código**, no por instrucciones al
+modelo:
+
+- 📎 **Fuentes obligatorias**: una afirmación sin cita comprobada no sale; si no hay fuentes suficientes, el sistema
+  se abstiene (ver «Grounding gate» más abajo).
+- 🔢 **Puerta de cifras**: cada número de la respuesta procede de una herramienta o de tus propias palabras,
+  atribuido a quien lo dio; nada de cifras inventadas ni sumas que ninguna calculadora haya hecho
+  ([colaboración](cerebro/colaboracion.md)).
+- 🔁 **Verificación cruzada**: las citas se comprueban contra el texto literal de la fuente y las conclusiones
+  delicadas se contrastan entre agentes o en el consejo.
+- 📅 **Vigencia**: cada dato legal sabe de qué norma y fecha procede; un detector de deriva avisa cuando una fuente
+  cambia ([gobernanza normativa](#-gobernanza-normativa-drift-detector)).
+- ✋ **Confirmación humana**: nada que actúe en tu nombre (enviar, descargar, gastar) ocurre sin que lo confirmes.
+- 🔐 **Privacidad**: datos mínimos y seudonimizados hacia los proveedores de IA, consentimiento por capacidad,
+  exportación y borrado ([privacidad](privacidad.md)).
+- 🛡️ **Defensa ante prompt injection**: todo contenido de terceros (webs, correos, documentos) se trata como dato
+  no confiable, nunca como instrucción ([endurecimiento](security/rag-prompt-injection-hardening.md),
+  [seguridad](seguridad.md)).
+
+---
+
+## 📚 Referencia técnica
+
+Lo que sigue documenta el sistema tal como está hoy. Buena parte describe el **módulo fiscal** (corpus del BOE y la
+AEAT, índice FAISS, reglas, calculadoras), que fue el origen del proyecto y sigue siendo el módulo más completo.
+
+### Piezas del módulo fiscal
+
+- 📚 **RAG sobre contenido fiscal** (HTML/PDF) con FAISS.
+- 🧠 **Motor de reglas** para evaluación de obligaciones y casos.
+- 🛡️ **Grounding gate**: abstención forzada cuando no hay citas normativas suficientes (modos `cited` / `uncited` / `abstained`).
+- 🧭 **Detector de drift normativo**: cada regla declara las fuentes BOE/AEAT que la sustentan; un CLI compara los hashes contra el último snapshot.
+- 🔐 **Hardening de seguridad** frente a prompt injection en contexto recuperado.
+- 🖥️ **Interfaz Streamlit** para uso interactivo.
+- ⚡ **API FastAPI** para integración en servicios.
+- 🧪 **Suite de tests** para validar comportamiento funcional y documental.
+
+---
+
+## 🧱 Arquitectura (alto nivel)
+
+1. **Crawler**: descarga contenido fuente (web/PDF).
+2. **Processor**: convierte y trocea PDF/HTML con **Docling** (análisis de layout, tablas y *chunking* por estructura + presupuesto de tokens) y construye el índice vectorial FAISS.
+3. **Retrieval + LLM**: recupera contexto relevante y genera respuesta.
+4. **Decision Engine**: evalúa reglas por periodo fiscal y hechos detectados.
+5. **UI/API**: expone experiencia de usuario e integración.
+
+### Cerebro del hogar
+
+El asistente ya no es un asesor fiscal con módulos añadidos: es un **cerebro generalista** que entiende la
+pregunta, decide a qué especialistas consultar (en paralelo si son independientes, uno tras otro si uno necesita una
+cifra de otro), une sus informes en una sola respuesta y la comprueba antes de enseñarla. El asesor fiscal es uno de
+sus especialistas, con su rigor intacto (citas del BOE y verificador). `CEREBRO_MODO=hogar` es el modo por defecto;
+`CEREBRO_MODO=fiscal` mantiene el asesor único de siempre.
+
+- [**Arquitectura**](cerebro/arquitectura.md): el recorrido de un turno (memoria, intención con reglas primero
+  y el modelo pequeño solo si hay duda, paso directo fiscal, colaboración, síntesis), las puertas que lo vigilan, su
+  coste y lo que aún no está verificado. La decisión y sus alternativas, en el
+  [ADR 0003](adr/0003-cerebro-del-hogar.md).
+- [**Colaboración entre especialistas**](cerebro/colaboracion.md): los encargos se ejecutan como un grafo en
+  paralelo; un especialista pide un dato a otro **a través del cerebro** (`pedir_dato`), y la puerta de cifras exige
+  que cada número de la respuesta salga de una herramienta o de las palabras del usuario, atribuido a quien lo dio y
+  sin sumar cifras de especialistas distintos que ninguna herramienta haya combinado.
+- [**Memoria de conversaciones**](cerebro/memoria.md): un resumen de cada conversación y «lo que sé de ti», cada
+  dato con su origen (la conversación, la fecha y las palabras literales del usuario). El usuario lo ve, lo corrige y
+  lo borra; va en la exportación y en el borrado de la cuenta.
+- [**Repaso proactivo**](cerebro/repaso.md): una vez por semana (o por día) repasa lo nuevo —correo, avisos,
+  plazos, cambios del BOE, decisiones— y escribe UN resumen priorizado («esta semana importa esto, por esto, y te
+  propongo esto»). El código decide qué hay y qué se propone; el modelo pequeño solo redacta, tras una puerta
+  determinista, y las propuestas pasan por la confirmación de siempre.
+- [**Aprender de los errores reales**](cerebro/aprendizaje.md): cada «esto está mal» se convierte en un caso
+  candidato enmascarado que una persona acepta (como prueba de regresión privada, nunca en el código) o rechaza; un
+  cambio de *prompt* o de modelo solo se aplica si no empeora la evaluación, con estadística pareada, sin regresiones
+  en casos críticos y dentro del presupuesto.
+
+### Estructura del código (`asistente/`)
+
+| Paquete | Qué contiene |
+|---|---|
+| `asistente/nucleo/` | El cerebro central (`agent/`: agente, especialistas, prompts, proveedores, enrutado por propósito), el contrato y el registro de ámbitos (`modulos/`: contrato v1 y ganchos v2, perfil, acciones, preferencias, puentes), tareas de larga duración (`tareas/`), bus de eventos (`eventos/`), memoria de decisiones (`memoria/`), expediente y extracción de hechos (`decision/`), bandeja, resumen y entrega (`proactive/`), evaluación continua (`evaluacion/`, `evals/`) y el planificador del hogar (`planificador/`, transversal a varios ámbitos). |
+| `asistente/capacidades/` | Medios que cualquier ámbito pide con `pedir`: `correo`, `navegador`, `documentos`, `investigacion` (y su contrato, registro y consentimiento). |
+| `asistente/ambitos/` | Los dominios: `fiscal` (con `calculo/` y sus datos legales en `data/`), `luz`, `hipoteca`, `ayudas`, `caducidades`, `suscripciones`. Solo paquetes de ámbito: el registro los descubre aquí. |
+| `asistente/conocimiento/` | Datos legales con cita literal, su comprobación y recodificación (`recodificacion/`), fuentes y vigencia de las normas, vigilancia del BOE y de formatos (`formatos*.py`, `data/formatos/`), y el corpus: `crawler/`, `processor/`, `llm/`, `doctrine/`. |
+| `asistente/plataforma/` | API (`api/`), cuentas (`auth/`), almacenamiento con migraciones y procesos (`migraciones/`, `procesos.py`, `trabajos.py`), operación (`ops/`), avisos push (`push/`), `settings.py`, la línea de órdenes (`cli/`), la UI Streamlit (`ui/`), observabilidad, gobernanza y utilidades. |
+
+Las órdenes son `python -m asistente.plataforma.cli.<orden>` y la API `uvicorn asistente.plataforma.api.api:app`.
+---
+
+## ✅ Requisitos
+
+- Python `>=3.13,<3.14`
+- [uv](https://docs.astral.sh/uv/)
+- (Opcional para crawler web) Playwright/Chromium
+
+---
+
+## ⚙️ Setup rápido
+
+```bash
+uv sync                  # crea .venv e instala deps (main + dev) desde uv.lock
+# opcional: cp .env.example .env
+```
+
+Variables de entorno recomendadas:
+
+```bash
+export OPENAI_API_KEY="sk-..."          # solo para el LLM de chat (ChatOpenAI)
+export OPENAI_MODEL="gpt-4o-mini"
+export OPENAI_TEMPERATURE="0"
+export TOP_K="3"
+
+# Umbrales de similitud (coseno) del EmbeddingsFilter. Defaults pensados para
+# Qwen3 (coseno normalizado); calíbralos con benchmark_retrieval. Subirlos =
+# más precisión/menos recall (riesgo de abstención); bajarlos = lo contrario.
+export RETRIEVAL_DECISION_THRESHOLD="0.55"   # perfil "decision" (más estricto)
+export RETRIEVAL_EXPLAIN_THRESHOLD="0.525"   # perfil "explain" (más recall)
+# La cadena de Q&A (`/qa` y el chat de la UI) usa el perfil "explain" por
+# defecto, ya que son consultas explicativas. El perfil "decision" (más
+# estricto) queda para el motor de decisión y el benchmark de retrieval.
+
+# Embedder local MLX (Apple Silicon, mismo modelo para indexar y consultar):
+export EMBEDDING_MODEL="data/models/qwen3-emb-mlx-bf16"
+# export EMBEDDING_BATCH_SIZE="32"        # opcional: batch en cada forward pass
+# export EMBEDDING_MAX_SEQ_LENGTH="512"   # opcional: cap defensivo de tokens
+
+export FAISS_INDEX_PATH="./data/faiss"
+# Seguridad: activa solo si el índice FAISS proviene de una fuente 100% confiable
+export FAISS_TRUSTED_INDEX="true"
+export DECISION_DEBUG_MODE="false"
+export DECISION_STATE_DB_PATH="./data/decision_state.sqlite3"
+```
+
+### Embeddings
+
+El proyecto usa **un único embedder local sobre MLX** (runtime nativo de
+Apple Silicon, pesos bf16, **sin cuantización**). Modelo base:
+`Qwen/Qwen3-Embedding-0.6B` convertido a MLX y servido desde
+`data/models/qwen3-emb-mlx-bf16/`. Tanto la indexación como la consulta
+construyen el embedder en `asistente/conocimiento/llm/embeddings.py`, así que **no hay
+riesgo de mismatch** entre el índice y el retrieval.
+
+Por qué MLX y no PyTorch+MPS: medido **~1.35× más rápido** en M-series con
+equivalencia numérica (cosine sim 0.9998 vs PyTorch). Apple Silicon-only —
+el proyecto se ejecuta en Mac M-series por diseño.
+
+#### Setup inicial (una sola vez)
+
+```bash
+# Convierte el modelo HuggingFace a MLX bf16 local.
+uv run python scripts/convert_to_mlx.py
+# Default: --hf-path Qwen/Qwen3-Embedding-0.6B --mlx-path data/models/qwen3-emb-mlx-bf16
+```
+
+Esto produce un directorio de ~1.1 GB que `EMBEDDING_MODEL` apunta por
+defecto. Para cambiar de modelo, convierte uno nuevo con
+`--hf-path`/`--mlx-path` distintos y exporta `EMBEDDING_MODEL=<nueva ruta>`.
+
+> El LLM de chat sigue siendo OpenAI (`OPENAI_API_KEY`); solo los *embeddings*
+> son locales.
+>
+> ⚠️ Si cambias de modelo de embedding **reconstruye el índice FAISS** (los
+> espacios vectoriales no son intercambiables — el sistema incremental detecta
+> el cambio vía pipeline fingerprint y fuerza un rebuild automático). Los
+> umbrales de similitud viven en `settings.py` y se configuran vía
+> `RETRIEVAL_DECISION_THRESHOLD` / `RETRIEVAL_EXPLAIN_THRESHOLD`. Defaults
+> actuales: 0.45 / 0.35. **Calíbralos** para tu corpus con
+> `uv run python -m asistente.plataforma.cli.benchmark_retrieval`.
+
+> 🍎 **macOS**: si al primer request a `/qa` (uvicorn) o a la UI
+> (Streamlit) el proceso muere con
+> `OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib
+> already initialized`, exporta `KMP_DUPLICATE_LIB_OK=TRUE` antes de
+> lanzar el servicio. La causa es que `faiss-cpu` y `docling` enlazan dos
+> copias de libomp en el mismo proceso.
+
+---
+
+## 📜 1.b) Documentos BOE dirigidos (seed catalog)
+
+Para temas concretos cuya página AEAT no es accesible o que necesitan la
+base normativa oficial (ej. Modelo 720), la lista canónica vive en
+[asistente/plataforma/cli/boe_seed_catalog.json](../asistente/plataforma/cli/boe_seed_catalog.json).
+Cada entrada referencia un ID de BOE, su tema y el subdirectorio destino
+dentro del snapshot. Vive junto al CLI a propósito: si lo dejásemos bajo
+`rules/`, `load_rules_from_directory` lo intentaría parsear como reglas
+de decisión.
+
+```bash
+uv run python -m asistente.plataforma.cli.boe_seed
+# o, para previsualizar sin descargar:
+uv run python -m asistente.plataforma.cli.boe_seed --dry-run
+```
+
+El CLI escribe los HTML consolidados (`/buscar/act.php?id=...`) en
+`data/html/<snapshot_date>/<subdir>/<ID>.html` junto a un
+`boe-seed-manifest.json` con los tamaños descargados. El reindexado
+posterior (`asistente.plataforma.cli.processor`) los recoge igual que el resto
+del corpus HTML.
+
+---
+
+## 🏛️ 1.c) TEAC (Doctrina del Tribunal Económico-Administrativo Central)
+
+DYCTEA usa identificadores compuestos para sus criterios
+(`54/00218/2024/00/0/1`, no enteros). El CLI `teac_seed` recorre el
+buscador real por rango de fechas y baja cada criterio individualmente:
+
+```bash
+uv run python -m asistente.plataforma.cli.teac_seed --from-date 2024-01-01 --to-date 2024-12-31
+# previsualización (sin descargar los detalles):
+uv run python -m asistente.plataforma.cli.teac_seed --from-date 2024-01-01 --to-date 2024-06-30 --dry-run
+```
+
+Salida: `data/html/<snapshot>/teac/<safe_id>.html` + `.json` por
+criterio, más un `teac-seed-manifest.json` por snapshot. La estrategia
+de paginación se detiene en cuanto una página vuelve sin enlaces
+nuevos.
+
+> Nota: la spider scrapy `TEACCrawler` original itera `range(start_id, end_id)`
+> sobre enteros, lo cual nunca encajó con el esquema real de DYCTEA. Se
+> mantiene para no romper sus tests pero `teac_seed` es el camino
+> recomendado.
+
+## ⚖️ 1.d) CENDOJ (jurisprudencia)
+
+> ⚠️ **Aviso legal CENDOJ.** El portal poderjudicial.es publica un
+> aviso legal vinculante antes de cada búsqueda:
+> *"El usuario de la base de datos podrá consultar los documentos
+> siempre que lo haga para su uso particular. No está permitida la
+> utilización de la base de datos para usos comerciales, ni la
+> descarga masiva de información. La reutilización de esta información
+> para la elaboración de bases de datos o con fines comerciales debe
+> seguir el procedimiento y las condiciones establecidas por el CGPJ
+> a través de su Centro de Documentación Judicial."*
+>
+> Por eso este repo **no incluye** un crawler automatizado de CENDOJ.
+> Construir uno y volcar resultados en este índice FAISS sería
+> "elaboración de base de datos" y, salvo autorización expresa del
+> CGPJ, infringiría las condiciones. Si necesitas cobertura de
+> jurisprudencia a escala, gestiona la autorización con el Centro de
+> Documentación Judicial antes de tocar código.
+
+Para usos individuales y selectivos (consultas puntuales en el
+contexto de tu propio análisis), la spider scrapy existente
+(`--crawler cendoj`) sigue valiendo: tú aportas las URLs
+explícitamente. La plantilla versionada está en
+[asistente/plataforma/cli/cendoj_seed_urls.txt](../asistente/plataforma/cli/cendoj_seed_urls.txt):
+
+```bash
+uv run python -m asistente.plataforma.cli.crawler \
+  --crawler cendoj --folder ./data/cendoj \
+  --cendoj-urls-file asistente/plataforma/cli/cendoj_seed_urls.txt
+```
+
+## 📄 1.e) PDFs
+
+> AEAT ha completado la migración de folletos, manuales y guías a HTML
+> interactivo. Probamos `--crawler pdf` con `depth=2` desde la raíz de
+> Sede y desde `www.agenciatributaria.es`, y los puntos típicamente
+> ricos en PDF (calendario contribuyente, manual Renta, manual
+> actividades económicas, modelos y formularios) — **cero PDFs
+> encontrados en ninguno**. La spider `AgenciaTributariaPDFCrawler` no
+> es funcional contra AEAT hoy; se mantiene en el código para no
+> romper sus tests pero **no se debe esperar que produzca corpus**.
+
+Las únicas fuentes PDF que sí funcionan integradas en el repo son:
+
+```bash
+# Códigos consolidados autonómicos del BOE (4 PDFs verificados):
+uv run python -m asistente.plataforma.cli.crawler --crawler boe-ccaa --folder ./data/boe --skip-unknown-ccaa
+```
+
+Si necesitas ingerir PDFs externos (manuales de despacho propio,
+boletines forales, etc.), añade su URL al spider que corresponda
+o crea una mini-CLI siguiendo el patrón de
+[asistente/plataforma/cli/boe_seed.py](../asistente/plataforma/cli/boe_seed.py).
+
+## 🕸️ 1) Crawling de contenidos
+
+### HTML (sitio AEAT)
+
+```bash
+uv run python -m asistente.plataforma.cli.crawler --crawler web --folder ./data/html --depth 1 --mode flat
+```
+
+### PDF
+
+```bash
+uv run python -m asistente.plataforma.cli.crawler --crawler pdf --folder ./data/pdf --depth 1
+```
+
+> El crawler guarda por defecto en carpetas con `snapshot_date` (YYYY-MM-DD).
+
+### Manuales prácticos de la AEAT
+
+Los manuales de Renta 2025 (con el tomo de deducciones autonómicas), Sociedades 2025,
+IVA 2026 y Patrimonio 2025 son HTML estático: un índice con la tabla de contenidos y una
+página por epígrafe. `aeat_manuales_seed` los baja con `requests`, sin Playwright ni
+capturas. Lee `robots.txt`, espera medio segundo entre peticiones, no baja los PDF
+(repiten el mismo texto en cientos de páginas) y no guarda el índice, que solo sirve para
+descubrir epígrafes. Si se corta, al relanzarlo salta lo que ya está en disco.
+
+```bash
+uv run python -m asistente.plataforma.cli.aeat_manuales_seed --output-dir ./data/html
+uv run python -m asistente.plataforma.cli.aeat_manuales_seed --manual irpf-2025 --dry-run
+```
+
+Cada página queda en `<snapshot>/aeat-manuales/<manual>/<ruta>.html` con un `.json` al lado
+(`url`, `manual`, `impuesto`, `ejercicio`) que el processor copia a los metadatos del chunk.
+Al cambiar de ejercicio hay que añadir el manual nuevo a `MANUALES` en
+[aeat_manuales_seed.py](../asistente/plataforma/cli/aeat_manuales_seed.py). Sucesiones y
+Donaciones no tiene manual de la AEAT porque lo gestionan las comunidades; su normativa
+entra por el catálogo BOE (ley, reglamento y los textos autonómicos de tributos cedidos).
+
+### Actualización periódica
+
+[scripts/actualizar_corpus.sh](../scripts/actualizar_corpus.sh) encadena `boe_seed`,
+`aeat_manuales_seed`, `dgt_seed` (los últimos `DGT_MESES` meses, 3 por defecto) y
+`processor --incremental`. Descarga en el último snapshot que exista bajo `data/html`:
+el processor recorre la carpeta entera, y abrir un snapshot nuevo cada vez duplicaría los
+documentos en el índice. Un fallo de descarga no para la cadena; el índice se actualiza con
+lo que haya llegado y el script sale con código 1.
+
+```bash
+PYTHON=.venv/bin/python INDEX_DIR=./data/faiss-v2 scripts/actualizar_corpus.sh
+SALTAR=dgt,aeat scripts/actualizar_corpus.sh   # solo BOE e índice
+```
+
+Para programarlo hay un plist de ejemplo en
+[docs/operations/es.hacienda-asesor.actualizar-corpus.plist](operations/es.hacienda-asesor.actualizar-corpus.plist)
+(domingos a las 04:00). Con cron, la línea equivalente es:
+
+```
+0 4 * * 0 REPO=/ruta/hacienda-asesor PYTHON=/ruta/hacienda-asesor/.venv/bin/python /ruta/hacienda-asesor/scripts/actualizar_corpus.sh
+```
+
+Ninguno de los dos se instala solo. Para que el servicio use el índice nuevo, apunta
+`FAISS_INDEX_PATH` a `./data/faiss-v2`.
+
+
+---
+
+## 🧩 2) Construcción del índice FAISS
+
+> ℹ️ El índice y la consulta comparten el mismo embedder local (Qwen3-Embedding,
+> ver sección **Embeddings**), así que no hay nada que elegir. Reconstruye el
+> índice solo si cambias `EMBEDDING_MODEL`.
+
+### Primera vez (full build)
+
+```bash
+uv run python -m asistente.plataforma.cli.processor \
+  --content-dir ./data/html --output-dir ./data/faiss \
+  --full --overwrite-output
+```
+
+### Actualizaciones (incremental, por defecto)
+
+El processor escribe junto al índice un `manifest.json` que registra
+`(sha256, size, chunk_ids)` por fichero. En runs posteriores, solo se vuelve a
+parsear con Docling + embebir los ficheros **nuevos o modificados**:
+
+```bash
+uv run python -m asistente.plataforma.cli.processor \
+  --content-dir ./data/html --output-dir ./data/faiss
+# (--incremental es el default; --full fuerza reconstrucción)
+```
+
+- **Ficheros nuevos / modificados** → Docling + embebido + `FAISS.add_documents`.
+- **Ficheros eliminados del corpus** → `FAISS.delete(ids=…)` quita sus vectores.
+- **Ficheros sin cambios** → se saltan por completo (no Docling, no embebido).
+- **Pipeline fingerprint cambiado** (embedder, `max_tokens` o versión de
+  Docling) → reconstrucción full automática con warning, porque mezclar
+  vectores de espacios distintos rompería la recuperación silenciosamente.
+
+Resultado: un re-índice diario sobre 11k+ docs colapsa de ~12 h a minutos.
+
+Detalles, casos límite y rationale: [`docs/incremental_indexing_plan.md`](incremental_indexing_plan.md).
+
+---
+
+## 💬 3) Ejecutar UI (Streamlit)
+
+```bash
+uv run streamlit run asistente/plataforma/ui/app.py
+```
+
+---
+
+## 🔌 4) Ejecutar API (FastAPI)
+
+```bash
+uv run uvicorn asistente.plataforma.api.api:app --reload --host 127.0.0.1 --port 8000
+```
+
+### Endpoints: `/qa` vs `/cases`
+
+La API expone **dos pipelines distintos** con capacidades muy diferentes.
+
+#### `/qa` — Q&A retrieval-augmented (madura)
+
+RAG completo: FAISS + LLM + grounding gate.
+
+- Query libre en español.
+- Recupera top-K chunks del índice FAISS y compone la respuesta citando
+  documentos AEAT (`mode: cited`).
+- Abstención automática (`mode: abstained`) si no hay citas suficientes o
+  el modelo expresa duda.
+- Resistente a prompt injection y preguntas fuera de dominio.
+
+Úsalo para **consultas explicativas** sobre normativa tributaria.
+
+```bash
+curl -X POST http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "¿Tengo que declarar IRPF si soy residente?"}'
+```
+
+#### `/cases` + `/cases/{id}/turn` — Decision engine (en desarrollo)
+
+Motor de decisión conversacional con estado (case + facts + obligations).
+
+- Cada `/turn` extrae hechos del usuario con `ProviderFactExtractor` sobre el
+  proveedor de `LLM_PROVIDER` (o OpenAI con `DECISION_EXTRACTOR=openai`), siempre
+  medido y con presupuesto (salida estructurada con JSON-schema; ver
+  `decision/fact_extractor.py`).
+- Mantiene `missing_facts` y `next_questions`. La `QuestionPolicy`
+  reformula la pregunta después de 1-2 intentos sin respuesta.
+- Tras `MAX_ASKS_PER_FACT = 3` intentos seguidos sin que el usuario aporte
+  el hecho, el campo se añade a `gave_up_facts` y la respuesta marca
+  `degraded: true`, evitando bucles.
+- Evalúa `rules_engine.py` y devuelve `candidate_obligation_ids`.
+
+Úsalo para **resolución estructurada** de obligaciones fiscales por
+contribuyente.
+
+```bash
+CASE=$(curl -sS -X POST http://127.0.0.1:8000/cases \
+  -H 'Content-Type: application/json' \
+  -d '{"user_id":"demo","jurisdiction":"ES","tax_period":"2024"}' \
+  | python -c "import sys,json; print(json.load(sys.stdin)['case_id'])")
+curl -X POST "http://127.0.0.1:8000/cases/$CASE/turn" \
+  -H 'Content-Type: application/json' \
+  -d '{"user_input":"Soy autónomo en Madrid, facturo 45000€"}'
+```
+
+> ⚠️ **Capacidad actual**: el motor de decisión es más reciente que `/qa`
+> y aún no cubre todas las obligaciones tributarias — las reglas en
+> `rules/` cubren IRPF residencia, IVA básico y autónomos. Para preguntas
+> fuera de ese alcance, `/qa` es hoy la opción más sólida.
+
+---
+
+## 🏠 Ámbitos y capacidades
+
+El asesor fiscal es el **asistente central** de la administración del hogar. Lo que sabe hacer se reparte en
+dos clases de piezas, cada una con su contrato:
+
+- **Ámbitos** (dominios): `fiscal`, `luz`, `caducidades`, `ayudas`, `suscripciones`, `hipoteca`… Cada uno es
+  dueño de sus **datos** (hechos del expediente), sus **calculadoras** deterministas (herramientas) y sus
+  **avisos**. Contrato: [`modulos/contrato.py`](../asistente/nucleo/modulos/contrato.py) (v1) y sus integraciones
+  declaradas en [`modulos/ganchos.py`](../asistente/nucleo/modulos/ganchos.py) (v2). Paquetes en
+  `asistente/ambitos/<clave>/`.
+- **Capacidades**: un **medio** que cualquier ámbito puede usar — el correo (`correo`), el navegador
+  (`navegador`), los documentos (`documentos`), la investigación con fuentes (`investigacion`). Contrato:
+  [`capacidades/contrato.py`](../asistente/capacidades/contrato.py). Paquetes en
+  `asistente/capacidades/<clave>/`. Un ámbito nunca importa a otro ni las tripas de una capacidad: las
+  pide con `pedir(capacidad, operación, argumentos, contexto)`.
+
+La parte de impuestos es un ámbito más (`fiscal`), sin trato especial por su clave: lo que la hace distinta
+(siempre activa, herramientas directas del asistente, su propia bandeja de avisos) lo **declara**.
+
+### Arquitectura
+
+```
+                       ┌──────────── asistente central (agent/agent.py) ─────────────┐
+ pregunta ──► /agent ──►│ herramientas directas de un ámbito (fiscal: calcular_irpf…) │──► respuesta
+                       │ consultar_luz / consultar_hipoteca / …  (una por ámbito)     │    citada [F#]
+                       └──────┬───────────────────────────────────────────────────────┘    y verificada
+                              │ especialista (sub-agente acotado, agent/especialistas.py)
+                              ▼
+                 solo las herramientas del ámbito + leer_expediente
+                              │ una herramienta del ámbito pide una capacidad
+                              ▼
+             capacidades.pedir("navegador", "preparar_descarga_consumo", {...}, contexto)
+             ── comprueba ámbito, consentimiento, efecto, esquemas; mide; envuelve datos de terceros ──
+```
+
+- **Registro de ámbitos** (`modulos/registro.py`): descubre con `pkgutil` cada paquete
+  `asistente.ambitos.<clave>` que expone `MODULO` (y el frente de chat de una capacidad que también lo expone:
+  `correo`, `navegador`) y lo valida: claves únicas, hechos con prefijo
+  `<clave>_` salvo los compartidos del núcleo, herramientas únicas con prefijo `<clave>_` salvo las que el
+  ámbito declara **directas** (y una herramienta directa tiene que existir y ser de **solo lectura**: si no, el
+  ámbito queda fuera), `entradas` que nombran herramientas suyas que no actúan o hechos suyos, puentes hacia
+  otro ámbito… Un ámbito roto nunca tumba la aplicación. `MODULOS_DESACTIVADOS` apaga ámbitos para todos
+  (salvo los `obligatorio`). `python -m asistente.plataforma.cli.proactive modulos` lista lo cargado y lo rechazado.
+- **Registro de capacidades** (`capacidades/registro.py`): igual, con `CAPACIDAD`; `CAPACIDADES_DESACTIVADAS`
+  las apaga para todos.
+- **Perfil del hogar** (`modulos/perfil.py`): los hechos del expediente son el perfil que comparten todos
+  los ámbitos (`PUT /cases/{id}/facts/{nombre}` valida los de cada uno con su `validar`).
+- **Especialistas** (`agent/especialistas.py`): por cada ámbito activado que tiene especialista el asistente
+  recibe `consultar_<clave>` (sub-agente con sus herramientas y `leer_expediente`; propósito de medición
+  `especialista:<clave>`; cada resultado es un fragmento citable que el verificador comprueba).
+- **Bandeja única** (`proactive/bandeja.py`): `run-daily` ejecuta primero los ámbitos con bandeja propia
+  (`fiscal`) y después `avisos` de cada ámbito activado (tipo `modulo:<clave>`, idempotente). `run-weekly`
+  escribe el **resumen semanal** sin sumar nunca cifras de ámbitos distintos; la etiqueta de cada aviso sale
+  del ámbito que declara ese tipo.
+- **Eventos** (`eventos/`): cada ámbito declara a qué eventos se suscribe, qué hechos compartidos lee, qué hace
+  al despertar y cuándo quiere despertar (ver «Arquitectura orientada a eventos»).
+
+### Garantías
+
+- Ninguna cifra la calcula el modelo: sale de una herramienta determinista y llega citada.
+- El asistente no suma ni compara como una sola cuenta cifras de ámbitos distintos.
+- Una herramienta `efecto="actua"` nunca se ejecuta al llamarla: queda como **acción pendiente** y solo corre
+  tras `POST /acciones/{id}/confirmar` del dueño del caso. Las `prepara` devuelven borradores.
+- `pedir` hace cumplir, en código, cada regla de una capacidad (`capacidades/peticion.py`):
+  1. el ámbito que pide puede usarla (la operación o la capacidad dicen qué ámbitos; un ámbito v2 solo pide lo
+     que declara en `Ganchos.capacidades`);
+  2. **consentimiento**: una capacidad `consentimiento="usuario"` (correo, navegador) solo funciona si el
+     usuario la activó (la elección se guarda con las de los módulos: correo y navegador tienen **un solo
+     interruptor**, el de «Módulos»);
+  3. **efecto**: `actua` exige una `Confirmacion` del usuario para exactamente esa capacidad, operación, caso y
+     argumentos (`huella_de`); el resultado de una `prepara` sale marcado como `propuesta` (nada se aplica sin
+     el usuario);
+  4. los argumentos y el resultado cumplen el JSON Schema de la operación;
+  5. **medición**: el proveedor del contexto se re-propone para el `proposito` de la operación (enrutado y
+     coste por propósito) y el gasto se atribuye al usuario y al caso; una operación sin propósito no recibe
+     proveedor;
+  6. **datos no confiables**: si la operación devuelve datos de terceros (un correo, una web, un documento), el
+     texto para el modelo va entre `<datos_no_confiables origen="…">`, sin poder cerrar las marcas y con el
+     cebo de inyección retirado.
+- Las propuestas que una capacidad hace a un ámbito (lo que el correo encuentra) siguen necesitando el botón
+  «Confirmar» del usuario (`tests/modulos/correo/test_adversarial.py`).
+- Consentimiento por ámbito: los `obligatorio` (fiscal) siempre activos; el resto **desactivado hasta que el
+  usuario lo activa** (art. 25.2 RGPD). `GET /modulos`, `PUT /me/modulos/{clave}` (`{"activo": false,
+  "borrar_datos": true}` borra además sus datos, también lo que el ámbito guarda fuera del expediente).
+  `GET /capacidades` lista las capacidades con su estado de consentimiento, sus operaciones y qué ámbitos las
+  usan; `PUT /me/capacidades/{clave}` da o retira el consentimiento de una capacidad sin interruptor propio en
+  «Módulos». Sin cuentas manda `MODULOS_ACTIVOS_POR_DEFECTO`.
+- Los datos se exportan y se borran con la cuenta.
+
+### Cómo escribir un ámbito
+
+1. Crea `asistente/ambitos/<clave>/` con un `__init__.py` que exponga `MODULO` (hereda de `ModuloBase`). La
+   clave coincide con el paquete.
+2. Declara sus hechos (`HechoModulo`, prefijo `<clave>_`, `validar` con errores en español, `sensible=True`
+   para datos delicados), herramientas (`HerramientaModulo`, `<clave>_…`, `efecto` correcto) y fuentes
+   (`FuenteModulo`, con el id del BOE).
+3. Herramientas deterministas que devuelven `ResultadoHerramienta`; los errores con `es_error=True`. `avisos`
+   idempotente (claves estables).
+4. Declara sus integraciones en `ganchos` (contrato v2; un `@cached_property` que devuelve `Ganchos`), cada
+   una con su valor por defecto:
+
+   | Gancho | Para qué |
+   |---|---|
+   | `eventos=GanchosEventos(tipos, hechos_leidos, al_evento, proxima_revision)` | eventos que le despiertan, hechos compartidos que lee (`("*",)` = todos), qué hacer al despertar, cuándo volver a despertar |
+   | `bandeja=GanchosBandeja(ejecutar, tipos, otros_tipos, al_evento, proxima_revision)` | escribe sus propias notificaciones (como `fiscal`) |
+   | `documentos=GanchosDocumentos(leer, herramienta_destino)` | lee un documento subido y propone los argumentos de una herramienta (`POST /modulos/{clave}/documento`) |
+   | `agente=GanchosAgente(directas, especialista, ayuda_registrar_hechos, hechos_estructurados)` | herramientas que el asistente ofrece directamente (solo lectura), si tiene especialista, formas de hechos compartidos |
+   | `tarea_diaria`, `borrar_datos_de_caso` | preparación diaria; borrar lo que guarda fuera del expediente |
+   | `ficheros_legales` | sus ficheros de datos legales (`conocimiento.FicheroLegal`) |
+   | `puentes=(PuenteAmbito(destino, proponer),)` | cifras que propone a otro ámbito (nunca las escribe) |
+   | `entradas={"compra": "herramienta:<nombre>"}` | datos que otras partes (el correo) le pueden **proponer** |
+   | `capacidades=("documentos.leer_campos",)` | capacidades que pide con `pedir` |
+   | `obligatorio` | siempre activo (solo el ámbito base del asesor) |
+
+   Un módulo v1 (atributos sueltos: `eventos`, `al_evento`, `leer_documento`, `herramientas_directas`,
+   `ejecutar_en_bandeja`…) sigue funcionando: `ganchos_de(modulo)` los lee con el adaptador v1→v2.
+5. Para usar una capacidad desde una herramienta: `capacidades.desde_ambito.pedir_desde_herramienta(
+   "<clave>", "correo", "facturas_de_emisor", {...}, ctx)` (un rechazo se convierte en el error en español de la
+   herramienta). Ejemplos: `modulos/luz/capacidades.py` («descarga mi consumo», «facturas de este emisor»),
+   `modulos/caducidades/ticket.py` («léeme este ticket»), `modulos/fiscal/documentos.py`.
+6. Pruebas en `tests/modulos/<clave>/`. No hace falta tocar el núcleo.
+
+### Cómo escribir una capacidad
+
+1. Crea `asistente/capacidades/<clave>/` con un `__init__.py` que exponga `CAPACIDAD` (`CapacidadBase`).
+2. Declara sus operaciones (`OperacionCapacidad`): `entrada` y `salida` como JSON Schema de tipo objeto,
+   `efecto` (`lectura`, `prepara`, `actua`), `proposito` de medición si llama a un modelo (fila en
+   `agent/enrutado.py`), `datos_de_terceros` si devuelve contenido ajeno, `ambitos` si solo algunos ámbitos
+   pueden pedirla (obligatorio para una operación `actua`), `requiere_consentimiento=False` si no usa aquello
+   para lo que el usuario da permiso.
+3. Declara `consentimiento="usuario"` si procesa datos del usuario que no le entrega en esa misma petición
+   (su buzón, su sesión en una web); `"ninguno"` si solo procesa lo que le dan.
+4. La operación recibe `ContextoPeticion` (ámbito que pide, caso, perfil, proveedor ya re-propuesto) y
+   devuelve `ResultadoCapacidad` (`datos`, `resumen`, `citas`, `avisos`; para tareas también `estado`,
+   `borrador`, `aviso`, `es_error`). Nunca escribe en el expediente de un ámbito: devuelve datos o propuestas.
+5. Si además debe tener cara en el chat (especialista, avisos, interruptor), expón también un `MODULO` y un
+   paquete de descubrimiento en `asistente/ambitos/<clave>/` (como `correo` y `navegador`).
+
+Las tareas de larga duración (`asistente/nucleo/tareas`) usan las capacidades registradas con `pedir`
+(`tareas/capacidades.py`, ámbito `nucleo`, origen `tarea`).
+
+En la web, el panel **Módulos** lista los ámbitos y las caras de las capacidades (campo `capacidad`), permite
+activarlos, editar sus datos y confirmar o rechazar las acciones pendientes.
+
+**Rutas que se mantienen**: el correo vive en `asistente/capacidades/correo/` y el navegador en
+`asistente/capacidades/navegador/`; `asistente/capacidades/correo/` y `asistente/capacidades/navegador/` quedan como
+alias (el mismo objeto de módulo), `python -m asistente.capacidades.correo` sigue funcionando y las rutas de la
+API (`/correo/*`, `/navegador/*`, `/modulos/*`) no cambian. La lectura de documentos vive en
+`asistente/capacidades/documentos/`; `asistente/ambitos/fiscal/documentos.py` es alias del lector fiscal
+(`modulos/fiscal/documentos.py`).
+
+### Correo (Gmail, solo lectura)
+
+| Módulo | Qué hace | Documentación |
+|---|---|---|
+| `correo` | Lee el Gmail del usuario **en solo lectura** (OAuth 2.0 + PKCE, permiso `gmail.readonly`, token cifrado y revocable): resume lo importante, avisa de notificaciones de la Administración con su plazo, de lo que vence y de posibles fraudes (con el motivo), y propone datos a otros módulos (compras → caducidades, potencia → luz…) que solo se guardan si el usuario los confirma. Nunca envía, borra ni mueve correos; solo guarda datos derivados, nunca los cuerpos. | [docs/modulos/correo.md](modulos/correo.md) |
+
+El contenido de un correo es un **dato no confiable**: sus herramientas son de solo lectura, lo que llega al
+modelo va citado, recortado y sin instrucciones, y nada de un correo escribe en el expediente sin el botón
+«Confirmar» del panel (`tests/modulos/correo/test_adversarial.py`). La conexión con Google no se ha probado
+contra Google (solo con un servidor falso local); en producción `gmail.readonly` exige la verificación de Google.
+
+### Memoria de decisiones
+
+El asistente recuerda lo que el usuario **decide**, no solo los hechos, para no volver a proponer lo que
+rechazó y no preguntar dos veces (`asistente/nucleo/memoria/`). Una `Decision` dice *sobre qué* (ámbito =
+módulo + palanca, p. ej. `fiscal:plan_pensiones`, `luz:cambio_tarifa`, `luz:cambio_tarifa:<oferta>`), *qué*
+(`rechazo`, `aceptacion`, `preferencia`, `restriccion`), *con qué palabras* (las del usuario), *de dónde*
+(`chat`, `boton`, `ajustes`, `accion`), *cuándo* y *hasta cuándo*: no dura para siempre (por defecto 12 meses
+los rechazos y restricciones, 6 las aceptaciones —«ya lo hice»—, sin fin las preferencias) y puede llevar
+**condiciones de reapertura**: una fecha (fin de una permanencia), un dato del expediente que cambia (solo se
+guarda una huella de su valor, nunca el valor) o una propuesta mucho mejor (por defecto, más del doble de la
+rechazada). Un ámbito cubre los más concretos (`fiscal:plan_pensiones` cubre `…:conyuge`), nunca otros.
+
+**Cómo se captura**
+- Herramienta del agente `registrar_decision`, solo con lo que el usuario dice en la conversación: exige sus
+  palabras literales (`cita_del_usuario`, y `razon` si la hay) y **comprueba** que aparecen en sus mensajes
+  (sin tildes, mayúsculas ni signos); una decisión deducida por el modelo se rechaza y no se guarda. El
+  *prompt* también le prohíbe deducirlas.
+- Botones «No me interesa», «Ya lo hice» y «Recuérdamelo más tarde» en cada aviso (no en el resumen semanal)
+  y «No me interesa» / «Ya lo hice» en cada medida del plan del optimizador. Una oferta de luz rechazada
+  cubre el cambio de tarifa entero (`luz:cambio_tarifa`), con reapertura si aparece una más del doble de
+  buena; el resto de avisos, su propio asunto (esa suscripción, ese plazo).
+- Confirmar o rechazar una acción pendiente de un módulo (`<modulo>:accion:<herramienta>`).
+- «Lo que sé de tus preferencias» (icono en la cabecera de «Avisos»): verlas, añadir, cambiar y olvidar.
+
+**Cómo se usa**
+- **Bandeja (un solo sitio):** `NotificationStore.add` pasa cada aviso por `memoria.bandeja.filtrar_al_escribir`.
+  Un aviso cubierto por un rechazo, restricción o «ya lo hice» en vigor no se escribe (y la decisión cuenta las
+  veces, para explicarlo); si se cumplió una condición de reapertura o caducó, se escribe **una vez**,
+  empezando por «Te lo vuelvo a proponer. El dd/mm/aaaa me dijiste…: «…». … porque <qué cambió>». El resumen
+  semanal se construye con lo guardado, así que nunca lista lo rechazado; al registrar una decisión se quitan
+  en el acto los avisos que cubre (y el resumen de la semana si los listaba, que se rehace).
+- **Optimizador fiscal:** `memoria.optimizador.optimizar_con_memoria` (lo usan `/optimize`,
+  `optimizar_impuestos` y el plan de fin de ejercicio) convierte los rechazos, restricciones y «ya lo hice» en
+  vigor en `Restricciones` —planes de pensiones (de cada cónyuge), donativos, venta de pérdidas— y lo dice el
+  primero en `supuestos`, con las palabras y la fecha (con «ya lo hice», pide el importe para el cálculo);
+  quita las entradas de «no disponibles» que invitarían a hacerlo.
+  Una decisión sobre una palanca fiscal retira el plan de fin de año, que se rehace con ella. Un rechazo o una
+  restricción sobre una **modalidad de declaración** (`fiscal:tributacion:conjunta` / `…:individual`) va a
+  `Restricciones.modalidades_excluidas`: el optimizador no la compara ni la propone y el plan dice por qué (si es la
+  única que se puede calcular con los datos, la usa y lo avisa). Una preferencia de modalidad se menciona, no se
+  impone; «ya lo hice» sobre una modalidad no excluye nada.
+- **Planificador del hogar:** `memoria.planificador.planificar_con_memoria` (lo usan `POST /planificar` y
+  `planificar_hogar`) añade a las `restricciones` del plan las palancas rechazadas (planes de pensiones de cada
+  cónyuge, donativo, `hipoteca` / `hipoteca:amortizar` → amortizar), la forma de amortizar descartada
+  (`hipoteca:amortizar:plazo|cuota`) y la modalidad de declaración rechazada, con el motivo y la fecha primero en
+  `supuestos`. **Regla:** lo que pide la llamada solo puede añadir restricciones; una decisión en vigor manda incluso
+  frente a una cifra de la petición (como en el optimizador). El usuario la levanta diciéndolo ahora: el asistente
+  registra su decisión nueva con `registrar_decision` (con sus palabras) o la cambia en «Lo que sé de tus
+  preferencias»; una cifra que pone el modelo o un formulario nunca cuenta como cambio de opinión.
+- **Asistente central:** con expediente recibe `<preferencias_del_usuario>` (las decisiones que siguen
+  contando, con su estado) y las herramientas `registrar_decision` y `leer_preferencias`; el *prompt* le
+  prohíbe volver a proponer lo rechazado salvo que la decisión «se pueda reabrir», y entonces una vez diciendo
+  qué cambió. **Especialistas:** cada uno recibe solo las decisiones de su módulo.
+
+**API** (mismas reglas de acceso que `/cases/{id}/…`): `GET/POST /cases/{id}/decisiones`,
+`PUT/DELETE /cases/{id}/decisiones/{decision_id}`, `POST /cases/{id}/decisiones/aviso/{notification_id}`
+(`{"boton": "no_me_interesa" | "ya_lo_hice" | "recuerdamelo", "razon"?, "hasta"?}`). Se exportan en
+`GET /me/export` (`decisiones` de cada expediente, con su historial) y se borran con el expediente (un
+*trigger* sobre `case_states`) y con la cuenta; olvidar una decisión borra sus palabras del historial
+(`secure_delete`). Pruebas: `tests/memoria/`.
+
+### Propuestas de los módulos en el chat
+
+Un **puente** (`modulos/puentes.py`) propone el valor de un dato fiscal que falta con lo que sabe un módulo; no
+escribe nada. Hoy: `hipoteca` → `pagos_vivienda_habitual_pre2013`, para la deducción por vivienda habitual del
+régimen transitorio (disp. trans. 18.ª LIRPF), si el préstamo es de la vivienda habitual comprada antes de 2013.
+La cifra es lo que el art. 68.1.1.º LIRPF **en su redacción a 31-12-2012** cuenta de la financiación ajena y el
+módulo conoce en el ejercicio: la amortización (capital de las cuotas y amortizaciones anticipadas), los intereses
+y las comisiones de amortización anticipada («demás gastos derivados»). El fundamento, con citas literales de las
+dos redacciones (la vigente y la de 31-10-2012, la última antes de la Ley 16/2012), está en
+`modulos/hipoteca/data/deduccion_vivienda.json` con su autocomprobación (`modulos/hipoteca/deduccion.py`); dice
+también lo que el puente **no** sabe y no suma (gastos de la compra, coste y cobros de coberturas de tipo, otros
+gastos del préstamo) y lo que nadie comprueba (haberse aplicado la deducción antes de 2013, viviendas anteriores,
+el aumento de patrimonio del art. 70.1, préstamos de varios titulares). El 15 % (7,5 % estatal + 7,5 % autonómico
+supletorio, art. 78.2) y los 9.040 € los aplica la calculadora y están verificados contra esa redacción.
+
+- **En el chat** (`modulos/propuestas_chat.py`): con expediente y un módulo con puente activado, el asistente
+  recibe `<propuestas_de_modulos>` (cifra, desglose, fragmento citable `[F#]`, ámbito y si ya la ofreció en
+  esta conversación) y la ofrece cuando viene al caso o una vez por conversación: «Tu módulo de hipoteca calcula
+  que este año pagaste X (capital Y, intereses Z) — ¿lo uso para tu deducción por vivienda?».
+- **Aceptar** solo con `aceptar_propuesta`, que guarda la cifra que el puente calcula en ese momento (no recibe
+  importes) y **comprueba** que el mensaje anterior del asistente mostraba esa cifra y que `cita_del_usuario`
+  son palabras literales del mensaje actual del usuario con un «sí» y sin negación. Se eligió la confirmación
+  en el chat, comprobada como `registrar_decision`, y no una acción pendiente: las acciones ejecutan una
+  herramienta del módulo que escribe sus propios datos, y este dato es fiscal. El hecho se guarda con
+  `source = "puente:<módulo>"`.
+- **Rechazar**: el asistente registra el «no» con `registrar_decision` en `fiscal:propuesta:<puente>`; mientras
+  esa decisión (o una que la cubra, como `fiscal`) siga en vigor, no se ofrece más. En «Módulos» la propuesta
+  sigue visible con su botón «Usar esta cifra».
+
+### Agente con navegador
+
+`asistente/capacidades/navegador/` maneja un Chromium real (Playwright) en webs oficiales **en nombre del usuario y bajo
+su control**. Dos usos: (1) descargar el CSV horario de **Datadis** y pasarlo al importador del módulo de luz
+(`luz_importar_consumo`, por la misma vía que una herramienta de módulo); (2) **preparar** un trámite en una
+sede electrónica y detenerse **antes** de «Firmar y enviar». Es la función con más riesgo de la aplicación, así
+que está construida para no poder hacer daño:
+
+| Garantía | Cómo se cumple | Prueba |
+|---|---|---|
+| **Credenciales** | El agente nunca inicia sesión. Modo `ventana`: Chromium se abre **con ventana** en el equipo que ejecuta el servicio (instalación personal) y el usuario entra él mismo (contraseña, Cl@ve, certificado); el agente no hace capturas ni lee la página mientras espera la marca de «sesión iniciada». Modo `sesion`: el usuario entrega para esa tarea una sesión que abrió él (`storage_state` de Playwright); se filtra a los sitios de la tarea, va directa al contexto del navegador y se descarta con él. Nada de esto se guarda, se registra ni se envía a un modelo. El guion no puede apuntar a campos de contraseña/PIN/tarjeta y el ejecutor se niega a escribir en ellos. | `tests/navegador/test_ejecutor.py` (`…own_login`, `…handed_over…`, `…password_field…`, `…reads_nothing_of_the_login_page`) |
+| **Lista de sitios** | Cada tarea declara sus orígenes; el contexto intercepta **todas** las peticiones (`route`) y aborta las de cualquier otro origen (rastreadores, CDN, enlaces externos, redirecciones). Descargas solo del tipo y tamaño declarados (CSV ≤ 5 MB). | `…navigation_outside…`, `…unexpected_downloads…` |
+| **Nada que cambie estado** | No existe ningún paso que envíe, firme, pague o acepte: `pulsar` rechaza textos como «Enviar/Firmar/Pagar/Aceptar» y botones *submit*; y, mientras trabaja el agente, la red es **solo lectura** (cualquier POST se aborta en el navegador aunque algo fallara antes). El último paso de un trámite (`detener`) localiza «Firmar y enviar», hace una captura y un resumen de lo que se enviaría, **no lo pulsa** y deja una acción pendiente (`navegador_presentar_tramite`, `efecto="actua"`) cuya confirmación **no presenta nada**: en esta fase presentar, firmar y pagar no están implementados. En modo `ventana`, al terminar, la ventana queda para el usuario (que puede presentarlo él); el agente ya no ejecuta nada. | `…no_form_can_be_submitted…`, `…stops_before_signing`, `test_tareas_api.py::…pending_action_that_submits_nothing` |
+| **Determinismo** | Cada tarea es un guion declarativo y versionado (`navegador/guiones/*.json`, mismo sobre que las specs de formatos). Un modelo solo puede **proponer** un selector nuevo si la página cambió (opcional, `NAVEGADOR_REPARAR_SELECTORES`); se usa solo si una puerta determinista lo acepta en la página real (un único elemento, mismo `name`, etiqueta literal, nunca un control que cambie algo) y queda como propuesta en la vigilancia de formatos para que la revise una persona (`vigilancia.aplicar_reparacion`). | `test_seguridad.py`, `…repaired_selector…` |
+| **Vigilancia de formatos** | Cada guion es una fuente `nav_<tarea>`: un paso que no encuentra su elemento es un fallo grave (`ops formatos status`, `ops doctor`). No se guardan muestras de páginas privadas. | `…broken_page_is_reported…` |
+| **Minimización** | Capturas solo en memoria y solo para la tarea (se descartan al cerrarla o a los 30 min). En el expediente queda que la tarea empezó y terminó, sus pasos y los sitios bloqueados, **sin valores**. Si un paso falla se guarda un esqueleto **anonimizado** de la página (etiquetas genéricas, nada escrito, datos personales enmascarados) 30 días, y se borra con el expediente o la cuenta. | `…without values`, `…erased_with_the_account` |
+| **Interruptores** | `NAVEGADOR_ACTIVO` (por defecto **false**: nada arranca y la API responde 503); consentimiento por usuario = activar el módulo «Agente con navegador» él mismo (con cuentas, un valor por defecto no cuenta) + aceptar el texto vigente en cada tarea; límites: una tarea a la vez por usuario, `NAVEGADOR_MAX_TAREAS_DIA` (6) en 24 h, `NAVEGADOR_MAX_SIMULTANEAS` (2) en el servicio; «Detener» corta entre pasos. | `…kill_switch…`, `…consent…`, `…rate_limits…` |
+
+**Uso.** En la interfaz, botón «Navegador» (solo aparece si el operador lo activó): eliges la tarea, rellenas
+fechas/CUPS o los datos del trámite, lees y aceptas lo que hará, y pulsas «Empezar»; ves los pasos en vivo con la
+última captura, y puedes detenerla. En el chat, `navegador_descargar_consumo_datadis` solo **prepara** la tarea
+(no abre nada hasta que el usuario pulsa «Empezar»). API: `GET /navegador/estado`, `POST /navegador/tareas`,
+`POST /navegador/tareas/{id}/iniciar|detener|cerrar`, `GET /navegador/tareas[/{id}[/captura]]`.
+
+**Modo ventana (con pantalla).** Pensado para una instalación personal: el servicio y el navegador corren en el
+ordenador del usuario. Se abre una ventana de Chromium con la página de acceso; el usuario inicia sesión como
+siempre (Cl@ve, certificado o usuario y contraseña de Datadis) y, en cuanto aparece la marca de «sesión iniciada»
+del guion, el agente sigue solo (puede verse en la propia ventana). Sin pantalla (un servidor) usa el modo
+`sesion` o `xvfb-run` para probar. `NAVEGADOR_CHROMIUM` indica el ejecutable si no es el que instala Playwright.
+
+**Qué no se ha probado contra la realidad.** Desde la máquina de desarrollo no se llega a datadis.es ni a ninguna
+sede: los guiones y las simulaciones locales (`tests/navegador/simulacion.py`, páginas en `tests/navegador/paginas/`)
+reproducen los **flujos** documentados, no las páginas reales. El guion de Datadis está marcado «sin probar en el
+sitio real» y la sede es una demostración (`*.ejemplo.invalid`, solo se ofrece si `NAVEGADOR_ORIGENES_SUSTITUTOS`
+la apunta a sitios locales). La primera ejecución real que no encuentre un elemento fallará sin hacer nada y lo
+avisará la vigilancia de formatos. Para probarlo a mano: `python -m tests.navegador.simulacion` (imprime el valor
+de `NAVEGADOR_ORIGENES_SUSTITUTOS`, que solo admite destinos locales). Las pruebas con navegador necesitan Chromium
+(`uv run playwright install chromium`); sin él se omiten y las pruebas de reglas siguen ejecutándose. En CI se
+instala antes de las pruebas y `NAVEGADOR_EXIGIR_CHROMIUM=1` convierte la falta de Chromium en un fallo (nunca se
+omiten en silencio). `DELETE /me` borra en el acto los diagnósticos guardados de cada expediente y cierra sus tareas.
+
+### Tareas de larga duración
+
+`asistente/nucleo/tareas/` convierte un objetivo de varios pasos y varios días («renovar el pasaporte», «preparar la
+renta», «cambiar de tarifa de la luz») en una **tarea**: el objetivo con las palabras del usuario, un plan de pasos,
+su estado, fechas (creada, plazo, próxima revisión), un historial y los avisos, acciones pendientes y decisiones que
+ha creado. El cerebro central planifica; el **motor** (una máquina de estados determinista) reparte el trabajo entre
+los módulos y las capacidades y avanza cada paso cuando sus dependencias están hechas.
+
+**Pasos** (conjunto cerrado): `calculo` (una herramienta de módulo que solo lee o prepara), `consulta` (al
+especialista de un módulo; necesita un modelo y corre en el trabajador), `capacidad` (correo, navegador, documentos,
+investigación solo en webs oficiales), `espera` (una fecha, la que dio el usuario en un paso anterior, un plazo del
+calendario fiscal o un evento del bus: `perfil.cambiado` de un dato, `correo.clasificado` de una categoría,
+`cargos.importados`), `confirmacion_usuario`, `accion` (una herramienta `efecto="actua"`: solo crea una **acción
+pendiente**; la tarea sigue cuando el dueño la confirma con su botón, `POST /acciones/{id}/confirmar`) y `nota`.
+
+**Plantillas** (`tareas/plantillas/*.json`, declarativas y versionadas; una tarea guarda la versión con la que nació):
+
+| Plantilla | Pasos |
+|---|---|
+| `renovar_pasaporte` | caducidades → qué llevar (art. 4.1 RD 896/2003, de los datos del módulo de caducidades) → dónde pedir cita (solo webs oficiales) → el usuario pide cita (y da la fecha) → recordatorio la víspera → confirma que lo tiene |
+| `preparar_renta` | obligación de declarar → propuestas del correo (opcional) → el usuario revisa sus datos → IRPF → optimizador → papeles (lista orientativa según sus datos) → calendario → aviso 30 días antes del fin del plazo del calendario (que dice si la fecha está sin verificar) → el usuario la presenta |
+| `cambiar_tarifa_luz` | traer el consumo (agente con navegador si está activado; si no, a mano) → esperar `perfil.cambiado` de `luz_consumo` (21 días como mucho) → comparar tarifas → el usuario decide → borrador de la solicitud (**nunca se envía**) → el usuario la envía |
+
+**Planes propios.** El asistente (`crear_tarea` con `pasos`) o un modelo (`POST /tareas/proponer`) puede proponer un
+plan; una **puerta determinista** (`tareas/validacion.py`) lo acepta o lo rechaza entero: solo tipos de paso del
+conjunto cerrado y sin campos de estado inyectados, herramientas que existen con el efecto que toca (una que actúa
+nunca va en un `calculo`), argumentos válidos contra el esquema de la herramienta, operaciones y parámetros de
+capacidad válidos, investigación solo bajo las raíces oficiales de los datos de los módulos, esperas solo de eventos
+de un expediente, grafo sin ciclos, máximo 15 pasos y textos sin enlaces, marcado ni código. El modelo recibe el
+objetivo y el catálogo de herramientas, nunca los datos del expediente. Lo que pasa la puerta queda **propuesto**: no
+corre nada hasta que el usuario lo acepta.
+
+**Garantías.**
+- *Idempotente y reanudable.* Arriendo por tarea y versión optimista; lo que un paso crea fuera (aviso, acción
+  pendiente) tiene una clave derivada de (tarea, paso, intento): repetir tras una caída no duplica nada. Un fallo se
+  reintenta con espera exponencial (`TAREAS_MAX_INTENTOS`, `TAREAS_BACKOFF_SEGUNDOS`) y después se avisa al usuario,
+  que puede reintentar. Una herramienta que dice que falta un dato pregunta al usuario en lugar de reintentar.
+- *Bus de eventos.* Las esperas por fecha programan el temporizador del caso (`tareas`; `fecha.umbral`), y un
+  consumidor propio (`ConsumidorTareas`, cursor `tareas`) convierte los eventos que esperan los pasos en señales, en la
+  misma transacción que mueve su cursor. Una tarea en pausa conserva los eventos que llegan y los atiende al reanudar.
+- *Confirmación literal en el chat.* `avanzar_tarea` acepta una propuesta solo si el mensaje anterior del asistente la
+  mostraba (título o referencia) y el usuario dice que sí con sus palabras en su mensaje actual; `confirmar_paso`
+  igual con el título del paso (y una fecha solo si el usuario la escribió). Las acciones nunca se confirman en el
+  chat. `pausar_tarea` y `cancelar_tarea` exigen sus palabras literales.
+- *Memoria.* Cancelar con un motivo registra un «rechazo» en la memoria de decisiones (ámbito de la plantilla, p. ej.
+  `luz:cambio_tarifa`); cancelar rechaza las acciones pendientes de la tarea y quita sus avisos.
+- *Privacidad.* Todo vive en la base de los expedientes (`tareas`, `tareas_historial`, `tareas_senales`), sale en
+  `GET /me/export` (`tareas` de cada expediente, con su historial) y se borra con el expediente y con la cuenta (un
+  *trigger* sobre `case_states`). El historial (la auditoría) guarda sucesos, ids y estados, **nunca valores**.
+
+**Uso.** Panel «Tareas» (lista, línea de tiempo de cada tarea, empezar, hecho/saltar un paso, confirmar la acción,
+pausar, reanudar, reintentar, cancelar con motivo). API: `GET /tareas/plantillas`, `GET /tareas?case_id=`,
+`POST /tareas` (de plantilla; `aceptar: true` = botón «Empezar»), `POST /tareas/plan`, `POST /tareas/proponer`,
+`GET /tareas/{id}`, `POST /tareas/{id}/aceptar|avanzar|pausar|reanudar|reintentar|cancelar`,
+`POST /tareas/{id}/pasos/{paso}/confirmar|omitir`. En el chat (con expediente y algún módulo del hogar activado, o
+si ya hay tareas): `crear_tarea`, `estado_tareas`, `avanzar_tarea`, `confirmar_paso`, `pausar_tarea`,
+`cancelar_tarea`. Trabajador: el servicio `tareas` del trabajador de la plataforma, o
+`uv run python -m asistente.nucleo.tareas ciclo|worker|estado`; `proactive run-daily` también revisa las tareas (sin
+modelo). La API avanza las tareas en el acto salvo las consultas a especialistas.
+
+**Qué no se ha probado contra la realidad.** Sin clave de modelo: las consultas a especialistas y `POST
+/tareas/proponer` solo con modelos simulados. Sin red salvo www.boe.es: la investigación en webs oficiales no lee
+nada (indica las webs); un buscador inyectado se prueba con resultados simulados. Las pruebas de extremo a extremo de
+las plantillas usan módulos falsos con los nombres de las herramientas reales (`tests/tareas/`).
+
+---
+
+## 🤖 Agente con herramientas (`/agent`)
+
+`/agent` es el asesor agéntico: en lugar de la cadena fija de `/qa`
+(recuperar una vez → responder), el modelo decide **qué buscar y cuántas
+veces**, cita cada afirmación normativa con el identificador del fragmento
+que la respalda y un **verificador independiente** comprueba afirmación por
+afirmación antes de etiquetar la respuesta.
+
+```bash
+curl -X POST http://127.0.0.1:8000/agent \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "Vendí mi vivienda habitual en 2025, ¿qué plazo tengo para reinvertir?"}'
+# con expediente (el agente lee/actualiza hechos y ejecuta las reglas):
+#   -d '{"query": "...", "case_id": "case_..."}'
+```
+
+**Flujo de un turno** (`asistente/nucleo/agent/agent.py`):
+
+1. El modelo llama a herramientas (`asistente/nucleo/agent/tools.py`):
+   - `buscar_fuentes` — búsqueda en el corpus con filtros por tipo de fuente
+     (`normativa` / `jurisprudencia` / `doctrina_administrativa` / `aeat`),
+     tributo, ámbito (`estatal` / `autonomico:<ccaa>`) y `solo_vinculante`.
+     Cada fragmento vuelve con un id citable (`[F1]`, `[F2]`…), su autoridad,
+     fecha y carácter vinculante.
+   - Con `case_id`: `consultar_expediente`, `registrar_hechos` y
+     `evaluar_obligaciones` (motor de reglas determinista).
+2. Redacta la respuesta citando `[F#]` en cada afirmación normativa.
+3. El verificador (`asistente/nucleo/agent/verifier.py`) recibe solo la pregunta,
+   la respuesta y los fragmentos citados, y dictamina cada afirmación:
+   `respaldada` / `parcial` / `no_respaldada`.
+4. Si hay afirmaciones sin respaldo, el agente recibe el dictamen y reescribe
+   (hasta `AGENT_MAX_REVISIONS` veces).
+
+**`mode` de la respuesta:**
+
+| `mode` | Significado |
+|---|---|
+| `verified` | Todas las afirmaciones normativas están respaldadas por su fragmento citado. |
+| `partially_verified` | Algunas no lo están; se listan en `warnings`. |
+| `unverified` | Sin afirmaciones comprobables, o el verificador no pudo ejecutarse. |
+| `clarification` | El agente necesita un dato del usuario antes de responder. |
+| `abstained` | Sin base suficiente (si ninguna afirmación sobrevive, la respuesta se sustituye y el original queda en `raw_answer`). |
+
+`POST /agent/stream` hace lo mismo emitiendo NDJSON con el progreso en vivo
+(búsquedas, texto del borrador token a token, verificación, corrección) y una línea final `result` o `error`;
+es lo que usa el frontend.
+
+La respuesta incluye además `citations`, `claims` (dictamen por afirmación) y
+`tool_trace` (qué buscó el agente), y con `case_id` todo ello queda en el
+audit log del caso.
+
+### Proveedor de LLM
+
+El bucle es neutral respecto al proveedor (`asistente/nucleo/agent/providers/`):
+
+```bash
+# Claude (por defecto) — SDK oficial de Anthropic
+export LLM_PROVIDER="anthropic"
+export ANTHROPIC_API_KEY="sk-ant-..."
+export ANTHROPIC_MODEL="claude-opus-5-5"   # por defecto
+export ANTHROPIC_EFFORT="high"             # low | medium | high | xhigh | max
+
+# OpenAI
+export LLM_PROVIDER="openai"
+export OPENAI_API_KEY="sk-..."
+export OPENAI_AGENT_MODEL="gpt-4o"         # por defecto: OPENAI_MODEL
+
+# Modelo local: cualquier servidor compatible con la API de OpenAI
+# (Ollama, LM Studio, mlx_lm.server, vLLM, llama.cpp…)
+export LLM_PROVIDER="local"
+export LOCAL_LLM_BASE_URL="http://127.0.0.1:11434/v1"   # Ollama por defecto
+export LOCAL_LLM_MODEL="qwen3:14b"                      # obligatorio
+```
+
+El verificador puede correr en otro proveedor/modelo que el agente
+(`VERIFIER_PROVIDER`, `VERIFIER_MODEL`), p. ej. agente local + verificador
+Claude. Otros ajustes: `AGENT_MAX_STEPS` (8), `AGENT_MAX_REVISIONS` (1),
+`AGENT_SEARCH_DEFAULT_K` (6).
+
+> ⚠️ Con modelos locales pequeños la calidad del *tool calling* y del
+> verificador baja mucho; el bucle tolera argumentos mal formados, pero no
+> sustituye a un modelo capaz.
+
+El frontend React usa `/agent` (una llamada por turno, con el expediente
+adjunto) y el extractor de hechos de `/cases` sigue a `LLM_PROVIDER`
+(`DECISION_EXTRACTOR=regex|openai|provider` para forzarlo). Solo la cadena
+legacy `/qa` y la UI de Streamlit siguen dependiendo de OpenAI; `/qa` no se mide
+y por eso responde 404 con `AUTH_MODE=required` (`docs/seguridad.md`, S-14).
+
+---
+
+### Calculadora del IRPF y optimización
+
+El agente no calcula impuestos: llama a una calculadora determinista
+(`asistente/ambitos/fiscal/calculo/irpf.py`) cuyos parámetros son **datos versionados por
+ejercicio** (`asistente/ambitos/fiscal/data/irpf_<año>.json`), cada uno con el
+precepto del que sale y un indicador `verificado`.
+
+- **`calcular_irpf`** — rendimientos del trabajo (gastos y reducción de los
+  arts. 19 y 20), base del ahorro, tributación conjunta, planes de pensiones,
+  mínimo personal y familiar, escalas general y del ahorro, deducciones por
+  donativos, vivienda anterior a 2013, rendimientos del trabajo (DA 61.ª) y
+  maternidad, y retenciones. Admite **escenarios** para comparar alternativas
+  («con y sin plan de pensiones», «individual o conjunta») y devuelve cada
+  desglose como un fragmento citable `[F#]`, que el verificador comprueba
+  igual que cualquier otra fuente.
+- **`listar_beneficios_fiscales`** — catálogo de beneficios estatales
+  contrastado con el perfil: qué está aplicado, qué está disponible (con el
+  ahorro que estima la calculadora) y qué dato falta.
+- **Perfil fiscal** — 20 hechos nuevos (comunidad autónoma, familia, desglose
+  de rentas, aportaciones, donativos…) que el extractor reconoce, se editan en
+  «Tu expediente» y alimentan la calculadora con el mismo nombre de campo.
+
+Los parámetros de 2026 se leyeron del texto consolidado de la Ley 35/2006
+(BOE-A-2006-20764, consolidado a 11-11-2026) y de la Ley 49/2002. **Límites
+actuales**, que la calculadora declara en los `avisos` de cada resultado:
+
+- **Parte autonómica: las 15 comunidades de régimen común.** Se aplican la
+  escala general y, donde la comunidad los regula, los mínimos personales y
+  familiares de Andalucía, Aragón, Asturias, Baleares, Canarias, Cantabria,
+  Castilla-La Mancha, Castilla y León, Cataluña, Comunidad Valenciana,
+  Extremadura, Galicia, La Rioja, Madrid y Murcia, leídos del texto
+  consolidado de cada norma en el BOE (cada entrada guarda su identificador,
+  la fecha de consolidación y el hash del HTML). Las cautelas de cada una
+  (texto consolidado antiguo, mínimos calculados en Baleares, escalas de 2026
+  aprobadas a mitad de año en Extremadura y la Comunidad Valenciana…) salen
+  como avisos del cálculo. **Navarra y País Vasco** tienen impuesto foral
+  propio y no están cubiertos: se aproximan con la escala estatal y se avisa.
+  **Ceuta y Melilla**: no se aplica su deducción del art. 68.4 LIRPF.
+- **Deducciones autonómicas con importe: 220 descritas con datos en las 15
+  comunidades (209 en 2025), más seis de Madrid programadas a mano.** Las
+  primeras viven en `deducciones_calculables` del JSON: importe fijo o
+  porcentaje de un gasto, topes, base máxima, límites de renta, edad,
+  discapacidad, condiciones alternativas, variantes de importe, importe según
+  el orden del hijo y reducción progresiva. El esquema recoge además lo que
+  antes obligaba a aproximar: tope aplicado hijo a hijo cuando se da el
+  detalle de cada hijo (edad, etapa educativa, gastos), prorrateo por días de
+  alquiler, de acogimiento o de desempleo, topes como porcentaje de la cuota
+  íntegra autonómica o de la base liquidable, tramos de tipo, reparto del tope
+  entre quienes comparten alquiler o vivienda, edad o discapacidad del
+  cónyuge, límites de renta ampliados para familias numerosas, habitantes del
+  municipio en vez de una casilla «rural», y grupos de deducciones
+  incompatibles de los que se aplica la combinación más favorable. Los gastos
+  amplios se desglosan (salud, deporte y cultura, donativos por destino,
+  compra, rehabilitación e intereses de la vivienda) y cada deducción toma
+  solo la parte que su ley cubre. Cada una se codificó desde su artículo en el
+  BOE con cita literal comprobada, sin cifras derivadas. Si falta un dato
+  decisivo (los días de alquiler, el detalle de los hijos) la deducción no se
+  aplica y se dice qué falta. Lo que la calculadora no puede comprobar viaja
+  con la deducción como aviso. El resto de deducciones de cada comunidad
+  figura solo por título.
+  En Madrid, la calculadora resta de la
+  cuota autonómica las de nacimiento o adopción (art. 4), alquiler de menores
+  de 40 años (art. 8), donativos a fundaciones madrileñas (art. 9), gastos
+  educativos (art. 11), cuidado de menores o dependientes (art. 11 bis) y
+  familias con dos o más descendientes e ingresos reducidos (art. 14), con
+  los límites de renta del art. 18. Cuando una se pide y no cumple un
+  requisito, el resultado explica cuál. El resto de deducciones madrileñas
+  solo se listan por título. Las deducciones estatales por donativos y
+  vivienda se reparten al 50 % entre cuota estatal y autonómica (arts. 67 y
+  77 LIRPF) y ninguna de las dos cuotas puede quedar negativa.
+- **2025** usa los mismos parámetros salvo la deducción de la DA 61.ª, cuyas
+  cuantías de ese año no se pudieron contrastar y por eso no se aplica.
+- Rendimientos de actividades económicas y de alquileres entran como cifra
+  neta aportada por el usuario; no se calcula la compensación de pérdidas.
+- El porcentaje y la base máxima de la deducción por vivienda proceden de la
+  redacción de 2012 y están marcados como no verificados.
+
+Para añadir otra comunidad, crea su entrada bajo `comunidades` en el JSON del
+ejercicio (escala, mínimos si los tiene, deducciones y `fuente_principal`),
+tomando la de Madrid como plantilla. `cuota_hasta_inicio` es la columna de
+cuota acumulada que imprime la ley; se usa tal cual para cuadrar al céntimo.
+
+#### Alquiler: la reducción del arrendador y la deducción del inquilino
+
+- **Arrendador** — aporta `rendimiento_alquiler_vivienda_sin_reducir` (rentas menos
+  gastos) y `arrendamiento_fecha_contrato`; la calculadora elige la redacción del
+  art. 23.2 LIRPF que toca según la fecha (disposición transitoria 38.ª): 60 % para
+  contratos anteriores al 26-5-2023; 90/70/60/50 % hasta el 1-12-2026; y la escala
+  del Real Decreto-ley 29/2026 (del 100 % al 15 %, según rebaja o subida de la
+  renta, índice de referencia, zona tensionada, edad del inquilino y gran tenedor)
+  para los posteriores. Los demás datos del contrato son los campos `arrendamiento_*`.
+- **Inquilino** — con `alquiler_vivienda_habitual`, la deducción estatal del
+  art. 68.6 LIRPF (10 %, base máxima 11.630 €, hasta 33.007,20 € de base imponible),
+  desde 2026.
+
+Ambas dependen del Real Decreto-ley 29/2026, que el 12-11-2026 no constaba
+convalidado; `irpf_2026.json` guarda en `revisiones` las normas contrastadas.
+
+### Optimizador fiscal
+
+Calcular cuánto puede ahorrar como máximo un hogar, dadas sus circunstancias, es
+**determinista** (`asistente/ambitos/fiscal/calculo/optimizador.py`); lo agéntico es todo lo demás.
+El catálogo de beneficios valora cada palanca por separado, pero las palancas
+interactúan: una aportación a un plan de pensiones baja la base liquidable y puede
+dejarla por debajo del límite de renta de una deducción autonómica, vender con
+pérdidas baja la base imponible, la declaración conjunta mueve todos los umbrales y
+el art. 49 LIRPF limita al 25 % la compensación entre rendimientos y ganancias. Por
+eso sumar ahorros calculados por separado se equivoca en los dos sentidos. El
+optimizador busca la **mejor combinación** y cada cifra que da sale de
+`calcular_irpf` sobre el escenario que describe, con la misma traza de líneas y
+referencias legales.
+
+**Palancas que ofrece** — solo elecciones que la ley deja al contribuyente, con los
+límites leídos de los datos del ejercicio:
+
+| Palanca | Base legal (de los datos) | Naturaleza del ahorro |
+|---|---|---|
+| Conjunta o individual (matrimonio con las cifras de los dos; monoparental si `familia_monoparental`) | `tributacion_conjunta` (art. 84.2.3.º y 4.º), arts. 83 y 84.2.1.º LIRPF | ahorro definitivo |
+| Aportación adicional a planes de pensiones de cada cónyuge, hasta lo que puede aportar | `prevision_social` (límite general y 30 % de rendimientos netos del trabajo y actividades, art. 52.1), cada cónyuge con su límite también en conjunta (art. 84.2.1.º) | diferimiento (tributa al rescatarlo, art. 17.2.a).3.ª) |
+| Destino y donante del donativo que el usuario ya va a hacer (o hasta su presupuesto): entidad de la Ley 49/2002, la misma de los dos años anteriores (45 %), o una que dé además una deducción autonómica de su comunidad | `donativos` (art. 19 Ley 49/2002), deducciones autonómicas con base en donativos | requiere gastar (con su coste neto) |
+| Vender inversiones con pérdidas latentes para compensar ganancias o, hasta el 25 %, rendimientos del capital | `compensacion_ahorro` (art. 49.1), con las reglas de recompra del art. 33.5 e), f) y g) | diferimiento |
+
+**Descartadas**, y por qué (salen también en cada plan): aportar al plan del cónyuge
+con rentas bajas (art. 51.7: sus límites no están en los datos); ampliar el límite con
+aportaciones propias a un plan de empleo (depende de la empresa y de una tabla que la
+calculadora no modela); elegir qué progenitor aplica el mínimo por descendientes (la
+ley lo prorratea, art. 61.1.ª) o las deducciones autonómicas por hijos o vivienda (se
+prorratean o corresponden a quien paga); la deducción por maternidad (corresponde a
+la madre); mover cobros del trabajo (se imputan cuando son exigibles, art. 14.1.a);
+invertir para deducir (empresas nuevas, eficiencia energética…: decisiones de
+inversión que el usuario puede simular, no que el optimizador deba proponer); y los
+donativos autonómicos cuya base se cruza con la estatal (Murcia, Cantabria: la
+calculadora no hace ese cruce). Las plusvalías latentes no son palanca (nunca bajan
+el impuesto del año), pero el plan avisa cuando realizarlas sale gratis porque las
+absorben pérdidas pendientes.
+
+**Búsqueda y garantías**
+- Para cada palanca continua, una rejilla de candidatos: cero, el máximo permitido y
+  cada importe que lleva una base vigilada justo a un umbral de los datos (límites de
+  renta de las deducciones autonómicas de la comunidad, extremos de las reducciones
+  progresivas, tramos de las escalas, mínimo personal, «otras rentas» de los arts. 20
+  y DA 61.ª, umbrales de la deducción estatal por alquiler, tramos y topes de
+  donativos, 30 % de rendimientos, compensación del art. 49), ±1 céntimo.
+- Por cada modalidad de declaración, si la rejilla es pequeña (hasta 20.000
+  combinaciones y dentro del presupuesto de 3.000 cálculos), se recorre **entera**
+  (`busqueda.metodo = "exhaustiva"`; en las declaraciones individuales de un
+  matrimonio, fijadas las palancas que las acoplan —el donativo y, si hay límites de
+  renta de la unidad familiar, las pérdidas—, cada declaración se optimiza por su
+  lado, lo que es exacto y mucho más barato); si no, ascenso por coordenadas reiniciado desde
+  el óptimo de cada palanca por separado y desde todas al máximo (`"heuristica"`, que
+  el plan declara). Después, un refinado con los umbrales recalculados en el óptimo y
+  un recorte que baja cada importe al mínimo que da el mismo resultado (nunca
+  comprometer más dinero del necesario).
+- Desempates: menos impuesto; después menos dinero comprometido; importes redondos;
+  la modalidad actual; valores menores. Sin aleatoriedad, `Decimal` en todo y orden
+  estable: la misma entrada da el mismo plan (byte a byte, con cualquier
+  `PYTHONHASHSEED`).
+- Rendimiento medido: `calcular_irpf` tarda 0,1 ms (sin comunidad) a 0,5 ms
+  (Comunidad Valenciana, la de más deducciones); un matrimonio con planes, pérdidas y
+  donativo se optimiza en 10-100 ms, y el caso más pesado probado (Valenciana, dos
+  hijos, los dos cónyuges con varias posiciones en pérdidas, donativo con presupuesto
+  y destinos autonómicos: 1.194 cálculos) en unos 0,7 s.
+
+**Honestidad del plan** — cada palanca elegida lleva su acción y plazo, su ahorro
+**dentro del plan** (lo que se pagaría de más sin ella) y **por sí sola**, el ahorro
+por euro comprometido, el coste neto si exige gastar, su referencia y los requisitos
+que la calculadora no puede comprobar (con la cita literal del BOE cuando es una
+regla, p. ej. la recompra de valores en dos meses del art. 33.5.f). Cuando la
+combinación vale más (o menos) que la suma de las palancas por separado, el plan
+explica por qué a partir de la traza: qué deducción solo activa la combinación, qué
+umbral deja de superarse o qué palanca no elegiría una búsqueda palanca a palanca.
+Lista también lo que no se ha podido usar (por la fecha, por las restricciones del
+usuario, por datos que faltan) y los supuestos (si no dice cuánto puede aportar, se
+supone el máximo útil y se dice). Después del 31 de diciembre solo quedan las
+opciones de la declaración.
+
+**Límites**: la conjunta suma las cifras de los dos cónyuges con las reglas de
+`comparar_declaracion_conjunta`: un solo mínimo del contribuyente con la edad y la
+discapacidad de cada cónyuge (art. 84.2.2.º), el límite de planes de pensiones de cada
+uno (art. 84.2.1.º) y rentas de los hijos a cero; en las individuales, la base imponible del resto de la unidad familiar de
+cada cónyuge es la del otro. Un donativo va entero a un destino y lo paga un cónyuge
+(no se reparte). Las pérdidas latentes son las que indica el usuario (solo
+patrimoniales: las de bonos son rendimientos del capital). Que una deducción
+autonómica por donativos sea compatible con la estatal por la misma cantidad no se
+ha comprobado en cada ley y se dice como requisito.
+
+**Dónde se usa**
+- Herramienta del agente `optimizar_impuestos` (parte del expediente; `datos`,
+  `conyuge` y las restricciones como argumentos). Registra el plan y los cálculos
+  actual y óptimo de cada declaración como fragmentos citables `[F#]`. El prompt del
+  agente la usa para «¿cómo pago menos?» y «¿qué me conviene hacer antes de fin de
+  año?», y le prohíbe sumar ahorros calculados por separado.
+- El plan de fin de ejercicio de los agentes proactivos es el plan combinado (con el
+  ahorro de cada medida dentro del plan); los donativos solo como información.
+- `POST /optimize`, sin modelo de lenguaje, con las mismas reglas de acceso que
+  `/simulate` (clave de API, sesión y propiedad del expediente; 404 si el
+  expediente no es tuyo, 422 con una frase legible si los datos no valen).
+
+Petición (todo opcional salvo lo que necesite el cálculo; con `case_id`, los hechos
+del expediente son las cifras del usuario y `datos` las corrige; `fecha` por defecto
+es hoy en España). Con `case_id`, lo que la petición no envía se toma también de dos
+datos del expediente que guarda la pantalla del optimizador: `datos_conyuge` (las
+cifras del cónyuge, solo si el usuario está casado) y `preferencias_optimizacion`
+(dinero para planes, donativo, inversiones con pérdidas o ganancias latentes, cómo
+pensabais declarar); lo enviado manda campo a campo, `"conyuge": null` deja fuera al
+cónyuge en esa ejecución, y el primer supuesto del plan dice qué se tomó del
+expediente:
+
+```json
+{
+  "ejercicio": 2026,
+  "fecha": "2026-11-13",
+  "datos": {"rendimiento_trabajo_bruto": 70000, "cotizaciones_seguridad_social": 4445, "retenciones": 15000,
+            "comunidad_autonoma": "Madrid", "ganancias_patrimoniales": 1200},
+  "conyuge": {"rendimiento_trabajo_bruto": 4000, "cotizaciones_seguridad_social": 254},
+  "restricciones": {
+    "aportacion_maxima_pensiones": 1500,
+    "acepta_iliquidez": true,
+    "donativo_previsto": 200,
+    "perdidas_latentes": [{"descripcion": "Fondo indexado", "importe": 900, "tipo": "valores_cotizados"}]
+  }
+}
+```
+
+`restricciones` admite además `aportacion_maxima_pensiones_conyuge`,
+`presupuesto_donativos` (máximo a donar; sin él nunca se propone donar más de lo
+previsto), `donativo_recurrente_importe_anterior`, `modalidades_excluidas` (`conjunta`
+y/o `individual`: formas de declarar que no se comparan ni se proponen) y
+`ganancias_latentes`; cada
+posición latente lleva `importe` (positivo), `tipo` (`valores_cotizados`,
+`valores_no_cotizados`, `otro_elemento`), `titular` (`contribuyente` o `conyuge`) y
+`descripcion`.
+
+Respuesta (`PlanOptimo`, recortada):
+
+```text
+{
+  "ejercicio": 2026, "fecha": "2026-11-13", "fase": "antes_del_cierre", "con_conyuge": true,
+  "base":   {"tributacion": "individual", "resultado_total": "2874.25", "cuota_liquida_total": "…",
+             "declaraciones": [{"titular": "contribuyente", "resultado": {IRPFResult}}, {"titular": "conyuge", …}]},
+  "optimo": {"tributacion": "conjunta_biparental", "resultado_total": "1791.79", "declaraciones": [{"titular": "conjunta", …}]},
+  "ahorro_total": "1082.46", "suma_ahorros_aislados": "857.22", "interaccion": "225.24",
+  "palancas": [
+    {"id": "tributacion", "accion": "Presentar declaración conjunta", "naturaleza": "ahorro_definitivo",
+     "ahorro_marginal": "76.46", "ahorro_aislado": "-148.78", "referencia": "art. 84.2.3.º y 4.º LIRPF", "requisitos": […], …},
+    {"id": "plan_pensiones_contribuyente", "accion": "Aportar 1.500,00 € a tu plan de pensiones antes del 31/12/2026",
+     "importe": "1500", "naturaleza": "diferimiento", "compromiso": "1500", "ahorro_marginal": "645.00",
+     "ahorro_aislado": "645.00", "ahorro_por_euro": "0.4300", "plazo": "2026-12-31", …},
+    {"id": "plan_pensiones_conyuge", "importe": "523.80", "ahorro_marginal": "225.24", "ahorro_aislado": "0.00", …},
+    {"id": "perdidas_contribuyente", "importe": "900", "ahorro_marginal": "171.00", …},
+    {"id": "donativo", "importe": "200", "opcion": "autonomica:donativos_fundaciones_madrid",
+     "naturaleza": "requiere_gastar", "ahorro_marginal": "190.00", "coste_neto": "10.00", …}
+  ],
+  "explicacion_interaccion": ["«Presentar declaración conjunta» por sí sola costaría 148,78 € más; dentro del plan ahorra 76,46 €: …", …],
+  "no_disponibles": [{"id", "nombre", "causa": "fecha|restricciones|faltan_datos|sin_margen|no_calculable", "detalle", "datos_que_faltan"}],
+  "descartadas": [{"id", "nombre", "motivo", "referencia"}],
+  "oportunidades": […], "cambios_traza": [{"concepto", "antes", "despues", "referencia"}],
+  "citas": […], "textos_legales": [{"referencia", "boe_id", "texto"}],
+  "avisos": […], "supuestos": […], "datos_que_faltan": […],
+  "busqueda": {"metodo": "exhaustiva", "evaluaciones": 89, "limite_evaluaciones": 3000, "combinaciones": 40, "candidatos": {…}, "nota": "…"},
+  "explicacion": "Con los datos actuales, tu IRPF de 2026 sale a pagar 2.874,25 € (declaraciones individuales).\nCon el plan óptimo …"
+}
+```
+
+Los importes son cadenas decimales (euros con céntimos); `ahorro_marginal` de las
+palancas no suma `ahorro_total` en general, y `ahorro_aislado` puede ser negativo
+(una palanca que por sí sola empeora y dentro del plan ahorra).
+
+### Planificador del hogar
+
+«Tengo 20.000 €: ¿amortizo la hipoteca, aporto al plan de pensiones o los guardo?». El planificador
+(`asistente/nucleo/planificador/`) reparte de forma **determinista** una cantidad (o un excedente mensual hasta
+diciembre) entre las palancas del hogar y calcula sus interacciones con cada módulo; el agente solo formula el
+problema (importe, horizonte, colchón, rentabilidad alternativa, palancas descartadas).
+
+| Palanca | Quién la calcula | Naturaleza |
+|---|---|---|
+| Amortizar la hipoteca, reduciendo plazo o cuota | módulo de hipoteca: cuadro (`calculo.py`) y comisión máxima legal (`comisiones.py`) | ahorro definitivo (intereses), irreversible |
+| Aportar al plan de pensiones de cada cónyuge | optimizador fiscal (`tax/optimizador.py`) | diferimiento: tributa al rescatar (art. 17.2.a).3.ª LIRPF) |
+| Donativo dentro del presupuesto | optimizador fiscal (destino y donante que más deducen) | requiere gastar |
+| Mantener líquido (con colchón de emergencia) | el resto | — |
+
+**Objetivo**, explícito: la **posición neta al final del horizonte** (1 a 30 años) frente a dejar todo el dinero
+líquido a la **rentabilidad alternativa que diga el usuario** (aritmética, nunca consejo de inversión):
+IRPF ahorrado este año (el de la combinación, con la forma de declarar más barata) + cambio de la deducción por
+vivienda de los años siguientes + intereses ahorrados en el horizonte − comisión − rendimiento que daría ese
+dinero + rendimiento de la cuota que se deja de pagar − lo donado − penalización por quedar bajo el colchón (o el
+colchón como límite, por defecto). El IRPF se nota al declarar (30 de junio del año siguiente) y todo se lleva a la
+fecha del horizonte con la rentabilidad alternativa (también en euros de hoy). Las aportaciones a pensiones se
+muestran en **dos vistas**: diferimiento (el ahorro de hoy) y ahorro definitivo (descontando el impuesto al
+rescatar, al tipo que diga el usuario o, si no lo dice, al mismo tipo al que ahorra hoy); la búsqueda maximiza la
+elegida (`valorar_pensiones`; «definitivo» por defecto si se da `tipo_rescate_pct`). Ninguna cifra de dos módulos se
+suma sin haber calculado la combinación: cada parte sale del calculador de su módulo sobre el escenario del reparto.
+
+**Interacciones calculadas** (solo donde la norma las establece):
+- **Deducción por vivienda anterior a 2013**: si consta `pagos_vivienda_habitual_pre2013` o el préstamo dice
+  `adquisicion_antes_2013` (entonces se usa la cifra que el puente `modulos/puentes.py` propone: lo pagado en el año
+  según el cuadro), lo amortizado se suma a la base del año y una cuota menor rebaja la de los siguientes; con
+  `parte_hipoteca_conyuge`, cada cónyuge deduce por su parte en las individuales. La aportación a pensiones baja la
+  cuota y puede dejar la deducción sin cuota contra la que aplicarse: el plan lo calcula y lo explica.
+- **Ayudas** (si el módulo de ayudas está activado), re-evaluadas con los evaluadores del módulo:
+  - bono social eléctrico (y térmico): usa la **base imponible** general y del ahorro (art. 4.1 Orden
+    ETU/943/2017); la aportación a planes reduce la base **liquidable** (arts. 50.1 y 51 LIRPF), así que no mueve
+    su límite — el plan lo dice y lo demuestra con las bases de la calculadora;
+  - ingreso mínimo vital y complemento de ayuda para la infancia: sus ingresos restan el **IRPF devengado** (art.
+    20.3 Ley 19/2021), así que cada euro de IRPF ahorrado los **sube** un euro; su patrimonio cuenta cuentas y planes
+    de pensiones por igual y excluye las deudas de la vivienda habitual (art. 20.4.b), así que amortizar o donar lo
+    baja. Con `proteger_ayudas` (por defecto) el plan no propone nada que haga perder o rebaje una ayuda que hoy
+    corresponde (busca el margen exacto por bisección sobre el evaluador del módulo);
+  - prestación por nacimiento («ingresos de cualquier naturaleza») y asignación por hijo con discapacidad (sin
+    límite de ingresos): ninguna palanca las cambia.
+- Luz, suscripciones y caducidades: estas palancas no cambian nada que esos módulos calculen (no se inventan
+  interacciones).
+
+**Búsqueda**: exhaustiva sobre una rejilla con paso informado (`busqueda.resolucion`, el más fino que cabe en
+40.000 combinaciones y 3.000 cálculos del IRPF): cero, máximos, los umbrales del optimizador (tramos, límites de
+deducciones, 30 % de rendimientos…), el tope de la deducción por vivienda, cancelar el préstamo y **cada importe en
+que «reducir plazo» elimina una cuota** (el módulo redondea al alza el número de cuotas, así que el valor va a
+saltos); para cada combinación, la amortización que agota el dinero y, para cada amortización, la aportación que lo
+agota. Las amortizaciones fuera de la rejilla se ordenan interpolando y las 40 mejores combinaciones se recalculan
+exactamente; después, un afinado local a una décima del paso. `Decimal` en todo, desempates fijos (más valor, menos
+dinero comprometido, menos palancas, importes redondos): la misma entrada da el mismo plan, byte a byte, con
+cualquier `PYTHONHASHSEED`. Una pareja con hipoteca anterior a 2013 se resuelve en unos 2 s; un hogar sin hipoteca,
+en décimas.
+
+**Resultado** (`PlanHogar`): tabla de reparto, posición neta línea a línea con su naturaleza y módulo, las dos
+vistas, el valor de cada palanca **dentro del plan y sola** y por qué la combinación difiere (dinero compartido,
+acoplamiento fiscal calculado, colchón, forma de declarar, margen de las ayudas), escenarios de comparación (no hacer
+nada, todo a la hipoteca, pensiones al máximo), resumen de la hipoteca, efecto en cada ayuda con la cita de su
+norma, el plan fiscal del optimizador para el reparto elegido (`plan_fiscal`, con su traza y sus citas), supuestos,
+avisos (p. ej. las condiciones de la deducción por vivienda anterior a 2013 que nadie comprueba), lo no modelado y la
+búsqueda.
+
+**Decisiones del usuario**: `restricciones` (`excluidas`, `modalidades_excluidas` —formas de amortizar: `plazo`,
+`cuota`—, `tributacion_excluida` —formas de declarar: `conjunta`, `individual`, que el optimizador fiscal no usa—,
+`maximos`, `motivos`, `origen`) es el punto de enganche de la memoria de decisiones: con expediente, las dos vías
+(`POST /planificar` y `planificar_hogar`) pasan por `memoria.planificador.planificar_con_memoria`, que traduce las
+decisiones en vigor (`fiscal:plan_pensiones[:contribuyente|:conyuge]` → `plan_pensiones_*`, `fiscal:donativo` →
+`donativo`, `hipoteca` / `hipoteca:amortizar` → `amortizar_hipoteca`, `hipoteca:amortizar:plazo|cuota` →
+`modalidades_excluidas`, `fiscal:tributacion:conjunta|individual` → `tributacion_excluida`) y pone el motivo, con las
+palabras y la fecha del usuario, el primero en `supuestos`; el planificador no importa ese paquete. Una decisión en
+vigor manda sobre las cifras de la petición (ver «Memoria de decisiones»).
+
+**Dónde se usa**: `POST /planificar` (sin modelo de lenguaje; mismas reglas de acceso que `/optimize`: sesión,
+propiedad del expediente, 404 si no es tuyo, 422 con una frase en español; los datos de hipoteca y ayudas solo si el
+usuario tiene esos módulos activados; no guarda nada), la herramienta del agente `planificar_hogar` (con
+expediente y módulos del hogar activados; el plan es un fragmento citable `[F#]`) y el panel **Planificar** de la
+web.
+
+```json
+{"case_id": "case_…", "importe_disponible": 20000, "horizonte_anos": 5, "rentabilidad_alternativa_pct": 2,
+ "gastos_mensuales": 2000, "meses_colchon": 6, "liquidez_actual": 6000, "tipo_rescate_pct": 30,
+ "restricciones": {"excluidas": ["donativo"], "origen": "memoria"}}
+```
+
+**No modelado**: rentabilidad propia del plan de pensiones (se supone la de la alternativa) y sus comisiones; el
+IRPF de años futuros se calcula con las cifras y reglas del ejercicio; gastos de notaría o registro y el interés del
+periodo roto al amortizar; tributación de la rentabilidad alternativa (dala neta); amortizaciones mes a mes del
+excedente; límites de renta de convocatorias autonómicas y municipales.
+
+### Simulador, calendario y documentos
+
+- **`POST /simulate`** — la misma calculadora, sin modelo de lenguaje: devuelve
+  el escenario base, cada alternativa con su ahorro y el catálogo de
+  beneficios. Es lo que usa el panel «Simulador» de la interfaz.
+- **`GET /cases/{id}/calendar`** y la herramienta `calendario_fiscal` — plazos
+  que aplican al perfil (cierre del ejercicio, Renta, IVA trimestral y pagos
+  fraccionados si hay actividad económica, modelo 720 si hay bienes en el
+  extranjero). Las fechas recurrentes están en
+  `asistente/ambitos/fiscal/data/calendario.json` con el precepto que las fija; se
+  ajustan fines de semana pero **no festivos**, y el fin de la campaña de Renta
+  (30 de junio) figura como no contrastado porque lo fija una orden anual.
+- **`POST /cases/{id}/documents`** — lee un documento (certificado de
+  retenciones, datos fiscales, certificado de un plan…) y **propone** datos
+  del perfil; nada se guarda hasta que el usuario confirma. El documento no se
+  almacena, pero su contenido se envía al proveedor de LLM configurado.
+  - *PDF con texto o archivo de texto*: cada propuesta lleva el pasaje literal
+    del documento y se descarta si ese pasaje no aparece en él.
+  - *PDF escaneado o foto (PNG, JPEG, WebP; hasta 20 páginas)*: lo lee el
+    propio modelo, que debe tener visión. Como no hay texto contra el que
+    comprobar, el documento se lee **dos veces** de forma independiente y solo
+    se proponen los datos en que ambas lecturas coinciden, marcados como
+    «leído de la imagen» para que el usuario los revise con el papel. Con
+    Claude se envía el PDF tal cual; con OpenAI o un modelo local, cada página
+    como imagen. Cuesta dos llamadas por documento.
+
+### Jurisprudencia del Supremo, grafo de vigencia y conflictos
+
+**Qué sentencias se ingieren.** Solo la Sala Tercera, Sección Segunda (la
+tributaria), con prioridad para la casación posterior al 22-07-2016 que fija
+doctrina. `supremo_seed` no rastrea ni busca en CENDOJ —sus condiciones
+prohíben la descarga masiva—: trabaja sobre HTML que ya tengas o sobre una
+lista de URLs individuales, con tope por ejecución.
+
+```bash
+# Clasificar y filtrar sentencias ya descargadas (sin red)
+uv run python -m asistente.plataforma.cli.supremo_seed --from-dir ./data/cendoj --output-dir ./data/html/<snapshot>/ts
+# o URLs concretas, una a una (máx. 25 por ejecución, 5 s entre peticiones)
+uv run python -m asistente.plataforma.cli.supremo_seed --urls-file urls.txt --output-dir ./data/html/<snapshot>/ts
+```
+
+Cada sentencia conservada lleva en su sidecar la sección, el tipo y número de
+recurso, si fija doctrina, el pasaje de doctrina y la cuestión casacional. Su
+detección está probada con sentencias sintéticas, no con documentos reales de
+CENDOJ: revisa el manifiesto de la primera ejecución.
+
+**Grafo de vigencia** (`asistente/conocimiento/doctrine/`). Extrae las citas entre
+consultas de la DGT, resoluciones del TEAC y sentencias del TS y del TC, y
+registra qué hace cada documento con el que cita: lo confirma, lo matiza, lo
+supera o lo contradice. De ahí sale el estado de cada documento: `vigente`,
+`matizada`, `superada` (lo revoca uno posterior de igual o mayor rango) o
+`discutida` (lo contradice otro sin rango para zanjarlo).
+
+```bash
+uv run python -m asistente.plataforma.cli.doctrine_graph build              # gratis, por redacción expresa
+uv run python -m asistente.plataforma.cli.doctrine_graph build --llm        # relee con el LLM las citas relevantes
+uv run python -m asistente.plataforma.cli.doctrine_graph wanted --limit 50  # sentencias citadas que faltan en el corpus
+uv run python -m asistente.plataforma.cli.doctrine_graph status "V1234-19"
+```
+
+`wanted` es la lista de adquisición: las sentencias en las que la DGT y el TEAC
+se apoyan de verdad, ordenadas por número de citas, para conseguirlas una a
+una. La lectura con LLM solo se acepta si cita literalmente las palabras del
+pasaje que la justifican.
+
+**En el agente.** Con el grafo construido (`DOCTRINE_GRAPH_PATH`):
+
+- cada resultado de búsqueda lleva su vigencia y, si procede, una alerta
+  («Superada por STS rec. …»); hay además una herramienta `consultar_vigencia`;
+- una respuesta que se apoya en doctrina superada sin citar la resolución
+  posterior, o que presenta como seguro un criterio discutido, se devuelve al
+  agente para corregir y, si persiste, no se etiqueta como verificada;
+- cuando las fuentes discrepan sin que una de mayor rango lo resuelva, el
+  agente debe decir que **no hay criterio firme** y exponer las posturas; la
+  respuesta lo marca en `sin_criterio_firme` y `conflicts`, y la interfaz lo
+  muestra.
+
+El grafo es un indicio deducido del texto, no una fuente: nunca se cita, y sin
+`--llm` solo detecta relaciones dichas con redacción expresa.
+
+### Modo equipo: planificador, dos investigadores y un crítico
+
+Para una pregunta sencilla trabaja un solo agente. Solo en consultas complejas
+se reparte el trabajo, porque cuesta más llamadas y más tiempo:
+
+1. **Planificador** — descompone la consulta en encargos.
+2. **Investigador de normativa** e **investigador de doctrina** — buscan en
+   paralelo (solo pueden buscar y consultar la vigencia; no calculan ni tocan el
+   expediente) y dejan sus fragmentos en el mismo registro de evidencia.
+3. **Asesor** — redacta la respuesta con ese material.
+4. **Crítico** — la revisa buscando el fallo; si objeta, el asesor la corrige.
+   Después pasa el verificador de siempre.
+
+Se activa cuando la consulta toca **dos o más impuestos** o cuando la primera
+respuesta encuentra **conflicto entre fuentes** y no queda verificada.
+
+```bash
+export AGENT_TEAM_MODE="auto"       # auto (por defecto) | always | never
+export SUBAGENT_MAX_STEPS="6"       # pasos de herramienta por investigador
+export SUBAGENTS_PARALLEL="true"    # false si tu servidor local solo atiende una petición a la vez
+```
+
+### Agentes proactivos: avisos sin preguntar
+
+El asesor escribe avisos en el expediente (campana de la interfaz, o
+`GET /cases/{id}/notifications`). Hay tres tipos:
+
+| Aviso | Qué hace | ¿Usa LLM? |
+|-------|----------|-----------|
+| `plazo` | Recuerda los vencimientos del calendario fiscal que te tocan según tu perfil | No |
+| `fin_de_ejercicio` | Del 1 de octubre al 31 de diciembre recorre tus palancas (plan de pensiones, donativos, deducciones autonómicas…) con la calculadora y dice cuánto ahorra cada una antes del 31 de diciembre | No |
+| `cambio_normativo` | Cuando `boe_watch` detecta que una norma ha cambiado, lee qué artículos cambian y avisa solo a los perfiles afectados | Una llamada por norma cambiada, ninguna por usuario |
+
+Los dos primeros se recalculan también al abrir la aplicación y al cambiar un
+dato del expediente (`POST /cases/{id}/proactive/run`). Para que lleguen sin
+abrirla, prográmalos:
+
+```cron
+# Detectar normas cambiadas, avisar a los afectados y, después, plazos y plan de fin de año
+30 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.boe_watch >> logs/boe_watch.log 2>&1
+45 6 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive boe-impact --changes-log data/html/_boe_changes.jsonl --snapshot-dir data/html --yes >> logs/proactive.log 2>&1
+0 7 * * *   cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive run-daily >> logs/proactive.log 2>&1
+```
+
+**Normas autonómicas.** La vigilancia cubre también la ley de cada una de las
+15 comunidades de las que salen la escala, los mínimos y las deducciones (están
+en el catálogo de `boe_watch`). Un cambio en una ley autonómica solo avisa a
+quienes residen en esa comunidad, y el aviso recuerda en qué fecha se leyeron
+las cifras de la calculadora. Para saber qué parámetros hay que releer:
+
+```bash
+# Una petición de metadatos por norma; sin LLM. Con --fail-on-stale termina con código 1 si hay alguna.
+uv run python -m asistente.plataforma.cli.proactive params-check
+```
+
+Lista las normas que el BOE ha actualizado después de la fecha en que se
+leyeron sus parámetros. Que una norma aparezca no significa que sus cifras
+hayan cambiado, sino que hay que volver a leerla.
+
+**Normas nuevas.** `boe_watch` solo ve cambios en leyes que ya seguimos. Para
+no depender de eso, `boe-novedades` lee el sumario del BOE de cada día y se
+queda con las disposiciones —estatales o autonómicas— que tocan impuestos,
+según la clasificación por materias del propio BOE y la lista de normas que
+cada una modifica. Así encuentra un decreto de vivienda que cambia la Ley del
+IRPF aunque su título no lo diga, o la ley de medidas tributarias de una
+comunidad cuando llega al BOE. No usa LLM.
+
+```cron
+15 7 * * *  cd /srv/hacienda-asesor && uv run python -m asistente.plataforma.cli.proactive boe-novedades >> logs/proactive.log 2>&1
+```
+
+Guarda un registro en `data/html/_boe_novedades.json` y retoma desde el último
+día revisado. Las de relevancia alta (leyes y decretos-ley, o cualquier norma
+que modifique una de las que alimentan la calculadora) generan un aviso: a los
+residentes si es autonómica, o al perfil al que toca el impuesto si es estatal.
+El aviso dice expresamente que la norma aún no se ha analizado. Límites: una
+ley autonómica llega al BOE semanas después de publicarse en su boletín; el
+análisis del BOE puede tardar unos días (la norma queda pendiente y se vuelve
+a mirar); y decidir si una norma nueva se incorpora al corpus o a los
+parámetros sigue siendo manual (`destacadas[].en_catalogo` lo indica).
+
+Repetir una ejecución no duplica avisos. Los importes son estimaciones de la
+calculadora con los datos del expediente, y los plazos no tienen en cuenta
+festivos. Los avisos solo se guardan en la base de datos: todavía no se envían
+por correo ni al móvil.
+
+### Arquitectura orientada a eventos
+
+Los avisos ya no esperan a la pasada diaria: cuando algo pasa, se despierta
+solo el módulo al que le importa, y el aviso aparece en segundos. La pasada
+diaria (`run-daily`) se queda como red de seguridad: produce exactamente los
+mismos avisos, con las mismas claves, así que lo que ya escribió un evento no
+se repite.
+
+| Evento | Quién lo emite | A quién despierta (por defecto) |
+|--------|----------------|----------------------------------|
+| `perfil.cambiado` | Cualquier guardado del expediente que cambie hechos: `PUT/DELETE /cases/{id}/facts`, `registrar_hechos` del asesor, herramientas de los módulos, datos de un documento aceptado | El módulo dueño del hecho; los hechos compartidos (comunidad, hijos, rentas…), al módulo fiscal y a los que los leen (`ayudas`, `luz`, `caducidades`) |
+| `cargos.importados` | Importar un extracto en `suscripciones` | `suscripciones` |
+| `modulo.activado` / `modulo.desactivado` | `PUT /me/modulos/{clave}` | Ese módulo / ninguno (se cancelan su temporizador y su trabajo pendiente) |
+| `fecha.umbral` | El propio bus, el día que el módulo pidió | Solo ese módulo para ese expediente |
+| `boe.norma_nueva` | `boe-novedades` (las de relevancia alta) | Fiscal, en cada expediente abierto (mismo aviso y mismos criterios de perfil que ya usaba) |
+| `boe.cambio_normativo` | `boe-impact` (`procesar_eventos`, uno por cambio analizado, después del aviso directo de siempre) | Fiscal (`impacto.notificar_cambio`) |
+| `indice.publicado` | `hipoteca.indices actualizar` (euríbor y demás índices oficiales del BOE) | `hipoteca` |
+| `correo.clasificado` | Una sincronización de Gmail con correo nuevo (módulo `correo`; solo recuentos por categoría) | `correo` y los módulos que se suscriban |
+
+**Cómo funciona** (`asistente/nucleo/eventos/`, todo en el mismo SQLite que los
+expedientes, sin broker externo):
+
+- *Bandeja de salida en la misma transacción.* El cambio de un hecho escribe
+  su evento con la misma conexión y en la misma transacción que guarda el
+  expediente: si el guardado falla, no hay evento; si hay evento, el cambio
+  está guardado. El evento lleva solo identificadores y **nombres** de hechos,
+  nunca sus valores; un fallo del bus nunca impide guardar (queda en el
+  registro y lo recoge la pasada diaria).
+- *Consumidores con cursor e idempotentes.* Cada evento se reparte en entregas
+  (módulo, expediente) únicas, solo para módulos suscritos **y activados** para
+  el dueño del expediente (se vuelve a comprobar justo antes de ejecutarlo).
+- *Al menos una vez, sin duplicados.* Un trabajador reclama entregas con un
+  arriendo; si falla, se reintenta con espera exponencial (30 s, 60 s…, máx. 1 h)
+  y tras `EVENTOS_MAX_INTENTOS` va a la cola de errores. Si un trabajador muere,
+  otro retoma la entrega: los avisos tienen clave, así que repetir no duplica.
+- *Fechas calculadas, no sondeadas.* Un módulo puede devolver
+  `proxima_revision` en sus avisos (o `proxima_revision(contexto)`); el bus
+  guarda un temporizador por expediente y módulo y emite `fecha.umbral` ese
+  día. El módulo fiscal calcula el suyo con el calendario: el día en que el
+  siguiente plazo entra en la ventana de aviso de 30 días, o el 1 de octubre
+  (plan de fin de ejercicio).
+
+**Para los módulos** (contrato, cambios opcionales y compatibles):
+`eventos` (tipos a los que se suscribe; vacío = el valor por defecto del
+núcleo, en `eventos/rutas.py`), `al_evento(evento, contexto)` (por defecto,
+`avisos`), `proxima_revision(contexto)`, `hechos_leidos` y el campo
+`AvisoModulo.proxima_revision`. Ningún módulo existente ha tenido que cambiar.
+
+**Operación.** La API despacha en su propio proceso justo después de cada
+cambio (`EVENTOS_DESPACHO_EN_PROCESO`); además conviene un trabajador, que
+recoge lo que emiten otros procesos y dispara los temporizadores:
+
+```bash
+uv run python -m asistente.plataforma.cli.eventos worker          # en marcha continua (systemd, supervisor…)
+uv run python -m asistente.plataforma.cli.eventos estado          # atraso, cola de errores, métricas por tipo y módulo
+uv run python -m asistente.plataforma.cli.eventos reintentar      # vuelve a encolar la cola de errores
+```
+
+`ops doctor` incluye la salud del bus (y avisa de la cola de errores o de
+trabajo esperando más de `EVENTOS_ATRASO_MAX_MINUTOS`), y `GET /eventos/salud`
+la da en JSON, solo con agregados. Detalles y alternativa con cron en
+[docs/operacion.md](operacion.md#bus-de-eventos).
+
+### Mantenimiento: que los parámetros no caduquen en silencio
+
+Cada cifra de la calculadora se leyó de una ley. Esa procedencia es ahora una
+prueba que se puede repetir (todo sin LLM; cron y detalles en
+[`docs/operacion.md`](operacion.md)):
+
+| Comando (`python -m asistente.plataforma.cli.proactive …`) | Qué responde |
+|---|---|
+| `params-check` | ¿Ha actualizado el BOE alguna de las leyes de las que salen los parámetros? |
+| `params-verify` | ¿Qué parámetros concretos ya no coinciden con el texto vigente? Busca la cita literal de cada deducción autonómica, la tabla de cada escala y las cifras del resto. |
+| `params-rollover 2027` | Crea el ejercicio nuevo copiando el último y reverificando todo: lo que sigue coincidiendo queda verificado; lo demás se marca (`verificado: false`, que la calculadora repite en cada resultado) o se retira. |
+| `normas-check` | ¿Se ha convalidado o derogado un real decreto-ley del que dependen parámetros? Si se deroga, la calculadora deja de aplicar lo que introdujo. |
+| `boe-novedades` | ¿Qué normas nuevas tocan impuestos? |
+
+Un parámetro que existe solo por un decreto-ley pendiente de convalidación lo
+declara en `fuente.condicionada_a`. `python -m asistente.plataforma.cli.ops` entrega los
+avisos por correo o webhook (`deliver`), ejecuta cada tarea bajo vigilancia
+(`run`) y avisa si alguna falló o no llegó a ejecutarse (`doctor`). El flujo
+`.github/workflows/vigilancia.yml` repite `params-check` y `params-verify` cada
+semana.
+
+Límites: una comprobación que pasa no demuestra que el parámetro sea correcto,
+sino que el texto del que se leyó sigue ahí; las cifras redondas se comprueban
+débilmente; y las prórrogas anuales («durante 2026…») hay que revisarlas a mano.
+
+### Recodificación automática: un modelo propone, el control decide
+
+Cuando `params-verify` dice que un grupo de parámetros ya no coincide con su
+ley, hasta ahora alguien tenía que pedir que se releyera. `params-recode` lo
+hace solo —y `params-autopilot` lo lanza sin que nadie lo pida, desde la norma
+publicada en el BOE hasta el dato—, **sin que la calculadora deje de ser
+determinista**: la calculadora
+sigue leyendo datos; el modelo solo *propone* datos, y lo que propone no llega
+a ningún fichero sin pasar controles que no dependen de él
+(`asistente/conocimiento/recodificacion/`).
+
+El bucle, para cada grupo que falla:
+
+1. **Lectura.** Un modelo recibe el texto del artículo (no la ley entera), la
+   codificación anterior con sus citas, el esquema —el código de los modelos
+   pydantic, tal cual— y las reglas de codificación, y devuelve una propuesta
+   con sus citas literales, o un «no calculable» razonado. Si necesita otro
+   artículo de la misma ley (límites de renta comunes, definiciones) lo pide.
+2. **Control determinista** (sin modelo): validación del esquema; cada cita,
+   literal y de una pieza en el texto legal; **cada cifra codificada, dentro
+   de alguna cita** (también las de variantes, tramos y ajustes, y las que
+   menciona el resumen que lee el usuario); ninguna nota de «cifra derivada»;
+   y la **fecha de efectos** de la redacción, impresa en una cita.
+3. **Revisión independiente.** Una segunda llamada, que solo ve el texto legal
+   y la propuesta, enumera discrepancias (condición omitida, unidad o base
+   equivocada, umbral inclusivo o exclusivo, aproximaciones), lee por su cuenta
+   la fecha de efectos y propone contribuyentes de prueba en los límites con el
+   importe que da **la ley**. El programa pasa esos casos por la calculadora
+   con los datos propuestos y compara.
+4. Las objeciones y los casos fallidos vuelven a la lectura. Tras
+   `RECODE_MAX_ITER` pasadas (3) sin acuerdo, el resultado es `sin_converger`,
+   con las objeciones abiertas, y decide una persona.
+
+El resultado es una **propuesta** en `RECODE_PROPOSALS_PATH` (antes, después,
+citas, control, veredicto, casos, iteraciones, modelo, versión y huella del
+texto legal) y un aviso al operador por los canales `NOTIFY_*`. Se aplica con
+`params-apply <id>`, que relee la ley y repite el control: si el texto ha
+cambiado desde la propuesta, o el fichero ya no contiene lo que iba a
+sustituir, no escribe nada. Lo aplicado queda marcado y la calculadora lo dice
+en cada resultado —«deducción recodificada automáticamente el … a partir del
+BOE; pendiente de revisión humana»— hasta `params-confirm`. Con
+`RECODE_AUTO_APPLY=true` se aplica sin esperar solo lo que supera el control
+sin nada pendiente de revisar y con la conformidad del revisor; por defecto,
+nada.
+
+**Ejercicios.** Una propuesta nombra todos los ejercicios cuyo fichero toca, y
+los deduce de la fecha de efectos, no de la fecha de publicación ni de la de
+entrada en vigor: una ley publicada hoy «con efectos desde el 1 de enero» del
+año anterior cambia también el fichero de ese año. El bucle lee el texto
+consolidado vigente y **nunca elige por su cuenta una redacción histórica**:
+si la redacción vigente no alcanza a un ejercicio, lo deja como está, lo dice,
+y ese ejercicio sigue fallando en `params-verify` hasta que alguien indique la
+versión aplicable (`--version AAAAMMDD`).
+
+**Qué mantiene: todo.** El núcleo es genérico: un «grupo de parámetros» es
+una ruta en un fichero de parámetros, su modelo, sus citas y la norma de la
+que sale. Ningún grupo de cifras legales queda sin adaptador:
+
+- **IRPF** (`irpf_<año>.json`): las deducciones autonómicas calculables
+  (`deduccion_autonomica`), las escalas (`escala`) y **todos los demás grupos**
+  con una sola clase guiada por el modelo pydantic de cada uno (`cifras:<grupo>`):
+  gastos y reducción del trabajo, tributación conjunta, previsión social,
+  mínimos estatales y autonómicos, deducción por rendimientos del trabajo,
+  donativos, maternidad, alquiler estatal, obligación de declarar, compensación
+  del ahorro, reparto de deducciones, los regímenes de la reducción por
+  arrendamiento y las seis deducciones de Madrid que la calculadora calcula con
+  fórmula propia. Un test recorre el modelo y falla si mañana se añade un campo
+  sin adaptador.
+- **Autónomos, Sociedades, Patrimonio/ITSGF e ISD** (`autonomos_`, `sociedades_`,
+  `patrimonio_`, `isd_<año>.json`): un adaptador por familia y modelo
+  (`<familia>:<Modelo>`, en `adaptadores_otros.py`), con las citas dentro del
+  propio grupo.
+
+Los casos límite del revisor pasan por la calculadora real: para un grupo de
+cifras del IRPF, el caso es un contribuyente y **una línea del resultado de
+`calcular_irpf`** («Reducción por tributación conjunta», «Mínimo por
+descendientes», «Compensación entre rendimientos y ganancias del ahorro»…), y
+se compara su importe; el reparto de las deducciones estatales entre las dos
+cuotas, que no tiene línea propia, se prueba con **la misma función de la
+calculadora** (`repartir_deducciones_estatales`). Los límites de la obligación
+de declarar (`obligacion_declarar`) también tienen casos ejecutables: cada caso
+es un contribuyente que pasa por **la misma función que responde «¿tengo que
+declarar?»** (`obligado_a_declarar`, `tax/obligacion.py`) con las cifras
+propuestas, y se compara su respuesta («1» si la ley le obliga, «0» si no); un
+caso que el programa no puede decidir (faltan datos) no cuenta como superado.
+Quedan **siempre para confirmación humana** un grupo con cifras que imprime
+otra ley (el límite del 10 % de los donativos) o un mínimo autonómico que deja
+importes al Estado.
+Si la nueva redacción cambia la *estructura* de la regla (otro tramo, otra
+fórmula), el lector debe responder «no calculable»: eso exige cambiar la
+calculadora y lo decide una persona. Lo que procede de un real decreto-ley
+pendiente de convalidación conserva su `condicionada_a`.
+
+Lo que el bucle no asume por su cuenta, y lo dice (`fuera_de_alcance`): grupos
+leídos de una redacción ya no vigente (régimen transitorio de vivienda,
+regímenes de arrendamiento de contratos antiguos: solo con `--version`) e
+importes calculados a partir de otros (mínimos de Baleares).
+
+**Artículos enormes.** Cinco leyes meten todas sus deducciones en un artículo
+(Galicia art. 5, Valencia art. 4, Murcia art. 1, La Rioja art. 32, Cantabria
+art. 2: de 45.000 a 78.000 caracteres). Al modelo se le envía solo el apartado
+de la deducción («art. 5.Dos»), con el encabezado, las notas del BOE que
+fechan la redacción y un índice de los demás apartados, que puede pedir (las
+normas comunes suelen estar en otro). Si la numeración no permite aislar el
+apartado sin dudas, se envía el artículo entero.
+
+**Deducciones nuevas.** `params-recode --comunidad X --articulo "art. N"
+--desglosar` hace que el lector *liste* las deducciones que contiene un
+artículo (cada una con su cita literal, que el programa comprueba) y lanza el
+bucle normal para cada una que aún no esté codificada.
+
+**Sin que nadie lo pida: `params-autopilot`.** Un único punto de entrada,
+pensado para cron diario, encadena todo:
+
+1. **Detecta**: lee el BOE de los días pendientes (lo mismo que
+   `boe-novedades`) y se queda con las normas cuyo análisis jurídico dice que
+   modifican una ley de la que salen parámetros.
+2. **Localiza** los artículos que cambia: los que nombra ese análisis
+   («MODIFICA los arts. 5 y 9…»); si dice «determinados preceptos», los que
+   las notas del texto consolidado atribuyen a la norma («Se modifica por…
+   Ref. BOE-A-…») o, antes de consolidarse, los que nombran las frases de la
+   propia norma («Se modifica el artículo…», «Uno. El artículo 9 queda
+   redactado…», «Se añade…»), sin modelo; solo si nada de eso da un artículo,
+   un modelo los **lista** con una cita literal que el programa comprueba. El
+   parte dice cada artículo y por qué vía se supo. Después, **todos** los
+   grupos que se leen de esos artículos —por su artículo o porque sus citas
+   están allí—, en cualquier fichero, se releen **aunque su comprobación
+   pase** (una condición nueva puede estar fuera de los pasajes citados): el
+   lector recibe el artículo entero y la codificación vigente y puede
+   responder «sin cambios», que solo vale si siguen todas las citas
+   anteriores, cada cifra está en una cita y el revisor, que busca una
+   condición nueva y prueba sus casos con la codificación vigente, está
+   conforme. Si la norma *añade* un artículo a la ley de una comunidad, lo
+   desglosa en deducciones nuevas.
+3. **Lee de donde puede**: si el BOE ya ha consolidado la norma, del texto
+   consolidado, con el análisis como anotación (suele llevar la cláusula de
+   efectos). Si aún no —el BOE tarda días—, **del texto de la propia norma
+   modificadora**; esa propuesta nunca se auto-aplica y, cuando llega la
+   consolidación, el grupo se vuelve a comprobar: si lo aplicado coincide con
+   el consolidado queda respaldado sin gastar nada, y si no, se relee.
+4. **Verifica** todos los ficheros contra el texto vigente (sin modelo): lo
+   que no coincide entra también, lo haya anunciado una norma o no; y si el
+   BOE ha actualizado una ley sin que ninguna norma del registro lo explique,
+   los grupos de los artículos con redacción posterior a la última lectura se
+   releen como en el paso 2.
+5. **Recodifica** con el bucle, bajo `RECODE_MAX_PER_RUN` y el presupuesto
+   diario, y aplica lo que no necesita a nadie si `RECODE_AUTO_APPLY=true`.
+6. **Anota la lectura** de cada ley actualizada que ha quedado al día (abajo).
+7. **Avisa** al operador con un parte (y solo cuando algo ha cambiado).
+
+**La fecha de lectura de cada ley.** `params-check --fail-on-stale` compara la
+fecha en que el BOE actualizó una ley con `consultado_el`, la fecha en que los
+ficheros la leyeron. El piloto (y `params-verify` al terminar) la anota solo,
+de forma determinista, en **todos** los ficheros que citan la ley (IRPF,
+autónomos, sociedades, patrimonio, ISD): nueva fecha de consolidación, huella
+de la página, `consultado_el` de hoy y una línea en `revisiones`. Solo cuando todas las comprobaciones de los grupos que la
+citan coinciden, ningún grupo de un artículo modificado desde la lectura
+anterior queda sin releer contra el texto de hoy (ni es de los que el bucle no
+relee, como unos importes calculados) y no hay nada abierto sobre
+ella (propuesta pendiente o sin converger, norma en curso, grupo marcado como
+no verificado sin comprobación). Nunca toca una cifra ni una fuente fijada a
+una redacción con fecha; con `--snapshot-dir` solo lo simula. En la vigilancia
+semanal de GitHub Actions, esas lecturas llegan al repositorio como un **pull
+request** (rama `vigilancia/lecturas-boe`) que abre un trabajo aparte, el único
+con permiso de escritura, después de comprobar con `params-lecturas` que en los
+ficheros solo han cambiado fechas, huellas y el registro: si cambia una cifra,
+una cita o una regla, la ejecución sale en rojo y no se abre nada
+(`docs/operacion.md`, apartado 4).
+
+Es idempotente (no paga dos veces por el mismo grupo y el mismo texto, ni
+repite un parte) y **seguro sin clave de LLM**: los pasos 1, 2 (salvo la lista
+de último recurso), 4 y 6 se ejecutan igual y el parte dice qué grupos
+esperan; una ley con grupos que esperan no se anota. `boe-novedades --autopilot` (o
+`RECODE_AUTOPILOT=true`) lo lanza al terminar la revisión del día.
+
+**Antes de fiarte: `params-eval`.** Toma N codificaciones publicadas, **se las
+oculta al lector**, hace que el bucle las recodifique desde la ley y compara
+campo a campo con la codificación humana, con el consumo. Es la medida, con tu
+modelo real, de cuánto acierta el bucle solo; úsala antes de activar la
+auto-aplicación. `params-gate` pasa todas las deducciones publicadas por el
+mismo control que una propuesta.
+
+**Nada de esto se ha ejecutado contra un modelo real**: las pruebas usan un
+proveedor guionizado y leyes sintéticas; contra las leyes reales solo se han
+ejercitado las partes deterministas (localización de artículos, recorte de
+apartados, control de cifras, verificación, el control de «sin cambios» —que
+superan con sus citas guardadas las 220 deducciones autonómicas y todos los
+grupos de los otros cuatro ficheros—, los artículos que una ley autonómica
+real modifica según su propio texto y según las notas del consolidado, y la
+anotación de la lectura sobre copias de los ficheros).
+
+**Garantías, con cualquier modelo:** nada se escribe sin pasar el control;
+toda cifra escrita está impresa en una cita literal del texto leído; el texto
+con el que se aplica es el mismo con el que se propuso; la marca de
+procedencia no se quita sola. **Lo que no garantiza:** que la cita sea la
+pertinente (una cifra puede estar en la ley y significar otra cosa), que no se
+haya omitido una condición que ni el lector ni el revisor vieron, ni que la
+cláusula de efectos citada sea la que rige; ni, en un grupo de cifras, que la
+regla siga teniendo la forma que la calculadora supone. Por eso existe la
+revisión humana y por eso la calculadora avisa mientras no se ha hecho. Detalle y pasos en
+[`docs/operacion.md`](operacion.md#5-recodificación-automática-de-parámetros).
+
+**Todos los módulos, en el mismo ciclo (`asistente/conocimiento/`).** Las cifras legales de los
+módulos del hogar (luz, caducidades, ayudas, hipoteca, suscripciones, correo), los pasajes del
+planificador y los que el módulo fiscal muestra en el código entran en el mismo mantenimiento que los
+ficheros de parámetros, con una sola biblioteca:
+
+- **Un modelo común** de grupo de datos legales (cifras, citas literales, cómo se escribe cada cifra en
+  su cita, fuente con su BOE, versión, `consolidado_a`, `consultado_el`, `verificado`, `en_vigor_desde`,
+  `condicionada_a`) y **un solo comprobador**: cada cita literal en el texto de la ley —con la misma
+  normalización que la verificación fiscal y en la versión de la que se leyó—, cada cifra dentro de su
+  cita y leída igual. `tax/verificacion.py` y el control del bucle delegan en él.
+- **Un registro**: cada módulo declara sus ficheros (`FICHEROS_LEGALES` en su fichero de comprobación) con
+  un adaptador a su formato, sin cambiar sus datos. Con eso, sin más cableado, `params-verify` los comprueba
+  cada semana contra el BOE (apartado `modulos` del informe), `params-check` compara la fecha de
+  actualización de cada ley con **la fecha de lectura que guarda el propio fichero del módulo** —igual que
+  los ficheros fiscales; ya no hace falta un estado entre ejecuciones, que GitHub Actions no conserva—,
+  `params-verify`/`params-autopilot` anotan la nueva lectura cuando todo sigue coincidiendo y ningún grupo
+  está en un artículo modificado (sin reformatear el fichero), y el PR automático de lecturas
+  (`params-lecturas`, `vigilancia.yml`) las incluye.
+- **Recodificación**: las reglas de `caducidades` recorren el bucle de punta a punta (un adaptador por
+  modelo, `caducidades:<Modelo>`; los casos del revisor pasan por la calculadora del módulo —DNI,
+  pasaporte, permiso, ITV, seguro, compra— y comparan fechas como AAAAMMDD), y **una propuesta sobre datos
+  de un módulo nunca se aplica sola**. Los demás ficheros declaran por qué los mantiene una persona: la
+  luz (peajes y cargos salen cada año de una resolución u orden nueva del BOE diario, no de la nueva
+  redacción de un artículo), las ayudas (cada grupo cita varias leyes y el evaluador no recibe un fichero
+  alternativo), la hipoteca (la calculadora de comisiones no recibe la normativa como parámetro; la serie
+  de índices la mantiene su propio lector), suscripciones y correo (sin importes que un caso pueda
+  contrastar) y los pasajes sin cifras del planificador y del módulo fiscal.
+
+### Deriva de formatos: que una fuente cambie de forma sin que nadie se entere
+
+Las leyes cambian y el BOE lo publica; lo que nadie publica es que una clave del JSON del sumario
+se ha renombrado o que el análisis jurídico ha cambiado de sitio en el XML. El lector devuelve
+entonces «nada», que es exactamente lo que devuelve un día sin novedades. `asistente/conocimiento/formatos.py`
+convierte ese silencio en un estado visible:
+
+- **Canarios deterministas.** Cada lector de un formato externo declara lo que da por supuesto
+  (un sumario de día laborable tiene disposiciones en la sección I; una página consolidada tiene
+  artículos con fecha de versión; entre quince disposiciones recientes alguna trae análisis…) y lo
+  comprueba en cada lectura real. Resultado por fuente: `ok`, `degradada` o `rota`, visible en
+  `ops doctor` y por los canales de aviso de siempre. Sin modelo.
+- **El formato es un dato.** Las claves, rutas XML, XPath, etiquetas y expresiones regulares de
+  los lectores del BOE, del TEAC (ficha y listado), de los boletines autonómicos, del CENDOJ, de la
+  DGT y las rutas que sigue el rastreador de la sede de la AEAT están en specs versionadas
+  (`asistente/conocimiento/data/formatos/*.json`). La versión 1 es el comportamiento de siempre, con
+  pruebas que lo comparan con el código anterior.
+- **También lo que no es un selector.** Los PDF de los códigos autonómicos (¿llega un PDF?, ¿Docling
+  saca texto con encabezados de artículo?, ¿cae el rendimiento?), la ingesta del corpus, las
+  ejecuciones de los rastreadores y la cabecera de las sentencias del Supremo informan con recuentos.
+  Del CENDOJ solo se observan las lecturas que el operador ya ha pedido: la vigilancia no descarga
+  nada de allí ni guarda el texto de ninguna sentencia, solo su esqueleto (marcado, rótulos y forma
+  de los valores), que es también lo único que vería el modelo.
+- **El calendario fiscal se vigila como dato que caduca.** `ops formatos check` comprueba su
+  coherencia (cada plazo existe este año y el siguiente, nada pasado se muestra como próximo, cada
+  modelo es conocido, lo no contrastado que se acerca) y `ops formatos probe` contrasta sus plazos con
+  citas literales de los artículos del BOE que los fijan. Un cambio de redacción se adapta con una
+  propuesta revisada por una persona; un cambio de plazo acaba en informe, porque el dato legal se
+  corrige a mano. La campaña de la Renta no tiene fuente legible por máquina en los datos.
+- **Diagnóstico agéntico.** Ante una fuente que falla, un modelo recibe los supuestos del lector,
+  la última muestra bien leída y la nueva, y debe decir qué ha cambiado citando literalmente la
+  muestra. Si propone una spec nueva, un **ensayo determinista** la ejecuta sobre las dos
+  muestras: debe reproducir exactamente lo que se extraía de la antigua y cumplir los canarios en
+  la nueva. Después, una **segunda llamada independiente** intenta refutar el diagnóstico. Lo que
+  no converge, o lo que exige cambiar código, acaba en un informe para un desarrollador con las
+  muestras adjuntas; la fuente sigue marcada. El agente nunca puede declarar sana una fuente.
+- **Nada se aplica solo** salvo con `FORMAT_AUTO_APPLY=true` (por defecto `false`):
+  `ops formatos apply|reject|confirm`.
+- **Documentos de usuarios.** Solo contadores por tipo de documento; nunca contenido. El análisis
+  de estructura es opcional (`FORMAT_DOCUMENT_SKELETONS`), trabaja sobre un esqueleto anónimo y
+  sus propuestas las revisa siempre una persona.
+
+```bash
+uv run python -m asistente.plataforma.cli.ops formatos check              # estado, sin modelo
+uv run python -m asistente.plataforma.cli.ops formatos probe              # lee ahora del BOE (y las leyes del calendario)
+uv run python -m asistente.plataforma.cli.ops formatos check --diagnose   # + diagnóstico si hay modelo
+uv run python -m asistente.plataforma.cli.ops formatos proposals
+```
+
+Inventario de fuentes y de lo que queda por instrumentar: `docs/formatos_inventario.md`. Operación
+paso a paso: `docs/operacion.md`, sección 6. **No se ha ejecutado contra un modelo real**: las
+pruebas usan un proveedor guionizado; ver «Antes de fiarte» en la guía de operación.
+
+### Autónomos, pérdidas y declaración conjunta
+
+- **Autónomos en estimación directa simplificada** — `calcular_rendimiento_actividad`
+  (ingresos menos gastos por categoría, 5 % de difícil justificación con tope y
+  reducciones del art. 32.2), `calcular_modelo_130` (pago fraccionado trimestral,
+  con la minoración del art. 110.3.c y la exoneración del 70 %) y
+  `calcular_modelo_303` (IVA trimestral en régimen general). Parámetros en
+  `autonomos_2026.json`, cada uno con su cita. No cubren módulos, estimación
+  directa normal, prorrata ni regímenes especiales de IVA, y no deciden si un
+  gasto es deducible.
+- **Compensación de pérdidas del ahorro (art. 49 LIRPF)** — un saldo negativo de
+  rendimientos o de ganancias se compensa con el otro hasta el 25 %; se aplican
+  los saldos negativos de años anteriores (`perdidas_patrimoniales_pendientes`,
+  `rendimientos_negativos_pendientes`) y el resultado dice cuánto queda para los
+  siguientes.
+- **Conjunta o individual** — `comparar_declaracion_conjunta` calcula las dos
+  declaraciones individuales y la conjunta de un matrimonio y dice cuál sale
+  mejor y por cuánto.
+
+### Otros impuestos
+
+Cada calculadora sigue el mismo patrón que la del IRPF: parámetros en JSON
+leídos del BOE, cada cifra con su cita literal y una autocomprobación que
+verifica que la cita sigue en la ley. El asesor las usa como herramientas.
+
+| Impuesto | Herramienta del asesor | Cubre | No cubre |
+|---|---|---|---|
+| Sociedades | `calcular_impuesto_sociedades`, `calcular_pago_fraccionado_sociedades`, `comparar_autonomo_vs_sociedad` | Sociedades pequeñas, ejercicios iniciados en 2025-2028: tipo general, escala de microempresas, reducida dimensión, nueva creación, reserva de capitalización, bases negativas | Reserva de nivelación, pago fraccionado por base con escala de microempresas, regímenes especiales |
+| Patrimonio | `calcular_patrimonio` | Estado y las 15 comunidades de régimen común (mínimo exento, escala, bonificación general), límite conjunto con el IRPF e Impuesto de Solidaridad de las Grandes Fortunas | Reglas de valoración, bonificaciones de bienes concretos, no residentes |
+| Sucesiones y Donaciones | `calcular_sucesiones_donaciones` | Ley estatal y la normativa de las 15 comunidades de régimen común (reducciones, tarifa, coeficientes y bonificaciones), por beneficiario | Acumulación de donaciones, usufructos, no residentes, y las reducciones autonómicas que dependen de datos que no se piden (figuran por nombre) |
+
+La comparación autónomo/sociedad solo suma impuestos sobre la renta: no
+incluye Seguridad Social ni costes de gestión, y no declara un ganador.
+
+### Cuentas, privacidad y coste
+
+- **Cuentas** (`AUTH_MODE=required`; por defecto `off`, modo de un solo
+  usuario): registro con correo y contraseña, sesiones, expedientes por
+  usuario, consentimientos, exportación y borrado de datos. Qué hace y qué no
+  cubre respecto al RGPD: [`docs/privacidad.md`](privacidad.md).
+- **Coste**: cada llamada al modelo se registra (`GET /usage`,
+  `python -m asistente.plataforma.cli.consumo resumen`). Límites opcionales:
+  `LLM_DAILY_BUDGET_USD`, `LLM_DAILY_BUDGET_USD_PER_USER`,
+  `LLM_MAX_CALLS_PER_QUESTION`; al agotarse, la API responde 429. Los límites
+  en dólares solo cuentan modelos con precio en `ops/data/precios_llm.json`.
+
+### App instalable (PWA) y notificaciones
+
+La interfaz web se instala como una aplicación en el móvil (Android, iPhone/iPad) y en el ordenador, y puede
+avisar en el dispositivo cuando hay algo urgente.
+
+- **Instalar.** En Android y en Chrome/Edge de escritorio aparece «Instala HaciendaGPT en este dispositivo»
+  con un botón «Instalar». En iPhone/iPad (Safari no tiene ese botón) la app explica cómo: Compartir →
+  «Añadir a pantalla de inicio». Manifiesto en `frontend/public/manifest.webmanifest`; iconos PNG/SVG en
+  `frontend/public/icons/`, generados con `node frontend/scripts/iconos.mjs` (sin dependencias).
+- **Sin conexión.** El *service worker* (`frontend/pwa/sw.js`, escrito a mano; `vite.config.ts` le añade en
+  cada build la lista de ficheros) guarda **solo los ficheros de la propia aplicación** (HTML, JS, CSS, iconos)
+  y abre la interfaz sin red. **Nunca guarda respuestas de la API**: no intercepta `/api/…` ni ninguna otra
+  petición que no sea uno de esos ficheros o la página de inicio, así que van siempre a la red (y la API
+  responde `Cache-Control: no-store`). Lo prueba un navegador real (ver más abajo).
+- **Versión nueva.** Cuando se despliega una versión, la app muestra «Hay una versión nueva» con
+  «Actualizar»: no se recarga sola (una pregunta a medio escribir no se pierde).
+- **Avisos en el móvil (Web Push)**, en «Más» → «Avisos en el móvil»: el usuario los activa en cada
+  dispositivo marcando una casilla que dice exactamente qué se envía (consentimiento propio, con historial y
+  versión del texto). El mensaje **no lleva datos personales**: solo «Tienes un aviso urgente: abre la app» (o
+  «Tienes un aviso nuevo…») y un enlace a `/?panel=avisos`; los detalles se ven dentro de la app, con sesión.
+  Va cifrado para el dispositivo (RFC 8291) y firmado con la clave VAPID del operador (RFC 8292), implementados
+  con `cryptography` en `asistente/plataforma/push/` y comprobados con el ejemplo del RFC 8291. Salen los avisos
+  `urgente` y `aviso` (los `info` se quedan en la app) por el canal `push` de `ops deliver`, y los urgentes
+  también en cuanto se escriben si se conecta `avisar_al_escribir` (ver «Pendiente» en `docs/despliegue.md`).
+  En **iPhone/iPad** solo funcionan con la app añadida a la pantalla de inicio (iOS/iPadOS 16.4 o posterior).
+- **Configurar**: `python -m asistente.plataforma.push.vapid` genera las claves; `PUSH_VAPID_PRIVATE_KEY` (secreto),
+  `PUSH_VAPID_SUBJECT` (`mailto:` o `https://`) y, opcional, `PUSH_VAPID_PUBLIC_KEY`. Sin ellas, la app dice
+  que el servicio no tiene avisos en el móvil. Hace falta HTTPS (o `localhost`). API: `GET /push/config`,
+  `POST /push/suscripciones`, `POST /push/suscripciones/baja`, `DELETE /push/consentimiento`,
+  `GET /push/suscripciones`, `POST /push/prueba`.
+- **Privacidad**: las suscripciones se borran con la cuenta; ver [`docs/privacidad.md`](privacidad.md)
+  («Avisos en el móvil»).
+
+**Interfaz por módulos.** Los paneles (Simulador, Autónomos, Optimizar, Planificar, Módulos, Avisos,
+Preferencias, Navegador, Avisos en el móvil, Tu expediente) se declaran en `frontend/src/paneles/registro.ts`:
+id, nombre, icono, cuándo se ofrece (módulo activo según `GET /modulos`, una *feature flag* o tener cuenta) y
+su código, que se descarga la primera vez que se abre (un fichero por panel). La barra superior muestra los
+principales y el resto va a «Más» (un menú en el ordenador, una hoja desde abajo en el móvil). El panel abierto
+está en la URL: `/?panel=optimizador` abre el optimizador, y el botón Atrás lo cierra. Para añadir un panel:
+un fichero en `frontend/src/paneles/` y una entrada en el registro. `VITE_PANELES_OCULTOS=id1,id2` oculta
+paneles en una build.
+
+Comprobado con Playwright (Chromium) contra `vite preview` y la API con `AUTH_MODE=required`: manifiesto e
+iconos válidos y app instalable según Chromium, *service worker* registrado, la interfaz abre sin conexión y
+la API no responde desde caché (la caché solo tiene ficheros de la app), enlaces `/?panel=…`, Atrás y Escape,
+foco y teclado en el menú «Más», tamaño iPhone 13 y escritorio, tema oscuro, el aviso «Hay una versión nueva»
+y la notificación genérica de un mensaje *push*. **No** se ha probado en un iPhone ni en un Android reales, ni
+con un servicio de *push* real (Google, Apple, Mozilla): desde esta máquina no se llega a ellos.
+
+### Evaluación del agente con consultas de la DGT
+
+Cada consulta vinculante de la DGT es un caso de prueba ya resuelto por un
+experto: hechos, pregunta y contestación. `eval_agent` las convierte en un
+conjunto de evaluación y mide el agente contra él:
+
+```bash
+# 1) Generar el conjunto (una llamada al LLM por consulta; descarta las no aptas)
+uv run python -m asistente.plataforma.cli.eval_agent build \
+  --dgt-dir data/html/<snapshot>/dgt-vinculantes --out eval_data/dgt_golden.jsonl \
+  --sample 200 --since-year 2022
+
+# 2) Evaluar el agente y, para comparar, la cadena /qa
+uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
+  --system agent --out reports/eval_agent.json
+uv run python -m asistente.plataforma.cli.eval_agent run --dataset eval_data/dgt_golden.jsonl \
+  --system qa --out reports/eval_qa.json
+```
+
+Al evaluar el agente, la consulta de origen de cada caso **se oculta del
+retrieval** (`--exclude-source`, por defecto), para que tenga que llegar a la
+conclusión desde la ley y otra doctrina y no leyendo la solución. Un juez LLM
+compara cada respuesta con la conclusión de la DGT (`correcta` / `parcial` /
+`incorrecta` / `sin_respuesta`). La métrica a vigilar es
+`wrong_when_confident`: respuestas presentadas como verificadas que
+contradicen a la DGT. Ambos comandos avisan de cuántas llamadas van a hacer y
+piden confirmación (`--yes` para omitirla); `--limit N` permite una prueba
+corta antes de la ejecución completa.
+
+### Evaluación continua
+
+Cada vez que el asistente se equivoca o el usuario lo corrige, el caso se
+convierte en un **candidato** de prueba; una persona lo revisa; y antes de
+cambiar un *prompt* o un modelo se ejecuta la evaluación y el cambio solo se
+aplica si **no la empeora** (`asistente/nucleo/evaluacion/`,
+`python -m asistente.plataforma.cli.evaluacion`). Diseño completo en
+[`docs/cerebro/aprendizaje.md`](cerebro/aprendizaje.md).
+
+- **Valoración en cada respuesta** (web): 👍 / 👎 y «Corregir» (cifra
+  equivocada, ámbito equivocado, dato pasado por alto, afirmación inventada,
+  suma de cifras que no se suman, algo que recuerda mal, otro; y, si quiere, la
+  respuesta o la cifra correctas). Un voto **no guarda la conversación**.
+  Guardarla exige marcar, en ESA respuesta, una casilla con su texto de
+  consentimiento (versión incluida). Se guarda dentro del expediente del
+  usuario —pregunta, respuesta, corrección, cómo la preparó el cerebro
+  (especialistas, su modo, sus cifras, la puerta de cifras; de la memoria, solo
+  identificadores), la variante y el modelo de cada propósito, y una
+  instantánea **solo de los datos que usó la respuesta**—; se exporta con
+  `/me/export`, se puede retirar (`DELETE /evaluacion/feedback/{id}`) y se borra
+  con la cuenta.
+- **Candidatos y cola de revisión.** Cada 👎 guardado se convierte en un caso
+  candidato **enmascarado**: nombre, correos, DNI/NIE, IBAN, tarjetas,
+  teléfonos, direcciones y códigos ocultos, **las cifras se conservan**, y la
+  lista de lo ocultado a la vista. Si el dueño activa «aprender de los fallos»
+  para un expediente (desactivado por defecto, revocable), también un 👎 sin la
+  casilla y las **señales débiles** de la auditoría: la puerta de cifras aún
+  descontenta con la respuesta final, afirmaciones que el verificador rechazó,
+  que el usuario vuelva a preguntar lo mismo o una abstención. La cola agrupa
+  duplicados y ordena por una prioridad explicada (categoría crítica, lo que
+  dijo el usuario, frecuencia, dinero en juego). La revisa el dueño en la web
+  («Revisión de casos») o quien opera (`casos cola`, `casos aceptar`,
+  `casos rechazar`); el candidato de otra persona responde 404.
+- **Aceptar** es describir el comportamiento esperado: especialistas que debe o
+  no consultar, citas, cifras que no debe dar, una cifra esperada que **siempre
+  sale de una calculadora**, abstenerse, preguntar antes, puerta de cifras
+  limpia. Se rechaza si algo aún parece personal, si una cifra no se puede
+  calcular o si la respuesta que se dio pasaría esas comprobaciones (control
+  negativo). Lo aceptado va a una **base privada** de casos reales
+  (`EVALUACION_CASOS_REALES_DB_PATH`), **nunca al repositorio**: se evalúa en
+  cada ejecución, sale en `/me/export` y se borra con el expediente o la
+  cuenta. `casos promover` ya no escribe en la suite.
+- **La suite** (`asistente/nucleo/evaluacion/casos/<categoría>/<id>.json`,
+  versionada) tiene 163 casos: cálculo fiscal, cifras de cada módulo, enrutado,
+  cruces de ámbitos, «no sumar», confirmación de lo que `actua`, borradores y
+  fuera de ámbito, y los del cerebro del hogar: intención (a quién consultar, en
+  paralelo o esperando, preguntar si es ambiguo), colaboración, procedencia de
+  cada cifra, memoria (con su origen, nunca la de otra persona, manda la
+  corrección), repaso y paso directo fiscal. Las expectativas son
+  deterministas: qué herramienta, especialista o plan, qué cifra —**calculada
+  volviendo a ejecutar la calculadora, nunca escrita a mano ni tomada de un
+  modelo**—, qué no debe decir, citas, modos, acciones pendientes, la puerta de
+  cifras. Opcionalmente, una rúbrica para un juez LLM que solo cuenta si cita
+  literalmente la respuesta. `importar-dgt` añade la categoría `dgt`.
+- **Ejecutar**: `validar` y `run --reproduccion` no usan modelo (los casos con
+  guion se reproducen por el agente, las herramientas y los especialistas
+  reales; los del cerebro, que requieren modelo, se omiten con el motivo);
+  `run [--config variante.json] [--motor cerebro]` usa un proveedor real y da
+  tasa por categoría, regresiones, coste y latencia.
+- **La puerta**: los *prompts* (también los del cerebro, el repaso y la memoria)
+  están versionados por su huella y una variante es lo que el asistente
+  ejecuta. `promote --config candidata.json` ejecuta la activa y la candidata
+  sobre la suite y los casos reales y escribe la candidata **solo si no
+  empeora**: al menos 30 casos comparables (si no, «evidencia insuficiente»),
+  ningún caso de una categoría crítica empeora, el intervalo del 95 %
+  (*bootstrap* pareado) de la diferencia media no baja de 0 y McNemar no
+  muestra más regresiones que mejoras, y coste y latencia dentro de presupuesto.
+  La decisión y su evidencia quedan en un informe (JSON y resumen).
+- **CI** (`.github/workflows/evaluacion.yml`): la parte sin modelo en cada PR;
+  la suite con modelo solo si existe el secreto `ANTHROPIC_API_KEY`; y, a
+  demanda, la reproducción de casos reales sobre casos **sintéticos** (nunca
+  datos de usuarios).
+
+**Nada de la parte con modelo se ha ejecutado contra un modelo real**: las
+pruebas usan proveedores guionizados. Detalle y procedimiento en
+[`docs/operacion.md`](operacion.md#evaluación-continua).
+
+---
+
+## 🛡️ Grounding gate (abstención por defecto)
+
+La cadena de respuesta envuelve la salida del LLM en un `AnswerEnvelope` con
+modo `cited`, `uncited` o `abstained`. El gate decide en función del contexto
+recuperado:
+
+- **`cited`**: al menos `GROUNDING_MIN_CITATIONS` documentos exponen `title` +
+  `source_url` citables. Se muestran las fuentes.
+- **`uncited`**: hay contexto pero sin metadata válida. Se marca como
+  orientativo.
+- **`abstained`**: no hay contexto, o el modelo emitió expresiones de duda
+  ("no estoy seguro", "no tengo información…"). Se sustituye por un mensaje
+  de abstención.
+
+Variables de entorno:
+
+```bash
+export GROUNDING_MIN_CITATIONS="1"
+export GROUNDING_SNIPPET_CHARS="240"
+```
+
+Uso programático:
+
+```python
+from asistente.conocimiento.llm.chain import answer_with_grounding, create_openai_chain
+
+chain = create_openai_chain(openai_api_key=...)
+envelope = answer_with_grounding(chain, query="¿Tengo que declarar IRPF?")
+print(envelope.mode, envelope.citations)
+```
+
+Endpoint API equivalente:
+
+```bash
+curl -X POST http://127.0.0.1:8000/qa \
+  -H 'Content-Type: application/json' \
+  -d '{"query": "¿Tengo que declarar IRPF si soy residente?"}'
+```
+
+---
+
+## 🧭 Gobernanza normativa (drift detector)
+
+Cada `DecisionRule` puede declarar las fuentes BOE/AEAT que la sustentan:
+
+```json
+"source_refs": [
+  {
+    "source_id": "BOE-A-2006-20764",
+    "locator": "boe://BOE-A-2006-20764",
+    "content_hash": "<sha256 al último review>",
+    "last_reviewed_at": "2024-12-01",
+    "notes": "Ley 35/2006 IRPF - residencia fiscal"
+  }
+]
+```
+
+El detector de drift recalcula los hashes contra el snapshot actual y emite un
+reporte con findings clasificados (`ok`, `changed`, `missing`, `unverified`):
+
+```bash
+uv run python -m asistente.plataforma.cli.drift_check \
+  --rules-dir rules \
+  --snapshot-root ./data \
+  --output reports/drift.json \
+  --fail-on-changed
+```
+
+Con `--fail-on-changed`, el comando sale con código `2` cuando hay drift
+crítico — ideal para gates de CI antes de promover un snapshot.
+
+Convención de locators: `scheme://relative/path`, donde el `scheme` es el
+nombre del crawler (`boe`, `aeat`, `teac`, …) y se mapea a `<snapshot-root>/<scheme>/<path>`.
+
+### 🔁 Refresh dinámico del corpus normativo (`boe_watch`)
+
+Las leyes fiscales **cambian**: BOE re-publica el texto consolidado bajo el mismo ID cada vez que el legislador enmienda algo. Para detectarlo sin re-descargar todo, [`boe_watch`](../asistente/plataforma/cli/boe_watch.py) consulta la **API pública de metadatos** del BOE y compara la `fecha_actualizacion` con un estado local.
+
+```bash
+# Comprobación periódica (segura para ejecutar a diario; no descarga si nada cambió):
+uv run python -m asistente.plataforma.cli.boe_watch
+
+# Mostrar qué pasaría sin tocar nada:
+uv run python -m asistente.plataforma.cli.boe_watch --dry-run
+
+# Forzar el chequeo de un subset:
+uv run python -m asistente.plataforma.cli.boe_watch --only BOE-A-2006-20764,BOE-A-2014-12328
+```
+
+El comando:
+- Lee `asistente/plataforma/cli/boe_seed_catalog.json` y filtra entries con `track: true` (default).
+- Para cada uno, llama a `https://www.boe.es/datosabiertos/api/legislacion-consolidada/id/<ID>/metadatos` (~1.4 KB JSON).
+- Compara `fecha_actualizacion` con el estado local en `data/html/_boe_watch_state.json`.
+- Si cambió: re-descarga el HTML consolidado a `data/html/<snapshot>/<subdir>/<ID>.html`.
+- Registra el cambio en `data/html/_boe_changes.jsonl` (audit log append-only).
+
+Cuando el script reporta `changed` o `new`, basta con relanzar el processor para que los nuevos vectores entren a FAISS:
+
+```bash
+uv run python -m asistente.plataforma.cli.processor --incremental --max-tokens 512 --num-workers 8
+```
+
+Marca `track: false` en el catálogo a documentos que **no** se consolidan (sentencias TC, RDs puntuales sin enmiendas). El watcher los ignora; `boe_seed` los descarga una sola vez.
+
+### Automatización con launchd (macOS) / cron (Linux)
+
+**macOS (LaunchAgent diario a las 06:00)**:
+
+```xml
+<!-- ~/Library/LaunchAgents/com.haciendagpt.boewatch.plist -->
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>com.haciendagpt.boewatch</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/USERNAME/Documents/Repositorios/hacienda-asesor/.venv/bin/python</string>
+        <string>-m</string>
+        <string>asistente.plataforma.cli.boe_watch</string>
+    </array>
+    <key>WorkingDirectory</key><string>/Users/USERNAME/Documents/Repositorios/hacienda-asesor</string>
+    <key>StartCalendarInterval</key>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>
+    <key>StandardOutPath</key><string>/tmp/hacienda-boe-watch.log</string>
+    <key>StandardErrorPath</key><string>/tmp/hacienda-boe-watch.err</string>
+</dict>
+</plist>
+```
+
+Activar: `launchctl load ~/Library/LaunchAgents/com.haciendagpt.boewatch.plist`.
+
+**Linux (crontab — diario a las 06:00)**:
+
+```cron
+0 6 * * * cd /path/to/hacienda-asesor && \
+    /path/to/hacienda-asesor/.venv/bin/python -m asistente.plataforma.cli.boe_watch >> /var/log/hacienda-boe-watch.log 2>&1
+```
+
+Para auto-encadenar `boe_watch` con `processor --incremental` solo cuando hay cambios:
+
+```bash
+#!/usr/bin/env bash
+set -e
+cd /path/to/hacienda-asesor
+out=$(.venv/bin/python -m asistente.plataforma.cli.boe_watch)
+echo "$out"
+if echo "$out" | grep -qE "changed=[^0]|new=[^0]"; then
+    .venv/bin/python -m asistente.plataforma.cli.processor \
+        --incremental --max-tokens 512 --num-workers 8
+fi
+```
+
+---
+
+## 📏 5) Evaluación
+
+```bash
+uv run python -m asistente.plataforma.cli.eval --output ./eval_results.json
+```
+
+La evaluación genera:
+
+- score global promedio
+- métricas por dimensión (`keyword_score`, `citation_score`, `grounding_score`)
+- detalle por pregunta
+
+### 🤖 Evaluación automatizada con RAGAS (juez LLM local)
+
+Para comparar dos configuraciones de retrieval (p. ej. reranker on/off, BM25 on/off, contextual embeddings on/off) usamos RAGAS con **juez local MLX** — no llama a OpenAI ni cuesta dinero por evaluación.
+
+```bash
+# 1) baseline (config actual)
+FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
+    uv run python scripts/ragas_eval.py \
+    --out /tmp/hacienda-run/ragas_baseline.json --label baseline
+
+# 2) variante (ej. desactivando reranker)
+RERANKER_ENABLED=false FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
+    uv run python scripts/ragas_eval.py \
+    --out /tmp/hacienda-run/ragas_no_reranker.json --label no-reranker
+
+# 3) comparar agregados (faith / answer_relevancy / context_precision)
+jq '.ragas.aggregate' /tmp/hacienda-run/ragas_baseline.json
+jq '.ragas.aggregate' /tmp/hacienda-run/ragas_no_reranker.json
+```
+
+Métricas reportadas (sin ground-truth, todas judge-LLM):
+
+| Métrica | Pregunta que responde |
+|---|---|
+| `faithfulness` | ¿La respuesta se apoya en los contextos recuperados? |
+| `answer_relevancy` | ¿La respuesta aborda la pregunta del usuario? |
+| `context_precision` | ¿Los chunks recuperados eran realmente útiles para responder? |
+
+Notas operativas:
+
+- El juez es **Qwen3-1.7B MLX bf16** (~3 GB). Más lento y menos preciso que `gpt-4o-mini` pero **gratis y consistente entre runs**.
+- Latencia: ~15–25 s por escenario (15 escenarios → ~5 min). Tras el primer escenario el modelo queda cacheado en RAM.
+- A esta escala (15 muestras) los scores son **ruidosos en términos absolutos**; úsalos como señal de **regresión** entre dos configs, no como número de referencia.
+- `--samples-only` salta el paso de juez — útil para iterar el chain sin re-juzgar cada vez.
+- Para ejecutar contra el corpus completo: `FAISS_INDEX_PATH=./data/faiss` (asegúrate de que el índice esté construido).
+
+---
+
+## 🔐 Notas de seguridad
+
+- Se usa `FAISS.load_local(..., allow_dangerous_deserialization=True)` por compatibilidad con índices serializados por LangChain/FAISS.
+- Para reducir riesgo, la carga está protegida por `FAISS_TRUSTED_INDEX`.
+- Si `FAISS_TRUSTED_INDEX` no está en `true`, la app rechaza cargar el índice.
+- Activa `FAISS_TRUSTED_INDEX=true` **solo** con índices creados por ti o por fuentes plenamente confiables.
+
+---
+
+## 🧪 Tests rápidos
+
+```bash
+uv run pytest -q
+```
+
+También puedes ejecutar suites concretas, por ejemplo:
+
+```bash
+uv run pytest -q tests/decision/test_rules_engine.py
+```
+
+---
+
+## 🛠️ Modo debug de CaseState
+
+Si activas `DECISION_DEBUG_MODE=true`, la UI muestra en un expander:
+
+- `facts` detectados
+- `facts` faltantes por turno
+
+El estado de cada sesión se persiste en SQLite usando `DECISION_STATE_DB_PATH`.
+
+---
+
+## 📌 Roadmap sugerido
+
+- Investigador profundo: búsqueda multi-fuente con verificación cruzada de cada afirmación.
+- Llevar las garantías del módulo fiscal (citas, puerta de cifras, vigencia) a todos los módulos.
+- Mejorar observabilidad y métricas de retrieval/grounding.
+- Consolidar pipeline CI para smoke tests de extremo a extremo.
+
+---
+
+## 🤝 Contribuir
+
+1. Crea una rama desde `main`.
+2. Realiza cambios pequeños y testeables.
+3. Ejecuta tests locales.
+4. Abre PR con contexto, alcance y riesgos.
+
+---
+
+## ⚠️ Descargo
+
+Este cerebro personal es una herramienta de apoyo. **No sustituye asesoramiento fiscal, financiero ni jurídico profesional.**
+

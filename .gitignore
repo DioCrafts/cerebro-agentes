@@ -170,3 +170,6 @@ dmypy.json
 Thumbs.db
 .idea/
 .vscode/
+
+# Entorno de Poetry antiguo (ya no se usa: uv)
+.venv-poetry/

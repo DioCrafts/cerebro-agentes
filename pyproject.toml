@@ -1,7 +1,7 @@
 [project]
 name = "asistente"
 version = "0.1.0"
-description = ""
+description = "Cerebro personal del hogar: agente con módulos especializados (fiscal, hipoteca, correo, navegador) que responde con fuentes citadas y verificables."
 authors = [
     { name = "Aldo Borrero", email = "82811+aldoborrero@users.noreply.github.com" },
 ]
@@ -12,7 +12,7 @@ dependencies = [
     "requests==2.34.2",
     "openai==2.37.0",
     "streamlit==1.57.0",
-    "langchain==1.3.1",
+    "langchain-classic>=1.0,<2",
     "langchain-community==0.4.1",
     "langchain-openai==1.2.1",
     # Ingestion + chunking: Docling (PDF/HTML layout- and table-aware parsing,
@@ -24,9 +24,7 @@ dependencies = [
     "tiktoken==0.13.0",
     "faiss-cpu==1.13.2",
     "cryptography==48.0.0",
-    "python-dotenv==1.2.2",
     "huggingface-hub==1.15.0",
-    "streamlit-extras==1.6.0",
     "tqdm==4.67.3",
     "click==8.4.0",
     "scrapy==2.15.2",
@@ -46,10 +44,11 @@ dependencies = [
     # never the real inference path.
     "mlx==0.31.2 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     "mlx-embeddings==0.1.0 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
+    # Local LLM (chat, reranker, contextualizer) on MLX; imported lazily.
+    "mlx-lm>=0.28 ; sys_platform == 'darwin' and platform_machine == 'arm64'",
     # BM25 sparse retriever for hybrid retrieval (RRF with dense FAISS).
     # Used via ``langchain_community.retrievers.BM25Retriever``.
     "rank-bm25>=0.2.2,<1.0",
-    "ptpython==3.0.32",
     "fastapi==0.118.0",
     "uvicorn==0.37.0",
     "pydantic==2.13.5",
@@ -67,6 +66,8 @@ dev = [
     "black==26.3.1",
     "ruff==0.15.8",
     "mypy==1.18.2",
+    "time-machine>=2.16",
+    "import-linter>=2.1",
 ]
 
 [build-system]
@@ -74,8 +75,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-# ``hacienda_gpt``: the compatibility package (old module paths as aliases), kept for one release.
-packages = ["asistente", "hacienda_gpt"]
+packages = ["asistente"]
 
 [tool.black]
 line-length = 120
@@ -100,11 +100,17 @@ ignore = ["E501", "UP042"]
 [tool.ruff.lint.isort]
 force-sort-within-sections = true
 no-lines-before = ["local-folder"]
-known-first-party = ["asistente", "hacienda_gpt"]
+known-first-party = ["asistente"]
 
 [tool.pytest.ini_options]
-addopts = "-ra"
+addopts = "-ra --strict-markers"
 testpaths = ["tests"]
+markers = [
+    "lento: tarda más de unos segundos (modelos, índices, corpus); fuera de `make test-rapido`",
+    "navegador: arranca Chromium con Playwright",
+    "normativa: comprueba datos contra el texto de la norma (fixtures del BOE)",
+    "en_vivo: sale a la red o a un proveedor real; nunca en la batería normal",
+]
 
 [tool.mypy]
 python_version = "3.13"
@@ -114,3 +120,18 @@ disallow_untyped_defs = false
 check_untyped_defs = true
 ignore_missing_imports = true
 exclude = ["^tests/"]
+
+[tool.importlinter]
+root_package = "asistente"
+
+# Contrato inicial, en modo informe (`make imports`, no rompe `make quality`): las capas de arriba pueden importar
+# las de abajo, nunca al revés. Hoy se incumple en muchos sitios (núcleo y conocimiento importan de plataforma y de
+# los ámbitos); el informe es la lista de deudas que hay que ir pagando antes de volverlo obligatorio.
+[[tool.importlinter.contracts]]
+name = "Capas de asistente"
+type = "layers"
+layers = [
+    "asistente.plataforma",
+    "asistente.ambitos : asistente.capacidades : asistente.investigador",
+    "asistente.nucleo : asistente.conocimiento",
+]

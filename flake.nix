@@ -1,5 +1,5 @@
 {
-  description = "nix-gpt";
+  description = "cerebro-agentes: entorno de desarrollo";
 
   nixConfig = {
     extra-substituters = ["https://nix-community.cachix.org"];
@@ -8,7 +8,7 @@
 
   inputs = {
     # packages
-    nixpkgs.url = "github:nixos/nixpkgs/23.05";
+    nixpkgs.url = "github:nixos/nixpkgs/nixos-26.05";
     nixpkgs-unstable.url = "github:nixos/nixpkgs/nixpkgs-unstable";
 
     # flake-parts
@@ -71,7 +71,7 @@
         inputs.treefmt-nix.flakeModule
         inputs.devshell.flakeModule
       ];
-      systems = ["x86_64-linux"];
+      systems = ["x86_64-linux" "aarch64-linux" "aarch64-darwin"];
       perSystem = {
         pkgs,
         pkgsUnstable,
@@ -93,12 +93,13 @@
 
         # shell
         devshells.default = {
-          name = "hacienda-gpt";
+          name = "cerebro-agentes";
           packages = with pkgsUnstable; [
             faiss
             httpie
             playwright
             uv
+            nodejs_22
             poppler
             python313
             stdenv
@@ -147,12 +148,8 @@
               value = pkgsUnstable.playwright-driver.browsers-chromium;
             }
             {
-              name = "PLAYWRIGHT_BROWSERS_BINARY_PATH";
-              value = "${pkgsUnstable.playwright-driver.browsers-chromium}/chromium-1076/chrome-linux/chrome";
-            }
-            {
               name = "PLAYWRIGHT_NODEJS_PATH";
-              value = getExe pkgsUnstable.nodejs_18;
+              value = getExe pkgsUnstable.nodejs_22;
             }
           ];
         };
