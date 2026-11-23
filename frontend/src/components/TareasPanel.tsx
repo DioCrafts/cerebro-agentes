@@ -1,30 +1,17 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // «Tareas»: the user's long-running tasks (renew the passport, prepare the tax return, change the electricity
 // tariff…). A list, and for each task the timeline of its steps with what each one produced, what it waits for
 // and the buttons the user decides with: start a proposal, mark a step done (with a date when it asks for one),
 // skip it, retry, pause, resume, cancel (with a reason, which is remembered). A pending ACTION is confirmed or
 // rejected with the same call as in «Módulos» (`onAccion`): this panel never runs anything outside the app.
 //
+// Migrated to the design system (docs/ui/sistema-de-diseno.md). It looks like GitHub's issues and Actions: the
+// list is an issue list (a StateLabel per task), a task is a workflow run (progress bar, one row per step with
+// its status icon) and its history a Timeline. The shell shows it as a page (registro.ts: presentacion "pagina").
+//
 // Self-contained: it reads and writes only through apiTareas.ts; the shell passes the case and the action
 // handler (paneles/tareas.tsx).
 
-import clsx from "clsx";
-import {
-  ArrowLeft,
-  Check,
-  CircleAlert,
-  CircleDashed,
-  Clock,
-  Hourglass,
-  ListChecks,
-  Loader2,
-  Pause,
-  Play,
-  RotateCcw,
-  SkipForward,
-  X,
-} from "lucide-react";
-import { type FormEvent, useEffect, useRef, useState } from "react";
+import { type FormEvent, useEffect, useId, useRef, useState } from "react";
 
 import { ApiError } from "../api";
 import {
@@ -47,10 +34,39 @@ import {
   type TareaDetalle,
 } from "../apiTareas";
 import { formatDate } from "../lib/presentation";
+import {
+  Blankslate,
+  Button,
+  Caja,
+  CargandoLista,
+  CounterLabel,
+  Flash,
+  FormControl,
+  Heading,
+  Link,
+  ProgressBar,
+  Select,
+  StateLabel,
+  TextInput,
+  Timeline,
+} from "../ui";
+import {
+  ArrowLeftIcon,
+  CheckCircleFillIcon,
+  CheckIcon,
+  CircleIcon,
+  ClockIcon,
+  HourglassIcon,
+  PlayIcon,
+  SkipIcon,
+  SyncIcon,
+  TasklistIcon,
+  XCircleFillIcon,
+  XIcon,
+} from "../ui/iconos";
 
 interface TareasPanelProps {
   open: boolean;
-  onClose: () => void;
   caseId: string | null;
   /** Confirm (true) or reject (false) a pending action: the same handler as «Módulos». */
   onAccion: (accionId: string, confirmar: boolean) => Promise<void>;
@@ -58,49 +74,53 @@ interface TareasPanelProps {
   onCambio?: () => void;
 }
 
-const BOTON = "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold disabled:opacity-50";
-const PRIMARIO = clsx(BOTON, "bg-primary text-white hover:bg-primary-hover");
-const SECUNDARIO = clsx(BOTON, "border border-line bg-surface text-ink hover:bg-line/40");
-const INPUT = "w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14px] text-ink outline-hidden focus:border-primary";
+type EstadoLabel = Parameters<typeof StateLabel>[0]["status"];
 
-const TONO: Record<EstadoTarea, string> = {
-  propuesta: "bg-primary-soft text-ink",
-  activa: "bg-cited-bg text-cited-fg",
-  pausada: "bg-line/60 text-ink-soft",
-  esperando_usuario: "bg-grounding-uncited-bg text-ink",
-  esperando_evento: "bg-line/60 text-ink-soft",
-  completada: "bg-cited-bg text-cited-fg",
-  cancelada: "bg-line/60 text-muted",
-  fallida: "bg-risk-high-bg text-risk-high-fg",
+/** Each task state as GitHub would show it: open (green), queued (amber), merged (done), closed… */
+const ESTADO_VISUAL: Record<EstadoTarea, EstadoLabel> = {
+  propuesta: "draft",
+  activa: "issueOpened",
+  pausada: "unavailable",
+  esperando_usuario: "pullQueued",
+  esperando_evento: "pullQueued",
+  completada: "pullMerged",
+  cancelada: "issueClosedNotPlanned",
+  fallida: "pullClosed",
 };
+
+const EN_MARCHA: EstadoTarea[] = ["activa", "esperando_usuario", "esperando_evento", "fallida"];
 
 function mensaje(err: unknown): string {
   return err instanceof ApiError ? err.message : "No se ha podido completar. Inténtalo de nuevo.";
 }
 
+function Estado({ estado }: { estado: EstadoTarea }) {
+  return (
+    <StateLabel status={ESTADO_VISUAL[estado]} size="small">
+      {ESTADO_TAREA[estado]}
+    </StateLabel>
+  );
+}
+
+/** The step's status icon, as in a workflow run. */
 function IconoPaso({ paso }: { paso: Paso }) {
-  const props = { size: 16, "aria-hidden": true as const };
   switch (paso.estado) {
     case "hecho":
-      return <Check {...props} className="text-cited-fg" />;
+      return <CheckCircleFillIcon className="text-fg-success" />;
     case "omitido":
-      return <SkipForward {...props} className="text-muted" />;
+      return <SkipIcon className="text-fg-muted" />;
     case "fallido":
-      return <CircleAlert {...props} className="text-risk-high-fg" />;
+      return <XCircleFillIcon className="text-fg-danger" />;
     case "esperando":
-      return paso.espera_actual?.motivo === "fecha" ? <Clock {...props} className="text-ink-soft" /> : <Hourglass {...props} className="text-ink" />;
+      return paso.espera_actual?.motivo === "fecha" ? <ClockIcon className="text-fg-attention" /> : <HourglassIcon className="text-fg-attention" />;
     case "cancelado":
-      return <X {...props} className="text-muted" />;
+      return <XIcon className="text-fg-muted" />;
     default:
-      return <CircleDashed {...props} className="text-muted" />;
+      return <CircleIcon className="text-fg-muted" />;
   }
 }
 
-function Insignia({ estado }: { estado: EstadoTarea }) {
-  return <span className={clsx("rounded-full px-2 py-0.5 text-[11.5px] font-semibold", TONO[estado])}>{ESTADO_TAREA[estado]}</span>;
-}
-
-function PasoTimeline({
+function PasoFila({
   paso,
   enMarcha,
   ocupado,
@@ -120,104 +140,339 @@ function PasoTimeline({
   const esperaUsuario = enMarcha && paso.estado === "esperando" && espera !== null;
   const esAccion = espera?.motivo === "accion" && espera.accion_id;
   const pideFecha = paso.tipo === "confirmacion_usuario" && esperaUsuario && !espera?.reintentar;
-  const idFecha = `fecha-${paso.id}`;
+  const reintentar = espera?.reintentar || espera?.motivo === "modulo";
   return (
-    <li className="relative border-l-2 border-line pb-4 pl-5 last:pb-0">
-      <span className="absolute left-[-9px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-paper">
+    <Caja.Fila aria-label={paso.titulo} className="flex gap-3">
+      <span className="mt-0.5 shrink-0">
         <IconoPaso paso={paso} />
       </span>
-      <div className="flex flex-wrap items-baseline gap-x-2">
-        <h4 className="text-[14px] font-semibold text-ink">{paso.titulo}</h4>
-        <span className="text-[12px] text-muted">
-          {ESTADO_PASO[paso.estado]}
-          {paso.opcional ? " · opcional" : ""}
-        </span>
-      </div>
-      {paso.descripcion && <p className="text-[13px] leading-snug text-ink-soft">{paso.descripcion}</p>}
-      {espera && paso.estado === "esperando" && (espera.detalle !== paso.descripcion || espera.hasta) && (
-        <p className="mt-1 rounded-lg bg-grounding-uncited-bg px-2.5 py-1.5 text-[12.5px] text-ink">
-          {espera.detalle || "Esperando."}
-          {espera.hasta ? ` (${espera.motivo === "fecha" ? "el" : "hasta el"} ${formatDate(espera.hasta)})` : ""}
-        </p>
-      )}
-      {paso.error && paso.estado !== "hecho" && (
-        <p role="alert" className="mt-1 text-[12.5px] font-semibold text-risk-high-fg">
-          {paso.error}
-        </p>
-      )}
-      {paso.resultado?.resumen && (
-        <details className="mt-1 text-[12.5px] text-ink-soft">
-          <summary className="cursor-pointer text-muted">Resultado</summary>
-          <p className="mt-1 whitespace-pre-wrap">{paso.resultado.resumen}</p>
-          {paso.resultado.fecha && <p className="mt-1">Fecha: {formatDate(paso.resultado.fecha)}</p>}
-          {paso.resultado.evidencias.length > 0 && (
-            <p className="mt-1 text-muted">Fuentes: {paso.resultado.evidencias.join(" · ")}</p>
-          )}
-        </details>
-      )}
-      {paso.resultado?.borrador && (
-        <details className="mt-1 text-[12.5px]" open>
-          <summary className="cursor-pointer font-semibold text-ink">Borrador (no se ha enviado nada)</summary>
-          <pre className="mt-1 whitespace-pre-wrap rounded-lg border border-line bg-surface p-2 font-sans text-ink">{paso.resultado.borrador}</pre>
-        </details>
-      )}
-      {esperaUsuario && (
-        <div className="mt-2 flex flex-wrap items-end gap-2">
-          {esAccion ? (
-            <>
-              <button type="button" className={PRIMARIO} disabled={ocupado} onClick={() => onAccion(true)}>
-                <Check size={14} aria-hidden /> Confirmar la acción
-              </button>
-              <button type="button" className={SECUNDARIO} disabled={ocupado} onClick={() => onAccion(false)}>
-                <X size={14} aria-hidden /> Rechazarla
-              </button>
-            </>
-          ) : (
-            <>
-              {pideFecha && (
-                <div className="flex flex-col gap-1">
-                  <label htmlFor={idFecha} className="text-[12px] text-muted">
-                    Fecha (opcional)
-                  </label>
-                  <input id={idFecha} type="date" className={clsx(INPUT, "py-1")} value={fecha} onChange={(e) => setFecha(e.target.value)} />
-                </div>
-              )}
-              <button type="button" className={PRIMARIO} disabled={ocupado} onClick={() => onConfirmar(fecha || null)}>
-                {espera?.reintentar || espera?.motivo === "modulo" ? (
-                  <>
-                    <RotateCcw size={14} aria-hidden /> Reintentar
-                  </>
-                ) : (
-                  <>
-                    <Check size={14} aria-hidden /> Hecho
-                  </>
-                )}
-              </button>
-            </>
-          )}
-          <button type="button" className={SECUNDARIO} disabled={ocupado} onClick={onOmitir}>
-            <SkipForward size={14} aria-hidden /> Saltar
-          </button>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex flex-wrap items-baseline gap-x-2">
+          <h4 className="m-0 text-sm font-semibold">{paso.titulo}</h4>
+          <span className="text-xs text-fg-muted">
+            {ESTADO_PASO[paso.estado]}
+            {paso.opcional ? " · opcional" : ""}
+          </span>
         </div>
-      )}
-    </li>
+        {paso.descripcion && <p className="m-0 text-fg-muted">{paso.descripcion}</p>}
+        {espera && paso.estado === "esperando" && (espera.detalle !== paso.descripcion || espera.hasta) && (
+          <Flash variant="warning">
+            {espera.detalle || "Esperando."}
+            {espera.hasta ? ` (${espera.motivo === "fecha" ? "el" : "hasta el"} ${formatDate(espera.hasta)})` : ""}
+          </Flash>
+        )}
+        {paso.error && paso.estado !== "hecho" && (
+          <Flash variant="danger" role="alert">
+            {paso.error}
+          </Flash>
+        )}
+        {paso.resultado?.resumen && (
+          <details className="text-xs">
+            <summary className="cursor-pointer text-fg-muted">Resultado</summary>
+            <p className="m-0 mt-1 whitespace-pre-wrap">{paso.resultado.resumen}</p>
+            {paso.resultado.fecha && <p className="m-0 mt-1">Fecha: {formatDate(paso.resultado.fecha)}</p>}
+            {paso.resultado.evidencias.length > 0 && <p className="m-0 mt-1 text-fg-muted">Fuentes: {paso.resultado.evidencias.join(" · ")}</p>}
+          </details>
+        )}
+        {paso.resultado?.borrador && (
+          <details className="text-xs" open>
+            <summary className="cursor-pointer font-semibold">Borrador (no se ha enviado nada)</summary>
+            <pre className="m-0 mt-1 whitespace-pre-wrap rounded-medium border border-border-default bg-canvas-muted p-2 font-sans">{paso.resultado.borrador}</pre>
+          </details>
+        )}
+        {esperaUsuario && (
+          <div className="mt-1 flex flex-wrap items-end gap-2">
+            {esAccion ? (
+              <>
+                <Button size="small" variant="primary" leadingVisual={CheckIcon} disabled={ocupado} onClick={() => onAccion(true)}>
+                  Confirmar la acción
+                </Button>
+                <Button size="small" leadingVisual={XIcon} disabled={ocupado} onClick={() => onAccion(false)}>
+                  Rechazarla
+                </Button>
+              </>
+            ) : (
+              <>
+                {pideFecha && (
+                  <FormControl>
+                    <FormControl.Label>Fecha (opcional)</FormControl.Label>
+                    <TextInput size="small" type="date" value={fecha} onChange={(e) => setFecha(e.target.value)} />
+                  </FormControl>
+                )}
+                <Button
+                  size="small"
+                  variant="primary"
+                  leadingVisual={reintentar ? SyncIcon : CheckIcon}
+                  disabled={ocupado}
+                  onClick={() => onConfirmar(fecha || null)}
+                >
+                  {reintentar ? "Reintentar" : "Hecho"}
+                </Button>
+              </>
+            )}
+            <Button size="small" variant="invisible" leadingVisual={SkipIcon} disabled={ocupado} onClick={onOmitir}>
+              Saltar
+            </Button>
+          </div>
+        )}
+      </div>
+    </Caja.Fila>
   );
 }
 
-export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: TareasPanelProps) {
+function Detalle({
+  detalle,
+  ocupado,
+  onVolver,
+  onOperar,
+  onCancelar,
+  onConfirmar,
+  onOmitir,
+  onAccion,
+}: {
+  detalle: TareaDetalle;
+  ocupado: boolean;
+  onVolver: () => void;
+  onOperar: (op: OperacionTarea) => void;
+  onCancelar: (motivo: string | null) => void;
+  onConfirmar: (paso: string, fecha: string | null) => void;
+  onOmitir: (paso: string) => void;
+  onAccion: (paso: Paso, confirmar: boolean) => void;
+}) {
+  const tarea = detalle.tarea;
+  const resumen = detalle.resumen;
+  const enMarcha = EN_MARCHA.includes(tarea.estado);
+  const [cancelando, setCancelando] = useState(false);
+  const [motivo, setMotivo] = useState("");
+  const tituloRef = useRef<HTMLHeadingElement | null>(null);
+  const idTitulo = useId();
+  const progreso = resumen.pasos_total > 0 ? Math.round((resumen.pasos_hechos / resumen.pasos_total) * 100) : 0;
+
+  useEffect(() => {
+    tituloRef.current?.focus();
+  }, [tarea.id]);
+
+  return (
+    <section aria-labelledby={idTitulo} className="flex flex-col gap-4">
+      <div>
+        <Button size="small" variant="invisible" leadingVisual={ArrowLeftIcon} onClick={onVolver}>
+          Todas las tareas
+        </Button>
+      </div>
+
+      <div className="flex flex-col gap-2 border-b border-border-default pb-4">
+        <Heading as="h3" variant="medium" id={idTitulo} ref={tituloRef} tabIndex={-1} className="outline-none">
+          {tarea.titulo} <span className="font-normal text-fg-muted">{resumen.ref}</span>
+        </Heading>
+        <div className="flex flex-wrap items-center gap-2 text-fg-muted">
+          <Estado estado={tarea.estado} />
+          <span>«{tarea.objetivo}»</span>
+        </div>
+        {detalle.avisos.map((aviso) => (
+          <Flash key={aviso}>{aviso}</Flash>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {tarea.estado === "propuesta" && (
+          <Button variant="primary" leadingVisual={PlayIcon} disabled={ocupado} onClick={() => onOperar("aceptar")}>
+            Empezar
+          </Button>
+        )}
+        {enMarcha && tarea.estado !== "fallida" && (
+          <Button disabled={ocupado} onClick={() => onOperar("pausar")}>
+            Pausar
+          </Button>
+        )}
+        {tarea.estado === "pausada" && (
+          <Button variant="primary" leadingVisual={PlayIcon} disabled={ocupado} onClick={() => onOperar("reanudar")}>
+            Reanudar
+          </Button>
+        )}
+        {tarea.estado === "fallida" && (
+          <Button variant="primary" leadingVisual={SyncIcon} disabled={ocupado} onClick={() => onOperar("reintentar")}>
+            Reintentar
+          </Button>
+        )}
+        {!["completada", "cancelada"].includes(tarea.estado) && (
+          <Button variant="danger" disabled={ocupado} onClick={() => setCancelando((v) => !v)} aria-expanded={cancelando}>
+            {tarea.estado === "propuesta" ? "Descartar" : "Cancelar"}
+          </Button>
+        )}
+        {ocupado && (
+          <span role="status" className="text-xs text-fg-muted">
+            Guardando…
+          </span>
+        )}
+      </div>
+
+      {cancelando && (
+        <Caja as="section" aria-label="Cancelar la tarea" variante="peligro">
+          <Caja.Cuerpo>
+            <form
+              className="flex flex-col gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setCancelando(false);
+                onCancelar(motivo.trim() || null);
+                setMotivo("");
+              }}
+            >
+              <FormControl>
+                <FormControl.Label>¿Por qué?</FormControl.Label>
+                <TextInput block maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+                <FormControl.Caption>Opcional: si lo dices, no te lo volveré a proponer mientras siga valiendo.</FormControl.Caption>
+              </FormControl>
+              <div>
+                <Button type="submit" variant="danger" disabled={ocupado}>
+                  Confirmar la cancelación
+                </Button>
+              </div>
+            </form>
+          </Caja.Cuerpo>
+        </Caja>
+      )}
+
+      <Caja as="section" aria-label="Pasos">
+        <Caja.Cabecera
+          titulo="Pasos"
+          nivel={4}
+          acciones={
+            <span className="text-xs text-fg-muted">
+              {resumen.pasos_hechos} de {resumen.pasos_total}
+            </span>
+          }
+        />
+        <div className="px-4 pt-3">
+          <ProgressBar progress={progreso} aria-label={`${resumen.pasos_hechos} de ${resumen.pasos_total} pasos hechos`} barSize="small" />
+          <p className="m-0 mt-2 text-xs text-fg-muted">
+            {tarea.proxima_revision && tarea.estado === "esperando_evento" ? `Próxima revisión: ${formatDate(tarea.proxima_revision)}` : ""}
+            {tarea.proxima_revision && tarea.estado === "esperando_evento" && tarea.vence ? " · " : ""}
+            {tarea.vence ? `Plazo: ${formatDate(tarea.vence)}` : ""}
+          </p>
+        </div>
+        <Caja.Lista>
+          {tarea.pasos.map((paso) => (
+            <PasoFila
+              key={paso.id}
+              paso={paso}
+              enMarcha={enMarcha}
+              ocupado={ocupado}
+              onConfirmar={(fecha) => onConfirmar(paso.id, fecha)}
+              onOmitir={() => onOmitir(paso.id)}
+              onAccion={(confirmar) => onAccion(paso, confirmar)}
+            />
+          ))}
+        </Caja.Lista>
+      </Caja>
+
+      {detalle.historial.length > 0 && (
+        <section aria-label="Historial">
+          <Heading as="h4" variant="small" className="mb-2">
+            Historial
+          </Heading>
+          <Timeline clipSidebar>
+            {detalle.historial.map((e) => (
+              <Timeline.Item key={e.seq} condensed>
+                <Timeline.Badge>
+                  <TasklistIcon />
+                </Timeline.Badge>
+                <Timeline.Body>
+                  {EVENTO_HISTORIAL[e.evento] ?? e.evento}
+                  {e.paso_id ? ` (${tarea.pasos.find((p) => p.id === e.paso_id)?.titulo ?? e.paso_id})` : ""}
+                  <span className="text-fg-muted"> · {formatDate(e.momento)}</span>
+                </Timeline.Body>
+              </Timeline.Item>
+            ))}
+          </Timeline>
+        </section>
+      )}
+    </section>
+  );
+}
+
+function NuevaTarea({ plantillas, ocupado, onCrear }: { plantillas: Plantilla[]; ocupado: boolean; onCrear: (plantilla: string, objetivo: string) => void }) {
+  const [plantilla, setPlantilla] = useState("");
+  const [objetivo, setObjetivo] = useState("");
+  const elegida = plantillas.find((p) => p.id === plantilla);
+  const valido = Boolean(plantilla) && objetivo.trim().length >= 3;
+  function enviar(event: FormEvent) {
+    event.preventDefault();
+    if (!valido) return;
+    onCrear(plantilla, objetivo.trim());
+    setObjetivo("");
+  }
+  return (
+    <Caja as="section" aria-label="Nueva tarea">
+      <Caja.Cabecera titulo="Nueva tarea" />
+      <Caja.Cuerpo>
+        <form className="flex flex-col gap-3" onSubmit={enviar}>
+          <FormControl>
+            <FormControl.Label>¿Qué quieres conseguir?</FormControl.Label>
+            <Select block value={plantilla} onChange={(e) => setPlantilla(e.target.value)}>
+              <Select.Option value="">Elige…</Select.Option>
+              {plantillas.map((p) => (
+                <Select.Option key={p.id} value={p.id}>
+                  {p.titulo}
+                </Select.Option>
+              ))}
+            </Select>
+            {elegida && <FormControl.Caption>{elegida.descripcion}</FormControl.Caption>}
+          </FormControl>
+          <FormControl>
+            <FormControl.Label>Dilo con tus palabras</FormControl.Label>
+            <TextInput
+              block
+              maxLength={1000}
+              placeholder="Por ejemplo: renovar el pasaporte antes del viaje de marzo"
+              value={objetivo}
+              onChange={(e) => setObjetivo(e.target.value)}
+            />
+            <FormControl.Caption>Verás los pasos antes de empezar. También puedes pedírselo al asistente en el chat.</FormControl.Caption>
+          </FormControl>
+          <div>
+            <Button type="submit" variant="primary" disabled={ocupado || !valido}>
+              Ver el plan
+            </Button>
+          </div>
+        </form>
+      </Caja.Cuerpo>
+    </Caja>
+  );
+}
+
+function ListaTareas({ tareas, onAbrir }: { tareas: ResumenTarea[]; onAbrir: (id: string) => void }) {
+  return (
+    <Caja as="section" aria-label="Tus tareas">
+      <Caja.Cabecera titulo="Tus tareas" acciones={<CounterLabel>{tareas.length}</CounterLabel>} />
+      <Caja.Lista>
+        {tareas.map((t) => (
+          <Caja.Fila key={t.id} className="flex flex-col gap-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <Estado estado={t.estado} />
+              <Link as="button" type="button" className="text-left font-semibold" onClick={() => onAbrir(t.id)}>
+                {t.titulo}
+              </Link>
+            </div>
+            <span className="text-xs text-fg-muted">
+              {t.ref} · {t.pasos_hechos} de {t.pasos_total} pasos
+              {t.proxima_revision && t.estado === "esperando_evento" ? ` · revisión ${formatDate(t.proxima_revision)}` : ""}
+            </span>
+            {t.esperando.length > 0 && <span className="text-xs">Espera: {t.esperando.map((e) => e.titulo).join(", ")}</span>}
+          </Caja.Fila>
+        ))}
+      </Caja.Lista>
+    </Caja>
+  );
+}
+
+export function TareasPanel({ open, caseId, onAccion, onCambio }: TareasPanelProps) {
   const [tareas, setTareas] = useState<ResumenTarea[] | null>(null);
   const [plantillas, setPlantillas] = useState<Plantilla[]>([]);
   const [detalle, setDetalle] = useState<TareaDetalle | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
-  const [plantilla, setPlantilla] = useState("");
-  const [objetivo, setObjetivo] = useState("");
-  const [motivo, setMotivo] = useState("");
-  const [cancelando, setCancelando] = useState(false);
-  const tituloRef = useRef<HTMLHeadingElement | null>(null);
-
   const [tick, setTick] = useState(0);
-  const tareaAbierta = detalle?.tarea.id ?? null;
 
   useEffect(() => {
     if (!open || !caseId) return;
@@ -235,19 +490,6 @@ export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: Tarea
     return () => control.abort();
   }, [open, caseId, tick]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
-
-  useEffect(() => {
-    if (tareaAbierta) tituloRef.current?.focus();
-  }, [tareaAbierta]);
-
-  if (!open) return null;
-
   async function ejecutar(accion: () => Promise<TareaDetalle | void>) {
     setOcupado(true);
     setError(null);
@@ -263,231 +505,64 @@ export function TareasPanel({ open, onClose, caseId, onAccion, onCambio }: Tarea
     }
   }
 
-  function abrir(id: string) {
-    void ejecutar(() => getTarea(id));
+  if (!caseId) {
+    return (
+      <Blankslate>
+        <Blankslate.Visual>
+          <TasklistIcon size={24} />
+        </Blankslate.Visual>
+        <Blankslate.Heading as="h3">Aún no hay expediente</Blankslate.Heading>
+        <Blankslate.Description>Las tareas se guardan en tu expediente: empieza una conversación para tener uno.</Blankslate.Description>
+      </Blankslate>
+    );
   }
-
-  function crear(event: FormEvent) {
-    event.preventDefault();
-    if (!caseId || !plantilla || objetivo.trim().length < 3) return;
-    void ejecutar(async () => {
-      const creada = await crearTarea({ case_id: caseId, plantilla, objetivo: objetivo.trim() });
-      setObjetivo("");
-      return creada;
-    });
-  }
-
-  function operar(op: OperacionTarea) {
-    if (detalle) void ejecutar(() => operarTarea(detalle.tarea.id, op));
-  }
-
-  const tarea = detalle?.tarea;
-  const enMarcha = tarea ? ["activa", "esperando_usuario", "esperando_evento", "fallida"].includes(tarea.estado) : false;
 
   return (
-    <div className="fixed inset-0 z-40 flex justify-end">
-      <button type="button" aria-label="Cerrar las tareas" className="absolute inset-0 bg-ink/40" onClick={onClose} />
-      <aside role="dialog" aria-modal="true" aria-labelledby="tareas-titulo" className="relative flex h-full w-full max-w-[560px] flex-col border-l border-line bg-paper shadow-pop">
-        <header className="flex items-center justify-between border-b border-line px-5 py-4">
-          <div className="min-w-0">
-            <h2 id="tareas-titulo" className="flex items-center gap-2 font-serif text-[19px] font-bold text-ink">
-              <ListChecks size={18} aria-hidden /> Tareas
-            </h2>
-            <p className="text-[12.5px] text-muted">Objetivos de varios pasos y días; nada se hace fuera de la app sin tu confirmación</p>
-          </div>
-          <button type="button" onClick={onClose} aria-label="Cerrar" className="rounded-lg p-2 text-muted hover:bg-line/60 hover:text-ink">
-            <X size={18} />
-          </button>
-        </header>
-
-        <div className="flex-1 space-y-4 overflow-y-auto px-5 py-5 text-[13.5px] leading-relaxed text-ink-soft">
-          {error && (
-            <p role="alert" className="rounded-lg bg-risk-high-bg px-3 py-2 text-risk-high-fg">
-              {error}
-            </p>
-          )}
-          {!caseId ? (
-            <p>Las tareas se guardan en tu expediente: empieza una conversación para tener uno.</p>
-          ) : tarea && detalle ? (
-            <section aria-labelledby="tarea-titulo" className="space-y-3">
-              <button type="button" className="inline-flex items-center gap-1 text-[13px] text-muted hover:text-ink" onClick={() => setDetalle(null)}>
-                <ArrowLeft size={14} aria-hidden /> Todas las tareas
-              </button>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h3 id="tarea-titulo" ref={tituloRef} tabIndex={-1} className="font-serif text-[17px] font-bold text-ink outline-hidden">
-                    {tarea.titulo}
-                  </h3>
-                  <Insignia estado={tarea.estado} />
-                  <span className="text-[12px] text-muted">{detalle.resumen.ref}</span>
-                </div>
-                <p className="mt-1">«{tarea.objetivo}»</p>
-                <p className="text-[12px] text-muted">
-                  {detalle.resumen.pasos_hechos} de {detalle.resumen.pasos_total} pasos
-                  {tarea.proxima_revision && tarea.estado === "esperando_evento" ? ` · próxima revisión: ${formatDate(tarea.proxima_revision)}` : ""}
-                  {tarea.vence ? ` · plazo: ${formatDate(tarea.vence)}` : ""}
-                </p>
-                {detalle.avisos.map((aviso) => (
-                  <p key={aviso} className="mt-1 text-[12.5px] text-ink">
-                    {aviso}
-                  </p>
-                ))}
-              </div>
-
-              <div className="flex flex-wrap gap-2">
-                {tarea.estado === "propuesta" && (
-                  <button type="button" className={PRIMARIO} disabled={ocupado} onClick={() => operar("aceptar")}>
-                    <Play size={14} aria-hidden /> Empezar
-                  </button>
-                )}
-                {enMarcha && tarea.estado !== "fallida" && (
-                  <button type="button" className={SECUNDARIO} disabled={ocupado} onClick={() => operar("pausar")}>
-                    <Pause size={14} aria-hidden /> Pausar
-                  </button>
-                )}
-                {tarea.estado === "pausada" && (
-                  <button type="button" className={PRIMARIO} disabled={ocupado} onClick={() => operar("reanudar")}>
-                    <Play size={14} aria-hidden /> Reanudar
-                  </button>
-                )}
-                {tarea.estado === "fallida" && (
-                  <button type="button" className={PRIMARIO} disabled={ocupado} onClick={() => operar("reintentar")}>
-                    <RotateCcw size={14} aria-hidden /> Reintentar
-                  </button>
-                )}
-                {!["completada", "cancelada"].includes(tarea.estado) && (
-                  <button type="button" className={SECUNDARIO} disabled={ocupado} onClick={() => setCancelando((v) => !v)} aria-expanded={cancelando}>
-                    <X size={14} aria-hidden /> {tarea.estado === "propuesta" ? "Descartar" : "Cancelar"}
-                  </button>
-                )}
-                {ocupado && <Loader2 size={16} className="animate-spin text-muted" aria-label="Guardando" />}
-              </div>
-              {cancelando && (
-                <form
-                  className="space-y-2 rounded-xl border border-line bg-surface px-3 py-3"
-                  onSubmit={(e) => {
-                    e.preventDefault();
-                    setCancelando(false);
-                    void ejecutar(() => cancelarTarea(tarea.id, motivo.trim() || null));
-                    setMotivo("");
-                  }}
-                >
-                  <label htmlFor="tarea-motivo" className="text-[13px] font-semibold text-ink">
-                    ¿Por qué? (opcional: si lo dices, no te lo volveré a proponer mientras siga valiendo)
-                  </label>
-                  <input id="tarea-motivo" className={INPUT} maxLength={500} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
-                  <button type="submit" className={PRIMARIO} disabled={ocupado}>
-                    Confirmar la cancelación
-                  </button>
-                </form>
-              )}
-
-              <ol aria-label="Pasos" className="ml-2 mt-2">
-                {tarea.pasos.map((paso) => (
-                  <PasoTimeline
-                    key={paso.id}
-                    paso={paso}
-                    enMarcha={enMarcha}
-                    ocupado={ocupado}
-                    onConfirmar={(fecha) => void ejecutar(() => confirmarPaso(tarea.id, paso.id, { fecha }))}
-                    onOmitir={() => void ejecutar(() => omitirPaso(tarea.id, paso.id))}
-                    onAccion={(confirmar) =>
-                      void ejecutar(async () => {
-                        const id = paso.espera_actual?.accion_id;
-                        if (id) await onAccion(id, confirmar);
-                        return operarTarea(tarea.id, "avanzar");
-                      })
-                    }
-                  />
-                ))}
-              </ol>
-
-              <details className="text-[12.5px]">
-                <summary className="cursor-pointer text-muted">Historial</summary>
-                <ol className="mt-1 space-y-0.5">
-                  {detalle.historial.map((e) => (
-                    <li key={e.seq}>
-                      {formatDate(e.momento)} — {EVENTO_HISTORIAL[e.evento] ?? e.evento}
-                      {e.paso_id ? ` (${tarea.pasos.find((p) => p.id === e.paso_id)?.titulo ?? e.paso_id})` : ""}
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            </section>
+    <div className="flex flex-col gap-4">
+      {error && (
+        <Flash variant="danger" role="alert">
+          {error}
+        </Flash>
+      )}
+      {detalle ? (
+        <Detalle
+          detalle={detalle}
+          ocupado={ocupado}
+          onVolver={() => setDetalle(null)}
+          onOperar={(op) => void ejecutar(() => operarTarea(detalle.tarea.id, op))}
+          onCancelar={(motivo) => void ejecutar(() => cancelarTarea(detalle.tarea.id, motivo))}
+          onConfirmar={(paso, fecha) => void ejecutar(() => confirmarPaso(detalle.tarea.id, paso, { fecha }))}
+          onOmitir={(paso) => void ejecutar(() => omitirPaso(detalle.tarea.id, paso))}
+          onAccion={(paso, confirmar) =>
+            void ejecutar(async () => {
+              const id = paso.espera_actual?.accion_id;
+              if (id) await onAccion(id, confirmar);
+              return operarTarea(detalle.tarea.id, "avanzar");
+            })
+          }
+        />
+      ) : (
+        <>
+          <NuevaTarea
+            plantillas={plantillas}
+            ocupado={ocupado}
+            onCrear={(plantilla, objetivo) => void ejecutar(() => crearTarea({ case_id: caseId, plantilla, objetivo }))}
+          />
+          {tareas === null ? (
+            !error && <CargandoLista filas={2} etiqueta="Cargando tus tareas" />
+          ) : tareas.length === 0 ? (
+            <Blankslate narrow>
+              <Blankslate.Visual>
+                <TasklistIcon size={24} />
+              </Blankslate.Visual>
+              <Blankslate.Heading as="h3">Aún no tienes tareas</Blankslate.Heading>
+              <Blankslate.Description>Elige arriba qué quieres conseguir y verás el plan antes de empezar.</Blankslate.Description>
+            </Blankslate>
           ) : (
-            <>
-              <section aria-labelledby="tareas-nueva" className="rounded-xl border border-line bg-surface px-4 py-3.5">
-                <h3 id="tareas-nueva" className="mb-2 font-serif text-[15.5px] font-bold text-ink">
-                  Nueva tarea
-                </h3>
-                <form className="space-y-2" onSubmit={crear}>
-                  <label htmlFor="tareas-plantilla" className="text-[13px] font-semibold text-ink">
-                    ¿Qué quieres conseguir?
-                  </label>
-                  <select id="tareas-plantilla" className={INPUT} value={plantilla} onChange={(e) => setPlantilla(e.target.value)}>
-                    <option value="">Elige…</option>
-                    {plantillas.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.titulo}
-                      </option>
-                    ))}
-                  </select>
-                  {plantilla && <p className="text-[12.5px]">{plantillas.find((p) => p.id === plantilla)?.descripcion}</p>}
-                  <label htmlFor="tareas-objetivo" className="text-[13px] font-semibold text-ink">
-                    Dilo con tus palabras
-                  </label>
-                  <input
-                    id="tareas-objetivo"
-                    className={INPUT}
-                    maxLength={1000}
-                    placeholder="Por ejemplo: renovar el pasaporte antes del viaje de marzo"
-                    value={objetivo}
-                    onChange={(e) => setObjetivo(e.target.value)}
-                  />
-                  <button type="submit" className={PRIMARIO} disabled={ocupado || !plantilla || objetivo.trim().length < 3}>
-                    Ver el plan
-                  </button>
-                  <p className="text-[12px] text-muted">Verás los pasos antes de empezar. También puedes pedírselo al asistente en el chat.</p>
-                </form>
-              </section>
-
-              {tareas === null ? (
-                !error && (
-                  <p role="status" className="flex items-center gap-2">
-                    <Loader2 size={14} className="animate-spin" aria-hidden /> Cargando…
-                  </p>
-                )
-              ) : tareas.length === 0 ? (
-                <p>Aún no tienes tareas.</p>
-              ) : (
-                <ul aria-label="Tus tareas" className="space-y-2">
-                  {tareas.map((t) => (
-                    <li key={t.id}>
-                      <button
-                        type="button"
-                        onClick={() => abrir(t.id)}
-                        className="w-full rounded-xl border border-line bg-surface px-4 py-3 text-left hover:border-primary"
-                      >
-                        <span className="flex flex-wrap items-center gap-2">
-                          <span className="font-semibold text-ink">{t.titulo}</span>
-                          <Insignia estado={t.estado} />
-                        </span>
-                        <span className="block text-[12.5px] text-muted">
-                          {t.ref} · {t.pasos_hechos}/{t.pasos_total} pasos
-                          {t.proxima_revision && t.estado === "esperando_evento" ? ` · revisión ${formatDate(t.proxima_revision)}` : ""}
-                        </span>
-                        {t.esperando.length > 0 && (
-                          <span className="mt-1 block text-[12.5px] text-ink">Espera: {t.esperando.map((e) => e.titulo).join(", ")}</span>
-                        )}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </>
+            <ListaTareas tareas={tareas} onAbrir={(id) => void ejecutar(() => getTarea(id))} />
           )}
-        </div>
-      </aside>
+        </>
+      )}
     </div>
   );
 }

@@ -4,6 +4,6 @@
 import { RevisionCasosPanel } from "../components/RevisionCasosPanel";
 import type { PropsPanel } from "./tipos";
 
-export default function PanelRevision({ ctx, open, onClose }: PropsPanel) {
-  return <RevisionCasosPanel open={open} onClose={onClose} caseId={ctx.caso.id} />;
+export default function PanelRevision({ ctx, open }: PropsPanel) {
+  return <RevisionCasosPanel open={open} caseId={ctx.caso.id} />;
 }

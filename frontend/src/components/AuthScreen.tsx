@@ -1,14 +1,16 @@
-/* ui-legado: pendiente de migrar a src/ui (docs/ui/sistema-de-diseno.md) */
 // Login / register screen, shown only when the backend requires an account.
+//
+// Migrated to the design system (docs/ui/sistema-de-diseno.md): it copies the layout of GitHub's sign-in page
+// (a narrow centred column: the app's monogram, the heading, the form in a muted box and, below, a second box
+// to switch between signing in and creating an account), with the app's name and colours.
 
-import { LogIn, UserPlus } from "lucide-react";
-import clsx from "clsx";
 import { type FormEvent, useState } from "react";
 
 import type { AuthConfig, SessionResponse } from "../api";
 import { ApiError, login, register } from "../api";
+import { Button, Caja, Checkbox, CheckboxGroup, Flash, FormControl, Heading, Link, TextInput } from "../ui";
 import { AuthPrivacyNotice } from "./AuthPrivacyNotice";
-import { BrandHeader } from "./Brand";
+import { Monogram } from "./Brand";
 
 interface AuthScreenProps {
   config: AuthConfig;
@@ -16,9 +18,6 @@ interface AuthScreenProps {
   notice: string | null;
   onSignedIn: (session: SessionResponse) => void;
 }
-
-const INPUT =
-  "mt-1 w-full rounded-lg border border-line bg-surface px-3 py-2 text-[14.5px] text-ink outline-hidden transition focus:border-primary";
 
 function failure(err: unknown): string {
   if (err instanceof ApiError) return err.message;
@@ -78,137 +77,101 @@ export function AuthScreen({ config, notice, onSignedIn }: AuthScreenProps) {
   }
 
   return (
-    <div className="flex min-h-dvh w-screen items-center justify-center bg-paper px-4 py-8">
-      <main className="w-full max-w-[420px]">
-        <div className="flex justify-center">
-          <BrandHeader />
+    <div className="flex min-h-dvh w-full justify-center bg-canvas-default px-4 py-10">
+      <main className="flex w-full max-w-[340px] flex-col gap-4">
+        <div className="flex flex-col items-center gap-4">
+          <Monogram size={48} />
+          <Heading as="h1" variant="medium" className="text-center">
+            {registering ? "Crea tu cuenta de HaciendaGPT" : "Inicia sesión en HaciendaGPT"}
+          </Heading>
         </div>
-        <div className="mt-5 rounded-xl border border-line bg-surface px-5 py-5 shadow-card">
-          <div role="tablist" aria-label="Acceso" className="flex gap-1 rounded-lg bg-paper p-1">
-            {(["login", "register"] as const).map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                role="tab"
-                aria-selected={mode === tab}
-                onClick={() => switchMode(tab)}
-                className={clsx(
-                  "flex-1 rounded-md px-3 py-1.5 text-[13.5px] font-semibold transition",
-                  mode === tab ? "bg-surface text-ink shadow-card" : "text-muted hover:text-ink-soft",
-                )}
-              >
-                {tab === "login" ? "Iniciar sesión" : "Crear cuenta"}
-              </button>
-            ))}
-          </div>
 
-          {notice && !error && (
-            <p role="status" className="mt-4 rounded-lg border border-line bg-paper px-3 py-2 text-[13px] text-ink-soft">
-              {notice}
-            </p>
-          )}
+        {notice && !error && (
+          <Flash role="status" className="text-center">
+            {notice}
+          </Flash>
+        )}
+        {error && (
+          <Flash variant="danger" role="alert">
+            {error}
+          </Flash>
+        )}
 
-          <form onSubmit={(event) => void handleSubmit(event)} className="mt-4 space-y-3.5" noValidate>
-            <label className="block text-[13px] font-semibold text-ink-soft">
-              Correo electrónico
-              <input
-                type="email"
-                name="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={INPUT}
-              />
-            </label>
-            <label className="block text-[13px] font-semibold text-ink-soft">
-              Contraseña
-              <input
+        <div className="rounded-medium border border-border-default bg-canvas-muted p-4">
+          <form onSubmit={(event) => void handleSubmit(event)} className="flex flex-col gap-4" noValidate>
+            <FormControl required>
+              <FormControl.Label>Correo electrónico</FormControl.Label>
+              <TextInput block type="email" name="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            </FormControl>
+            <FormControl required>
+              <FormControl.Label>Contraseña</FormControl.Label>
+              <TextInput
+                block
                 type="password"
                 name="password"
                 autoComplete={registering ? "new-password" : "current-password"}
-                required
                 minLength={registering ? minLength : undefined}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className={INPUT}
               />
-              {registering && <span className="mt-1 block text-[12px] font-normal text-muted">Al menos {minLength} caracteres.</span>}
-            </label>
+              {registering && <FormControl.Caption>Al menos {minLength} caracteres.</FormControl.Caption>}
+            </FormControl>
 
             {registering && (
-              <fieldset className="space-y-2.5 border-t border-line pt-3.5">
-                <legend className="sr-only">Consentimientos</legend>
-                <label className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-soft">
-                  <input
-                    type="checkbox"
+              <CheckboxGroup>
+                <CheckboxGroup.Label visuallyHidden>Consentimientos</CheckboxGroup.Label>
+                <FormControl>
+                  <Checkbox
                     name="tratamiento_datos"
                     checked={acceptsData}
                     onChange={(e) => {
                       setAcceptsData(e.target.checked);
                       setError(null);
                     }}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
                   />
-                  <span>
-                    Acepto que se guarden y traten los datos fiscales, familiares y de salud (discapacidad) que aporte, para recibir
-                    asesoramiento.{" "}
-                    <button type="button" onClick={() => setNoticeOpen(true)} className="font-semibold text-primary-dark underline">
-                      Qué hacemos con tus datos
-                    </button>{" "}
-                    <span className="text-muted">(obligatorio)</span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-soft">
-                  <input
-                    type="checkbox"
-                    name="envio_documentos_a_proveedor_llm"
-                    checked={acceptsDocuments}
-                    onChange={(e) => setAcceptsDocuments(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                  />
-                  <span>
-                    Acepto que los documentos que suba (nóminas, certificados…) se envíen al proveedor del modelo de lenguaje para leerlos.{" "}
-                    <span className="text-muted">(opcional; sin él no podrás subir documentos)</span>
-                  </span>
-                </label>
-                <label className="flex items-start gap-2.5 text-[13px] leading-snug text-ink-soft">
-                  <input
-                    type="checkbox"
-                    name="avisos_por_correo"
-                    checked={acceptsEmail}
-                    onChange={(e) => setAcceptsEmail(e.target.checked)}
-                    className="mt-0.5 h-4 w-4 shrink-0 accent-primary"
-                  />
-                  <span>
-                    Quiero recibir por correo los avisos de plazos y cambios que me afecten, cuando el servicio los ofrezca.{" "}
-                    <span className="text-muted">(opcional)</span>
-                  </span>
-                </label>
-              </fieldset>
+                  <FormControl.Label>Acepto que se guarden y traten mis datos (obligatorio)</FormControl.Label>
+                  <FormControl.Caption>
+                    Los datos fiscales, familiares y de salud (discapacidad) que aporte, para recibir asesoramiento.
+                  </FormControl.Caption>
+                </FormControl>
+                <FormControl>
+                  <Checkbox name="envio_documentos_a_proveedor_llm" checked={acceptsDocuments} onChange={(e) => setAcceptsDocuments(e.target.checked)} />
+                  <FormControl.Label>Enviar mis documentos al proveedor del modelo (opcional)</FormControl.Label>
+                  <FormControl.Caption>
+                    Para que lea los documentos que suba (nóminas, certificados…). Sin él no podrás subir documentos.
+                  </FormControl.Caption>
+                </FormControl>
+                <FormControl>
+                  <Checkbox name="avisos_por_correo" checked={acceptsEmail} onChange={(e) => setAcceptsEmail(e.target.checked)} />
+                  <FormControl.Label>Avisos por correo (opcional)</FormControl.Label>
+                  <FormControl.Caption>Los plazos y cambios que me afecten, cuando el servicio los ofrezca.</FormControl.Caption>
+                </FormControl>
+                <Link as="button" type="button" className="self-start text-xs" onClick={() => setNoticeOpen(true)}>
+                  Qué hacemos con tus datos
+                </Link>
+              </CheckboxGroup>
             )}
 
-            {error && (
-              <p role="alert" className="rounded-lg border border-risk-high-fg/30 bg-risk-high-bg px-3 py-2 text-[13px] text-ink-soft">
-                {error}
-              </p>
-            )}
-
-            <button
-              type="submit"
-              disabled={busy || !email || !password}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-[14.5px] font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {registering ? <UserPlus size={16} aria-hidden /> : <LogIn size={16} aria-hidden />}
-              {busy ? "Un momento…" : registering ? "Crear cuenta" : "Entrar"}
-            </button>
+            <Button type="submit" variant="primary" block loading={busy} disabled={!email || !password}>
+              {registering ? "Crear cuenta" : "Entrar"}
+            </Button>
           </form>
         </div>
-        <p className="mt-4 text-center text-[12.5px] leading-relaxed text-muted">
+
+        <Caja>
+          <Caja.Cuerpo className="text-center">
+            {registering ? "¿Ya tienes cuenta? " : "¿Es tu primera vez? "}
+            <Link as="button" type="button" onClick={() => switchMode(registering ? "login" : "register")}>
+              {registering ? "Inicia sesión" : "Crea una cuenta"}
+            </Link>
+          </Caja.Cuerpo>
+        </Caja>
+
+        <p className="m-0 text-center text-xs text-fg-muted">
           Tu expediente solo es visible con tu cuenta.{" "}
-          <button type="button" onClick={() => setNoticeOpen(true)} className="font-semibold text-primary-dark underline">
+          <Link as="button" type="button" onClick={() => setNoticeOpen(true)}>
             Privacidad
-          </button>
+          </Link>
         </p>
       </main>
       <AuthPrivacyNotice open={noticeOpen} onClose={() => setNoticeOpen(false)} noticeUrl={config.privacy_notice_url} />

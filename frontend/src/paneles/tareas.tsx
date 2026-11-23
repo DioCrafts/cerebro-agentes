@@ -3,11 +3,10 @@
 import { TareasPanel } from "../components/TareasPanel";
 import type { PropsPanel } from "./tipos";
 
-export default function PanelTareas({ ctx, open, onClose }: PropsPanel) {
+export default function PanelTareas({ ctx, open }: PropsPanel) {
   return (
     <TareasPanel
       open={open}
-      onClose={onClose}
       caseId={ctx.caso.id}
       onAccion={ctx.acciones.decidir}
       onCambio={() => {
