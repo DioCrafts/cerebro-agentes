@@ -6,7 +6,7 @@ from .fakes import ScriptedProvider, corpus
 
 def _fragments():
     ledger = EvidenceLedger()
-    return [ledger.register(text=doc.page_content, metadata=doc.metadata) for doc in corpus()[:2]]
+    return [ledger.register(text=doc.texto, metadata=doc.metadatos) for doc in corpus()[:2]]
 
 
 def test_verifier_sends_question_answer_and_fragments_and_parses_report() -> None:

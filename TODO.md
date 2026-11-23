@@ -6,6 +6,7 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 
 - [ ] Fijar la línea base de la batería con modelo real. El código está hecho y reanuda por casos (`reports/bateria/en_curso.jsonl`); la ejecución se cortó dos veces.
 - [ ] Terminar la comparación faiss frente a pageindex con Claude sobre las 118 consultas del benchmark ampliado y actualizar `docs/cerebro/benchmark-recuperacion.md`. El umbral de explicación ya está en 0,525; falta la tabla de PageIndex.
+- [ ] Pasar el índice a SQLite y sacar LangChain: medir la línea base con FAISS, migrar con `cli.indice migrar`, medir con `INDICE_BACKEND=sqlite` y, si ningún caso crítico empeora, poner `sqlite` por defecto y borrar `conocimiento/indice/faiss_legado.py` junto con `faiss-cpu`, `langchain-community` y `langchain-core`. Los pasos y la lista de lo que se borra están en `docs/cerebro/benchmark-recuperacion.md`, sección «Retirar FAISS y LangChain».
 - [ ] Terminar el índice `data/faiss-v2` (3.310 documentos descargados, solo 200 indexados) con 2 o 3 procesos, y medirlo con el benchmark antes de cambiar `FAISS_INDEX_PATH`.
 
 ## Memoria (sin cambio de resultados)

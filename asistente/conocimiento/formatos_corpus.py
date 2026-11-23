@@ -40,11 +40,11 @@ MAX_MUESTRA_FICHERO = 1500
 
 
 def _texto(chunk: Any) -> str:
-    return str(getattr(chunk, "page_content", "") or "")
+    return str(getattr(chunk, "texto", "") or "")
 
 
 def _encabezados(chunk: Any) -> str:
-    metadata = getattr(chunk, "metadata", None) or {}
+    metadata = getattr(chunk, "metadatos", None) or {}
     return "\n".join(str(metadata.get(clave) or "") for clave in ("section", "title"))
 
 

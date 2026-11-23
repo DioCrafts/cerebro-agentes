@@ -47,23 +47,25 @@ from pathlib import Path
 import re
 import statistics
 import time
+from typing import TYPE_CHECKING
 
 import click
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.embeddings import Embeddings
-from langchain_core.retrievers import BaseRetriever
-from pydantic import ConfigDict
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.llm.arbol import (
     RECUPERADORES,
     Consumo,
+    Recuperador,
     SelectorLexico,
     SelectorLLM,
     envolver_recuperador,
     ruta_headings,
     tokens,
 )
+
+if TYPE_CHECKING:
+    from asistente.conocimiento.llm.embeddings import Embedder
+    from asistente.nucleo.agent.search import CorpusSearcher, Reordenador
 
 RAIZ = Path(__file__).resolve().parents[3]
 CORPUS_POR_DEFECTO = RAIZ / "eval_data" / "recuperacion" / "corpus_fiscal.jsonl"
@@ -76,7 +78,7 @@ _ARTICULO = re.compile(r"art[íi]culo\s+(\d+)", re.I)
 # --------------------------------------------------------------------------
 
 
-def cargar_corpus(ruta: Path) -> list[Document]:
+def cargar_corpus(ruta: Path) -> list[FragmentoRecuperado]:
     docs = []
     for linea in ruta.read_text(encoding="utf-8").splitlines():
         if not linea.strip():
@@ -84,9 +86,9 @@ def cargar_corpus(ruta: Path) -> list[Document]:
         d = json.loads(linea)
         headings = d["headings"]
         docs.append(
-            Document(
-                page_content=f"{headings[-1]}. {d['texto']}",
-                metadata={
+            FragmentoRecuperado(
+                texto=f"{headings[-1]}. {d['texto']}",
+                metadatos={
                     "chunk_id": d["chunk_id"],
                     "source_file": d["source_file"],
                     "norma": d["norma"],
@@ -123,26 +125,26 @@ NORMAS_BOE = {
 _PAGINA_AEAT = re.compile(r"(?:^|/)([0-9a-f]{32})\.html$")
 
 
-def pagina_aeat(doc: Document) -> str | None:
+def pagina_aeat(doc: FragmentoRecuperado) -> str | None:
     """Hash of the AEAT page a chunk comes from, or ``None`` if it is not an AEAT page."""
-    m = _PAGINA_AEAT.search(str((doc.metadata or {}).get("source_file") or (doc.metadata or {}).get("source") or ""))
+    m = _PAGINA_AEAT.search(str((doc.metadatos or {}).get("source_file") or (doc.metadatos or {}).get("source") or ""))
     return m.group(1) if m else None
 
 
-def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[Document]:
+def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[FragmentoRecuperado]:
     """The chunks of the cited norms (and the AEAT pages) as the real processor indexed them.
 
-    Reads ``index.pkl`` of a FAISS index. Text and heading path are kept as Docling left them; ``norma`` /
+    Reads ``index.pkl`` of a FAISS index (through ``conocimiento/indice/faiss_legado.py``). Text and heading path are kept as Docling left them; ``norma`` /
     ``documento`` are stamped from the BOE id in the file name so the citation can be scored. With ``aeat``
     the AEAT pages compete too, as they do in production (``norma="AEAT"``; the page is scored by its hash).
     Vectors are recomputed by the benchmark's embedder.
     """
-    import pickle  # noqa: S403 - a local index this project built (same trust as FAISS_TRUSTED_INDEX)
+    from asistente.conocimiento.indice.faiss_legado import leer_fragmentos
 
-    docstore, _ = pickle.loads((ruta / "index.pkl").read_bytes())  # noqa: S301
     docs = []
-    for d in docstore._dict.values():
-        fuente = str(d.metadata.get("source_file") or d.metadata.get("source") or "")
+    # A local index this project built: same trust as FAISS_TRUSTED_INDEX.
+    for d in leer_fragmentos(ruta, confiar=True):
+        fuente = str(d.metadatos.get("source_file") or d.metadatos.get("source") or "")
         boe = next((b for b in NORMAS_BOE if b in fuente), None)
         if boe is not None:
             norma, documento = NORMAS_BOE[boe]
@@ -150,26 +152,26 @@ def cargar_corpus_de_indice(ruta: Path, *, aeat: bool = True) -> list[Document]:
             norma, documento = "AEAT", None
         else:
             continue
-        meta = {**d.metadata, "norma": norma}
+        meta = {**d.metadatos, "norma": norma}
         if documento:
             meta["documento"] = documento
-        docs.append(Document(page_content=d.page_content, metadata=meta))
+        docs.append(FragmentoRecuperado(texto=d.texto, metadatos=meta))
     return docs
 
 
-def manifiesto_de_corpus(docs: Sequence[Document]) -> dict:
+def manifiesto_de_corpus(docs: Sequence[FragmentoRecuperado]) -> dict:
     """Which citations exist in a corpus: article numbers per norm and AEAT pages (hash → title)."""
     normas: dict[str, set[str]] = {}
     aeat: dict[str, str] = {}
     for d in docs:
-        h = pagina_aeat(d) if d.metadata.get("norma") == "AEAT" else None
+        h = pagina_aeat(d) if d.metadatos.get("norma") == "AEAT" else None
         if h:
             ruta = ruta_headings(d)
             aeat.setdefault(h, ruta[0] if ruta else "")
             continue
         _, articulo = cita_de(d)
         if articulo:
-            normas.setdefault(str(d.metadata.get("norma")), set()).add(articulo)
+            normas.setdefault(str(d.metadatos.get("norma")), set()).add(articulo)
     return {
         "normas": {n: sorted(a, key=int) for n, a in sorted(normas.items())},
         "aeat": dict(sorted(aeat.items())),
@@ -184,9 +186,9 @@ def cita_en_manifiesto(espera: dict, manifiesto: dict) -> bool:
     return all(str(o["articulo"]) in manifiesto["normas"].get(o["norma"], []) for o in opciones)
 
 
-def cita_de(doc: Document) -> tuple[str, str | None]:
+def cita_de(doc: FragmentoRecuperado) -> tuple[str, str | None]:
     """(norma/fuente, nº de artículo) que citaría el grounding gate para ``doc``."""
-    meta = doc.metadata or {}
+    meta = doc.metadatos or {}
     ruta = ruta_headings(doc)
     articulo = None
     for h in reversed(ruta):
@@ -198,7 +200,7 @@ def cita_de(doc: Document) -> tuple[str, str | None]:
     return fuente, articulo
 
 
-def es_cita_correcta(doc: Document, espera: dict) -> bool:
+def es_cita_correcta(doc: FragmentoRecuperado, espera: dict) -> bool:
     """Whether ``doc`` is an acceptable source for the expected citation.
 
     * Law article: same norm and article number (``alternativas`` lists other articles that also answer).
@@ -208,7 +210,7 @@ def es_cita_correcta(doc: Document, espera: dict) -> bool:
     if "pagina" in espera:
         return bool(pagina_aeat(doc) == espera["pagina"])
     fuente, articulo = cita_de(doc)
-    norma = str((doc.metadata or {}).get("norma") or "").upper()
+    norma = str((doc.metadatos or {}).get("norma") or "").upper()
     for o in (espera, *espera.get("alternativas", [])):
         # Same norm by equality when the chunk carries one: a substring test let "LIS" match "LISD".
         misma = norma == o["norma"].upper() if norma else o["norma"].upper() in fuente.upper()
@@ -222,7 +224,7 @@ def es_cita_correcta(doc: Document, espera: dict) -> bool:
 # --------------------------------------------------------------------------
 
 
-class EmbeddingsHash(Embeddings):
+class EmbeddingsHash:
     """Embeddings deterministas: bolsa de términos (stem de 6) por *hashing*."""
 
     def __init__(self, dim: int = 1024) -> None:
@@ -250,12 +252,12 @@ class VectoresEnMemoria:
     nearest neighbours, as FAISS does.
     """
 
-    def __init__(self, corpus: Sequence[Document], embeddings: Embeddings) -> None:
+    def __init__(self, corpus: Sequence[FragmentoRecuperado], embeddings: Embedder) -> None:
         import numpy as np
 
         self.corpus = list(corpus)
         self.embeddings = embeddings
-        matriz = np.asarray(embeddings.embed_documents([d.page_content for d in self.corpus]), dtype=np.float32)
+        matriz = np.asarray(embeddings.embed_documents([d.texto for d in self.corpus]), dtype=np.float32)
         matriz /= np.clip(np.linalg.norm(matriz, axis=1, keepdims=True), 1e-12, None)
         self.matriz = matriz
         self._cache: dict[str, object] = {}
@@ -269,17 +271,19 @@ class VectoresEnMemoria:
             self._cache[query] = self.matriz @ q
         return self._cache[query]
 
-    def similarity_search(self, query: str, k: int = 4, filter=None, fetch_k: int = 20, **_: object) -> list[Document]:
+    def similarity_search(
+        self, query: str, k: int = 4, filter=None, fetch_k: int = 20, **_: object
+    ) -> list[FragmentoRecuperado]:
         import numpy as np
 
         orden = [int(i) for i in np.argsort(-self.similitudes(query), kind="stable")]
         if filter is None:
             return [self.corpus[i] for i in orden[:k]]
         vecinos = [self.corpus[i] for i in orden[:fetch_k]]
-        return [d for d in vecinos if filter(d.metadata)][:k]
+        return [d for d in vecinos if filter(d.metadatos)][:k]
 
 
-class RecuperadorAgente(BaseRetriever):
+class RecuperadorAgente:
     """The ``faiss`` variant: exactly what the agent's ``search_corpus`` tool retrieves.
 
     :class:`FaissCorpusSearcher` with no filters: the ``primera_etapa`` nearest chunks, reordered by the
@@ -287,24 +291,23 @@ class RecuperadorAgente(BaseRetriever):
     abstains on its own: in the agent, abstaining is the grounding gate's call over what the model cites.
     """
 
-    model_config = ConfigDict(arbitrary_types_allowed=True)
+    def __init__(self, buscador: CorpusSearcher, k: int = 3) -> None:
+        self.buscador = buscador
+        self.k = k
 
-    buscador: object
-    k: int = 3
-
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+    def invoke(self, consulta: str) -> list[FragmentoRecuperado]:
         from asistente.nucleo.agent.search import SearchFilters
 
-        return list(self.buscador.search(query, k=self.k, filters=SearchFilters()))  # type: ignore[attr-defined]
+        return list(self.buscador.search(consulta, k=self.k, filters=SearchFilters()))
 
 
 def construir_base(
-    corpus: list[Document],
-    embeddings: Embeddings,
+    corpus: list[FragmentoRecuperado],
+    embeddings: Embedder,
     *,
     k: int,
     primera_etapa: int = 30,
-    reranker: object | None = None,
+    reranker: Reordenador | None = None,
 ) -> RecuperadorAgente:
     from asistente.nucleo.agent.search import FaissCorpusSearcher
 
@@ -329,7 +332,7 @@ class Precios:
         return (c.tokens_entrada * self.entrada_por_millon + c.tokens_salida * self.salida_por_millon) / 1e6
 
 
-def evaluar_variante(nombre: str, recuperador: BaseRetriever, consultas: Sequence[dict], precios: Precios) -> dict:
+def evaluar_variante(nombre: str, recuperador: Recuperador, consultas: Sequence[dict], precios: Precios) -> dict:
     filas = []
     for q in consultas:
         t0 = time.perf_counter()
@@ -355,9 +358,9 @@ def evaluar_variante(nombre: str, recuperador: BaseRetriever, consultas: Sequenc
     return {"variante": nombre, "resumen": resumir(filas), "filas": filas}
 
 
-def _etiqueta(doc: Document) -> str:
+def _etiqueta(doc: FragmentoRecuperado) -> str:
     h = pagina_aeat(doc)
-    if h and doc.metadata.get("norma") == "AEAT":
+    if h and doc.metadatos.get("norma") == "AEAT":
         return f"AEAT {h[:8]}"
     fuente, articulo = cita_de(doc)
     return f"{fuente.split()[0] if fuente.split() else '?'} art. {articulo}"
@@ -418,14 +421,14 @@ def ejecutar(
     variantes: Sequence[str] = RECUPERADORES,
     corpus_path: Path = CORPUS_POR_DEFECTO,
     consultas_path: Path = CONSULTAS_POR_DEFECTO,
-    embeddings: Embeddings | None = None,
+    embeddings: Embedder | None = None,
     selector=None,
     k: int = 3,
     precios: Precios | None = None,
     indice: Path | None = None,
     aeat: bool = True,
     primera_etapa: int = 30,
-    reranker: object | None = None,
+    reranker: Reordenador | None = None,
 ) -> dict:
     """Run every variant over the same corpus and queries."""
     corpus = cargar_corpus_de_indice(indice, aeat=aeat) if indice is not None else cargar_corpus(corpus_path)
@@ -441,7 +444,7 @@ def ejecutar(
         if indice is not None
         else (str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)),
         "chunks": len(corpus),
-        "chunks_aeat": sum(d.metadata.get("norma") == "AEAT" for d in corpus),
+        "chunks_aeat": sum(d.metadatos.get("norma") == "AEAT" for d in corpus),
         "consultas": len(consultas),
         "k": k,
         "primera_etapa": primera_etapa,

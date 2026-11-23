@@ -17,9 +17,9 @@ calling `_process_shard_worker` directly with a stubbed loader.
 from __future__ import annotations
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.document_loader import DocumentProcessor, _shard_files
 from asistente.plataforma.cli import processor as cli_module
 
@@ -131,8 +131,8 @@ def test_iter_docling_chunks_keeps_the_langchain_docling_output() -> None:
             return type("R", (), {"document": source})()
 
     docs = list(dl.iter_docling_chunks(["/c/ley.html"], _Chunker(), _Converter()))
-    assert [d.page_content for d in docs] == ["Artículo 1\ntexto 1", "Artículo 2\ntexto 2"]
-    assert docs[0].metadata == {
+    assert [d.texto for d in docs] == ["Artículo 1\ntexto 1", "Artículo 2\ntexto 2"]
+    assert docs[0].metadatos == {
         "source": "/c/ley.html",
         "dl_meta": {"headings": ["Artículo 1"], "origin": {"filename": "ley.html"}},
     }
@@ -216,7 +216,7 @@ def test_load_chunks_num_workers_1_uses_sequential_path(monkeypatch: pytest.Monk
 
     def fake_process(file_path):
         process_calls.append(file_path)
-        return (file_path, [Document(page_content="x", metadata={})])
+        return (file_path, [FragmentoRecuperado(texto="x", metadatos={})])
 
     monkeypatch.setattr(dl, "_process_one_file", fake_process)
     # Make _init_worker a no-op so the test doesn't try to load Docling.
@@ -274,7 +274,7 @@ def test_load_chunks_single_file_skips_pool_even_with_workers(monkeypatch: pytes
 
     def fake_process(file_path):
         process_calls.append(file_path)
-        return (file_path, [Document(page_content="x", metadata={})])
+        return (file_path, [FragmentoRecuperado(texto="x", metadatos={})])
 
     monkeypatch.setattr(dl, "_process_one_file", fake_process)
     monkeypatch.setattr(dl, "_init_worker", lambda max_tokens: None)
@@ -289,7 +289,7 @@ def test_load_chunks_single_file_skips_pool_even_with_workers(monkeypatch: pytes
     monkeypatch.setattr(  # pragma: no cover
         proc,
         "_load_chunks_sequential",
-        lambda files: called.__setitem__("seq", called["seq"] + 1) or [Document(page_content="x", metadata={})],
+        lambda files: called.__setitem__("seq", called["seq"] + 1) or [FragmentoRecuperado(texto="x", metadatos={})],
     )
     monkeypatch.setattr(
         proc,

@@ -15,9 +15,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from langchain_core.documents import Document
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.strategies import (
     install_default_strategies,
     register,
@@ -44,9 +44,9 @@ class _ClaimByExtensionStrategy(IngestStrategy):
 
     def parse(self, file_path: str):
         return [
-            Document(
-                page_content=f"parsed by {self.strategy_id}",
-                metadata={
+            FragmentoRecuperado(
+                texto=f"parsed by {self.strategy_id}",
+                metadatos={
                     "source_file": file_path,
                     "chunk_id": f"{self.strategy_id}-0",
                     "_strategy_id": self.strategy_id,

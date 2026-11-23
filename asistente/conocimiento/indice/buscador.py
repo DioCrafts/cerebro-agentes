@@ -11,8 +11,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.indice.almacen import Acierto, IndiceHibrido
 
 logger = logging.getLogger(__name__)
@@ -79,7 +78,7 @@ class SqliteCorpusSearcher:
             )
         return self._indice.buscar_denso(vector, k=profundidad)
 
-    def search(self, query: str, *, k: int, filters: Any) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: Any) -> list[FragmentoRecuperado]:
         from asistente.conocimiento.llm.security import sanitize_context_documents
         from asistente.nucleo.agent.search import build_filter_predicate
 
@@ -90,11 +89,11 @@ class SqliteCorpusSearcher:
             predicado = build_filter_predicate(filters)
             profundidad = max(first_stage_k * 20, PROFUNDIDAD_CON_FILTRO)
         docs = [
-            Document(page_content=a.fragmento.texto, metadata=a.fragmento.metadatos, id=a.fragmento.chunk_id)
+            FragmentoRecuperado(texto=a.fragmento.texto, metadatos=a.fragmento.metadatos, id=a.fragmento.chunk_id)
             for a in self._recuperar(query, profundidad)
             if predicado is None or predicado(a.fragmento.metadatos)
         ][:first_stage_k]
         if self._reranker is not None and docs:
-            docs = list(self._reranker.compress_documents(docs, query))
+            docs = list(self._reranker.reordenar(docs, query))
         # El texto recuperado es entrada no fiable para el modelo: se limpia igual que en el backend FAISS.
         return list(sanitize_context_documents(list(docs[:k])))

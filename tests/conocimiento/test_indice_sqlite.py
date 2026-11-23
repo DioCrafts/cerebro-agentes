@@ -101,18 +101,17 @@ def test_persistencia_y_lectura_concurrente(tmp_path):
 
 
 def test_escritor_de_ingesta(tmp_path):
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.indice.ingesta import EscritorSqlite, borrar_indice, ruta_indice
-
-    class _Doc:
-        def __init__(self, texto, meta):
-            self.page_content, self.metadata = texto, meta
 
     class _Emb:
         def embed_documents(self, textos):
             return _unit(np.random.default_rng(len(textos)), len(textos)).tolist()
 
     escritor = EscritorSqlite(tmp_path, _Emb())
-    escritor.add_documents([_Doc("uno", {"source_file": "x.md"}), _Doc("dos", {})], ids=["x-0", "x-1"])
+    escritor.add_documents(
+        [FragmentoRecuperado("uno", {"source_file": "x.md"}), FragmentoRecuperado("dos")], ids=["x-0", "x-1"]
+    )
     assert escritor.delete(ids=["x-0"]) == 1
     assert len(escritor.indice) == 1
     escritor.indice.cerrar()
@@ -125,31 +124,31 @@ def test_escritor_de_ingesta(tmp_path):
 
 @pytest.fixture
 def faiss_diminuto(tmp_path):
-    faiss = pytest.importorskip("faiss")
-    pytest.importorskip("langchain_community")
-    from langchain_community.docstore.in_memory import InMemoryDocstore
-    from langchain_community.vectorstores import FAISS
-    from langchain_core.documents import Document
-
-    from asistente.conocimiento.indice.migracion import _SinEmbedder
+    pytest.importorskip("faiss")
+    pytest.importorskip("asistente.conocimiento.indice.faiss_legado")  # needs faiss + langchain-community
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
+    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
 
     n = 60
     vectores = _unit(np.random.default_rng(5), n)
-    index = faiss.IndexFlatL2(DIM)
-    index.add(vectores)
     ids = [f"f{i // 10}-{i % 10}" for i in range(n)]
-    docstore = InMemoryDocstore(
-        {
-            cid: Document(
-                page_content=f"Fragmento {i} del artículo {i}.",
-                metadata={"source_file": f"f{i // 10}.md", "chunk_id": cid},
-            )
-            for i, cid in enumerate(ids)
-        }
-    )
-    store = FAISS(_SinEmbedder(), index, docstore, dict(enumerate(ids)))
+    fragmentos = [
+        FragmentoRecuperado(
+            texto=f"Fragmento {i} del artículo {i}.", metadatos={"source_file": f"f{i // 10}.md", "chunk_id": cid}
+        )
+        for i, cid in enumerate(ids)
+    ]
+    por_texto = {f.texto: v.tolist() for f, v in zip(fragmentos, vectores, strict=True)}
+
+    class _VectoresFijos:
+        def embed_documents(self, textos):
+            return [por_texto[t] for t in textos]
+
+        def embed_query(self, texto):
+            return por_texto[texto]
+
     directorio = tmp_path / "faiss"
-    store.save_local(str(directorio))
+    AlmacenFaissLegado.desde_fragmentos(fragmentos, _VectoresFijos(), ids).save_local(directorio)
     return directorio, vectores, ids
 
 
@@ -212,7 +211,7 @@ def test_buscador_sqlite_filtros_e_hibrido(tmp_path, monkeypatch):
     buscador = FaissCorpusSearcher.from_settings()
     assert isinstance(buscador, SqliteCorpusSearcher)
     docs = buscador.search("modelo 721", k=2, filters=SearchFilters())
-    assert {d.metadata["source_file"] for d in docs} == {"a.md", "b.md"}
+    assert {d.metadatos["source_file"] for d in docs} == {"a.md", "b.md"}
     assert docs[0].id in {"a-0", "b-0"}
     filtrados = buscador.search("modelo 721", k=3, filters=SearchFilters(tributo="IVA"))
     assert "b-0" not in {d.id for d in filtrados}  # b-0 declara IRPF

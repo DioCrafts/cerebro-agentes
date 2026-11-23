@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from langchain_core.callbacks import CallbackManagerForRetrieverRun
-from langchain_core.documents import Document
-from langchain_core.retrievers import BaseRetriever
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.llm import arbol
 from asistente.conocimiento.llm.arbol import (
     Consumo,
@@ -20,7 +18,7 @@ from asistente.conocimiento.llm.arbol import (
 )
 
 
-def _chunk(fuente: str, headings: list[str], texto: str, *, via: str = "headings") -> Document:
+def _chunk(fuente: str, headings: list[str], texto: str, *, via: str = "headings") -> FragmentoRecuperado:
     meta: dict = {
         "source_file": fuente,
         "norma": fuente.split("/")[-1].split(".")[0],
@@ -32,7 +30,7 @@ def _chunk(fuente: str, headings: list[str], texto: str, *, via: str = "headings
         meta["section"] = " — ".join(headings)
     else:
         meta["headings"] = headings
-    return Document(page_content=texto, metadata=meta)
+    return FragmentoRecuperado(texto=texto, metadatos=meta)
 
 
 CORPUS = [
@@ -61,17 +59,18 @@ CORPUS = [
 ]
 
 
-class _Fijo(BaseRetriever):
-    docs: list
+class _Fijo:
+    def __init__(self, docs: list[FragmentoRecuperado]) -> None:
+        self.docs = docs
 
-    def _get_relevant_documents(self, query: str, *, run_manager: CallbackManagerForRetrieverRun) -> list[Document]:
+    def invoke(self, consulta: str) -> list[FragmentoRecuperado]:
         return list(self.docs)
 
 
 def test_ruta_headings_lee_dl_meta_headings_y_section() -> None:
     assert ruta_headings(CORPUS[1])[-1].startswith("Artículo 91")
     assert ruta_headings(CORPUS[2]) == ["Título III. Aplicación", "Artículo 66. Plazos de prescripción"]
-    assert ruta_headings(Document(page_content="x", metadata={"section": "general"})) == []
+    assert ruta_headings(FragmentoRecuperado(texto="x", metadatos={"section": "general"})) == []
 
 
 def test_construir_arboles_un_arbol_por_documento_con_esquema_pageindex() -> None:
@@ -93,7 +92,7 @@ def test_navegar_baja_hasta_el_articulo_y_cuenta_llamadas() -> None:
         SelectorLexico(),
         consumo,
     )
-    assert docs and "cuatro años" in docs[0].page_content
+    assert docs and "cuatro años" in docs[0].texto
     assert consumo.llamadas >= 2 and consumo.tokens_entrada > 0
 
 
@@ -131,20 +130,19 @@ def test_valores_del_flag() -> None:
 
 
 def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
-    from langchain_core.documents import Document
-
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.llm.arbol import Consumo, construir_arboles, navegar
 
     preambulo = [
-        Document(page_content=f"Preámbulo {i}", metadata={"source_file": "ley", "headings": []}) for i in range(5)
+        FragmentoRecuperado(texto=f"Preámbulo {i}", metadatos={"source_file": "ley", "headings": []}) for i in range(5)
     ]
-    art = Document(
-        page_content="Exención por reinversión",
-        metadata={"source_file": "ley", "headings": ["Ganancias patrimoniales", "Artículo 38. Reinversión"]},
+    art = FragmentoRecuperado(
+        texto="Exención por reinversión",
+        metadatos={"source_file": "ley", "headings": ["Ganancias patrimoniales", "Artículo 38. Reinversión"]},
     )
-    otro = Document(
-        page_content="Rentas exentas",
-        metadata={"source_file": "ley", "headings": ["Rentas exentas", "Artículo 7. Rentas exentas"]},
+    otro = FragmentoRecuperado(
+        texto="Rentas exentas",
+        metadatos={"source_file": "ley", "headings": ["Rentas exentas", "Artículo 7. Rentas exentas"]},
     )
     raices = construir_arboles(preambulo + [art, otro])
 
@@ -156,16 +154,15 @@ def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():
 
 
 def test_raiz_de_pagina_sin_documento_usa_su_primer_titulo() -> None:
-    from langchain_core.documents import Document
-
+    from asistente.conocimiento.fragmento import FragmentoRecuperado
     from asistente.conocimiento.llm.arbol import construir_arboles
 
     meta = {"source_file": "data/html/x/" + "a" * 32 + ".html", "norma": "AEAT"}
     docs = [
-        Document(
-            page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal", "Cómo pedirlo"]}
+        FragmentoRecuperado(
+            texto="t", metadatos={**meta, "headings": ["Certificados de residencia fiscal", "Cómo pedirlo"]}
         ),
-        Document(page_content="t", metadata={**meta, "headings": ["Certificados de residencia fiscal"]}),
+        FragmentoRecuperado(texto="t", metadatos={**meta, "headings": ["Certificados de residencia fiscal"]}),
     ]
     (raiz,) = construir_arboles(docs)
     assert raiz.title == "AEAT: Certificados de residencia fiscal"

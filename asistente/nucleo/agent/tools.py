@@ -366,7 +366,7 @@ class Toolbox:
                 summary="0 fragmentos",
             )
         fragments = [
-            self.ledger.register(text=doc.page_content or "", metadata=self._with_validity(dict(doc.metadata or {})))
+            self.ledger.register(text=doc.texto or "", metadata=self._with_validity(dict(doc.metadatos or {})))
             for doc in docs
         ]
         # A repeated search can return chunks already registered; show each once.

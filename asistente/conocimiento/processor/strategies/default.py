@@ -17,8 +17,7 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 
@@ -41,7 +40,7 @@ class DefaultDoclingStrategy(IngestStrategy):
         # strategy is shadowed.
         return True
 
-    def parse(self, file_path: str) -> Sequence[Document]:
+    def parse(self, file_path: str) -> Sequence[FragmentoRecuperado]:
         # Concrete parsing lives in ``document_loader._docling_parse_default``
         # because it needs the per-worker ``_WORKER_CHUNKER`` initialised by
         # the multiprocessing pool initialiser. Importing it here avoids a
@@ -51,7 +50,7 @@ class DefaultDoclingStrategy(IngestStrategy):
         return _docling_parse_default(file_path)
 
 
-def parse_with_default(file_path: str) -> Sequence[Document]:
+def parse_with_default(file_path: str) -> Sequence[FragmentoRecuperado]:
     """Module-level convenience for callers that don't want to instantiate.
 
     Useful for strategies that delegate the **chunking** step to the
@@ -62,7 +61,7 @@ def parse_with_default(file_path: str) -> Sequence[Document]:
     return DefaultDoclingStrategy().parse(file_path)
 
 
-def docling_parse_files(file_paths: list[str]) -> list[Document]:
+def docling_parse_files(file_paths: list[str]) -> list[FragmentoRecuperado]:
     """Run Docling on a list of files in one go, return all chunks.
 
     Thin wrapper around the loader's batched-Docling helper so strategies

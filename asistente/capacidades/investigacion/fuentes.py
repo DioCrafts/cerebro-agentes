@@ -178,8 +178,8 @@ def buscar_corpus(
     documentos = searcher.search(consulta, k=k, filters=SearchFilters())
     fuentes: list[FuenteRecuperada] = []
     for doc in documentos:
-        metadata = dict(getattr(doc, "metadata", None) or {})
-        texto = " ".join(str(getattr(doc, "page_content", "") or "").split())
+        metadata = dict(getattr(doc, "metadatos", None) or {})
+        texto = " ".join(str(getattr(doc, "texto", "") or "").split())
         if not texto:
             continue
         autoridad = infer_authority(metadata)

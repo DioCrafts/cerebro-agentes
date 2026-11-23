@@ -24,16 +24,22 @@ import json
 import logging
 from pathlib import Path
 import threading
-from typing import Any
-
-from langchain_core.embeddings import Embeddings
+from typing import Any, Protocol
 
 from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
 
-class MLXEmbeddings(Embeddings):
+class Embedder(Protocol):
+    """What the index (ingest and search) needs from an embedder: one vector per document, one per query."""
+
+    def embed_documents(self, texts: list[str]) -> list[list[float]]: ...
+
+    def embed_query(self, text: str) -> list[float]: ...
+
+
+class MLXEmbeddings:
     """Apple-Silicon-native embedder over MLX bf16 weights.
 
     The constructor loads the model and tokenizer once and reuses them. The
@@ -90,7 +96,7 @@ class MLXEmbeddings(Embeddings):
             self._query_prefix,
         )
 
-    # ---------------- Embeddings interface --------------------------------- #
+    # ---------------- Embedder interface ----------------------------------- #
 
     def embed_documents(self, texts: list[str]) -> list[list[float]]:
         # Documents go in raw — sentence-transformers convention for Qwen3
@@ -136,7 +142,7 @@ class MLXEmbeddings(Embeddings):
         return all_vecs
 
 
-def create_embeddings(model: str | None = None) -> Embeddings:
+def create_embeddings(model: str | None = None) -> Embedder:
     """Return the local MLX embedder used everywhere in the app.
 
     Args:

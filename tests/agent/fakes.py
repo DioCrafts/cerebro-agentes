@@ -4,8 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.providers.base import ModelTurn, ToolCall, ToolResult, ToolSpec
 from asistente.nucleo.agent.search import SearchFilters, build_filter_predicate
 
@@ -81,22 +80,22 @@ class ScriptedProvider:
 class FakeSearcher:
     """Returns the documents whose metadata passes the filters, ignoring the query."""
 
-    def __init__(self, docs: list[Document]) -> None:
+    def __init__(self, docs: list[FragmentoRecuperado]) -> None:
         self.docs = docs
         self.calls: list[tuple[str, int, SearchFilters]] = []
 
-    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[Document]:
+    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[FragmentoRecuperado]:
         self.calls.append((query, k, filters))
         predicate = build_filter_predicate(filters)
-        return [doc for doc in self.docs if predicate(doc.metadata)][:k]
+        return [doc for doc in self.docs if predicate(doc.metadatos)][:k]
 
 
-def corpus() -> list[Document]:
+def corpus() -> list[FragmentoRecuperado]:
     return [
-        Document(
-            page_content="Podrán excluirse de gravamen las ganancias patrimoniales obtenidas por la transmisión de "
+        FragmentoRecuperado(
+            texto="Podrán excluirse de gravamen las ganancias patrimoniales obtenidas por la transmisión de "
             "la vivienda habitual, siempre que el importe total se reinvierta en una nueva vivienda habitual.",
-            metadata={
+            metadatos={
                 "title": "Ley 35/2006 IRPF",
                 "section": "Artículo 38",
                 "source_url": "https://www.boe.es/buscar/act.php?id=BOE-A-2006-20764",
@@ -104,10 +103,10 @@ def corpus() -> list[Document]:
                 "chunk_id": "boe-irpf-38",
             },
         ),
-        Document(
-            page_content="La reinversión deberá efectuarse en un período no superior a dos años desde la fecha de "
+        FragmentoRecuperado(
+            texto="La reinversión deberá efectuarse en un período no superior a dos años desde la fecha de "
             "transmisión de la vivienda habitual.",
-            metadata={
+            metadatos={
                 "title": "Consulta V0058-25",
                 "source_url": "data/html/2026-01-01/dgt-vinculantes/2025/V0058-25.html",
                 "vinculante": True,
@@ -116,9 +115,9 @@ def corpus() -> list[Document]:
                 "chunk_id": "dgt-v0058-25-3",
             },
         ),
-        Document(
-            page_content="Deducción autonómica por alquiler de vivienda habitual para jóvenes.",
-            metadata={
+        FragmentoRecuperado(
+            texto="Deducción autonómica por alquiler de vivienda habitual para jóvenes.",
+            metadatos={
                 "title": "Código de Andalucía",
                 "source_url": "https://www.boe.es/biblioteca_juridica/codigos/codigo.php?id=229",
                 "source_authority": "BOE",

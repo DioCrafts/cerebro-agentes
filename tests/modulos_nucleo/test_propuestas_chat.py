@@ -12,12 +12,12 @@ from datetime import date
 from decimal import Decimal
 import json
 
-from langchain_core.documents import Document
 import pytest
 
 from asistente.ambitos.fiscal import MODULO as FISCAL
 from asistente.ambitos.hipoteca import MODULO as HIPOTECA
 from asistente.ambitos.hipoteca import pagos_del_ejercicio
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.agent import TaxAgent
 from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
@@ -292,9 +292,9 @@ INYECCION = (
 
 
 def _agente_con_documento_malicioso(provider) -> TaxAgent:
-    documento = Document(
-        page_content=INYECCION,
-        metadata={"title": "Extracto bancario", "source_url": "data/subidas/extracto.pdf", "chunk_id": "extracto-1"},
+    documento = FragmentoRecuperado(
+        texto=INYECCION,
+        metadatos={"title": "Extracto bancario", "source_url": "data/subidas/extracto.pdf", "chunk_id": "extracto-1"},
     )
     return TaxAgent(provider=provider, searcher=FakeSearcher([documento, *corpus()]))
 

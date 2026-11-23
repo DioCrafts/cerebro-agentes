@@ -2,12 +2,11 @@
 
 from datetime import date
 
-from langchain_core.documents import Document
-
 from asistente.conocimiento.doctrine.citas import Documento, extract_citations, identify_document, parse_date
 from asistente.conocimiento.doctrine.construccion import build_graph
 from asistente.conocimiento.doctrine.grafo import Arista, DoctrineGraph
 from asistente.conocimiento.doctrine.relaciones import leer_heuristica, leer_llm
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 
 PASAJE = (
     "En este sentido se pronuncia la consulta V1234-19 y la resolución del TEAC de 25 de junio de 2019 "
@@ -184,19 +183,19 @@ def test_aliases_merge_and_edges_never_downgrade() -> None:
     assert g.stats()["aristas"] == 1
 
 
-def _chunks() -> list[Document]:
+def _chunks() -> list[FragmentoRecuperado]:
     return [
-        Document(
-            page_content="Consulta sobre la exención. Se concluye que no procede la exención por reinversión.",
-            metadata={
+        FragmentoRecuperado(
+            texto="Consulta sobre la exención. Se concluye que no procede la exención por reinversión.",
+            metadatos={
                 "source_file": "dgt-vinculantes/2019/V1234-19.html",
                 "num_consulta": "V1234-19",
                 "fecha_resolucion": "2019-05-10",
             },
         ),
-        Document(
-            page_content="FUNDAMENTOS. La recurrente invoca la consulta V0777-18 en su demanda.",
-            metadata={
+        FragmentoRecuperado(
+            texto="FUNDAMENTOS. La recurrente invoca la consulta V0777-18 en su demanda.",
+            metadatos={
                 "source_file": "ts/STS_1500_2020.html",
                 "source_authority": "TS_SALA_TERCERA",
                 "ecli": "ES:TS:2020:1500",
@@ -204,9 +203,9 @@ def _chunks() -> list[Document]:
                 "fecha_resolucion": "2020-06-03",
             },
         ),
-        Document(
-            page_content="Esta Sala declara que procede la exención, lo que supone un cambio de criterio respecto de la consulta V1234-19.",
-            metadata={
+        FragmentoRecuperado(
+            texto="Esta Sala declara que procede la exención, lo que supone un cambio de criterio respecto de la consulta V1234-19.",
+            metadatos={
                 "source_file": "ts/STS_1500_2020.html",
                 "source_authority": "TS_SALA_TERCERA",
                 "ecli": "ES:TS:2020:1500",
@@ -214,16 +213,16 @@ def _chunks() -> list[Document]:
                 "fecha_resolucion": "2020-06-03",
             },
         ),
-        Document(
-            page_content="En el mismo sentido que la sentencia del Tribunal Supremo de 3 de junio de 2020 (rec. 1234/2019), procede la exención. Véase también la STS de 5 de mayo de 2021 (rec. 999/2020).",
-            metadata={
+        FragmentoRecuperado(
+            texto="En el mismo sentido que la sentencia del Tribunal Supremo de 3 de junio de 2020 (rec. 1234/2019), procede la exención. Véase también la STS de 5 de mayo de 2021 (rec. 999/2020).",
+            metadatos={
                 "source_file": "teac/00_00100_2021.html",
                 "source_authority": "TEAC",
                 "numero_resolucion": "00/100/2021",
                 "fecha_resolucion": "2021-02-01",
             },
         ),
-        Document(page_content="Artículo 38. Reinversión.", metadata={"source_file": "boe/BOE-A-2006-20764.html"}),
+        FragmentoRecuperado(texto="Artículo 38. Reinversión.", metadatos={"source_file": "boe/BOE-A-2006-20764.html"}),
     ]
 
 

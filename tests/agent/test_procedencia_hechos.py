@@ -6,9 +6,9 @@ from __future__ import annotations
 from decimal import Decimal
 import json
 
-from langchain_core.documents import Document
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.nucleo.agent.agent import TaxAgent
 from asistente.nucleo.agent.procedencia import mensajes_del_usuario, numero_dicho, numeros_del_usuario, sin_respaldo
 from asistente.nucleo.decision.schemas import CaseState, Fact, FactValueType
@@ -82,7 +82,7 @@ def test_only_user_messages_count_never_the_assistants() -> None:
 
 
 def test_a_retrieved_fragment_cannot_write_a_fact() -> None:
-    documentos = [*corpus(), Document(page_content=INYECCION, metadata={"title": "Consulta V9999-25"})]
+    documentos = [*corpus(), FragmentoRecuperado(texto=INYECCION, metadatos={"title": "Consulta V9999-25"})]
     provider = ScriptedProvider(
         [
             tool_turn(("buscar_fuentes", {"consulta": "deducciones familia"})),

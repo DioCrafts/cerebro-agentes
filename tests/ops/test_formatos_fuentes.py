@@ -17,7 +17,6 @@ from typing import Any
 from click.testing import CliRunner
 import formatos_util as util
 import httpx
-from langchain_core.documents import Document
 import legacy_parsers as legacy
 import pytest
 from scrapy.http import HtmlResponse, Request, Response
@@ -29,6 +28,7 @@ from asistente.conocimiento import formatos, formatos_agente, formatos_calendari
 from asistente.conocimiento.crawler import cendoj, crawlers, teac
 from asistente.conocimiento.crawler.boe_consolidado import BOECCAACrawler
 from asistente.conocimiento.formatos_corpus import RecuentoCorpus
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.plataforma import settings
 from asistente.plataforma.cli import boe_seed, dgt_seed, supremo_seed, teac_seed
 from asistente.plataforma.cli import formatos as cli_formatos
@@ -481,10 +481,12 @@ def _codigo(tmp_path: Path, ccaa: str = "madrid", kb: int = 10) -> str:
 
 def test_ccaa_text_canaries(vigilancia, tmp_path) -> None:
     recuento = RecuentoCorpus(tmp_path / "html")
-    recuento.anotar(_codigo(tmp_path, "madrid"), [Document(page_content=TEXTO_CODIGO)])
+    recuento.anotar(_codigo(tmp_path, "madrid"), [FragmentoRecuperado(texto=TEXTO_CODIGO)])
     recuento.anotar(_codigo(tmp_path, "galicia"), [])
-    recuento.anotar(_codigo(tmp_path, "murcia"), [Document(page_content="Texto corrido sin estructura alguna " * 20)])
-    recuento.anotar(str(tmp_path / "html" / "a.html"), [Document(page_content="x")])
+    recuento.anotar(
+        _codigo(tmp_path, "murcia"), [FragmentoRecuperado(texto="Texto corrido sin estructura alguna " * 20)]
+    )
+    recuento.anotar(str(tmp_path / "html" / "a.html"), [FragmentoRecuperado(texto="x")])
     recuento.informar("completa")
 
     fallos = {f.canario: f for f in _ultima("boe_ccaa_texto").fallos}
@@ -499,12 +501,12 @@ def test_ccaa_text_yield_drop_against_the_recent_median(vigilancia, tmp_path) ->
     texto = TEXTO_CODIGO + "\n" + "Artículo 2. Hecho imponible.\n" + "x" * 3000
     for _ in range(5):
         recuento = RecuentoCorpus()
-        recuento.anotar(_codigo(tmp_path), [Document(page_content=texto)])
+        recuento.anotar(_codigo(tmp_path), [FragmentoRecuperado(texto=texto)])
         recuento.informar()
     assert _estado("boe_ccaa_texto") == "ok"
 
     recuento = RecuentoCorpus()
-    recuento.anotar(_codigo(tmp_path), [Document(page_content=texto[:400])])
+    recuento.anotar(_codigo(tmp_path), [FragmentoRecuperado(texto=texto[:400])])
     recuento.informar()
 
     assert [f.canario for f in _ultima("boe_ccaa_texto").fallos] == ["caida_caracteres_por_kb"]

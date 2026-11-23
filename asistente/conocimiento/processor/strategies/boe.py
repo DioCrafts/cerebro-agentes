@@ -28,7 +28,7 @@ threshold, we **never feed the whole file to Docling**. Instead we:
    intelligible.
 4. Serialise each block / sub-table to a small temp HTML file (~tens of
    KB) and run the **default** Docling+HybridChunker on those fragments.
-5. Re-stamp every emitted ``Document`` so ``source_file`` and ``chunk_id``
+5. Re-stamp every emitted ``FragmentoRecuperado`` so ``source_file`` and ``chunk_id``
    point at the **parent** path, not the temp fragment — citations, the
    manifest, and FAISS deletion-by-id all stay coherent with the rest of
    the index.
@@ -55,8 +55,7 @@ from pathlib import Path
 import re
 from typing import Any
 
-from langchain_core.documents import Document
-
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.conocimiento.processor.strategies.base import IngestStrategy
 
 logger = logging.getLogger(__name__)
@@ -114,7 +113,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
             return False
         return bool(_BOE_TITLE_RE.search(head))
 
-    def parse(self, file_path: str) -> Sequence[Document]:
+    def parse(self, file_path: str) -> Sequence[FragmentoRecuperado]:
         from lxml import etree
         from lxml import html as lxml_html
 
@@ -216,15 +215,15 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
             # deletion-by-id when the parent is modified, and
             # ``chunk_id`` must be deterministic per (parent, ordinal)
             # so re-ingesting the parent produces idempotent IDs.
-            output: list[Document] = []
+            output: list[FragmentoRecuperado] = []
             for idx, chunk in enumerate(sub_chunks):
-                meta = dict(chunk.metadata or {})
+                meta = dict(chunk.metadatos or {})
                 meta["source_file"] = file_path
                 meta["chunk_id"] = _stable_chunk_id_for(file_path, idx)
                 # Annotate which strategy emitted this chunk — useful for
                 # diagnostics and for the manifest's per-file strategy_id.
                 meta.setdefault("_strategy_id", self.strategy_id)
-                output.append(Document(page_content=chunk.page_content, metadata=meta))
+                output.append(FragmentoRecuperado(texto=chunk.texto, metadatos=meta))
             return output
         finally:
             # Best-effort cleanup. If we crash before cleanup, /tmp is

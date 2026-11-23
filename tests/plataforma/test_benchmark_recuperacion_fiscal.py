@@ -8,9 +8,9 @@ import os
 from pathlib import Path
 
 from click.testing import CliRunner
-from langchain_core.documents import Document
 import pytest
 
+from asistente.conocimiento.fragmento import FragmentoRecuperado
 from asistente.plataforma.cli import benchmark_recuperacion_fiscal as bench
 
 MANIFIESTO = bench.RAIZ / "eval_data" / "recuperacion" / "citas_indice.json"
@@ -63,8 +63,10 @@ def test_manifiesto_coincide_con_el_indice_local() -> None:
     assert set(guardado["aeat"]) <= set(real["aeat"])
 
 
-def _doc(source: str, headings: list[str], norma: str) -> Document:
-    return Document(page_content=headings[-1], metadata={"source_file": source, "norma": norma, "headings": headings})
+def _doc(source: str, headings: list[str], norma: str) -> FragmentoRecuperado:
+    return FragmentoRecuperado(
+        texto=headings[-1], metadatos={"source_file": source, "norma": norma, "headings": headings}
+    )
 
 
 def test_puntuacion_de_paginas_aeat_y_de_normas() -> None:
@@ -101,7 +103,7 @@ def test_la_variante_faiss_es_el_buscador_del_agente() -> None:
 
 def test_la_variante_faiss_pasa_por_el_reranker() -> None:
     class _Invierte:
-        def compress_documents(self, docs, query):
+        def reordenar(self, docs, consulta):
             return list(reversed(docs))
 
     corpus = bench.cargar_corpus(bench.CORPUS_POR_DEFECTO)
