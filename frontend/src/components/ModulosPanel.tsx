@@ -32,6 +32,7 @@ import {
   TextInput,
   Textarea,
   ToggleSwitch,
+  VisuallyHidden,
 } from "../ui";
 import { CheckIcon, GearIcon, HistoryIcon, HomeIcon, PlugIcon, ShieldIcon, TrashIcon, UploadIcon } from "../ui/iconos";
 import { CapacidadesSeccion } from "./CapacidadesSeccion";
@@ -113,11 +114,17 @@ export function ModulosPanel(props: ModulosPanelProps) {
             <NavList.LeadingVisual>
               <GearIcon />
             </NavList.LeadingVisual>
+            {/* Counters and states inside the label, not as TrailingVisual: Primer would name the item with a
+                text axe does not match against what is shown (WCAG 2.5.3). */}
             General
             {pendientes.length > 0 && (
-              <NavList.TrailingVisual>
-                <CounterLabel aria-label={`${pendientes.length} pendientes de tu confirmación`}>{pendientes.length}</CounterLabel>
-              </NavList.TrailingVisual>
+              <span className="ml-1">
+                {" "}
+                <span aria-hidden>
+                  <CounterLabel>{pendientes.length}</CounterLabel>
+                </span>
+                <VisuallyHidden>{`${pendientes.length} pendientes de tu confirmación`}</VisuallyHidden>
+              </span>
             )}
           </NavList.Item>
           {lista.length > 0 && (
@@ -133,7 +140,7 @@ export function ModulosPanel(props: ModulosPanelProps) {
                     <HomeIcon />
                   </NavList.LeadingVisual>
                   {m.nombre}
-                  {!m.activo && <NavList.TrailingVisual>desactivado</NavList.TrailingVisual>}
+                  {!m.activo && <span className="text-fg-muted"> · desactivado</span>}
                 </NavList.Item>
               ))}
             </NavList.Group>
@@ -151,8 +158,13 @@ export function ModulosPanel(props: ModulosPanelProps) {
                   <NavList.LeadingVisual>
                     <HistoryIcon />
                   </NavList.LeadingVisual>
-                  Acciones ya decididas
-                  <NavList.TrailingVisual>{decididas.length}</NavList.TrailingVisual>
+                  Acciones ya decididas{" "}
+                  <span className="ml-1">
+                    <span aria-hidden>
+                      <CounterLabel>{decididas.length}</CounterLabel>
+                    </span>
+                    <VisuallyHidden>{String(decididas.length)}</VisuallyHidden>
+                  </span>
                 </NavList.Item>
               )}
             </NavList.Group>

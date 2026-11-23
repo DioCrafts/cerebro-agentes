@@ -42,6 +42,10 @@ El script corre con `nice -n 15`, abre un solo navegador headless a la vez y lan
 
 ## Si el rediseño cambia selectores
 
-Los flujos localizan los controles por su papel y nombre accesible o por atributos estables: la caja «Escribe tu consulta», el botón «Enviar», `nav[aria-label="Herramientas"] button[data-panel=…]`, el menú `[role=menu]` de «Más herramientas», los paneles como `[role=dialog]`, y en el expediente el botón «Editar «Salario bruto anual»» y el campo `#fact-rendimiento_trabajo_bruto`. Si el rediseño los cambia, ajusta `medir.mjs` sin tocar qué se mide, para que la comparación siga siendo justa.
+Desde el paso a Primer, `medir.mjs` entiende las dos interfaces: el botón de enviar se llama «Enviar» o «Preguntar», la navegación es la barra «Herramientas» o las pestañas `nav[aria-label="Secciones"] a[data-panel=…]`, y un panel abierto es una hoja (`[role=dialog][aria-modal=true]` visible) o una página (`main [data-ranura=<id>]` sin `hidden`). Las páginas se cierran con la pestaña «Conversación», porque no responden a Escape. Las hojas cerradas siguen montadas y ocultas, así que el recorrido del foco solo cuenta el diálogo visible.
+
+Si el puerto de `vite preview` ya está ocupado (otra medición en marcha), el script se detiene: define `MEDIR_PUERTO_WEB` y `MEDIR_PUERTO_API` con otros libres.
+
+En la UI anterior, los flujos localizan los controles por su papel y nombre accesible o por atributos estables: la caja «Escribe tu consulta», el botón «Enviar», `nav[aria-label="Herramientas"] button[data-panel=…]`, el menú `[role=menu]` de «Más herramientas», los paneles como `[role=dialog]`, y en el expediente el botón «Editar «Salario bruto anual»» y el campo `#fact-rendimiento_trabajo_bruto`. Si el rediseño los cambia, ajusta `medir.mjs` sin tocar qué se mide, para que la comparación siga siendo justa.
 
 Si un flujo falla, el contexto queda marcado con `fallo`, se guarda `capturas/<nombre>/fallo--<viewport>--<tema>.png` y el proceso termina con código 1. Las rutas de la API que la simulación no conoce aparecen en `rutasNoSimuladas` del JSON.

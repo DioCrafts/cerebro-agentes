@@ -286,7 +286,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
           width="medium"
           sticky
           hidden={{ narrow: true }}
-          aria-label="Consultas"
+          aria-label="Tus consultas y temas"
           divider="none"
         >
           {lista()}
@@ -301,6 +301,8 @@ export function Asesor({ account }: { account?: AccountControls }) {
             onClose={cerrarYLimpiar}
           />
           <div hidden={paginaAbierta} className="flex flex-col gap-4">
+            {/* The level between the page's h1 (the breadcrumb) and each comment's h3. */}
+            <h2 className="sr-only">Conversación</h2>
             <Hilo
               active={active}
               turno={consulta.turno}

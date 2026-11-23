@@ -170,8 +170,9 @@ export function PestanasNavegacion({
                           <ActionList.LeadingVisual>
                             <Icono />
                           </ActionList.LeadingVisual>
+                          {/* No Description: Primer names the item with its label only, and the accessible name
+                              must contain all the visible text (WCAG 2.5.3). */}
                           {p.etiqueta}
-                          {p.titulo && p.titulo !== p.etiqueta && <ActionList.Description variant="block">{p.titulo}</ActionList.Description>}
                           {p.contador !== undefined && p.contador > 0 && (
                             <ActionList.TrailingVisual>
                               <Contador p={p} />

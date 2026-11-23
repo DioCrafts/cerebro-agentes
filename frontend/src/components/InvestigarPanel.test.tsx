@@ -74,7 +74,7 @@ describe("InvestigarPanel", () => {
     render(<InvestigarPanel open caseId="c1" />);
     await user.click(await screen.findByRole("button", { name: "Permitir la búsqueda web" }));
     expect(consentir).toHaveBeenCalledWith(true);
-    expect(await screen.findByRole("checkbox", { name: "Web (buscador del proveedor)" })).toBeEnabled();
+    expect(await screen.findByRole("checkbox", { name: "Internet" })).toBeEnabled();
   });
 
   it("sends the question with the chosen depth and lists the sources as links with their domain", async () => {
@@ -84,7 +84,7 @@ describe("InvestigarPanel", () => {
     render(<InvestigarPanel open caseId="c1" />);
     await user.type(screen.getByRole("textbox", { name: "Pregunta" }), "¿Qué necesito para el pasaporte?");
     await user.click(screen.getByRole("button", { name: "A fondo" }));
-    await user.click(await screen.findByRole("checkbox", { name: "Web (buscador del proveedor)" }));
+    await user.click(await screen.findByRole("checkbox", { name: "Internet" }));
     await user.click(screen.getByRole("button", { name: "Investigar" }));
     expect(investigar).toHaveBeenCalledWith(
       { pregunta: "¿Qué necesito para el pasaporte?", fuentes: ["corpus", "boe", "web"], profundidad: "a_fondo", solo_oficiales: true, case_id: "c1" },

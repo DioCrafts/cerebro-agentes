@@ -12,7 +12,7 @@
 // Design system: a session is a Box with its state as a StateLabel in the header (it sits in the conversation's
 // column, between the comments); the offer is a timeline event, like GitHub's «suggested reviewers».
 
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 
 import {
   ESTADO_LABEL,
@@ -30,10 +30,14 @@ import {
 } from "../apiConsejo";
 import { errorMessage } from "../lib/memoria";
 import { useSesionConsejo } from "../shell/useSesionConsejo";
-import { Button, Caja, EventoConversacion, Flash } from "../ui";
+import { Button, Caja, CargandoTexto, EventoConversacion, Flash } from "../ui";
 import { ChevronDownIcon, ChevronUpIcon, PeopleIcon, ShieldCheckIcon, XIcon } from "../ui/iconos";
 import { EstadoSesionLabel } from "./conversacion/EstadoSesion";
-import { DictamenConsejo, ProgresoConsejo } from "./DictamenConsejo";
+
+// The council's report and progress view are heavy and rarely shown: loaded on demand, out of the initial
+// bundle (this component is part of every conversation).
+const DictamenConsejo = lazy(() => import("./DictamenConsejo").then((m) => ({ default: m.DictamenConsejo })));
+const ProgresoConsejo = lazy(() => import("./DictamenConsejo").then((m) => ({ default: m.ProgresoConsejo })));
 
 interface ConvocarConsejoProps {
   caseId: string;
@@ -126,7 +130,11 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
           </>
         )}
 
-        {trabajando && <ProgresoConsejo sesion={sesion} />}
+        {trabajando && (
+          <Suspense fallback={<CargandoTexto lineas={2} etiqueta="Cargando el progreso del consejo…" />}>
+            <ProgresoConsejo sesion={sesion} />
+          </Suspense>
+        )}
 
         {sesion.estado === "terminada" && (
           <>
@@ -139,7 +147,9 @@ export function ConvocarConsejo({ caseId, sesionId, onCambio }: ConvocarConsejoP
             )}
             {verDictamen && (
               <div className="border-t border-border-muted pt-3">
-                <DictamenConsejo sesion={sesion} />
+                <Suspense fallback={<CargandoTexto lineas={4} etiqueta="Cargando el dictamen…" />}>
+                  <DictamenConsejo sesion={sesion} />
+                </Suspense>
               </div>
             )}
           </>

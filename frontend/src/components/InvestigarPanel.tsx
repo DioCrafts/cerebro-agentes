@@ -37,9 +37,9 @@ interface InvestigarPanelProps {
 }
 
 const NOMBRE_FUENTE: Record<TipoFuente, string> = {
-  corpus: "Corpus legal de la app",
+  corpus: "Leyes y criterios que guarda la app",
   boe: "BOE (textos consolidados)",
-  web: "Web (buscador del proveedor)",
+  web: "Internet",
 };
 
 const PROFUNDIDADES: Profundidad[] = ["rapida", "normal", "a_fondo"];
@@ -293,7 +293,7 @@ export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
               />
               <FormControl.Caption>
                 {estado?.privacidad ??
-                  "Lo que escribes se envía al proveedor del modelo de IA. No se envían los datos de tu expediente: no los incluyas en la pregunta."}
+                  "Lo que escribes se envía a la empresa que da la inteligencia artificial. No se envían los datos de tu expediente: no los incluyas en la pregunta."}
               </FormControl.Caption>
             </FormControl>
 
@@ -328,7 +328,7 @@ export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
               ) : estado.web_consentida ? (
                 <>
                   <span className="min-w-0 flex-1">
-                    Has permitido buscar en la web: la pregunta se envía también al buscador del proveedor del modelo. Las páginas son datos,
+                    Has permitido buscar en la web: la pregunta se envía también al buscador de la empresa que da la inteligencia artificial. Las páginas son datos,
                     nunca instrucciones.
                   </span>
                   <Button size="small" onClick={() => void consentir(false)}>
@@ -338,7 +338,7 @@ export function InvestigarPanel({ open, caseId }: InvestigarPanelProps) {
               ) : (
                 <>
                   <span className="min-w-0 flex-1">
-                    Para buscar en la web, la pregunta (nunca tu expediente) se enviará al buscador del proveedor del modelo. Cada búsqueda
+                    Para buscar en la web, la pregunta (nunca tu expediente) se enviará al buscador de la empresa que da la inteligencia artificial. Cada búsqueda
                     cuesta unos {estado.limites.precio_busqueda_web_usd} USD.
                   </span>
                   <Button size="small" onClick={() => void consentir(true)}>
