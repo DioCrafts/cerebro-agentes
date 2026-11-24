@@ -4,7 +4,9 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 
 ## Antes de nada: medir
 
-- [ ] Fijar la línea base de la batería con modelo real. El código está hecho y reanuda por casos (`reports/bateria/en_curso.jsonl`); la ejecución se cortó dos veces. El 24 de noviembre no se pudo lanzar porque en esta máquina no hay `ANTHROPIC_API_KEY` (ni `.env`).
+- [ ] Fijar la línea base de la batería con modelo real: confirmar los cambios y lanzar la batería completa sobre ese commit con `--fijar-linea-base` (carga `.env` antes: `set -a; . ./.env; set +a`). El 24 de noviembre la batería pasó 9/13 críticos y, tras los arreglos, los 7 casos afectados pasan 7/7 (detalle en `docs/cerebro/bateria.md`).
+- [x] Investigador sin presupuesto (24 de noviembre): el tope de lecturas abortaba la segunda ronda y el gasto no contaba la web. Lecturas que ya no abortan (tope 25), gasto real con la web incluida y tope de 2,50 € (detalle en `docs/cerebro/bateria.md`).
+- [ ] Abaratar el buscador web del investigador (es lo más caro: lee páginas enteras con el mismo modelo que razona). Probar un modelo pequeño como recolector, porque su texto se descarta, o bajar `MAX_CONTENIDO_TOKENS`; medir con la batería que no se pierden fuentes.
 - [x] Línea base del buscador del agente sobre 130 consultas (97 con cita, 33 abstenciones, 12 de ellas fiscales «casi»), con recall denso a 50, reparto de fallos entre primera etapa y reranker, y AUROC de las abstenciones. Cifras en `docs/cerebro/benchmark-recuperacion.md` (24 de noviembre).
 - [ ] La variante pageindex con Claude sobre las 130 consultas (`--variantes denso,pageindex`). Necesita `ANTHROPIC_API_KEY`.
 - [ ] Descargar las páginas de la AEAT y reindexar `data/indice`: el índice local no tiene ninguna, así que las 20 consultas de estilo `aeat` no se pueden medir y `test_manifiesto_coincide_con_el_indice_local` falla.
