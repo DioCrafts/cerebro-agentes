@@ -17,7 +17,7 @@ Deterministic around the model (`servicio.py`):
    sub-questions with a corpus query, 1–3 words for BOE titles and a web query. Code trims the plan to the depth's
    size; without a model, over budget or with an unusable plan, the question itself is the plan.
 2. **Gather**, in priority order (`fuentes.py`, `web.py`):
-   1. the app's legal corpus — the same searcher as the agent's `buscar_fuentes` (FAISS index) with the doctrine
+   1. the app's legal corpus — the same searcher as the agent's `buscar_fuentes` (SQLite index) with the doctrine
       validity graph (superseded / disputed doctrine is noted);
    2. the BOE — the consolidated-legislation open-data API (`/datosabiertos/api/legislacion-consolidada`,
       search by title, by text only when no title matches; repealed norms skipped) and the norm's consolidated

@@ -56,8 +56,9 @@ _JSON_OBJECT_RE = re.compile(r"\{.*\}", re.DOTALL)
 
 ApiStyle = Literal["responses", "chat"]
 _LOCAL_HOSTS = {"localhost", "127.0.0.1", "::1", "0.0.0.0", "host.docker.internal"}
-# Models that take ``reasoning.effort``: the o-series and GPT-5 (but not its "-chat" variants).
-_REASONING_MODEL_RE = re.compile(r"^(o\d|gpt-5)(?!.*-chat)", re.IGNORECASE)
+# Models that take ``reasoning.effort``: the o-series and GPT-5 onwards (gpt-5.x, gpt-6.x…), but not the "-chat"
+# variants. gpt-4o / gpt-4.1 are not reasoning models.
+_REASONING_MODEL_RE = re.compile(r"^(o\d|gpt-(?:[5-9]|[1-9]\d))(?!.*-chat)", re.IGNORECASE)
 # The system's effort levels (Claude's) onto OpenAI's: OpenAI has no "max", its top is "xhigh".
 _EFFORT = {"minimal": "minimal", "low": "low", "medium": "medium", "high": "high", "xhigh": "xhigh", "max": "xhigh"}
 

@@ -2,7 +2,7 @@
 
 These tests pin the bits that, if they regress, would either let the
 indexer skip files it shouldn't (silent data loss) or reprocess files it
-shouldn't (wasted hours of Docling work). They run without touching FAISS,
+shouldn't (wasted hours of Docling work). They run without touching the index,
 Docling, or any embedder.
 """
 

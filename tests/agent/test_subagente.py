@@ -155,10 +155,12 @@ def test_any_other_error_still_propagates(runner: Any) -> None:
 
 
 def test_sin_indice_el_buscador_no_tumba_el_cerebro(tmp_path, monkeypatch):
-    from asistente.nucleo.agent.search import FaissCorpusSearcher, SearchFilters, SinCorpus
+    from asistente.nucleo.agent import search
+    from asistente.nucleo.agent.search import SearchFilters, SinCorpus, buscador_del_corpus
     from asistente.plataforma import settings
 
-    monkeypatch.setattr(settings, "FAISS_INDEX_PATH", str(tmp_path / "no-existe"))
-    buscador = FaissCorpusSearcher.from_settings()
+    monkeypatch.setattr(search, "_BUSCADORES", {})
+    monkeypatch.setattr(settings, "INDICE_SQLITE_PATH", str(tmp_path / "no-existe" / "indice.sqlite"))
+    buscador = buscador_del_corpus()
     assert isinstance(buscador, SinCorpus)
     assert buscador.search("deducción alquiler", k=5, filters=SearchFilters()) == []

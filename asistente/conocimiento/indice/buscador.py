@@ -1,14 +1,16 @@
-"""Buscador del corpus sobre ``IndiceHibrido`` con la misma interfaz que ``FaissCorpusSearcher``.
+"""El buscador del corpus que usa el agente, sobre ``IndiceHibrido`` (un fichero SQLite).
 
-Se elige con ``INDICE_BACKEND=sqlite``. La búsqueda es densa (``sqlite-vec``) y, con ``BM25_ENABLED``,
-híbrida: RRF entre el ranking denso y el de FTS5, con los pesos ``BM25_DENSE_WEIGHT`` / ``BM25_BM25_WEIGHT``.
-Sustituye al ``EnsembleRetriever`` de LangChain con ``rank-bm25``.
+Dos etapas. La primera trae ``first_stage_k`` candidatos: con ``BM25_ENABLED`` es híbrida, una fusión RRF del
+ranking denso (``sqlite-vec``) y del léxico (FTS5) con los pesos ``BM25_DENSE_WEIGHT`` / ``BM25_BM25_WEIGHT``;
+sin él, solo densa. La segunda, si hay reranker, los reordena y se queda con los ``k`` primeros. El texto
+recuperado se sanea antes de devolverlo, porque es entrada no fiable para el modelo.
 """
 
 from __future__ import annotations
 
 import logging
 from pathlib import Path
+import threading
 from typing import Any
 
 from asistente.conocimiento.fragmento import FragmentoRecuperado
@@ -16,7 +18,7 @@ from asistente.conocimiento.indice.almacen import Acierto, IndiceHibrido
 
 logger = logging.getLogger(__name__)
 
-# Con filtros, el filtro de metadatos va después del KNN: hace falta una reserva honda (como fetch_k en FAISS).
+# Con filtros, el filtro de metadatos va después del KNN: hace falta una reserva honda.
 PROFUNDIDAD_CON_FILTRO = 500
 
 
@@ -39,16 +41,26 @@ class SqliteCorpusSearcher:
         self._hibrido = hibrido
         self._peso_denso = peso_denso
         self._peso_lexico = peso_lexico
+        # UN cerrojo para todos los que llaman (el agente, los hilos del investigador, el consejo): el embedder y
+        # el reranker no admiten dos hilos a la vez, y el buscador es compartido por todo el proceso.
+        self._cerrojo = threading.Lock()
+
+    @property
+    def hibrido(self) -> bool:
+        return self._hibrido
 
     @classmethod
     def from_settings(cls) -> Any:
+        """El buscador del índice configurado (``INDICE_SQLITE_PATH``), o ``SinCorpus`` si no existe."""
         from asistente.conocimiento.llm.embeddings import create_embeddings
         from asistente.nucleo.agent.search import SinCorpus
         from asistente.plataforma import settings
 
         ruta = Path(settings.INDICE_SQLITE_PATH)
         if not ruta.exists():
-            logger.warning("No hay índice SQLite en %s: se busca sin corpus.", ruta)
+            # Sin índice no se cae el cerebro entero: las búsquedas no encuentran nada (la puerta de grounding se
+            # abstiene en las preguntas de normativa) y el resto de especialistas sigue disponible.
+            logger.warning("No hay índice del corpus en %s: se busca sin corpus.", ruta)
             return SinCorpus()
         reranker = None
         if settings.RERANKER_ENABLED:
@@ -78,6 +90,11 @@ class SqliteCorpusSearcher:
             )
         return self._indice.buscar_denso(vector, k=profundidad)
 
+    def primera_etapa(self, query: str, profundidad: int) -> list[FragmentoRecuperado]:
+        """Los ``profundidad`` primeros candidatos de la primera etapa, sin reranker ni filtros (diagnóstico)."""
+        with self._cerrojo:
+            return [_fragmento(a) for a in self._recuperar(query, profundidad)]
+
     def search(self, query: str, *, k: int, filters: Any) -> list[FragmentoRecuperado]:
         from asistente.conocimiento.llm.security import sanitize_context_documents
         from asistente.nucleo.agent.search import build_filter_predicate
@@ -88,12 +105,18 @@ class SqliteCorpusSearcher:
         if not filters.is_empty():
             predicado = build_filter_predicate(filters)
             profundidad = max(first_stage_k * 20, PROFUNDIDAD_CON_FILTRO)
-        docs = [
-            FragmentoRecuperado(texto=a.fragmento.texto, metadatos=a.fragmento.metadatos, id=a.fragmento.chunk_id)
-            for a in self._recuperar(query, profundidad)
-            if predicado is None or predicado(a.fragmento.metadatos)
-        ][:first_stage_k]
-        if self._reranker is not None and docs:
-            docs = list(self._reranker.reordenar(docs, query))
-        # El texto recuperado es entrada no fiable para el modelo: se limpia igual que en el backend FAISS.
+        with self._cerrojo:
+            docs = [
+                _fragmento(a)
+                for a in self._recuperar(query, profundidad)
+                if predicado is None or predicado(a.fragmento.metadatos)
+            ][:first_stage_k]
+            if self._reranker is not None and docs:
+                docs = list(self._reranker.reordenar(docs, query))
+        # El texto recuperado es entrada no fiable para el modelo: se limpia el señuelo de inyección.
         return list(sanitize_context_documents(list(docs[:k])))
+
+
+def _fragmento(acierto: Acierto) -> FragmentoRecuperado:
+    f = acierto.fragmento
+    return FragmentoRecuperado(texto=f.texto, metadatos=f.metadatos, id=f.chunk_id)

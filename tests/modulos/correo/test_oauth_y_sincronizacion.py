@@ -254,8 +254,8 @@ def test_ordenes_del_operador(google: GoogleFalso, monkeypatch, capsys) -> None:
 
 
 def test_transporte_http_real_contra_el_servidor_falso_local(monkeypatch) -> None:
-    """The default ``requests`` transport, end to end over loopback HTTP (never Google)."""
-    import requests
+    """The default ``httpx`` transport, end to end over loopback HTTP (never Google)."""
+    import httpx
 
     from asistente.capacidades.correo import http
     from tests.modulos.correo.servidor_falso import en_hilo
@@ -269,7 +269,7 @@ def test_transporte_http_real_contra_el_servidor_falso_local(monkeypatch) -> Non
         monkeypatch.setenv("CORREO_GMAIL_API_URL", f"{base}/gmail/v1")
         http.configurar_transporte(None)  # the real one
         url = oauth.iniciar("case-1", "u1")
-        consentimiento = requests.get(url, timeout=5)
+        consentimiento = httpx.get(url, timeout=5)
         destino = consentimiento.text.split("id='permitir' href='")[1].split("'")[0].replace("&amp;", "&")
         params = {k: v[0] for k, v in parse_qs(urlsplit(destino).query).items()}
         oauth.completar(params["state"], params["code"])

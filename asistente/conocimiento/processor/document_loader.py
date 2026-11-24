@@ -19,11 +19,11 @@ Two ingest modes coexist:
   scratch.
 * **Incremental** (manifest matches current pipeline): each file is SHA-256'd
   and compared to the manifest. Only new + modified files run Docling + the
-  embedder; FAISS receives an ``add_documents`` for new chunks and a
+  embedder; the SQLite index receives an ``add_documents`` for new chunks and a
   ``delete`` for chunks whose source disappeared or changed. The 12-hour
   cold-start ingest collapses to ~minutes for typical daily updates.
 
-Heavy imports (``docling`` / FAISS) are deferred so
+Heavy imports (``docling`` / ``sqlite-vec``) are deferred so
 that importing this module never drags in the ML stack — unit tests stub the
 loader seam instead.
 """
@@ -39,7 +39,6 @@ import multiprocessing as mp
 from pathlib import Path
 import queue
 import re
-import shutil
 import threading
 from typing import TYPE_CHECKING, Any
 
@@ -255,14 +254,14 @@ def _pid() -> int:
 
 
 def _stable_chunk_id(file_path: str, chunk_index: int) -> str:
-    """Generate a deterministic FAISS chunk id keyed on the source file.
+    """Generate a deterministic chunk id keyed on the source file.
 
     Format: ``<sha256(file_path)[:12]>-<chunk_index>``. 12 hex chars give
     ~2.8 × 10¹⁴ buckets — collision-free in practice for our 11K-file
     corpus, and stable across reruns of the same file path.
 
     Why this matters: when a file is re-ingested (modified), we must be
-    able to ask FAISS to delete the previous chunks for that file. The id
+    able to ask the index to delete the previous chunks for that file. The id
     is stored in the manifest's ``chunk_ids`` field; reusing the same
     formula on a new run produces the same ids only as a sanity property,
     but the source of truth is always the manifest.
@@ -417,7 +416,7 @@ def _process_one_file(file_path: str) -> tuple[str, list[FragmentoRecuperado]]:
 
 
 class DocumentProcessor:
-    """Build a FAISS index from a content directory using Docling."""
+    """Build the corpus index (SQLite) from a content directory using Docling."""
 
     def __init__(
         self,
@@ -442,7 +441,7 @@ class DocumentProcessor:
         # was built against a different model/chunker and must be discarded.
         self._embedder_model = embedder_model or "unknown"
         self._embedder_dim = embedder_dim
-        # Files persisted to FAISS + manifest after every batch. Smaller =
+        # Files persisted to the index + manifest after every batch. Smaller =
         # finer crash-recovery granularity; larger = fewer (cheaper) save_local
         # calls. 200 is a balance for the 11k-file corpus: ~95s of work at
         # risk if we crash mid-batch on M-series hardware.
@@ -452,7 +451,7 @@ class DocumentProcessor:
         """Stable identifier for the (embedder, chunker, docling) tuple.
 
         Comparing this against the manifest's stored fingerprint tells us
-        whether the existing FAISS vectors can be reused as-is or whether a
+        whether the existing index vectors can be reused as-is or whether a
         full rebuild is required.
         """
         # ``docling`` doesn't expose ``__version__`` on its public module
@@ -472,7 +471,7 @@ class DocumentProcessor:
 
         # Contextual embeddings are an index-time transformation of the
         # text that gets embedded — turning them on/off (or swapping the
-        # generator model) means the FAISS vectors no longer match what a
+        # generator model) means the stored vectors no longer match what a
         # query at runtime would produce. Include in the fingerprint so
         # the manifest layer forces a clean rebuild.
         from asistente.plataforma import settings
@@ -557,7 +556,7 @@ class DocumentProcessor:
         worker its own interpreter, which is what we want.
 
         The embedder model is **never** loaded in workers — only in the
-        parent at FAISS-build time. Only the tokenizer-driven chunker lives
+        parent at index-build time. Only the tokenizer-driven chunker lives
         per-worker.
         """
         total = len(files)
@@ -629,7 +628,7 @@ class DocumentProcessor:
         peers just take the next file from the global queue immediately.
 
         Used by :meth:`process_documents` to interleave Docling parsing
-        and FAISS / manifest checkpointing without any batch-boundary
+        and index / manifest checkpointing without any batch-boundary
         synchronisation barrier. The HybridChunker is loaded once per
         worker for the **entire** iteration (vs once per batch in the
         legacy batched implementation).
@@ -783,7 +782,7 @@ class DocumentProcessor:
         files_to_process : list[str]
             Absolute paths to feed through Docling + the embedder.
         ids_to_remove : list[str]
-            FAISS chunk ids to drop (sources removed or modified).
+            Chunk ids to drop (sources removed or modified).
         diff : FileDiff | None
             ``None`` signals "no usable manifest, do a full rebuild".
             Otherwise carries the new/modified/removed/unchanged split.
@@ -833,7 +832,7 @@ class DocumentProcessor:
             len(diff.unchanged),
         )
 
-        # Collect FAISS ids to drop for files that vanished or changed.
+        # Collect chunk ids to drop for files that vanished or changed.
         ids_to_remove: list[str] = []
         content_dir = Path(self.content_dir)
         for path in list(diff.modified) + list(diff.removed):
@@ -846,30 +845,25 @@ class DocumentProcessor:
         return files_to_process, ids_to_remove, diff, fingerprint
 
     def process_documents(self) -> None:
-        """Bring FAISS + manifest in sync with disk, batching for crash safety.
+        """Bring the SQLite index (``<output_dir>/indice.sqlite``) + manifest in sync with disk, batching for crash
+        safety.
 
-        Persistence model: after every batch of ``self.batch_size`` files we
-        ``save_local`` the FAISS index and rewrite ``manifest.json``. A crash
-        between batches loses at most one batch of work; relaunching with
-        ``--incremental`` (default) sees the manifest, SHA-256-matches the
-        already-indexed files as ``unchanged``, and resumes at the first
-        missing file. The save order is **index first, manifest second**: if
-        we crash between them the index has extra chunks the manifest doesn't
-        know about, and the next run re-indexes those files — FAISS overwrites
-        the entries (deterministic chunk_ids). The opposite order would mark
-        files indexed without vectors, which silently breaks retrieval.
+        Persistence model: every batch of ``self.batch_size`` files is one SQLite transaction (``add_documents``),
+        then ``manifest.json`` is rewritten. A crash between batches loses at most one batch of work; relaunching
+        with ``--incremental`` (default) sees the manifest, SHA-256-matches the already-indexed files as
+        ``unchanged``, and resumes at the first missing file. The order is **index first, manifest second**: if we
+        crash between them the index has extra chunks the manifest doesn't know about, and the next run re-indexes
+        those files — a repeated ``chunk_id`` replaces the old row (deterministic ids). The opposite order would
+        mark files indexed without vectors, which silently breaks retrieval.
 
-        Concurrency: a single ingest run holds an advisory ``fcntl.flock``
-        on ``<output_dir>/.processor.lock`` for its entire duration. A
-        second invocation that finds the lock already held exits with a
-        clear error instead of corrupting the FAISS+manifest pair — the
-        two writers race on ``save_local`` and the index ends up with
-        only the entries of whichever process finished last.
+        Concurrency: a single ingest run holds an advisory ``fcntl.flock`` on ``<output_dir>/.processor.lock`` for
+        its entire duration. A second invocation that finds the lock already held exits with a clear error instead
+        of interleaving its manifest writes with this run's.
         """
         import fcntl
         import os
 
-        from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
+        from asistente.conocimiento.indice.ingesta import EscritorSqlite, borrar_indice
 
         # Acquire the processor lock for the lifetime of this run.
         # ``flock`` is automatically released by the OS when the file
@@ -883,7 +877,7 @@ class DocumentProcessor:
         except BlockingIOError as e:
             raise RuntimeError(
                 f"Another processor instance already holds {lock_path}. "
-                f"Concurrent ingests corrupt the FAISS+manifest pair. "
+                f"Concurrent ingests corrupt the index+manifest pair. "
                 f"Wait for the existing run to finish, or kill it before "
                 f"retrying."
             ) from e
@@ -904,55 +898,20 @@ class DocumentProcessor:
         if diff is None and not files_to_process:
             raise RuntimeError(f"No indexable files found in {self.content_dir!r}; nothing to index.")
 
-        # Set up starting state.
-        # - Full rebuild (diff is None): db starts None and is lazy-initialized
-        #   on the first batch with AlmacenFaissLegado.desde_fragmentos.
-        # - Incremental: load the existing index off disk. If load fails (e.g.
-        #   corrupt files), fall back to full rebuild over the whole corpus.
-        db: Any | None = None
+        # Set up starting state: sqlite-vec + FTS5 in <output_dir>/indice.sqlite (conocimiento/indice). A full
+        # rebuild (diff is None) starts from an empty file; an incremental run opens the existing one.
         existing_manifest: Manifest | None = None
-        from asistente.plataforma import settings as _settings
-
-        # INDICE_BACKEND=sqlite: sqlite-vec + FTS5 in <output_dir>/indice.sqlite, no pickle (conocimiento/indice).
-        sqlite_backend = _settings.INDICE_BACKEND == "sqlite"
-        if sqlite_backend:
-            from asistente.conocimiento.indice.ingesta import EscritorSqlite, borrar_indice
-
-            if diff is None:
-                borrar_indice(self.output_dir)
-            db = EscritorSqlite(self.output_dir, self.embeddings)
-            if diff is not None:
-                existing_manifest = load_manifest(self.output_dir)
-        elif diff is not None:
-            # Loading the index unpickles it: only an index the operator trusts (docs/seguridad.md, S-17), like
-            # agent/search.py and llm/chain.py. Checked before the fallback below, which would hide it.
-            if not _settings.FAISS_TRUSTED_INDEX:
-                raise RuntimeError(
-                    f"Refusing to load the FAISS index at {self.output_dir!r} with dangerous deserialization. "
-                    "Set FAISS_TRUSTED_INDEX=true only for an index you built yourself, or rebuild it with --full."
-                )
-            try:
-                db = AlmacenFaissLegado.cargar(self.output_dir, self.embeddings, confiar=True)
-                existing_manifest = load_manifest(self.output_dir)
-            except Exception as exc:  # noqa: BLE001
-                logging.error(
-                    "Could not load existing FAISS index at %s (%s); falling back to full rebuild.",
-                    self.output_dir,
-                    exc,
-                )
-                diff = None
-                ids_to_remove = []
-                db = None
-                existing_manifest = None
-                files_to_process = self.discover_files()
-                if not files_to_process:
-                    raise RuntimeError(f"No indexable files found in {self.content_dir!r}; nothing to index.") from exc
+        if diff is None:
+            borrar_indice(self.output_dir)
+        db = EscritorSqlite(self.output_dir, self.embeddings)
+        if diff is not None:
+            existing_manifest = load_manifest(self.output_dir)
 
         # Apply removals once, up front — they're a single bookkeeping step,
         # not per-batch work.
-        if db is not None and ids_to_remove:
+        if ids_to_remove:
             db.delete(ids=ids_to_remove)
-            logging.info("Deleted %d stale chunks from FAISS.", len(ids_to_remove))
+            logging.info("Deleted %d stale chunks from the index.", len(ids_to_remove))
         if existing_manifest is not None and diff is not None:
             for path in diff.removed:
                 rel = relative_key(path, content_dir)
@@ -960,23 +919,21 @@ class DocumentProcessor:
 
         # Removals-only path: nothing to parse, just persist what we have.
         if not files_to_process:
-            if db is not None and not sqlite_backend:
-                self._atomic_save_index(db)
             if existing_manifest is not None:
                 existing_manifest.pipeline_fingerprint = fingerprint
                 save_manifest(self.output_dir, existing_manifest)
-            logging.info("Local FAISS index updated incrementally at %s", self.output_dir)
+            logging.info("Corpus index updated incrementally at %s", self.output_dir)
             return
 
         # Streaming processing loop with an **async checkpoint worker**.
         #
         # Sync checkpoints (the previous implementation) blocked the main
-        # thread for the full embedding + FAISS-save duration, which on big
+        # thread for the full embedding + index-write duration, which on big
         # checkpoints (40 k chunks) took 30–60 minutes. During that window
         # the multiprocessing pool's IPC queue filled up and the 11 Docling
         # workers throttled from 99 % to ~70 % CPU because nothing was
         # consuming their output. The fix below moves the checkpoint work
-        # (embedding + FAISS persist + manifest write) into a separate
+        # (embedding + index write + manifest write) into a separate
         # thread; the main thread keeps draining the pool's queue, so the
         # workers never stall.
         #
@@ -995,11 +952,7 @@ class DocumentProcessor:
         chunks_window: list[FragmentoRecuperado] = []
         completed = 0
 
-        # Mutable holders so the bg thread can update them as it goes — the
-        # main thread only writes to ``db_holder`` before the loop starts
-        # (during the initial removal pass) and reads it only in the
-        # fallback rebuild branch above, so there is no race.
-        db_holder: list[Any] = [db]
+        # Mutable holder so the bg thread can update the manifest as it goes.
         manifest_holder: list[Manifest | None] = [existing_manifest]
         checkpoint_queue: queue.Queue = queue.Queue(maxsize=4)
         checkpoint_exc: list[BaseException] = []
@@ -1011,7 +964,6 @@ class DocumentProcessor:
             chunks_w: list[FragmentoRecuperado],
             ckpt_n: int,
         ) -> None:
-            current_db = db_holder[0]
             current_manifest = manifest_holder[0]
 
             # Contextual prefix step: enrich each chunk's text BEFORE the
@@ -1043,15 +995,8 @@ class DocumentProcessor:
                 )
 
             if chunks_w:
-                ids = [c.metadatos["chunk_id"] for c in chunks_w]
-                if current_db is None:
-                    current_db = AlmacenFaissLegado.desde_fragmentos(chunks_w, self.embeddings, ids)
-                else:
-                    current_db.add_documents(chunks_w, ids=ids)
-                db_holder[0] = current_db
-
-            if current_db is not None and not sqlite_backend:
-                self._atomic_save_index(current_db)
+                # One SQLite transaction per checkpoint, committed before the manifest is written.
+                db.add_documents(chunks_w, ids=[c.metadatos["chunk_id"] for c in chunks_w])
 
             entries = self._build_entries(files_w, chunks_w)
             if current_manifest is None:
@@ -1167,42 +1112,15 @@ class DocumentProcessor:
         recuento.informar(contexto="incremental" if diff is not None else "completa")
 
         logging.info(
-            "Local FAISS index successfully saved to %s (%d chunks across %d file(s))",
+            "Corpus index saved to %s (%d chunks across %d file(s))",
             self.output_dir,
             cumulative_chunks,
             total_files,
         )
 
-    # ----------------------------------------------------------------- #
-    # I/O
-    # ----------------------------------------------------------------- #
-
-    def _atomic_save_index(self, db: Any) -> None:
-        """Save FAISS files via a temp dir + rename so a crash mid-write
-        never leaves a half-written ``index.faiss`` or ``index.pkl`` next
-        to a stale manifest."""
-        target = Path(self.output_dir)
-        target.mkdir(parents=True, exist_ok=True)
-        tmp_dir = target.parent / (target.name + ".faiss.tmp")
-        if tmp_dir.exists():
-            shutil.rmtree(tmp_dir)
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        try:
-            db.save_local(str(tmp_dir))
-            for name in ("index.faiss", "index.pkl"):
-                src = tmp_dir / name
-                if src.exists():
-                    dst = target / name
-                    if dst.exists():
-                        dst.unlink()
-                    src.replace(dst)
-        finally:
-            if tmp_dir.exists():
-                shutil.rmtree(tmp_dir, ignore_errors=True)
-
 
 def build_index(args: dict) -> None:
-    """Build and persist the FAISS index using the configured local embedder."""
+    """Build and persist the corpus index (SQLite) using the configured local embedder."""
     # Lazy import keeps the processor module (and its CLI) light, and routes
     # through the shared embedder factory so the index always matches the
     # query path.

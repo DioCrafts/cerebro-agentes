@@ -5,14 +5,13 @@ Tablas:
 * ``fragmentos``: una fila por fragmento (``chunk_id`` estable, fichero de origen, texto y metadatos en JSON).
   Su ``rowid`` es la clave que comparten las otras dos tablas.
 * ``vec_fragmentos`` (``vec0``): el vector del fragmento, ``float[dim]`` con métrica coseno. El embedder del
-  proyecto devuelve vectores normalizados, así que el orden coincide con el L2 del índice FAISS anterior.
+  proyecto devuelve vectores normalizados.
 * ``fts_fragmentos`` (FTS5 de contenido externo sobre ``fragmentos.texto``): tokenizador
   ``unicode61 remove_diacritics 2``, que corta por la puntuación y quita tildes y mayúsculas, de modo que
   «721.» casa con «721» y «régimen» con «REGIMEN».
 * ``indice_meta``: dimensión, métrica y versión del esquema.
 
-No hay pickle en ningún punto: abrir el índice no ejecuta código de nadie, así que no hace falta
-``FAISS_TRUSTED_INDEX``.
+No hay pickle en ningún punto: abrir el índice no ejecuta código de nadie.
 
 Las altas, bajas y reemplazos van en una transacción cada uno. Un ``chunk_id`` repetido reemplaza al
 anterior (los ids son deterministas por fichero e índice de fragmento), lo que mantiene el contrato de la
@@ -22,7 +21,8 @@ reprocesar, y el almacén aplica ese plan.
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Sequence
+from array import array
+from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
@@ -30,6 +30,7 @@ import re
 import sqlite3
 import threading
 from typing import Any
+import unicodedata
 
 ESQUEMA_VERSION = "1"
 METRICA = "cosine"
@@ -39,6 +40,19 @@ RRF_K = 60
 VEC0_K_MAX = 4096
 
 _PALABRA = re.compile(r"\w+", re.UNICODE)
+
+# Palabras vacías del español (artículos, preposiciones, pronombres, interrogativos y auxiliares). En una consulta
+# con OR casan con casi todos los fragmentos y ensucian el ranking léxico; se quitan, salvo que no quede nada.
+PALABRAS_VACIAS = frozenset(
+    """
+    a al algo algun alguna algunas alguno algunos ante antes aquel aquella aquello aqui asi aun bajo bien cada como
+    con contra cual cuales cualquier cuando cuanta cuantas cuanto cuantos de del desde donde dos durante e el ella
+    ellas ello ellos en entre era eran es esa esas ese eso esos esta estan estas este esto estos fue fueron ha han
+    hasta hay la las le les lo los mas me mi mis mucho muy ni no nos nuestra nuestro o os otra otro para pero poco
+    por porque puede pueden puedo que quien quienes se sea segun ser si sin sobre son su sus tambien tanto te tengo
+    tiene tienen tu tus un una unas uno unos usted vosotros y ya yo
+    """.split()
+)
 
 
 @dataclass(frozen=True)
@@ -56,7 +70,8 @@ class Acierto:
 
 
 def consulta_fts(texto: str) -> str | None:
-    """Convierte texto libre en una consulta FTS5 segura: cada palabra entre comillas, unidas con OR.
+    """Convierte texto libre en una consulta FTS5 segura: cada palabra entre comillas, unidas con OR, sin las
+    palabras vacías del español (``PALABRAS_VACIAS``).
 
     Así ni los operadores de FTS5 (``AND``, ``NEAR``, ``*``, ``:``) ni las comillas del usuario rompen la
     consulta. El tokenizador de la tabla vuelve a normalizar tildes y mayúsculas en cada término.
@@ -64,7 +79,13 @@ def consulta_fts(texto: str) -> str | None:
     palabras = list(dict.fromkeys(p.lower() for p in _PALABRA.findall(texto)))
     if not palabras:
         return None
+    utiles = [p for p in palabras if _sin_tildes(p) not in PALABRAS_VACIAS]
+    palabras = utiles or palabras
     return " OR ".join(f'"{p}"' for p in palabras)
+
+
+def _sin_tildes(palabra: str) -> str:
+    return "".join(c for c in unicodedata.normalize("NFKD", palabra) if not unicodedata.combining(c))
 
 
 def fusion_rrf(
@@ -283,6 +304,24 @@ class IndiceHibrido:
             int(f["rowid"]): Fragmento(f["chunk_id"], f["texto"], json.loads(f["metadatos"]), f["fuente"])
             for f in filas
         }
+
+    def recorrer(self, *, con_vectores: bool = False) -> Iterator[tuple[Fragmento, list[float] | None]]:
+        """Todos los fragmentos, en orden de alta, y su vector si ``con_vectores``.
+
+        Para quien necesita el corpus entero: el grafo de doctrina y el benchmark de recuperación.
+        """
+        con_vec = con_vectores and self.dimension is not None
+        consulta = (
+            "SELECT f.chunk_id, f.fuente, f.texto, f.metadatos, v.embedding FROM fragmentos f "
+            "LEFT JOIN vec_fragmentos v ON v.rowid = f.rowid ORDER BY f.rowid"
+            if con_vec
+            else "SELECT chunk_id, fuente, texto, metadatos, NULL FROM fragmentos ORDER BY rowid"
+        )
+        with self._cerrojo:
+            filas = self._conn.execute(consulta).fetchall()
+        for f in filas:
+            vector = array("f", f[4]).tolist() if f[4] is not None else None
+            yield Fragmento(f[0], f[2], json.loads(f[3]), f[1]), vector
 
     def vector(self, chunk_id: str) -> list[float] | None:
         fila = self._conn.execute(

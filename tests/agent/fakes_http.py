@@ -28,6 +28,36 @@ def mensaje(texto: str, *, model: str, stop_reason: str = "end_turn", usage: dic
     }
 
 
+def eventos_sse(mensaje_completo: dict[str, Any]) -> bytes:
+    """The Messages streaming events (SSE) that build ``mensaje_completo``, as the API sends them: the SDK's own
+    accumulator rebuilds the same message from them (``get_final_message``)."""
+    uso = dict(mensaje_completo.get("usage") or {})
+    inicio = {**mensaje_completo, "content": [], "stop_reason": None, "stop_sequence": None, "usage": uso}
+    eventos: list[tuple[str, dict[str, Any]]] = [("message_start", {"type": "message_start", "message": inicio})]
+    for i, bloque in enumerate(mensaje_completo.get("content") or []):
+        tipo = bloque.get("type")
+        if tipo == "text":
+            vacio, deltas = {"type": "text", "text": ""}, [{"type": "text_delta", "text": bloque["text"]}]
+        elif tipo == "tool_use":
+            vacio = {**bloque, "input": {}}
+            deltas = [{"type": "input_json_delta", "partial_json": json.dumps(bloque.get("input") or {})}]
+        elif tipo == "thinking":
+            vacio = {"type": "thinking", "thinking": "", "signature": ""}
+            deltas = [
+                {"type": "thinking_delta", "thinking": bloque.get("thinking", "")},
+                {"type": "signature_delta", "signature": bloque.get("signature", "")},
+            ]
+        else:  # server tool blocks and the rest arrive whole
+            vacio, deltas = bloque, []
+        eventos.append(("content_block_start", {"type": "content_block_start", "index": i, "content_block": vacio}))
+        eventos += [("content_block_delta", {"type": "content_block_delta", "index": i, "delta": d}) for d in deltas]
+        eventos.append(("content_block_stop", {"type": "content_block_stop", "index": i}))
+    fin = {"stop_reason": mensaje_completo.get("stop_reason"), "stop_sequence": mensaje_completo.get("stop_sequence")}
+    eventos.append(("message_delta", {"type": "message_delta", "delta": fin, "usage": uso}))
+    eventos.append(("message_stop", {"type": "message_stop"}))
+    return "".join(f"event: {nombre}\ndata: {json.dumps(datos)}\n\n" for nombre, datos in eventos).encode("utf-8")
+
+
 class FakeAnthropicAPI:
     """Messages and Message Batches endpoints answered by ``responder(params) -> text | message dict``.
 
@@ -101,6 +131,10 @@ class FakeAnthropicAPI:
         cuerpo = json.loads(request.content) if request.content else None
         self.peticiones.append((request.method, ruta, cuerpo))
         if ruta == "/v1/messages" and request.method == "POST":
+            if cuerpo.get("stream"):
+                return httpx2.Response(
+                    200, headers={"content-type": "text/event-stream"}, content=eventos_sse(self._mensaje(cuerpo))
+                )
             return httpx2.Response(200, json=self._mensaje(cuerpo))
         if ruta == "/v1/messages/batches" and request.method == "POST":
             lote_id = f"msgbatch_{len(self.lotes) + 1}"

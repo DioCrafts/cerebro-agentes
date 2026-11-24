@@ -227,7 +227,7 @@ def cerebro(
     memoria: Any = None,
     **ajustes: Any,
 ) -> Cerebro:
-    """A brain whose every purpose has its own scripted provider (no network, no FAISS)."""
+    """A brain whose every purpose has its own scripted provider (no network, no corpus index)."""
     fiscal = fiscal or Grabador(nombre="fiscal")
     sintesis = sintesis or Grabador(nombre="sintesis")
     intencion = intencion or Grabador(nombre="intencion")

@@ -40,6 +40,11 @@ class _FakeMessages:
         self.calls.append({**kwargs, "messages": list(kwargs["messages"])})
         return self.responses.pop(0)
 
+    def stream(self, **kwargs):
+        from tests.flujo_anthropic import como_flujo
+
+        return como_flujo(self.create(**kwargs))
+
 
 class _FakeAnthropic:
     def __init__(self, responses: list) -> None:
@@ -441,3 +446,17 @@ def test_the_anthropic_client_times_out_before_the_encargo_deadline(monkeypatch)
     assert timeout_s * (reintentos + 1) < 180
     monkeypatch.setattr(settings, "ANTHROPIC_TIMEOUT_S", "42")
     assert anthropic_provider.limites_cliente()[0] == 42.0
+
+
+def test_calls_without_live_text_are_streamed_so_a_long_answer_is_not_cut_by_the_read_timeout() -> None:
+    """A non-streamed answer is silent until the model finishes, and the client's read timeout (85 s per attempt)
+    cut long reasoning steps of the researcher twice. Every call is streamed; the result is the same message."""
+    from tests.agent.fakes_http import FakeAnthropicAPI
+
+    api = FakeAnthropicAPI(lambda params: '{"ok": true, "n": 3}')
+    provider = AnthropicProvider(model="claude-sonnet-5-5", client=api.client())
+    datos = provider.complete_json(system="S", user="U", schema={"type": "object"}, schema_name="x")
+    assert datos == {"ok": True, "n": 3}
+    (cuerpo,) = api.cuerpos()
+    assert cuerpo["stream"] is True and cuerpo["max_tokens"] == 16000
+    assert cuerpo["output_config"]["format"]["type"] == "json_schema"

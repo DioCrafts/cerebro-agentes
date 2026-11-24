@@ -14,7 +14,12 @@ number of the answer (``cifras.escanear``) and applies these rules, in this orde
 3. **The user's own words → attributed to the user.** A number the user wrote in the conversation may be repeated
    («con tus 30.000 € de sueldo»): it is the user's datum, not an invention.
 4. **A literal of a cited source → attributed to the fragment.** A number written in the same sentence as an
-   ``[F#]`` whose ledger text contains that number (a BOE article, a tool result) is the source's literal.
+   ``[F#]`` whose ledger text contains that number (a BOE article, a tool result) is the source's literal. A source
+   may write it in words: «menores de cuarenta años» is the literal of «40 años [F2]» (``numeros_en_letras``, read
+   on the fragment side only). A number in a sentence that cites NOTHING («para quedar por debajo de 26.414,22 €»,
+   after «…no supere 26.414,22 € [F17]») is the literal of a fragment the answer cites in another sentence when
+   that fragment contains it. Only fragments the answer cites count, never the rest of the ledger; and a sentence
+   that cites a fragment answers for its own numbers (a number next to «[F22]» found only in F17 is not credited).
 5. **Otherwise → a violation**, classified so the revision message can say exactly what to fix:
 
    * ``suma_no_combinada`` — the number equals a sum or difference of two or three figures of DIFFERENT
@@ -59,6 +64,7 @@ from asistente.nucleo.cerebro.colaboracion.cifras import (
     familia,
     formatear_valor,
     numeros_de,
+    numeros_en_letras,
     plano,
     unicas,
     unidades_compatibles,
@@ -427,6 +433,7 @@ def revisar_cifras(
     atribuciones: list[AtribucionCifra] = []
     ignorados: list[str] = []
     sin_origen: list[Numero] = []
+    sin_cita: list[Numero] = []  # unmatched numbers of sentences without citations: the second pass of rule 4
 
     def frase_de(numero: Numero) -> tuple[int, int]:
         for frase in frases:
@@ -490,7 +497,24 @@ def revisar_cifras(
                 )
             )
             continue
+        if not citados:
+            sin_cita.append(numero)
+            continue
         sin_origen.append(numero)
+
+    # Rule 4, second pass: a number of a sentence without citations, found in a fragment the answer cites elsewhere.
+    citados_respuesta = [fid for fid in extract_cited_ids(respuesta) if ledger.get(fid) is not None]
+    for numero in sin_cita:
+        fuente = _en_fragmento_citado(numero, citados_respuesta, ledger, en_fragmento)
+        if fuente is None or numero.valor is None:  # valor: never None here (figures only reach this list)
+            sin_origen.append(numero)
+            continue
+        atribuir(
+            AtribucionCifra(
+                literal=numero.literal, valor=numero.valor, fragment_id=fuente, especialista=duenos.get(fuente)
+            )
+        )
+    sin_origen.sort(key=lambda n: n.inicio)
 
     for orden, numero in enumerate(sin_origen):
         combinacion = buscar_combinacion(numero, cifras) if orden < MAX_NUMEROS_COMBINADOS else None
@@ -517,7 +541,7 @@ def _en_fragmento_citado(
     for fid in citados:
         if fid not in cache:
             fragmento = ledger.get(fid)
-            cache[fid] = numeros_de(fragmento.text) if fragmento is not None else []
+            cache[fid] = numeros_de(fragmento.text) + numeros_en_letras(fragmento.text) if fragmento is not None else []
         for literal in cache[fid]:
             if (
                 literal.valor is not None

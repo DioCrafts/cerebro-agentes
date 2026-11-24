@@ -13,7 +13,7 @@ The BOE publishes a public metadata API:
 which returns (~1.4 KB JSON) a ``fecha_actualizacion`` field timestamped
 to the second. We compare it against a small local state file
 (``_boe_watch_state.json``) and only re-download the heavy consolidated
-HTML when the timestamp has moved. The downstream FAISS ingest is
+HTML when the timestamp has moved. The downstream index ingest is
 manifest-driven, so the new text gets re-chunked automatically on the
 next ``processor --incremental`` run.
 
@@ -328,7 +328,7 @@ def cli(
         click.echo(
             "\nRe-downloaded one or more documents. Run "
             "`uv run python -m asistente.plataforma.cli.processor --incremental "
-            "--max-tokens 512 --num-workers 8` to fold the changes into FAISS."
+            "--max-tokens 512 --num-workers 8` to fold the changes into the index."
         )
 
 

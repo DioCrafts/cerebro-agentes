@@ -49,6 +49,23 @@
       "factor_lote": "0.50",
       "nota": "Entrada, salida y lectura de caché: cifras literales de la fuente ($8 / $40 per MTok, cache reads $0.20). Escritura de caché derivada (1,25 × y 2 × entrada). factor_lote 0,50: «50% off every token in the request, including cache reads and writes - the discounts stack» (apartado Batch processing de la fuente). No incluye el modo rápido."
     },
+    "gpt-6.2-sol": {
+      "input": "2.00",
+      "output": "10.00",
+      "cache_read": "0.10",
+      "cache_write": "2.50",
+      "cache_write_1h": null,
+      "factor_lote": "0.50",
+      "contexto_largo": {
+        "desde_tokens": 272000,
+        "input": "4.00",
+        "output": "15.00",
+        "cache_read": "0.20",
+        "cache_write": "5.00",
+        "cache_write_1h": null
+      },
+      "nota": "Consultado el 2026-11-24 en developers.openai.com/api/docs/pricing.md, tabla Standard: entrada, salida y entrada en caché literales ($2.00 / $10.00 / $0.10; por encima de 272K tokens de entrada, $4.00 / $15.00 / $0.20). cache_write es la columna «30m write» ($2.50; $5.00 en contexto largo): la página no explica esa columna, así que su lectura como escritura de caché no está comprobada; la de «12h write» ($5.00) no encaja con el TTL de 1 hora y se deja en null. factor_lote 0,50: la tabla Batch da la mitad de cada cifra ($1.00 / $5.00 / $0.05)."
+    },
     "gpt-4o-mini": {
       "input": null,
       "output": null,

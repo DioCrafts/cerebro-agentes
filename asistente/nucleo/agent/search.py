@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 import logging
-from pathlib import Path
 import re
 import threading
 from typing import Any, Protocol
@@ -38,18 +37,6 @@ class Reordenador(Protocol):
     """Second stage of the search (the cross-encoder reranker): reorders and trims what the first stage found."""
 
     def reordenar(self, fragmentos: Sequence[FragmentoRecuperado], consulta: str) -> list[FragmentoRecuperado]: ...
-
-
-class AlmacenVectorial(Protocol):
-    """First stage: dense neighbours, the metadata ``filter`` applied over the ``fetch_k`` nearest."""
-
-    def similarity_search(
-        self,
-        query: str,
-        k: int = ...,
-        filter: Callable[[dict[str, Any]], bool] | None = ...,  # noqa: A002 - FAISS' parameter name
-        fetch_k: int = ...,
-    ) -> list[FragmentoRecuperado]: ...
 
 
 class CorpusSearcher(Protocol):
@@ -136,95 +123,32 @@ class SinCorpus:
         return []
 
 
-class FaissCorpusSearcher:
-    """Dense FAISS search + optional cross-encoder rerank, with sanitization.
+def buscador_del_corpus() -> CorpusSearcher:
+    """The process's shared corpus searcher (``SqliteCorpusSearcher`` over ``INDICE_SQLITE_PATH``).
 
-    ``vectorstore`` is the legacy FAISS index (``conocimiento/indice/faiss_legado.py``) or anything with its
-    ``similarity_search`` (the retrieval benchmark searches an in-memory matrix).
+    Loaded once per configuration and reused: the embedder, the reranker and the index are loaded only once per
+    process. With no index it is :class:`SinCorpus`, which is looked for again on the next call.
     """
+    from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
+    from asistente.plataforma import settings
 
-    def __init__(
-        self, vectorstore: AlmacenVectorial, *, reranker: Reordenador | None = None, first_stage_k: int = 30
-    ) -> None:
-        self._vectorstore = vectorstore
-        self._reranker = reranker
-        self._first_stage_k = first_stage_k
-        # ONE lock for every caller (agent runs, researcher threads, the council): the embedder and the reranker
-        # are not safe to call from two threads, and the searcher is shared by the whole process.
-        self._lock = threading.Lock()
-
-    @classmethod
-    def from_settings(cls) -> CorpusSearcher:
-        """The process's shared searcher for the configured index (loaded once; later calls reuse it)."""
-        from asistente.plataforma import settings
-
-        clave = (
-            str(settings.INDICE_BACKEND),
-            str(settings.FAISS_INDEX_PATH),
-            str(settings.INDICE_SQLITE_PATH),
-            bool(settings.RERANKER_ENABLED),
-            str(settings.RERANKER_MODEL),
-            int(settings.RERANKER_TOP_K),
-            int(settings.RERANKER_FIRST_STAGE_K),
-        )
-        with _BUSCADORES_LOCK:
-            buscador = _BUSCADORES.get(clave)
-            if buscador is None:
-                buscador = cls._cargar()
-                if not isinstance(buscador, SinCorpus):  # a missing index is looked for again next time
-                    _BUSCADORES[clave] = buscador
-            return buscador
-
-    @classmethod
-    def _cargar(cls) -> CorpusSearcher:
-        from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
-        from asistente.conocimiento.llm.embeddings import create_embeddings
-        from asistente.plataforma import settings
-
-        if settings.INDICE_BACKEND == "sqlite":
-            from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
-
-            buscador: CorpusSearcher = SqliteCorpusSearcher.from_settings()
-            return buscador
-        if not Path(settings.FAISS_INDEX_PATH).exists():
-            # A missing index must not take the whole brain down: searches find nothing (the grounding gate
-            # abstains on normative questions) and every other specialist stays available.
-            logger.warning("No FAISS index at %s: searching without a corpus.", settings.FAISS_INDEX_PATH)
-            return SinCorpus()
-
-        if not settings.FAISS_TRUSTED_INDEX:
-            raise RuntimeError(
-                "Refusing to load FAISS index with dangerous deserialization. "
-                "Set FAISS_TRUSTED_INDEX=true only for trusted local indexes."
-            )
-        vectorstore = AlmacenFaissLegado.cargar(settings.FAISS_INDEX_PATH, create_embeddings(), confiar=True)
-        reranker: Reordenador | None = None
-        if settings.RERANKER_ENABLED:
-            from asistente.conocimiento.llm.reranker import MLXReranker
-
-            reranker = MLXReranker(model_path=settings.RERANKER_MODEL, top_k=settings.RERANKER_TOP_K)
-        return cls(vectorstore, reranker=reranker, first_stage_k=settings.RERANKER_FIRST_STAGE_K)
-
-    def search(self, query: str, *, k: int, filters: SearchFilters) -> list[FragmentoRecuperado]:
-        from asistente.conocimiento.llm.security import sanitize_context_documents
-
-        first_stage_k = max(k, self._first_stage_k) if self._reranker is not None else k
-        with self._lock:
-            if filters.is_empty():
-                docs = self._vectorstore.similarity_search(query, k=first_stage_k)
-            else:
-                # FAISS applies the filter AFTER fetching fetch_k neighbours; a
-                # selective filter (e.g. only binding doctrine) needs a deep pool.
-                docs = self._vectorstore.similarity_search(
-                    query,
-                    k=first_stage_k,
-                    filter=build_filter_predicate(filters),
-                    fetch_k=max(first_stage_k * 20, 500),
-                )
-            if self._reranker is not None and docs:
-                docs = list(self._reranker.reordenar(docs, query))
-        # Retrieved text is untrusted input to the model: redact injection bait.
-        return sanitize_context_documents(list(docs[:k]))
+    clave = (
+        str(settings.INDICE_SQLITE_PATH),
+        bool(settings.BM25_ENABLED),
+        float(settings.BM25_DENSE_WEIGHT),
+        float(settings.BM25_BM25_WEIGHT),
+        bool(settings.RERANKER_ENABLED),
+        str(settings.RERANKER_MODEL),
+        int(settings.RERANKER_TOP_K),
+        int(settings.RERANKER_FIRST_STAGE_K),
+    )
+    with _BUSCADORES_LOCK:
+        buscador = _BUSCADORES.get(clave)
+        if buscador is None:
+            buscador = SqliteCorpusSearcher.from_settings()
+            if not isinstance(buscador, SinCorpus):  # a missing index is looked for again next time
+                _BUSCADORES[clave] = buscador
+        return buscador
 
 
 _BUSCADORES: dict[tuple[Any, ...], CorpusSearcher] = {}

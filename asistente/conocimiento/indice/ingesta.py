@@ -1,9 +1,10 @@
-"""Escritura de la ingesta (``DocumentProcessor``) sobre ``IndiceHibrido``.
+"""El índice del corpus en disco: ``<directorio>/indice.sqlite``, escrito por la ingesta y leído entero por quien
+necesita todos los fragmentos.
 
-Expone las dos operaciones que la ingesta hace sobre el índice FAISS heredado (``delete`` y
-``add_documents``), así que ``document_loader`` solo cambia al construir el destino. Cada llamada es una
-transacción SQLite, de modo que no hay ``save_local`` ni ficheros temporales: el orden «índice primero,
-manifiesto después» se conserva porque el manifiesto se escribe tras el ``commit``.
+``EscritorSqlite`` da a la ingesta (``DocumentProcessor``) sus dos operaciones, ``delete`` y ``add_documents``.
+Cada llamada es una transacción SQLite, así que el orden «índice primero, manifiesto después» se conserva: el
+manifiesto se escribe tras el ``commit``. ``leer_fragmentos`` devuelve todos los fragmentos sin cargar el
+embedder (el grafo de doctrina necesita el texto, no los vectores).
 """
 
 from __future__ import annotations
@@ -50,3 +51,15 @@ class EscritorSqlite:
             for d, i in zip(documents, ids, strict=True)
         ]
         self.indice.anadir(fragmentos, vectores)
+
+
+def leer_fragmentos(directorio: str | Path) -> list[FragmentoRecuperado]:
+    """Todos los fragmentos de ``<directorio>/indice.sqlite``, en orden de alta, sin vectores.
+
+    ``FileNotFoundError`` si no hay índice: abrirlo en solo lectura no crea un fichero vacío.
+    """
+    ruta = ruta_indice(directorio)
+    if not ruta.exists():
+        raise FileNotFoundError(ruta)
+    with IndiceHibrido(ruta, solo_lectura=True) as indice:
+        return [FragmentoRecuperado(texto=f.texto, metadatos=f.metadatos, id=f.chunk_id) for f, _ in indice.recorrer()]

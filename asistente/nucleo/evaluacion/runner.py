@@ -88,11 +88,11 @@ def proveedor_reproduccion(_variante: Variante, caso: CasoEvaluacion, cifras: di
 
 
 def buscador_por_defecto() -> tuple[CorpusSearcher, str | None]:
-    """The production FAISS searcher, or an empty one (with a warning) when there is no index."""
+    """The production corpus searcher, or an empty one (with a warning) when there is no index."""
     try:
-        from asistente.nucleo.agent.search import FaissCorpusSearcher
+        from asistente.nucleo.agent.search import buscador_del_corpus
 
-        return FaissCorpusSearcher.from_settings(), None
+        return buscador_del_corpus(), None
     except Exception as exc:  # no index on this machine: calculator and module cases still run
         return SinCorpus(), f"Sin corpus ({exc}): los casos que necesitan buscar fuentes no pueden aprobar."
 

@@ -11,7 +11,7 @@ only, size and time capped.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import ipaddress
@@ -19,6 +19,8 @@ import logging
 import socket
 from typing import Any, Protocol
 from urllib.parse import urljoin, urlparse
+
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -71,41 +73,51 @@ def _host_publico(url: str) -> bool:
 
 
 class _RespuestaFijada:
-    """The slice of ``requests.Response`` the reader uses, over a urllib3 response."""
+    """The slice of a response the reader uses (status, headers, the body in chunks), over a streamed ``httpx``
+    response. ``close`` releases the connection; the body iterator also closes it when it ends."""
 
-    def __init__(self, respuesta: Any):
+    def __init__(self, cliente: httpx.Client, respuesta: httpx.Response):
+        self._cliente = cliente
         self._r = respuesta
-        self.status_code = respuesta.status
+        self.status_code = respuesta.status_code
         self.headers = respuesta.headers
 
-    def iter_content(self, tamano: int) -> Any:
-        return self._r.stream(tamano)
+    def iter_content(self, tamano: int) -> Iterator[bytes]:
+        try:
+            yield from self._r.iter_bytes(tamano)
+        finally:
+            self.close()
+
+    def close(self) -> None:
+        self._r.close()
+        self._cliente.close()
 
 
 def _obtener_fijado(url: str, *, ip: str, timeout: float, headers: dict[str, str], **_: Any) -> _RespuestaFijada:
-    """GET ``url`` connecting to ``ip`` (TLS still verified against the URL's host name, sent as SNI)."""
-    import urllib3
+    """GET ``url`` connecting to ``ip`` (TLS still verified against the URL's host name, sent as SNI).
 
+    The request goes to the already-checked address, never to a second resolution of the name: that closes the
+    DNS-rebinding window. ``Host`` carries the original name and ``sni_hostname`` makes the TLS handshake (SNI and
+    certificate check) use it too. No redirects (the reader re-checks every hop) and no retries.
+    """
     partes = urlparse(url)
     host = partes.hostname or ""
+    destino = f"[{ip}]" if ":" in ip else ip
+    puerto = f":{partes.port}" if partes.port else ""
     ruta = (partes.path or "/") + (f"?{partes.query}" if partes.query else "")
     cabeceras = {**headers, "Host": partes.netloc.rpartition("@")[2]}
-    tiempo = urllib3.Timeout(connect=timeout, read=timeout)
-    pool: Any
-    if partes.scheme == "https":
-        pool = urllib3.HTTPSConnectionPool(
-            ip,
-            port=partes.port or 443,
-            timeout=tiempo,
-            server_hostname=host,
-            assert_hostname=host,
-            cert_reqs="CERT_REQUIRED",
-            retries=False,
+    cliente = httpx.Client(timeout=httpx.Timeout(timeout), follow_redirects=False, trust_env=False)
+    try:
+        peticion = cliente.build_request(
+            "GET",
+            f"{partes.scheme}://{destino}{puerto}{ruta}",
+            headers=cabeceras,
+            extensions={"sni_hostname": host},
         )
-    else:
-        pool = urllib3.HTTPConnectionPool(ip, port=partes.port or 80, timeout=tiempo, retries=False)
-    respuesta = pool.urlopen("GET", ruta, headers=cabeceras, redirect=False, preload_content=False, retries=False)
-    return _RespuestaFijada(respuesta)
+        return _RespuestaFijada(cliente, cliente.send(peticion, stream=True))
+    except BaseException:
+        cliente.close()
+        raise
 
 
 def texto_de_html(html: str) -> tuple[str, str]:
@@ -160,29 +172,46 @@ class LectorLocal:
             except Exception as exc:  # network errors: the page is simply not read
                 logger.info("local read of %s failed: %s", actual, type(exc).__name__)
                 return None
-            if r.status_code in {301, 302, 303, 307, 308}:
-                destino = r.headers.get("Location")
-                if not destino:
-                    return None
-                actual = urljoin(actual, destino)
-                if urlparse(actual).scheme not in {"http", "https"}:
-                    return None
+            try:
+                resultado = self._procesar(actual, titulo, r)
+            finally:
+                cerrar = getattr(r, "close", None)
+                if callable(cerrar):
+                    cerrar()
+            if isinstance(resultado, str):  # a redirect to follow
+                actual = resultado
                 continue
-            if r.status_code != 200 or "html" not in r.headers.get("Content-Type", "").lower():
+            return resultado
+        return None
+
+    def _procesar(self, actual: str, titulo: str, r: Any) -> Documento | str | None:
+        """One answer: the next URL of a redirect, the document, or None."""
+        if r.status_code in {301, 302, 303, 307, 308}:
+            destino = r.headers.get("Location")
+            if not destino:
                 return None
-            cuerpo = b""
+            siguiente = urljoin(actual, destino)
+            if urlparse(siguiente).scheme not in {"http", "https"}:
+                return None
+            return siguiente
+        if r.status_code != 200 or "html" not in r.headers.get("Content-Type", "").lower():
+            return None
+        cuerpo = b""
+        try:
             for trozo in r.iter_content(65536):
                 cuerpo += trozo
                 if len(cuerpo) > MAX_BYTES:
                     return None
-            try:
-                propio, texto = texto_de_html(_decodificar(cuerpo, r.headers.get("Content-Type", "")))
-            except Exception:
-                return None
-            if not texto.strip():
-                return None
-            return Documento(actual, propio or titulo or actual, texto, datetime.now(UTC))
-        return None
+        except Exception as exc:  # the connection dropped mid-body: the page is simply not read
+            logger.info("local read of %s failed: %s", actual, type(exc).__name__)
+            return None
+        try:
+            propio, texto = texto_de_html(_decodificar(cuerpo, r.headers.get("Content-Type", "")))
+        except Exception:
+            return None
+        if not texto.strip():
+            return None
+        return Documento(actual, propio or titulo or actual, texto, datetime.now(UTC))
 
 
 class WebDeCapacidad:

@@ -199,7 +199,7 @@ Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrat
 **Datos que no están en SQLite** (cópialos también, §5): ficheros JSON y directorios bajo `data/`
 (`_jobs_state.json`, `_formatos_state.json`, `formatos/`, `_estado_normas.json`, `recodificacion/`,
 `_lotes/`, `_modulos_fuentes_state.json`, `navegador/` con diagnósticos redactados, `modulos/ayudas/`
-con las convocatorias del BOE), el índice de búsqueda (`FAISS_INDEX_PATH`, reconstruible) y los datos
+con las convocatorias del BOE), el índice de búsqueda (`INDICE_DIR`, reconstruible) y los datos
 legales versionados del repositorio (`asistente/ambitos/fiscal/data`, `asistente/ambitos/*/data`). La memoria de
 conversaciones tampoco está aquí: vive en Hindsight, por defecto en el PostgreSQL embebido de
 `~/.pg0/instances/hindsight-embed-<HINDSIGHT_PERFIL>/` del usuario que ejecuta la API, o en el servidor de
@@ -272,8 +272,10 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `DOCTRINE_GRAPH_PATH` | `./data/doctrine_graph.sqlite3` | Grafo de doctrina (opcional). |
 | `NORM_STATUS_PATH` | `./data/_estado_normas.json` | Estado de convalidación de los decretos-leyes (`proactive normas-check`). |
 | `RULES_DIR` | `<repositorio>/rules` | Reglas de decisión. |
-| `FAISS_INDEX_PATH` | `.faiss` | Índice de búsqueda del corpus. |
-| `FAISS_TRUSTED_INDEX` | `false` | Permitir cargar un índice con *pickle* (solo de origen propio). |
+| `INDICE_DIR` | `data/indice` | Directorio del índice del corpus: `indice.sqlite` (sqlite-vec y FTS5) y el manifiesto de la ingesta. `FAISS_INDEX_PATH` ya no se lee; si sigue definido, la aplicación avisa al arrancar. |
+| `INDICE_SQLITE_PATH` | `<INDICE_DIR>/indice.sqlite` | El fichero del índice, si no está en `INDICE_DIR`. |
+| `BM25_ENABLED` | `true` | Búsqueda híbrida: fusión RRF del ranking denso y el de FTS5. Con `false`, solo densa (no hace falta reindexar). Medición en `docs/cerebro/benchmark-recuperacion.md`. |
+| `BM25_DENSE_WEIGHT` / `BM25_BM25_WEIGHT` | `0.6` / `0.4` | Pesos de cada ranking en la fusión RRF. |
 | `JOBS_STATE_PATH` | `./data/_jobs_state.json` | Estado de las tareas programadas (`ops doctor`). |
 | `FORMAT_STATE_PATH` | `./data/_formatos_state.json` | Estado de la vigilancia de formatos. |
 | `FORMAT_DIR` | `./data/formatos` | Muestras, especificaciones y propuestas de formatos. |
@@ -366,7 +368,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `ANTHROPIC_EFFORT` | `high` | Esfuerzo de razonamiento. |
 | `ANTHROPIC_REFUSAL_FALLBACK` | `true` | Reintento en otro modelo si un clasificador rechaza la petición. |
 | `OPENAI_API_KEY` | vacío | **Secreto.** Credencial de OpenAI. |
-| `OPENAI_AGENT_MODEL` | `gpt-4o-mini` | Modelo de OpenAI (agente y extractor de hechos si no hay otro). |
+| `OPENAI_AGENT_MODEL` | `gpt-6.2-sol` | Modelo de OpenAI (agente y extractor de hechos si no hay otro). |
 | `LOCAL_LLM_BASE_URL` | `http://127.0.0.1:11434/v1` | Servidor local compatible con OpenAI. |
 | `LOCAL_LLM_MODEL` | vacío | Modelo local. |
 | `LOCAL_LLM_API_KEY` | `local` | Clave del servidor local. |

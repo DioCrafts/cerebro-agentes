@@ -36,7 +36,7 @@ def test_smoke_pipeline_crawler_to_index(monkeypatch) -> None:
 
     process_result = runner.invoke(
         processor_cli.cli,
-        ["--content-dir", ".", "--output-dir", "./tmp/faiss", "--overwrite-output"],
+        ["--content-dir", ".", "--output-dir", "./tmp/indice", "--overwrite-output"],
     )
     assert process_result.exit_code == 0
 

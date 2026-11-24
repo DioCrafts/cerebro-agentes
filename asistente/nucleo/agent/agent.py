@@ -678,7 +678,7 @@ class TeamAgent(TaxAgent):
     ) -> AgentResult:
         ledger = self._nuevo_ledger()
         make_toolbox = new_toolbox_factory(
-            # The corpus searcher serialises itself (one lock per process, see FaissCorpusSearcher): no per-run lock.
+            # The corpus searcher serialises itself (one lock per process, see SqliteCorpusSearcher): no per-run lock.
             searcher=self._searcher,
             ledger=ledger,
             case=case,
@@ -756,9 +756,9 @@ def modo_cerebro() -> str:
 
 
 def construir_asesor_fiscal() -> TeamAgent:
-    """Wire the tax advisor from settings (provider, FAISS searcher, verifier)."""
+    """Wire the tax advisor from settings (provider, corpus searcher, verifier)."""
     from asistente.nucleo.agent.providers import create_provider
-    from asistente.nucleo.agent.search import FaissCorpusSearcher
+    from asistente.nucleo.agent.search import buscador_del_corpus
     from asistente.plataforma.ops.consumo import medir
 
     # Every call is recorded and checked against the configured budgets.
@@ -777,7 +777,7 @@ def construir_asesor_fiscal() -> TeamAgent:
         logger.info("No doctrine graph at %s: validity alerts are disabled.", settings.DOCTRINE_GRAPH_PATH)
     return TeamAgent(
         provider=provider,
-        searcher=FaissCorpusSearcher.from_settings(),
+        searcher=buscador_del_corpus(),
         verifier=Verifier(verifier_provider),
         graph=graph,
     )

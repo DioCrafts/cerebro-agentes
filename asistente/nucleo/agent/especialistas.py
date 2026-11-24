@@ -98,7 +98,8 @@ def _error(message: str) -> ToolOutcome:
 
 def _render(resultado: ResultadoHerramienta) -> str:
     texto = resultado.contenido.strip()
-    if resultado.citas:
+    # Some tools (Luz) already end their text with their own sources line: never write it twice.
+    if resultado.citas and not any(linea.startswith("Fuentes: ") for linea in texto.splitlines()):
         texto += "\nFuentes: " + "; ".join(resultado.citas)
     return texto
 

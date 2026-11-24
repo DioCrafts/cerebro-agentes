@@ -851,9 +851,9 @@ con la fecha en que se consultaron (`consultado_el`) y la fuente.
   del proveedor. Para actualizarla sin tocar el código, copia el fichero, corrígelo y apunta
   `LLM_PRICES_PATH` a la copia.
 - **Nunca se estima.** Un modelo que no está en la tabla, o con el precio a `null`, se apunta sin
-  coste. Hoy tienen precio `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5` y
-  `claude-fable-5-2`; `gpt-4o-mini` está a `null` (no se pudo consultar) y los modelos locales no
-  figuran. Si cambias `ANTHROPIC_MODEL`, `VERIFIER_MODEL`, `OPENAI_AGENT_MODEL` o un modelo de
+  coste. Hoy tienen precio `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`, `claude-fable-5-2` y
+  `gpt-6.2-sol` (el modelo de OpenAI por defecto, consultado el 24 de noviembre de 2026); `gpt-4o-mini` está a
+  `null` y los modelos locales no figuran. Si cambias `ANTHROPIC_MODEL`, `VERIFIER_MODEL`, `OPENAI_AGENT_MODEL` o un modelo de
   nivel (`LLM_MODEL_*`), añade el modelo a la tabla.
 - Cada tipo de token tiene su precio: entrada, salida, lectura de caché, escritura de caché a 5
   minutos y a 1 hora. `contexto_largo` es el tramo de precio de las peticiones largas (Haiku 5.5 por
@@ -1228,7 +1228,7 @@ uv run python -m asistente.plataforma.cli.evaluacion promote --config candidata.
 - `run` y `promote` incluyen los **casos reales aceptados** de la base privada si existe (`--sin-casos-reales` para
   no hacerlo; `--casos-reales-db` para otra ruta). Un informe que los incluye lo dice: guárdalo fuera del
   repositorio (`reports/` ya está ignorado).
-- Sin índice FAISS (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
+- Sin índice del corpus (`--sin-corpus` o máquina sin índice) los casos que necesitan buscar fuentes (los `dgt`) no
   pueden aprobar; los de calculadoras y módulos sí.
 
 ### La puerta de `promote`: solo si no empeora

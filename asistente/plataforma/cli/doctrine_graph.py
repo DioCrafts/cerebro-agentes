@@ -29,20 +29,16 @@ from asistente.plataforma import settings
 
 
 def load_corpus_chunks(index_path: str) -> list[FragmentoRecuperado]:
-    """Chunks of the FAISS index, read from its docstore without loading the
-    embedder (building the graph needs the text, not the vectors)."""
-    if not settings.FAISS_TRUSTED_INDEX:
-        raise click.ClickException(
-            "El índice FAISS se lee con pickle: exporta FAISS_TRUSTED_INDEX=true solo si el índice es tuyo y de confianza."
-        )
-    path = Path(index_path) / "index.pkl"
-    if not path.exists():
-        raise click.ClickException(
-            f"No existe {path}. Construye antes el índice con asistente.plataforma.cli.processor."
-        )
-    from asistente.conocimiento.indice.faiss_legado import leer_fragmentos
+    """Chunks of the corpus index (``<index_path>/indice.sqlite``), read without loading the embedder (building
+    the graph needs the text, not the vectors)."""
+    from asistente.conocimiento.indice.ingesta import leer_fragmentos, ruta_indice
 
-    return leer_fragmentos(index_path, confiar=True)
+    try:
+        return leer_fragmentos(index_path)
+    except FileNotFoundError:
+        raise click.ClickException(
+            f"No existe {ruta_indice(index_path)}. Construye antes el índice con asistente.plataforma.cli.processor."
+        ) from None
 
 
 @click.group()
@@ -54,7 +50,7 @@ _GRAPH_OPTION = click.option("--graph", "graph_path", default=settings.DOCTRINE_
 
 
 @cli.command()
-@click.option("--index-path", default=settings.FAISS_INDEX_PATH, show_default=True, help="Directorio del índice FAISS.")
+@click.option("--index-path", default=settings.INDICE_DIR, show_default=True, help="Directorio del índice del corpus.")
 @_GRAPH_OPTION
 @click.option("--llm/--no-llm", default=False, help="Releer con el LLM las citas relevantes (de pago).")
 @click.option("--max-llm-calls", default=300, show_default=True)

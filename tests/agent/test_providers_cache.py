@@ -190,7 +190,8 @@ def test_bundled_table_prices_the_claude_5_family_from_its_source() -> None:
     assert haiku.contexto_largo is not None and haiku.contexto_largo.desde_tokens == 100_000
     assert (fable.input, fable.output, fable.cache_read) == (Decimal("8.00"), Decimal("40.00"), Decimal("0.20"))
     for nombre, precio in TABLA.modelos.items():
-        if precio.input is None:
+        # The derivation rules are Anthropic's; OpenAI's figures come literally from its own pricing page.
+        if precio.input is None or not nombre.startswith("claude-"):
             continue
         # Derived figures follow the stated rules, and each note says which figures are derived.
         assert precio.cache_write == precio.input * Decimal("1.25") and precio.cache_write_1h == precio.input * 2

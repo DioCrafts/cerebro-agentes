@@ -1,8 +1,62 @@
-# Benchmark de recuperación del módulo fiscal: FAISS frente a PageIndex
+# Benchmark de recuperación del módulo fiscal
 
-**Fecha:** 22 de noviembre de 2026 · **Decisión:** `faiss` sigue por defecto; `pageindex` queda como opción detrás del flag; la variante híbrida se ha retirado.
+**Última decisión (24 de noviembre de 2026):** el índice es SQLite (sqlite-vec y FTS5) y FAISS y LangChain se han retirado; la búsqueda del agente es híbrida por defecto (`BM25_ENABLED=true`, RRF de denso y FTS5). `pageindex` sigue solo en el benchmark.
 
-## Resultado con LLM real
+## Índice SQLite y búsqueda híbrida (24 de noviembre de 2026)
+
+El índice FAISS de `data/faiss` se migró a `data/indice/indice.sqlite` sin recalcular embeddings: 15.219 fragmentos y 15.219 vectores, y en una muestra de 50 fragmentos los 10 vecinos coinciden en un 99,4 % y el primero en todos. Medido con el benchmark, el buscador denso sobre SQLite da exactamente las cifras de FAISS, consulta por consulta. Tras eso se borraron el adaptador FAISS, la migración, `faiss-cpu`, `langchain-community` y `FAISS_TRUSTED_INDEX` (detalle al final de este documento).
+
+Las variantes del benchmark son ahora `denso` y `rrf`, el buscador del agente con `BM25_ENABLED` apagado y encendido, y `pageindex`. Se midieron sobre las mismas 77 consultas con cita medibles que la línea base, con Qwen3-Embedding-0.6B, Qwen3-Reranker-0.6B, 30 candidatos y `k=3`. Los pesos de RRF son los de `settings.py` (0,6 denso y 0,4 léxico). La consulta FTS5 une con OR las palabras de la pregunta. Al principio entraban también «qué» o «el», que casan con casi todo; ahora se quitan las palabras vacías del español (`PALABRAS_VACIAS` en `conocimiento/indice/almacen.py`).
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
+  --indice data/indice --real --variantes denso,rrf --salida reports/benchmark/sqlite-denso-rrf.json
+```
+
+| 77 consultas con cita | top-1 | en top-3 | `original` (26) top-1 / top-3 | `cuerpo` (51) top-1 / top-3 |
+|---|---|---|---|---|
+| `denso` | 48 % | 65 % | 65 % / 81 % | 39 % / 57 % |
+| `rrf` con palabras vacías | 43 % | 68 % | 58 % / 88 % | 35 % / 57 % |
+| `rrf` sin palabras vacías | 44 % | 68 % | 58 % / 88 % | 37 % / 57 % |
+
+Consulta a consulta frente a `denso`, el RRF sin palabras vacías mete en el top-3 dos citas que la búsqueda densa no llevaba allí («régimen Beckham» y retenciones) y no saca ninguna. En primera posición pierde tres (devengo del IRPF, factura en el IVA y pensión compensatoria) y no gana ninguna. Ninguna de las dos diferencias es significativa (prueba binomial exacta, p = 0,5 y p = 0,25). Quitar las palabras vacías recuperó una de las cuatro primeras posiciones que perdía la versión anterior.
+
+**Por qué queda encendido.** El agente no lee solo el primer fragmento: cada búsqueda le devuelve 6 (`AGENT_SEARCH_DEFAULT_K`) y elige qué citar. Lo que cuenta es que la cita correcta esté en ese grupo, y en el top-3 RRF no empeora ninguna consulta. La mejora está donde se esperaba: en las consultas `original`, que nombran artículos y modelos, sube del 81 % al 88 %. La pérdida en primera posición es real pero pequeña. Se vuelve a la búsqueda densa con `BM25_ENABLED=false`, sin reindexar.
+
+Lo que este benchmark no mide: el top-6 que recibe el agente (el benchmark usa `k=3`), las consultas `aeat` (el índice local no tiene esas páginas) y el efecto sobre las respuestas, que es trabajo de la batería con modelo real.
+
+## Línea base con 130 consultas (24 de noviembre de 2026, aún con FAISS)
+
+Esta es la cifra contra la que se compara cualquier cambio del buscador. Se midió el buscador del agente (variante `faiss`, hoy `denso`) con los modelos locales: Qwen3-Embedding-0.6B, Qwen3-Reranker-0.6B y 30 candidatos para el reranker. No hace falta clave de API. El corpus son los 4.732 fragmentos de las seis normas citadas, sacados del índice `data/faiss` reconstruido ese día a partir de 43 textos del BOE. El JSON completo está en `reports/benchmark/faiss-130-real.json`, fuera de git.
+
+```bash
+KMP_DUPLICATE_LIB_OK=TRUE python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
+  --indice data/faiss --real --variantes faiss --salida reports/benchmark/faiss-130-real.json
+```
+
+Ese índice no tiene ninguna página de la AEAT. En disco no hay ninguna descargada, y por eso falla `test_manifiesto_coincide_con_el_indice_local`. Las 20 consultas de estilo `aeat` fallan todas por falta de fuente, no por culpa del buscador, así que las cifras de abajo las dejan fuera. Para medirlas hay que descargar las páginas y reindexar.
+
+| consultas con cita medibles (77) | top-1 | en top-3 | IC 95 % del top-3 |
+|---|---|---|---|
+| todas | 48 % | 65 % | 54 %–75 % |
+| `original` (26) | 65 % | 81 % | |
+| `cuerpo` (51) | 39 % | 57 % | |
+
+En el ranking denso, antes del reranker, la cita correcta aparece entre las 3 primeras posiciones en el 62 % de estas 77 consultas, entre las 10 primeras en el 79 %, entre las 30 en el 90 % y entre las 50 en el 92 %. De los 27 fallos, 8 son de la primera etapa: la cita no llega a los 30 candidatos. Los otros 19 son de la reordenación: la cita llega y el reranker no la sube a las tres primeras posiciones. El reranker coloca en el top-3 a 11 consultas que el ranking denso dejaba fuera y saca a 9 que ya estaban, una ganancia neta de 2 sobre 77 por unos 3 segundos por consulta. Con este tamaño de muestra eso no se distingue de cero. La mejora que queda está en reordenar: casi todas las citas que faltan ya están entre los 30 candidatos.
+
+Abstenciones: 33 consultas cuya respuesta no está en el corpus. De ellas, 12 son de estilo `casi`, añadidas este día: preguntas fiscales cuya respuesta está en una norma que el corpus del benchmark no tiene, como una ley autonómica, una norma foral, el IGIC o los impuestos especiales. Algunas sí tendrían respuesta en el índice completo de producción (la ley de tributos cedidos de Madrid o el texto refundido de haciendas locales, por ejemplo), así que la etiqueta solo vale para el corpus de seis normas. El buscador del agente no se abstiene nunca. Lo que se mide es si su puntuación permitiría hacerlo con un umbral (AUROC: 1 separa del todo, 0,5 no distingue):
+
+| abstenciones | n | AUROC similitud densa | AUROC reranker |
+|---|---|---|---|
+| `fuera_de_corpus` (ajenas a la fiscalidad) | 15 | 0,86 | 0,89 |
+| `original` | 6 | 0,80 | 0,94 |
+| `casi` (fiscales, otra norma) | 12 | 0,71 | 0,65 |
+
+El reranker da más de 0,9 a 9 de las 12 consultas `casi`. Ante «¿qué bonificación tiene en Madrid el impuesto de sucesiones cuando heredan los hijos?» devuelve los artículos 2 y 21 de la LISD con 1,0. Ningún umbral sobre estas puntuaciones separa una pregunta fiscal sin respuesta de una con respuesta: esa decisión tiene que tomarla un modelo que lea los fragmentos.
+
+Pendiente con clave de API: la variante `pageindex` sobre las 130 consultas (`--variantes denso,pageindex`). Su selector usa ahora esfuerzo bajo y 8.000 tokens de salida, porque Opus 5.5 siempre piensa y los 1.024 de antes podían agotarse antes de la respuesta.
+
+## Resultado con LLM real (32 consultas, 22 de noviembre)
 
 Medido sobre el corpus real del procesador (las cinco normas que citan las consultas, tal como quedaron en `data/faiss` tras quitar el banner del BOE), embeddings Qwen3-Embedding-0.6B en MLX y Claude Sonnet 5.5 como selector del árbol. 32 consultas: 26 esperan norma y artículo, 6 son abstenciones. `k=3`, umbral denso 0,45. El coste usa 3 $ / 15 $ por millón de tokens de entrada / salida, un supuesto configurable con `--precio-entrada` y `--precio-salida`.
 
@@ -42,40 +96,10 @@ Desde noviembre de 2026, la variante `faiss` del benchmark es el buscador del ag
 
 Son 32 consultas sobre cinco leyes. El corpus del benchmark no incluye las páginas de la AEAT, que en producción compiten con las leyes. Las abstenciones son solo seis, así que cada una vale 17 puntos. Para afinar la decisión hacen falta más consultas, sobre todo de las que usan el vocabulario del cuerpo del artículo y no el de su título.
 
-## Cambio de índice: de FAISS a SQLite (`INDICE_BACKEND`)
+## FAISS y LangChain, retirados (24 de noviembre de 2026)
 
-El índice nuevo vive en un solo fichero, `<FAISS_INDEX_PATH>/indice.sqlite` (se cambia con `INDICE_SQLITE_PATH`). Guarda los vectores en una tabla `vec0` de `sqlite-vec` con métrica coseno, el texto en FTS5 con el tokenizador `unicode61 remove_diacritics 2` y los metadatos en JSON. No hay pickle, así que abrirlo no necesita `FAISS_TRUSTED_INDEX`. Con `BM25_ENABLED=true` la búsqueda fusiona el ranking denso y el de FTS5 con RRF (k=60), y FTS5 separa la puntuación: «721.» casa con «721», cosa que el `split()` de `rank-bm25` no hacía. El código está en [`asistente/conocimiento/indice/`](../../asistente/conocimiento/indice/).
+El índice vive en un solo fichero, `<INDICE_DIR>/indice.sqlite` (por defecto `data/indice`; se cambia con `INDICE_SQLITE_PATH`). Guarda los vectores en una tabla `vec0` de `sqlite-vec` con métrica coseno, el texto en FTS5 con el tokenizador `unicode61 remove_diacritics 2` y los metadatos en JSON. No hay pickle: abrirlo no ejecuta código de nadie. FTS5 separa la puntuación, así que «721.» casa con «721». El código está en [`asistente/conocimiento/indice/`](../../asistente/conocimiento/indice/): `almacen.py` (el almacén), `buscador.py` (el buscador del agente, con su cerrojo de proceso) e `ingesta.py` (escritura de la ingesta y `leer_fragmentos`, que usan el grafo de doctrina y el benchmark).
 
-El valor por defecto sigue siendo `faiss`. Para cambiarlo:
+Se siguieron los pasos que estaban previstos: línea base con FAISS, migración verificada, la misma medición sobre SQLite (idéntica) y borrado en bloque de `faiss_legado.py`, `migracion.py`, `cli/indice.py`, `faiss-cpu`, `langchain-community` (con él se fueron `langchain-core` y `langsmith`), `INDICE_BACKEND`, `FAISS_TRUSTED_INDEX` y `FAISS_INDEX_PATH`, que pasa a llamarse `INDICE_DIR`. Si un despliegue sigue definiendo `FAISS_INDEX_PATH`, la aplicación lo avisa al arrancar en lugar de buscar sin corpus. Un índice FAISS que no se haya migrado ya no se puede convertir con este código: hay que reconstruirlo con `python -m asistente.plataforma.cli.processor --full`. `tests/plataforma/test_dependencias_retiradas.py` falla si algún módulo vuelve a importar `faiss` o LangChain.
 
-1. Medir la línea base con FAISS y guardar el JSON:
-   ```bash
-   INDICE_BACKEND=faiss python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
-     --indice data/faiss --real --proveedor anthropic --umbral 0.45 --salida base-faiss.json
-   ```
-2. Migrar sin recalcular embeddings. Lee el pickle una sola vez, copia los vectores con `reconstruct_n`, comprueba que los recuentos cuadran y compara los 10 vecinos de 50 fragmentos al azar en FAISS y en `sqlite-vec`. Sale con código 1 si el solapamiento medio baja de 0,9:
-   ```bash
-   FAISS_TRUSTED_INDEX=true python -m asistente.plataforma.cli.indice migrar \
-     --desde data/faiss --a data/faiss/indice.sqlite
-   ```
-3. Medir otra vez con `INDICE_BACKEND=sqlite` (y con `BM25_ENABLED=true`, aparte, para ver si FTS5 se porta mejor que `rank-bm25` en las consultas con referencias como «modelo 721» o «Ley 7/2012»). Pasar también la batería y `check_critical_regressions`.
-4. Poner `sqlite` por defecto solo si ningún caso crítico empeora frente a la línea base. Si alguno empeora, se queda en `faiss` y se anota aquí cuál.
-
-Con `INDICE_BACKEND=sqlite` la ingesta (`document_loader`) escribe directamente en `indice.sqlite`: cada lote es una transacción, el manifiesto con sha256 y huella del pipeline se escribe después y las bajas usan los `chunk_ids` del manifiesto, igual que con FAISS. Una reconstrucción completa borra el fichero y empieza de cero.
-
-### Retirar FAISS y LangChain
-
-LangChain ya solo entra por un fichero: [`asistente/conocimiento/indice/faiss_legado.py`](../../asistente/conocimiento/indice/faiss_legado.py). Es el único que importa `langchain_community` y `langchain_core`, y traduce en los dos sentidos entre el `Document` de LangChain y `FragmentoRecuperado` ([`asistente/conocimiento/fragmento.py`](../../asistente/conocimiento/fragmento.py)), el tipo que usa el resto del código. `langchain-core` ya no está en `pyproject.toml`; llega como dependencia de `langchain-community`.
-
-El paso que queda, en este orden:
-
-1. Medir la línea base con FAISS (paso 1 de arriba) y guardar `base-faiss.json`.
-2. Migrar con `cli.indice migrar` (paso 2). No recalcula embeddings.
-3. Medir con `INDICE_BACKEND=sqlite`, con la misma orden y `--salida sqlite.json`, y pasar la batería y `check_critical_regressions`.
-4. Si ningún caso crítico empeora, poner `INDICE_BACKEND` a `sqlite` por defecto en `asistente/plataforma/settings.py`. Si alguno empeora, se queda en `faiss` y se apunta aquí cuál y con qué cifras.
-5. Con `sqlite` por defecto, borrar en un solo commit:
-   - `asistente/conocimiento/indice/faiss_legado.py`, `asistente/conocimiento/indice/migracion.py`, el subcomando `migrar` de `asistente/plataforma/cli/indice.py` y sus tests (`faiss_diminuto` en `tests/conocimiento/test_indice_sqlite.py`; los de FAISS en `tests/test_document_loader_incremental.py`);
-   - `faiss-cpu` y `langchain-community` de `pyproject.toml`, y regenerar `uv.lock` (con ellos se va `langchain-core`);
-   - en `nucleo/agent/search.py`, la rama FAISS de `FaissCorpusSearcher._cargar`; en `document_loader.py`, la rama FAISS de `process_documents` y `_atomic_save_index`; `FAISS_TRUSTED_INDEX` y el aviso S-17 de `docs/seguridad.md`.
-   - Antes de borrar, `leer_fragmentos` necesita un sustituto sobre `indice.sqlite`, porque lo usan el grafo de doctrina (`plataforma/cli/doctrine_graph.py`) y el benchmark (`cargar_corpus_de_indice`). `IndiceHibrido` todavía no tiene un método que devuelva todos los fragmentos.
-6. Comprobar que `git grep -n langchain -- asistente tests` no devuelve ningún import.
+La ingesta escribe directamente en `indice.sqlite`: cada lote es una transacción, el manifiesto con sha256 y huella del pipeline se escribe después y las bajas usan los `chunk_ids` del manifiesto. Una reconstrucción completa borra el fichero y empieza de cero. La batería no se pudo pasar porque esta máquina no tiene `ANTHROPIC_API_KEY`.

@@ -166,6 +166,7 @@ class Vocabulario:
     tarea_en_memoria: tuple[Termino, ...]
     accion_tarea: tuple[Termino, ...]
     accion_imperativo: tuple[Termino, ...]  # anchored at the start of the message
+    accion_dinero: tuple[Termino, ...]  # orders to move money, pay or sign; anchored like the imperatives
     accion_prefijos: tuple[str, ...]
     seguimiento_inicios: tuple[str, ...]
     confirmaciones: frozenset[str]
@@ -206,6 +207,7 @@ def vocabulario(ruta: str | None = None) -> Vocabulario:
         tarea_en_memoria=tuple(_termino(t, 1.0) for t in memoria.get("tarea", ())),
         accion_tarea=tuple(_termino(t, 1.0) for t in accion.get("tarea", ())),
         accion_imperativo=tuple(_termino(t, 1.0, inicio=True) for t in accion.get("imperativo", ())),
+        accion_dinero=tuple(_termino(t, 1.0, inicio=True) for t in accion.get("dinero", ())),
         accion_prefijos=tuple(plano(p) for p in accion.get("prefijos", ())),
         seguimiento_inicios=tuple(plano(p) for p in seguimiento.get("inicios", ())),
         confirmaciones=frozenset(plano(c) for c in seguimiento.get("confirmaciones", ())),
@@ -269,6 +271,8 @@ class Senales:
     pasado: bool = False
     recordar: bool = False
     accion: str | None = None  # "tarea" | "imperativo"
+    # An order to move money, pay or sign («transfiere…», «paga el recibo», «fírmame…»): never done, refused.
+    mueve_dinero: bool = False
     confirmacion: bool = False
     eliptica: bool = False
 
@@ -287,6 +291,7 @@ class Senales:
                 ("capacidades", self.capacidades),
                 ("pasado", self.pasado),
                 ("recordar", self.recordar),
+                ("mueve_dinero", self.mueve_dinero),
                 ("confirmacion", self.confirmacion),
                 ("eliptica", self.eliptica),
             )
@@ -383,12 +388,12 @@ def senales(
     )
     s.pasado = _alguno(texto, vocab.pasado)
     s.recordar = _alguno(texto, vocab.recordar) and not _alguno(texto, vocab.tarea_en_memoria)
+    inicio = _sin_prefijos(texto, vocab.accion_prefijos)
+    s.mueve_dinero = _alguno(inicio, vocab.accion_dinero)
     if _alguno(texto, vocab.accion_tarea):
         s.accion = "tarea"
-    else:
-        inicio = _sin_prefijos(texto, vocab.accion_prefijos)
-        if _alguno(inicio, vocab.accion_imperativo):
-            s.accion = "imperativo"
+    elif s.mueve_dinero or _alguno(inicio, vocab.accion_imperativo):
+        s.accion = "imperativo"
     s.confirmacion = bool(texto) and (
         texto in vocab.confirmaciones
         or (len(palabras) <= 6 and palabras[0] in vocab.confirmaciones and palabras[0] in {"si", "no", "vale", "ok"})
@@ -567,6 +572,9 @@ def por_reglas(
             aclaracion=_aclaracion([], por_clave),
         )
 
+    if s.mueve_dinero:
+        # The brain answers it itself (it never moves money, pays or signs): no specialist, no model.
+        return s, _Regla(intencion("accion", [], 0.95), [], respaldo, "orden de mover dinero, pagar o firmar")
     if s.charla and top < UMBRAL_DOMINIO:
         return s, _Regla(intencion("charla", [], 0.95), [], respaldo, "saludo, agradecimiento o capacidades")
     if s.recordar:

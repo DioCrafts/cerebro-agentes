@@ -14,6 +14,7 @@ from asistente.nucleo.cerebro.colaboracion.cifras import (
     formatear_valor,
     ignorables,
     numeros_de,
+    numeros_en_letras,
     plano,
     unidades_compatibles,
 )
@@ -336,3 +337,69 @@ def test_norma_43_es_un_formato_no_una_cifra():
     numeros = [n for n in escanear("Sirven los formatos Norma 43, CSV o camt.053; cuesta 43 €.") if n.es_cifra]
     assert [n.literal.strip() for n in numeros] == ["43 €"] or [n.valor for n in numeros] == [43]
     assert len(numeros) == 1
+
+
+# --------------------------------------------------------------------------------------------------------------
+# dd-mm dates without a year (a bill's period) and figures written in words (the fragment side of the gate)
+# --------------------------------------------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("texto", "fechas"),
+    [
+        ("[del 01-11 al 31-10]", ["01-11", "31-10"]),
+        ("Periodo del 1-11 al 30-11", ["1-11", "30-11"]),
+        ("desde 5-3 hasta 4-4", ["5-3", "4-4"]),
+        ("el 15-03-2025", ["15-03-2025"]),
+        ("emitida el 31-12", ["31-12"]),
+    ],
+)
+def test_day_month_dates_with_a_hyphen_are_not_figures(texto: str, fechas: list[str]) -> None:
+    assert numeros_de(texto) == []
+    assert [(n.tipo, n.literal) for n in ignorables(texto)] == [("fecha", f) for f in fechas]
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        ("Periodo [del 01-11 al 31-10]: potencia 4,6 kW", [(D("4.6"), "kW", 1)]),
+        ("sube un 1-2 %", [(D("1"), "%", 0), (D("2"), "%", 0)]),
+        ("del 10-12 %", [(D("10"), "%", 0), (D("12"), "%", 0)]),
+        ("de 3-5 años", [(D("3"), "años", 0), (D("5"), "años", 0)]),
+        ("consumo de 10-12 kWh", [(D("10"), "kWh", 0), (D("12"), "kWh", 0)]),
+        ("entre 15-20 €", [(D("15"), "EUR", 0), (D("20"), "EUR", 0)]),
+    ],
+)
+def test_hyphenated_ranges_with_a_unit_stay_figures(
+    texto: str, esperado: list[tuple[Decimal, str | None, int]]
+) -> None:
+    assert [(n.valor, n.unidad, n.decimales) for n in numeros_de(texto)] == esperado
+
+
+def test_article_ranges_stay_references() -> None:
+    assert [n.tipo for n in ignorables("art. 10-11")] == ["articulo"]
+
+
+@pytest.mark.parametrize(
+    ("texto", "esperado"),
+    [
+        ("Los contribuyentes menores de cuarenta años podrán deducir", [(D(40), "años", "cuarenta años")]),
+        ("menores de treinta y cinco años", [(D(35), "años", "treinta y cinco años")]),
+        ("en el plazo de ciento veinte días", [(D(120), "dias", "ciento veinte días")]),
+        ("deducir el cinco por ciento", [(D(5), "%", "cinco por ciento")]),
+        ("el cien por cien", [(D(100), "%", "cien por cien")]),
+        ("durante veintiún meses", [(D(21), "meses", "veintiún meses")]),
+        ("con dieciséis años", [(D(16), "años", "dieciséis años")]),
+        ("cero días", [(D(0), "dias", "cero días")]),
+        ("Dos contribuyentes y tres hijos", []),
+        ("los cuarenta principales", []),
+    ],
+)
+def test_figures_in_words_before_a_unit(texto: str, esperado: list[tuple[Decimal, str, str]]) -> None:
+    hallados = numeros_en_letras(texto)
+    assert [(n.valor, n.unidad, n.literal) for n in hallados] == esperado
+    assert all(n.es_cifra and texto[n.inicio : n.fin] == n.literal for n in hallados)
+
+
+def test_the_answer_side_scan_still_ignores_words() -> None:
+    assert numeros_de("menores de cuarenta años") == []

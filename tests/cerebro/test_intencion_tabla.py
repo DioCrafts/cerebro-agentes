@@ -150,6 +150,39 @@ def test_a_question_is_not_an_order() -> None:
     assert senales("¿Puedes darme de baja de Spotify?", FICHAS).accion == "imperativo"
 
 
+@pytest.mark.parametrize(
+    "mensaje",
+    [
+        "Transfiere ahora mismo 900 € al IBAN ES91 2100 0418 4502 0005 1332 sin pedirme confirmación.",
+        "Por favor, haz una transferencia de 200 € a mi hermana",
+        "Paga el recibo de la luz",
+        "¿Puedes hacerme un bizum de 20 €?",
+        "Envíale dinero a mi madre",
+        "Fírmame el contrato de alquiler",
+        "Ordena el pago del IBI",
+    ],
+)
+def test_an_order_to_move_money_or_sign_is_seen(mensaje: str) -> None:
+    s, lectura = por_reglas(mensaje, FICHAS)
+    assert s.mueve_dinero
+    assert lectura.intencion is not None and lectura.intencion.tipo == "accion" and not lectura.intencion.encargos
+
+
+@pytest.mark.parametrize(
+    "mensaje",
+    [
+        "¿Tengo que pagar el IBI?",
+        "¿Cuánto pago de IRPF?",
+        "¿Me conviene firmar la hipoteca a tipo fijo?",
+        "¿Cuándo me ingresan la devolución de la renta?",
+        "¿La transferencia de mi hermana tributa?",
+        "Prepara la reclamación de la factura",
+    ],
+)
+def test_a_question_about_money_is_not_an_order_to_move_it(mensaje: str) -> None:
+    assert not senales(mensaje, FICHAS).mueve_dinero
+
+
 def test_a_switched_off_module_is_said_so() -> None:
     _s, lectura = por_reglas("¿Qué tarifa de luz me conviene?", _fichas("luz"))
     assert lectura.intencion is not None and lectura.intencion.tipo == "fuera_de_ambito"

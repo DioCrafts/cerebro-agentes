@@ -117,6 +117,11 @@ class _Recorder:
         self.calls.append(kwargs)
         return self.response
 
+    def stream(self, **kwargs: Any) -> Any:
+        from tests.flujo_anthropic import como_flujo
+
+        return como_flujo(self.create(**kwargs))
+
 
 def test_anthropic_sends_pdfs_as_document_blocks_before_the_text() -> None:
     class _Block:

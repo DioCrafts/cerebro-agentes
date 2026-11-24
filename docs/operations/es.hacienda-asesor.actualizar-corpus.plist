@@ -21,7 +21,7 @@
     <key>PYTHON</key>
     <string>/RUTA/AL/REPO/hacienda-asesor/.venv/bin/python</string>
     <key>INDEX_DIR</key>
-    <string>/RUTA/AL/REPO/hacienda-asesor/data/faiss-v2</string>
+    <string>/RUTA/AL/REPO/hacienda-asesor/data/indice</string>
   </dict>
   <key>StartCalendarInterval</key>
   <dict>

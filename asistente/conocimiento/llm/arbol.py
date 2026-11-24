@@ -23,8 +23,8 @@ Piezas:
 * Selectores — deciden qué hijos explorar: :class:`SelectorLLM` (prompt al
   modelo, devuelve ``node_id``) y :class:`SelectorLexico` (determinista, hace
   de "LLM simulado" en tests y benchmark).
-* :class:`RecuperadorArbol` (``pageindex``), un :class:`Recuperador` intercambiable con el FAISS actual. (Una
-  variante híbrida —FAISS elige documento, el árbol la sección— se retiró: en el benchmark real fue peor
+* :class:`RecuperadorArbol` (``pageindex``), un :class:`Recuperador` intercambiable con el buscador denso del agente. (Una
+  variante híbrida —el buscador denso elige documento, el árbol la sección— se retiró: en el benchmark real fue peor
   que las dos puras en todas las métricas; ver docs/cerebro/benchmark-recuperacion.md.)
 """
 
@@ -348,7 +348,7 @@ class RecuperadorArbol:
         return docs
 
 
-RECUPERADORES = ("faiss", "pageindex")
+RECUPERADORES = ("denso", "pageindex")
 
 
 def envolver_recuperador(
@@ -359,11 +359,11 @@ def envolver_recuperador(
     *,
     k: int = 3,
 ) -> Recuperador:
-    """Devuelve la variante ``nombre`` del benchmark: el recuperador base (``faiss``) o el árbol (``pageindex``)."""
-    nombre = (nombre or "faiss").strip().lower()
+    """Devuelve la variante ``nombre`` del benchmark: el recuperador base (``denso``) o el árbol (``pageindex``)."""
+    nombre = (nombre or "denso").strip().lower()
     if nombre not in RECUPERADORES:
         raise ValueError(f"Recuperador desconocido: {nombre!r} (usa {', '.join(RECUPERADORES)})")
-    if nombre == "faiss":
+    if nombre == "denso":
         return base
     raices = construir_arboles(corpus)
     return RecuperadorArbol(raices=raices, selector=selector, k=k)

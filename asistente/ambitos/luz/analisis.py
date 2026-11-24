@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from decimal import ROUND_CEILING, Decimal
+from typing import Literal
 
 from asistente.ambitos.luz.consumo import ConsumoGuardado
 from asistente.ambitos.luz.datos import DatoNoDisponibleError, cargar_regulados
@@ -208,6 +209,124 @@ def _arriba(x: Decimal) -> Decimal:
     return x.quantize(Decimal("0.1"), rounding=ROUND_CEILING)
 
 
+AVISO_IMPUESTOS_Y_COSTES = (
+    "Ahorro anual aproximado con los tipos generales de IVA e Impuesto sobre la Electricidad (en los meses con "
+    "rebaja temporal de impuestos es algo menor). Cambiar de potencia puede tener costes de la distribuidora "
+    "(derechos de acometida/enganche) que no se calculan."
+)
+
+OrigenPrecioPotencia = Literal["tarifa", "pvpc", "regulado"]
+
+
+@dataclass(frozen=True)
+class PrecioPotencia:
+    """Price of the power term in €/kW and year, before taxes, and where it comes from."""
+
+    p1: Decimal
+    p2: Decimal
+    origen: OrigenPrecioPotencia
+    descripcion: str
+    boe_ids: tuple[str, ...]
+
+
+def precio_potencia_anual(actual: Oferta | None, hoy: date) -> PrecioPotencia:
+    """The €/kW·year of the power term on ``hoy``.
+
+    * a fixed-price contract: its own price (per day × 365 or per year), less its power discount, plus the
+      regulated tolls and charges when its prices exclude them;
+    * PVPC: tolls + charges + the fixed marketing margin (P1 only), all regulated;
+    * no contract known: tolls + charges only, the regulated MINIMUM every 2.0TD contract pays (a free-market
+      retailer adds its own margin on top, so the real price, and the saving, is higher).
+
+    Raises ``DatoNoDisponibleError`` when the regulated prices of ``hoy`` are not loaded and they are needed.
+    """
+    datos = cargar_regulados()
+
+    def regulado() -> tuple[dict[str, Decimal], tuple[str, ...]]:
+        peaje, cargo = datos.peaje(hoy), datos.cargo(hoy)
+        precios = {p: peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p] for p in ("p1", "p2")}
+        return precios, tuple(dict.fromkeys(e.boe_id for e in [*peaje.evidencia, *cargo.evidencia]))
+
+    if actual is None:
+        precios, ids = regulado()
+        return PrecioPotencia(
+            precios["p1"],
+            precios["p2"],
+            "regulado",
+            f"peajes y cargos regulados de {hoy.year}: el mínimo regulado del término de potencia; tu "
+            "comercializadora cobra además su margen, así que el precio real y el ahorro son mayores",
+            ids,
+        )
+    if actual.tipo == "pvpc":
+        precios, ids = regulado()
+        precios["p1"] += datos.pvpc.ccf_eur_kw_anio
+        return PrecioPotencia(
+            precios["p1"],
+            precios["p2"],
+            "pvpc",
+            f"PVPC de {hoy.year}: peajes, cargos y margen de comercialización fijo (todo regulado)",
+            (*ids, "BOE-A-2016-12274"),
+        )
+    if actual.potencia_eur_kw_dia is not None:
+        propios = {p: getattr(actual.potencia_eur_kw_dia, p) * 365 for p in ("p1", "p2")}
+    else:
+        assert actual.potencia_eur_kw_anio is not None
+        propios = {p: getattr(actual.potencia_eur_kw_anio, p) for p in ("p1", "p2")}
+    factor = 1 - actual.descuento_potencia_pct / 100
+    precios = {p: propios[p] * factor for p in ("p1", "p2")}
+    ids: tuple[str, ...] = ()
+    descripcion = f"precio de potencia de tu tarifa «{actual.nombre}»"
+    if not actual.incluye_peajes_cargos:
+        regulados, ids = regulado()
+        precios = {p: precios[p] + regulados[p] for p in ("p1", "p2")}
+        descripcion += " más los peajes y cargos regulados"
+    return PrecioPotencia(precios["p1"], precios["p2"], "tarifa", descripcion, ids)
+
+
+@dataclass
+class CambioPotencia:
+    """What changing the contracted power is worth in a year (positive = a saving)."""
+
+    actual_p1: Decimal
+    actual_p2: Decimal
+    nueva_p1: Decimal
+    nueva_p2: Decimal
+    precio: PrecioPotencia
+    ahorro_sin_impuestos: Decimal
+    iee_tipo: Decimal
+    iva_tipo: Decimal
+    ahorro_anual: Decimal
+    citas: tuple[str, ...]
+
+
+def cambio_de_potencia(
+    contrato: Contrato, nueva_p1: Decimal, nueva_p2: Decimal, actual: Oferta | None, hoy: date
+) -> CambioPotencia:
+    """Yearly saving of moving from the contracted power to ``nueva_p1``/``nueva_p2`` kW.
+
+    kW of difference × €/kW·year (:func:`precio_potencia_anual`) × (1 + IEE) × (1 + IVA), with the general tax
+    rates. Only the power term changes: the energy (kWh) does not depend on the contracted power.
+    """
+    datos = cargar_regulados()
+    precio = precio_potencia_anual(actual, hoy)
+    base = (contrato.potencia_p1_kw - nueva_p1) * precio.p1 + (contrato.potencia_p2_kw - nueva_p2) * precio.p2
+    iee, iva = datos.impuestos.iee_general.tipo, datos.impuestos.iva_general.tipo
+    ids = [*precio.boe_ids, "BOE-A-1992-28741", "BOE-A-1992-28740"]
+    citas = datos.citas(*(b for b in dict.fromkeys(ids) if b in datos.fuentes_principales))
+    return CambioPotencia(
+        actual_p1=contrato.potencia_p1_kw,
+        actual_p2=contrato.potencia_p2_kw,
+        nueva_p1=nueva_p1,
+        nueva_p2=nueva_p2,
+        precio=precio,
+        ahorro_sin_impuestos=euros(base),
+        iee_tipo=iee,
+        iva_tipo=iva,
+        ahorro_anual=euros(base * (1 + iee) * (1 + iva)),
+        citas=citas,
+    )
+
+
 def potencia_optima(
     contrato: Contrato,
     consumo: ConsumoGuardado | None,
@@ -240,30 +359,19 @@ def potencia_optima(
     recomendada_p2 = max(recomendada_p2, Decimal("0.1"))
     ahorro = None
     if actual is not None and actual.tipo == "fijo" and maximos:
-        datos = cargar_regulados()
         try:
-            peaje, cargo = datos.peaje(hoy), datos.cargo(hoy)
-        except DatoNoDisponibleError:
-            peaje = cargo = None
-        if actual.potencia_eur_kw_dia is not None:
-            precios = {p: getattr(actual.potencia_eur_kw_dia, p) * 365 for p in ("p1", "p2")}
+            cambio = cambio_de_potencia(
+                contrato,
+                min(recomendada_p1, contrato.potencia_p1_kw),
+                min(recomendada_p2, contrato.potencia_p2_kw),
+                actual,
+                hoy,
+            )
+        except DatoNoDisponibleError as exc:
+            avisos.append(f"No se calcula el ahorro: {exc}")
         else:
-            assert actual.potencia_eur_kw_anio is not None
-            precios = {p: getattr(actual.potencia_eur_kw_anio, p) for p in ("p1", "p2")}
-        if not actual.incluye_peajes_cargos and peaje is not None and cargo is not None:
-            for p in ("p1", "p2"):
-                precios[p] += peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p]
-        delta = {
-            "p1": max(contrato.potencia_p1_kw - recomendada_p1, CERO),
-            "p2": max(contrato.potencia_p2_kw - recomendada_p2, CERO),
-        }
-        sin_impuestos = sum((delta[p] * precios[p] for p in ("p1", "p2")), CERO)
-        iee, iva = datos.impuestos.iee_general.tipo, datos.impuestos.iva_general.tipo
-        ahorro = euros(sin_impuestos * (1 + iee) * (1 + iva))
-        avisos.append(
-            "Ahorro anual aproximado con los tipos generales de IVA e Impuesto sobre la Electricidad. Cambiar de "
-            "potencia puede tener costes de la distribuidora (derechos de acometida/enganche) que no se calculan."
-        )
+            ahorro = cambio.ahorro_anual
+            avisos.append(AVISO_IMPUESTOS_Y_COSTES)
     avisos.append(
         f"Margen de seguridad aplicado: {fmt(margen_pct, 0)} % sobre el máximo observado (elección del módulo, no "
         "una norma). La distribuidora puede exigir que la potencia sea compatible con tu instalación (boletín)."

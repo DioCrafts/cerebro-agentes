@@ -1,14 +1,14 @@
-"""Manifest layer that tracks which files are already in the FAISS index.
+"""Manifest layer that tracks which files are already in the corpus index.
 
 When ingestion runs incrementally we need to answer two questions per file:
 
 1. **Is the bytes-on-disk version equal to what we last indexed?** That's a
    SHA-256 comparison against the manifest entry. Match → skip Docling +
    embedding entirely.
-2. **If a file changed or was removed, which FAISS vector IDs should be
+2. **If a file changed or was removed, which chunk IDs should be
    dropped?** That's what the per-file ``chunk_ids`` field stores.
 
-The manifest is a plain JSON file (``manifest.json`` inside the FAISS output
+The manifest is a plain JSON file (``manifest.json`` inside the index output
 directory) so it survives crashes, is git-diffable, and doesn't need any
 extra runtime dependency. Save is **atomic**: write to ``manifest.json.tmp``
 and rename on success.
@@ -47,7 +47,7 @@ class FileEntry:
     """Per-file record kept inside the manifest.
 
     ``chunk_ids`` is what lets the diff step delete just this file's vectors
-    from FAISS without rebuilding the entire index when the file is later
+    from the index without rebuilding the entire index when the file is later
     modified or removed.
 
     ``strategy_id`` records which ingest strategy produced these chunks.
@@ -239,7 +239,7 @@ def load_manifest(output_dir: str | Path) -> Manifest | None:
 
 
 def save_manifest(output_dir: str | Path, manifest: Manifest) -> Path:
-    """Atomically persist the manifest next to the FAISS files.
+    """Atomically persist the manifest next to the index file.
 
     Atomic = write to ``manifest.json.tmp`` and ``os.replace`` over the
     target. Crash mid-write leaves the previous manifest intact; never

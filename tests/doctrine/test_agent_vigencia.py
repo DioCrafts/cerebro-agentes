@@ -194,9 +194,9 @@ def test_disputed_doctrine_must_be_presented_as_unsettled(graph: DoctrineGraph) 
     assert len(result.conflicts) == 2 and result.warnings == []
 
 
-def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path, monkeypatch) -> None:
-    faiss_legado = pytest.importorskip("asistente.conocimiento.indice.faiss_legado")
-    from asistente.plataforma import settings
+def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path) -> None:
+    from asistente.conocimiento.indice import Fragmento, IndiceHibrido
+    from asistente.conocimiento.indice.ingesta import ruta_indice
     from asistente.plataforma.cli.doctrine_graph import cli
 
     cites_missing = FragmentoRecuperado(
@@ -204,24 +204,16 @@ def test_cli_builds_the_graph_from_the_index_and_lists_what_to_acquire(tmp_path,
         metadatos={"source_file": "teac/c.html", "source_authority": "TEAC", "numero_resolucion": "00/300/2022"},
     )
 
-    class _Plano:
-        def embed_documents(self, textos):
-            return [[1.0, 0.0] for _ in textos]
-
-        def embed_query(self, texto):
-            return [1.0, 0.0]
-
-    index = tmp_path / "faiss"
-    corpus = [OLD, RULING, cites_missing]
-    faiss_legado.AlmacenFaissLegado.desde_fragmentos(corpus, _Plano(), [str(i) for i in range(3)]).save_local(index)
+    index = tmp_path / "indice"
     graph_path = str(tmp_path / "g.sqlite3")
     runner = CliRunner()
 
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)
-    refused = runner.invoke(cli, ["build", "--index-path", str(index), "--graph", graph_path])
-    assert refused.exit_code != 0 and "FAISS_TRUSTED_INDEX" in refused.output
+    missing = runner.invoke(cli, ["build", "--index-path", str(index), "--graph", graph_path])
+    assert missing.exit_code != 0 and "indice.sqlite" in missing.output  # no index yet: a clear error
 
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", True)
+    corpus = [OLD, RULING, cites_missing]
+    with IndiceHibrido(ruta_indice(index)) as indice:
+        indice.anadir([Fragmento(str(i), d.texto, dict(d.metadatos)) for i, d in enumerate(corpus)], [[1.0, 0.0]] * 3)
     built = runner.invoke(cli, ["build", "--index-path", str(index), "--graph", graph_path])
     assert built.exit_code == 0, built.output
     assert '"documentos_de_doctrina": 3' in built.output
