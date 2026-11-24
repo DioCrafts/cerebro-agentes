@@ -95,7 +95,6 @@
         devshells.default = {
           name = "cerebro-agentes";
           packages = with pkgsUnstable; [
-            faiss
             httpie
             playwright
             uv

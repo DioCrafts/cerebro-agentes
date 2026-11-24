@@ -2,7 +2,7 @@
 
 Both indexing (``asistente.conocimiento.processor.document_loader``) and querying
 (``asistente.nucleo.agent.search``) build
-their embedder here so the FAISS index and the query path always share the
+their embedder here so the corpus index and the query path always share the
 same vector space.
 
 The runtime backend is **MLX** via the ``mlx-embeddings`` package: bf16
@@ -14,7 +14,7 @@ target model must be a locally converted MLX directory — convert with
 This module deliberately drops every PyTorch / sentence-transformers /
 langchain-huggingface code path that lived here before, so importing this
 module on a non-Apple-Silicon machine will fail at the ``mlx_embeddings``
-import. That's intentional: the rest of the stack (Docling, FAISS) targets
+import. That's intentional: the rest of the stack (Docling, sqlite-vec) targets
 the same platform, and an embedder mismatch would silently break retrieval.
 """
 
@@ -118,7 +118,10 @@ class MLXEmbeddings:
 
     def _encode_sin_cerrojo(self, texts: list[str], *, prefix: str) -> list[list[float]]:
         if prefix:
-            texts = [f"{prefix} {t}" for t in texts]
+            # Qwen3-Embedding's prompt ends in "Query:" and gets a space; F2LLM-v2's already ends in "Query: " and
+            # must not get a second one (sentence-transformers concatenates prompt and text as they are).
+            separador = "" if prefix[-1].isspace() else " "
+            texts = [f"{prefix}{separador}{t}" for t in texts]
 
         all_vecs: list[list[float]] = []
         for start in range(0, len(texts), self._batch_size):
@@ -137,7 +140,7 @@ class MLXEmbeddings:
             # ``text_embeds`` is last-token-pooled + L2-normalized inside the
             # MLX impl, matching the HF sentence-transformers recipe.
             embeds = output.text_embeds
-            # MLX bf16 → Python floats for FAISS / numpy ingestion.
+            # MLX bf16 → Python floats for sqlite-vec / numpy ingestion.
             all_vecs.extend(embeds.tolist())
         return all_vecs
 

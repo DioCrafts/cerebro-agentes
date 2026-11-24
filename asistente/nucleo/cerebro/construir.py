@@ -1,7 +1,7 @@
 """Wiring the household brain from settings (what ``agent.build_agent`` returns when ``CEREBRO_MODO=hogar``).
 
 * the tax specialist is the advisor exactly as the legacy mode builds it (``agent.construir_asesor_fiscal``: the
-  metered provider of the active variant, the FAISS searcher, the verifier and the doctrine graph);
+  metered provider of the active variant, the corpus searcher, the verifier and the doctrine graph);
 * the brain's providers are that same metered provider re-purposed per call (``cerebro``, ``cerebro:intencion``,
   ``especialista:<clave>``, ``verificador``…), so routing by tier and the question budget apply to every call;
 * the household specialists are built per turn from the user's active modules (:func:`especialistas_del_hogar`,

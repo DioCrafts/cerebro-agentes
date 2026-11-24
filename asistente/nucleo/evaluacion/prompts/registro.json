@@ -56,6 +56,12 @@
       "huella": "7a3d4ee1e540bc34cb4042f647d02da3fbcb2b7010e39f8125d46ad703638837",
       "registrado_el": "2026-11-18",
       "nota": "Sin evaluar: Cerebro del hogar: instrucciones del cerebro, comprensión, síntesis, repaso proactivo y resumen de conversaciones"
+    },
+    {
+      "version": "cerebro_intencion@2",
+      "huella": "2e186fa4d5e3517bc9de383870178e158274e65fc612f88b86f8d748bee1158d",
+      "registrado_el": "2026-11-24",
+      "nota": "Sin evaluar: Una frase en el prompt de intención: pedir que se mueva dinero, se pague o se firme es «accion», nunca «fuera_de_ambito» (caso cer-transferencia-sin-confirmar de la batería del 24-11-2026; las reglas ya lo resuelven sin modelo)."
     }
   ],
   "cerebro_sintesis": [

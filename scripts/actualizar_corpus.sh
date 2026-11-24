@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Actualiza el corpus fiscal y el índice FAISS de forma incremental.
+# Actualiza el corpus fiscal y su índice (SQLite) de forma incremental.
 #
 #   1. boe_seed            normas del catálogo (texto consolidado, se vuelve a bajar)
 #   2. aeat_manuales_seed  manuales prácticos de la AEAT (reanuda; solo baja lo nuevo)
@@ -14,7 +14,7 @@
 #   REPO          checkout con data/ y .env           (por defecto, la raíz de este script)
 #   PYTHON        intérprete con el paquete instalado (por defecto, "uv run python")
 #   CONTENT_DIR   raíz del corpus                     ($REPO/data/html)
-#   INDEX_DIR     índice a actualizar                 ($REPO/data/faiss-v2)
+#   INDEX_DIR     índice a actualizar                 ($REPO/data/indice)
 #   SNAPSHOT      carpeta de snapshot a usar          (la última existente)
 #   DGT_MESES     meses hacia atrás que se revisan    (3)
 #   NUM_WORKERS   procesos de Docling                 (8)
@@ -25,7 +25,7 @@ set -euo pipefail
 
 REPO="${REPO:-$(cd "$(dirname "$0")/.." && pwd)}"
 CONTENT_DIR="${CONTENT_DIR:-$REPO/data/html}"
-INDEX_DIR="${INDEX_DIR:-$REPO/data/faiss-v2}"
+INDEX_DIR="${INDEX_DIR:-$REPO/data/indice}"
 DGT_MESES="${DGT_MESES:-3}"
 NUM_WORKERS="${NUM_WORKERS:-8}"
 SALTAR=",${SALTAR:-},"
@@ -39,12 +39,8 @@ exec > >(tee -a "$LOG") 2>&1
 if [[ -f "$REPO/.env" ]]; then
   set -a; . "$REPO/.env"; set +a
 fi
-# faiss y docling enlazan cada uno su libomp en macOS.
+# docling y los modelos MLX pueden enlazar cada uno su libomp en macOS.
 export KMP_DUPLICATE_LIB_OK=TRUE
-# El modo incremental deserializa $INDEX_DIR (pickle) y se niega sin esta marca
-# (docs/seguridad.md, S-17). Aquí el índice es el que construye este mismo script;
-# si INDEX_DIR apunta a un índice de otra procedencia, exporta FAISS_TRUSTED_INDEX=false.
-export FAISS_TRUSTED_INDEX="${FAISS_TRUSTED_INDEX:-true}"
 
 if [[ -z "${SNAPSHOT:-}" ]]; then
   SNAPSHOT="$(find "$CONTENT_DIR" -mindepth 1 -maxdepth 1 -type d -name '20[0-9][0-9]-[0-9][0-9]-[0-9][0-9]' \

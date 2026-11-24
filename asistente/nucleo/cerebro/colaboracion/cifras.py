@@ -23,10 +23,10 @@ Reading rules (es-ES first, because every text here is Spanish):
   años; unidades. A unit glued to the digits (``12%``, ``3kW``, ``200kWh``) counts.
 
 NOT figures (returned with the reason, so the gate can show what it skipped and why): citations ``[F3]``, URLs,
-IBANs, postcodes, dates (``15/03/2025``, ``2025-03-15``, «15 de marzo de 2025», «marzo de 2025», ``15/03``), times,
-year ranges (``2024-2025``), norms («Ley 35/2006», «Real Decreto 439/2007», «Orden HAC/1234/2025», ``35/2006``),
-article-like references («art. 68.1», «artículos 19 y 20», «modelo 100», «casilla 0505», «disposición adicional
-4.ª»), ordinals («1.º», «3.ª», list markers), phone numbers, identifiers (``BOE-A-2006-20764``, ``V0058-25``,
+IBANs, postcodes, dates (``15/03/2025``, ``2025-03-15``, «15 de marzo de 2025», «marzo de 2025», ``15/03``,
+«del 01-11 al 31-10»), times, year ranges (``2024-2025``), norms («Ley 35/2006», «Real Decreto 439/2007», «Orden
+HAC/1234/2025», ``35/2006``), article-like references («art. 68.1», «artículos 19 y 20», «modelo 100», «casilla
+0505», «disposición adicional 4.ª»), ordinals («1.º», «3.ª», list markers), phone numbers, identifiers (``BOE-A-2006-20764``, ``V0058-25``,
 ``F3``, NIFs), bare years (an integer 1900–2100 without unit, grouping or periodicity) and bare small counts (an
 integer of absolute value ≤ 10 without unit: «tus 3 recibos»). A year or a count WITH a unit is a figure
 (``2025 €``, ``3 meses``).
@@ -229,6 +229,18 @@ _MASCARAS: tuple[tuple[TipoNumero, re.Pattern[str]], ...] = (
         ),
     ),
     ("fecha", re.compile(rf"(?<![\w.,/-]){_DIA}/{_MES_NUM}(?![\w/]|[.,]\d)")),
+    # dd-mm without a year («[del 01-11 al 31-10]», a bill's period): only with a zero-padded part or right after
+    # «del», «al», «desde», «hasta», «el» or «día», and never with a unit after it, so a range («10-15 %»,
+    # «1-2 %», «de 3-5 años») stays a figure.
+    (
+        "fecha",
+        re.compile(
+            rf"(?<![\w.,/-])(?:0[1-9]-{_MES_NUM}|{_DIA}-0[1-9]"
+            r"|(?:(?<=\bdel )|(?<=\bal )|(?<=\bdesde )|(?<=\bhasta )|(?<=\bel )|(?<=\bdia )|(?<=\bdía ))"
+            rf"{_DIA}-{_MES_NUM})(?![\w/-]|[.,]\d){_TRAS_UNIDAD}",
+            _I,
+        ),
+    ),
     ("hora", re.compile(r"(?<![\w.,:])(?:[01]?\d|2[0-3]):[0-5]\d(?::[0-5]\d)?(?![\w:])(?:\s?h\b)?", _I)),
     ("hora", re.compile(r"(?<![\w.,:])(?:[01]?\d|2[0-3])\s?h(?:oras)?\s?[0-5]\d\b", _I)),
     ("rango_años", re.compile(rf"(?<![\w.,/]){_ANIO}\s?[-–/]\s?(?:{_ANIO}|\d{{2}})(?![\w/]|[.,]\d)")),
@@ -506,6 +518,105 @@ def numeros_de(texto: str) -> list[Numero]:
     return [n for n in escanear(texto) if n.es_cifra]
 
 
+# Spanish cardinals from 0 to 199, for the figures a source writes in words («menores de cuarenta años»).
+_UNIDADES_LETRA: dict[str, int] = {
+    "cero": 0,
+    "un": 1,
+    "uno": 1,
+    "una": 1,
+    "dos": 2,
+    "tres": 3,
+    "cuatro": 4,
+    "cinco": 5,
+    "seis": 6,
+    "siete": 7,
+    "ocho": 8,
+    "nueve": 9,
+}
+_SUELTOS_LETRA: dict[str, int] = {
+    "diez": 10,
+    "once": 11,
+    "doce": 12,
+    "trece": 13,
+    "catorce": 14,
+    "quince": 15,
+    "dieciseis": 16,
+    "diecisiete": 17,
+    "dieciocho": 18,
+    "diecinueve": 19,
+    "veinte": 20,
+    "veintiun": 21,
+    "veintiuno": 21,
+    "veintiuna": 21,
+    "veintidos": 22,
+    "veintitres": 23,
+    "veinticuatro": 24,
+    "veinticinco": 25,
+    "veintiseis": 26,
+    "veintisiete": 27,
+    "veintiocho": 28,
+    "veintinueve": 29,
+}
+_DECENAS_LETRA: dict[str, int] = {
+    "treinta": 30,
+    "cuarenta": 40,
+    "cincuenta": 50,
+    "sesenta": 60,
+    "setenta": 70,
+    "ochenta": 80,
+    "noventa": 90,
+}
+
+
+def _alternativas(palabras: dict[str, int]) -> str:
+    return "|".join(sorted(palabras, key=len, reverse=True))
+
+
+_HASTA_99 = (
+    rf"(?:(?:{_alternativas(_DECENAS_LETRA)})(?:\s+y\s+(?:{_alternativas(_UNIDADES_LETRA)}))?"
+    rf"|{_alternativas(_SUELTOS_LETRA)}|{_alternativas(_UNIDADES_LETRA)})"
+)
+# Matched on ``plano(texto)`` (lowercase, no accents, same positions): «cuarenta años», «treinta y cinco años»,
+# «ciento veinte días», «cien por cien», «el cinco por ciento».
+_EN_LETRAS_RE = re.compile(
+    rf"(?<![\w-])(?P<n>cien|ciento\s+{_HASTA_99}|{_HASTA_99})"
+    r"\s+(?P<u>a[ñn]os?|mes(?:es)?|dias?|por\s+ciento|por\s+cien)(?!\w)"
+)
+
+
+def _valor_en_letras(palabras: str) -> int:
+    total = 0
+    for palabra in palabras.split():
+        if palabra in ("cien", "ciento"):
+            total += 100
+        elif palabra != "y":
+            total += _DECENAS_LETRA.get(palabra) or _SUELTOS_LETRA.get(palabra) or _UNIDADES_LETRA.get(palabra, 0)
+    return total
+
+
+def numeros_en_letras(texto: str) -> list[Numero]:
+    """The figures ``texto`` writes in words before a unit («menores de cuarenta años» → 40 años), 0 to 199.
+
+    Only for the SOURCE side of the gate (a cited fragment): the BOE writes ages, terms and rates in words, and the
+    answer's «40 años [F2]» is that literal. The answer itself is still read digits-only (:func:`escanear`).
+    """
+    hallados: list[Numero] = []
+    for m in _EN_LETRAS_RE.finditer(plano(texto)):
+        valor = Decimal(_valor_en_letras(m.group("n")))
+        hallados.append(
+            Numero(
+                inicio=m.start(),
+                fin=m.end(),
+                literal=texto[m.start() : m.end()][:MAX_LITERAL],
+                tipo="cifra",
+                valor=valor,
+                mantisa=valor,
+                unidad=_unidad_de(m.group("u")),
+            )
+        )
+    return hallados
+
+
 def ignorables(texto: str) -> list[Numero]:
     """The numbers of ``texto`` that are not figures (dates, years, references…), with their reason."""
     return [n for n in escanear(texto) if not n.es_cifra]
@@ -665,6 +776,7 @@ __all__ = [
     "formatear_valor",
     "ignorables",
     "numeros_de",
+    "numeros_en_letras",
     "plano",
     "unicas",
     "unidades_compatibles",

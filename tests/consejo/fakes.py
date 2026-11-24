@@ -1,5 +1,5 @@
 """Doubles for the council's integration tests: fake specialists, a stand-in deliberation engine, a fake memory and a
-factory that wires them (no network, no FAISS, no model)."""
+factory that wires them (no network, no corpus index, no model)."""
 
 from __future__ import annotations
 

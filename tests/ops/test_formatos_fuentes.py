@@ -541,9 +541,9 @@ def test_the_ingest_reports_zero_chunk_files_without_changing_the_manifest(vigil
         assert manifiesto is not None
         return {clave: entrada.n_chunks for clave, entrada in manifiesto.files.items()}
 
-    con_vigilancia = indexar(tmp_path / "faiss_a")
+    con_vigilancia = indexar(tmp_path / "indice_a")
     monkeypatch.setattr(settings, "FORMAT_WATCH", False)
-    assert con_vigilancia == indexar(tmp_path / "faiss_b") == {"2026-11-12/boe_ccaa/madrid/codigo_madrid.pdf": 0, "a.html": 2}  # fmt: skip
+    assert con_vigilancia == indexar(tmp_path / "indice_b") == {"2026-11-12/boe_ccaa/madrid/codigo_madrid.pdf": 0, "a.html": 2}  # fmt: skip
 
     assert _estado("boe_ccaa_texto") == "rota" and [f.canario for f in _ultima("boe_ccaa_texto").fallos] == ["sin_texto"]  # fmt: skip
     assert _ultima("corpus_docling").contexto == "completa"

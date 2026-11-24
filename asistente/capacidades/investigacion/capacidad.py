@@ -97,9 +97,9 @@ def _construir() -> Investigador:
     almacen = almacen_por_defecto()
     searcher = None
     try:
-        from asistente.nucleo.agent.search import FaissCorpusSearcher
+        from asistente.nucleo.agent.search import buscador_del_corpus
 
-        searcher = FaissCorpusSearcher.from_settings()
+        searcher = buscador_del_corpus()
     except Exception as exc:  # no index on this server: the corpus is reported as unavailable
         logger.warning("research: corpus unavailable (%s)", type(exc).__name__)
     grafo = None

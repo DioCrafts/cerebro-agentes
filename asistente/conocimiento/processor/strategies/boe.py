@@ -30,7 +30,7 @@ threshold, we **never feed the whole file to Docling**. Instead we:
    KB) and run the **default** Docling+HybridChunker on those fragments.
 5. Re-stamp every emitted ``FragmentoRecuperado`` so ``source_file`` and ``chunk_id``
    point at the **parent** path, not the temp fragment — citations, the
-   manifest, and FAISS deletion-by-id all stay coherent with the rest of
+   manifest, and index deletion-by-id all stay coherent with the rest of
    the index.
 
 Why probe is conservative
@@ -211,7 +211,7 @@ class BoeConsolidadoTableStrategy(IngestStrategy):
             sub_chunks = docling_parse_files(temp_paths)
 
             # Re-stamp metadata so chunks point at the **parent** file,
-            # not the temp fragment. ``source_file`` drives FAISS
+            # not the temp fragment. ``source_file`` drives index
             # deletion-by-id when the parent is modified, and
             # ``chunk_id`` must be deterministic per (parent, ordinal)
             # so re-ingesting the parent produces idempotent IDs.

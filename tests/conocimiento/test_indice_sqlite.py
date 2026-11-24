@@ -1,4 +1,5 @@
-"""IndiceHibrido (sqlite-vec + FTS5) y conversor FAISS → SQLite, con índices diminutos y vectores aleatorios."""
+"""IndiceHibrido (sqlite-vec + FTS5), su lectura completa y el buscador del agente, con índices diminutos y
+vectores aleatorios."""
 
 from __future__ import annotations
 
@@ -58,6 +59,9 @@ def test_lexico_separa_puntuacion_y_quita_acentos(indice):
 def test_consulta_fts_y_rrf():
     assert consulta_fts('Modelo 721. "AND"') == '"modelo" OR "721" OR "and"'
     assert consulta_fts("¿?") is None
+    # Sin palabras vacías («qué», «el», «de»…), que casan con todo; si solo hay vacías, se quedan.
+    assert consulta_fts("¿Qué día se devenga el IRPF?") == '"día" OR "devenga" OR "irpf"'
+    assert consulta_fts("¿Cuándo es?") == '"cuándo" OR "es"'
     assert [i for i, _ in fusion_rrf([["x", "y"], ["y", "z"]])] == ["y", "x", "z"]
 
 
@@ -119,68 +123,25 @@ def test_escritor_de_ingesta(tmp_path):
     assert not ruta_indice(tmp_path).exists()
 
 
-# --------------------------------------------------------------- conversor
+# ------------------------------------------------------- lectura completa
 
 
-@pytest.fixture
-def faiss_diminuto(tmp_path):
-    pytest.importorskip("faiss")
-    pytest.importorskip("asistente.conocimiento.indice.faiss_legado")  # needs faiss + langchain-community
-    from asistente.conocimiento.fragmento import FragmentoRecuperado
-    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
+def test_recorrer_y_leer_fragmentos(tmp_path):
+    from asistente.conocimiento.indice.ingesta import leer_fragmentos, ruta_indice
 
-    n = 60
-    vectores = _unit(np.random.default_rng(5), n)
-    ids = [f"f{i // 10}-{i % 10}" for i in range(n)]
-    fragmentos = [
-        FragmentoRecuperado(
-            texto=f"Fragmento {i} del artículo {i}.", metadatos={"source_file": f"f{i // 10}.md", "chunk_id": cid}
-        )
-        for i, cid in enumerate(ids)
-    ]
-    por_texto = {f.texto: v.tolist() for f, v in zip(fragmentos, vectores, strict=True)}
-
-    class _VectoresFijos:
-        def embed_documents(self, textos):
-            return [por_texto[t] for t in textos]
-
-        def embed_query(self, texto):
-            return por_texto[texto]
-
-    directorio = tmp_path / "faiss"
-    AlmacenFaissLegado.desde_fragmentos(fragmentos, _VectoresFijos(), ids).save_local(directorio)
-    return directorio, vectores, ids
-
-
-def test_migracion_copia_y_verifica(faiss_diminuto, tmp_path):
-    from asistente.conocimiento.indice.migracion import cargar_faiss, migrar
-
-    directorio, vectores, ids = faiss_diminuto
-    with pytest.raises(RuntimeError, match="FAISS_TRUSTED_INDEX"):
-        cargar_faiss(directorio, confiar=False)
-    destino = tmp_path / "indice.sqlite"
-    informe = migrar(cargar_faiss(directorio, confiar=True), destino, origen=str(directorio), muestra=20, vecinos_k=5)
-    assert informe.correcto, informe.texto()
-    assert informe.fragmentos_sqlite == informe.vectores_sqlite == informe.vectores_faiss == 60
-    assert informe.solapamiento_medio == pytest.approx(1.0) and informe.primero_igual == pytest.approx(1.0)
-    assert "Migración verificada." in informe.texto()
-    with IndiceHibrido(destino) as ind:
-        assert ind.vector(ids[7]) == pytest.approx(vectores[7].tolist(), abs=1e-6)
-        assert ind.buscar_lexico("artículo 37", k=1)[0].fragmento.chunk_id == ids[37]
-        assert ind.buscar_lexico("artículo 37", k=1)[0].fragmento.metadatos["source_file"] == "f3.md"
-    with pytest.raises(FileExistsError):
-        migrar(cargar_faiss(directorio, confiar=True), destino)
-
-
-def test_cli_migrar(faiss_diminuto, tmp_path, monkeypatch, capsys):
-    from asistente.plataforma import settings
-    from asistente.plataforma.cli import indice as cli
-
-    directorio, _, _ = faiss_diminuto
-    destino = tmp_path / "cli.sqlite"
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", True)
-    assert cli.main(["migrar", "--desde", str(directorio), "--a", str(destino), "--muestra", "5"]) == 0
-    assert "Fragmentos SQLite: 60" in capsys.readouterr().out
+    vectores = _unit(np.random.default_rng(5), 3)
+    with pytest.raises(FileNotFoundError):
+        leer_fragmentos(tmp_path)
+    assert not ruta_indice(tmp_path).exists()  # leer no crea un índice vacío
+    with IndiceHibrido(ruta_indice(tmp_path)) as ind:
+        ind.anadir(_frags(), vectores)
+        pares = list(ind.recorrer(con_vectores=True))
+        assert [f.chunk_id for f, _ in pares] == ["a-0", "a-1", "b-0"]
+        assert pares[2][1] == pytest.approx(vectores[2].tolist(), abs=1e-6)
+        assert all(v is None for _, v in ind.recorrer())
+    fragmentos = leer_fragmentos(tmp_path)
+    assert [f.id for f in fragmentos] == ["a-0", "a-1", "b-0"]
+    assert fragmentos[0].metadatos["source_file"] == "a.md" and "721" in fragmentos[0].texto
 
 
 # ------------------------------------------------------------- buscador
@@ -189,7 +150,8 @@ def test_cli_migrar(faiss_diminuto, tmp_path, monkeypatch, capsys):
 def test_buscador_sqlite_filtros_e_hibrido(tmp_path, monkeypatch):
     from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
     from asistente.conocimiento.llm import embeddings as emb
-    from asistente.nucleo.agent.search import FaissCorpusSearcher, SearchFilters, SinCorpus
+    from asistente.nucleo.agent import search
+    from asistente.nucleo.agent.search import SearchFilters, SinCorpus, buscador_del_corpus
     from asistente.plataforma import settings
 
     vectores = _unit(np.random.default_rng(6), 3)
@@ -199,17 +161,20 @@ def test_buscador_sqlite_filtros_e_hibrido(tmp_path, monkeypatch):
             return vectores[2].tolist()  # siempre apunta a b-0
 
     ruta = tmp_path / "indice.sqlite"
-    monkeypatch.setattr(settings, "INDICE_BACKEND", "sqlite")
+    monkeypatch.setattr(search, "_BUSCADORES", {})
     monkeypatch.setattr(settings, "INDICE_SQLITE_PATH", str(ruta))
     monkeypatch.setattr(settings, "RERANKER_ENABLED", False)
     monkeypatch.setattr(settings, "BM25_ENABLED", True)
     monkeypatch.setattr(emb, "create_embeddings", lambda: _Emb())
-    assert isinstance(FaissCorpusSearcher.from_settings(), SinCorpus)
+    assert isinstance(buscador_del_corpus(), SinCorpus)
 
     with IndiceHibrido(ruta) as ind:
         ind.anadir(_frags(), vectores)
-    buscador = FaissCorpusSearcher.from_settings()
-    assert isinstance(buscador, SqliteCorpusSearcher)
+    buscador = buscador_del_corpus()
+    assert isinstance(buscador, SqliteCorpusSearcher) and buscador.hibrido
+    assert buscador_del_corpus() is buscador  # one per process and configuration
+    # Primera etapa híbrida: FTS5 trae «Modelo 721» (a-0) aunque el vector apunte a b-0.
+    assert {d.id for d in buscador.primera_etapa("modelo 721", 3)} >= {"a-0", "b-0"}
     docs = buscador.search("modelo 721", k=2, filters=SearchFilters())
     assert {d.metadatos["source_file"] for d in docs} == {"a.md", "b.md"}
     assert docs[0].id in {"a-0", "b-0"}

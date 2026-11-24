@@ -6,11 +6,11 @@ Los casos están en `eval_data/bateria/casos.json`; el código, en `asistente/nu
 
 ## Cómo se corre
 
-Con la clave en el entorno y el índice FAISS del repositorio principal:
+Con la clave en el entorno y el índice del corpus del repositorio principal:
 
 ```bash
 set -a; . ./.env; set +a
-export MODULOS_ACTIVOS_POR_DEFECTO=todos FAISS_INDEX_PATH="$PWD/data/faiss" FAISS_TRUSTED_INDEX=true KMP_DUPLICATE_LIB_OK=TRUE
+export MODULOS_ACTIVOS_POR_DEFECTO=todos INDICE_DIR="$PWD/data/indice" KMP_DUPLICATE_LIB_OK=TRUE
 python -m asistente.plataforma.cli.bateria run --yes
 ```
 
@@ -25,7 +25,7 @@ Otras opciones:
 - `comparar INFORME.json [--baseline OTRO.json] [--json]` compara dos informes ya guardados sin gastar nada.
 - `validar` comprueba el esquema de los casos y los patrones.
 
-El presupuesto por caso (`presupuesto_por_caso_eur`, 0,60 €) limita al investigador, que se para al agotarlo. El cerebro no tiene corte por euros a mitad de turno; se limita a 60 llamadas al modelo por caso y su coste se anota en USD, tal como lo da el registro de consumo.
+El presupuesto por caso (`presupuesto_por_caso_eur`, 1,00 €) limita al investigador, que se para al agotarlo. Es el mismo que tiene el investigador por defecto en producción; con los 0,60 € de antes, los cuatro casos que terminaron el 24 de noviembre de 2026 acabaron en `presupuesto_agotado` y dejaron fuera datos que estaban en las fuentes leídas. El cerebro no tiene corte por euros a mitad de turno; se limita a 60 llamadas al modelo por caso y su coste se anota en USD, tal como lo da el registro de consumo.
 
 ## Qué comprueba cada caso
 

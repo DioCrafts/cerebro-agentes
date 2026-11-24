@@ -228,15 +228,25 @@ class AnthropicProvider:
         return {**params, **kwargs}
 
     def _create(self, *, cache_automatica: bool = True, **kwargs: Any) -> Any:
-        """One non-streamed Messages call."""
+        """One Messages call whose text nobody watches, returning the final message.
+
+        It is streamed anyway. A non-streamed answer sends no byte until the model has finished, and the HTTP
+        client's read timeout (``limites_cliente``, 85 s per attempt by default) counts the whole silence: a long
+        reasoning step on a large JSON was cut twice and its encargo died with no answer. Streamed, the events and
+        the API's pings keep arriving while the model works, so the timeout only cuts a connection that really
+        hangs. ``get_final_message`` gives the same message ``create`` would.
+        """
         import anthropic
 
         client = self._ensure_client()
         params = self._params(kwargs, max_tokens=_MAX_TOKENS, cache_automatica=cache_automatica)
         try:
             if self._refusal_fallback:
-                return self._report(client.beta.messages.create(betas=[_FALLBACK_BETA], fallbacks="default", **params))
-            return self._report(client.messages.create(**params))
+                manager = client.beta.messages.stream(betas=[_FALLBACK_BETA], fallbacks="default", **params)
+            else:
+                manager = client.messages.stream(**params)
+            with manager as stream:
+                return self._report(stream.get_final_message())
         except anthropic.APIError as exc:
             raise _wrap_errors(exc) from exc
 

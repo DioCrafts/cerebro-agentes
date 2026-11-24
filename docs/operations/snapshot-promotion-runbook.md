@@ -17,7 +17,7 @@ Automatizar ciclo de actualización de conocimiento:
 
 Esto hace:
 - crawling web
-- construcción de índice FAISS para snapshot
+- construcción del índice del corpus (SQLite) para snapshot
 - evaluación de calidad (`eval_pipeline`)
 - chequeo crítico de regresiones
 
@@ -63,4 +63,3 @@ python -m asistente.plataforma.cli.promote_snapshot --env <env> --snapshot <snap
 
 ## Notas de seguridad
 - No promover snapshots construidos con fuentes no confiables.
-- Mantener `FAISS_TRUSTED_INDEX` restringido a artefactos internos/controlados.

@@ -116,3 +116,15 @@
 {"id": "a-vuelo-cancelado", "consulta": "Me cancelaron un vuelo, ¿qué indemnización me corresponde?", "tipo": "abstencion", "estilo": "fuera_de_corpus"}
 {"id": "a-derrama", "consulta": "¿Puede la comunidad de vecinos obligarme a pagar una derrama para el ascensor?", "tipo": "abstencion", "estilo": "fuera_de_corpus"}
 {"id": "a-receta", "consulta": "¿Cómo hago una tortilla de patatas jugosa?", "tipo": "abstencion", "estilo": "fuera_de_corpus"}
+{"id": "casi-itp-andalucia", "consulta": "¿Qué tipo del impuesto de transmisiones patrimoniales pago al comprar un piso de segunda mano en Andalucía?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-ajd-cataluna", "consulta": "¿Qué tipo de actos jurídicos documentados se aplica en Cataluña a la escritura de compra de una vivienda?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-isd-bonificacion-madrid", "consulta": "¿Qué bonificación autonómica tiene en la Comunidad de Madrid el impuesto de sucesiones cuando heredan los hijos?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-deduccion-alquiler-madrid", "consulta": "¿Qué deducción autonómica en el IRPF por alquiler de vivienda tienen los menores de 35 años en la Comunidad de Madrid?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-bizkaia-vivienda", "consulta": "¿Cuánto puedo deducir en el IRPF por comprar mi vivienda habitual si vivo en Bizkaia?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-is-gipuzkoa", "consulta": "¿Cuál es el tipo del impuesto sobre sociedades para una pequeña empresa con domicilio fiscal en Gipuzkoa?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-igic-ropa", "consulta": "¿Qué tipo de IGIC se aplica en Canarias a la venta de ropa en una tienda?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-matriculacion", "consulta": "¿Cuánto pago de impuesto de matriculación por un coche nuevo que emite 130 gramos de CO2 por kilómetro?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-alcohol", "consulta": "¿Cuál es el impuesto especial sobre el alcohol por cada litro de alcohol puro de una botella de ginebra?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-ibi-recargo-vacia", "consulta": "¿Puede el ayuntamiento cobrarme un recargo en el IBI por tener un piso vacío?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-modelo-620-coche", "consulta": "¿Qué plazo tengo para presentar el modelo 620 del impuesto de transmisiones tras comprar un coche usado a un particular?", "tipo": "abstencion", "estilo": "casi"}
+{"id": "casi-tasa-turistica", "consulta": "¿Cuánto es el impuesto sobre estancias turísticas por noche en un hotel de Mallorca?", "tipo": "abstencion", "estilo": "casi"}

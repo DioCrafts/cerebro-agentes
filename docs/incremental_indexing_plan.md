@@ -1,5 +1,9 @@
 # Incremental Indexing — Plan de implementación
 
+> Nota de noviembre de 2026: el plan se escribió para FAISS. El almacén es ahora un fichero SQLite
+> (`<INDICE_DIR>/indice.sqlite`, ver `asistente/conocimiento/indice/`); el manifiesto, los `chunk_id` deterministas y
+> el orden «índice primero, manifiesto después» no han cambiado, y cada lote es una transacción.
+
 > **Estado**: planning. No implementado. Esperando luz verde para abordarlo.
 >
 > **Tamaño estimado**: 5-7h efectivas de trabajo + 1-2h de pruebas reales.

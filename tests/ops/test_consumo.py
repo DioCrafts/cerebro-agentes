@@ -35,6 +35,7 @@ from asistente.plataforma.ops.consumo import (
     contexto_consumo,
     hoy_madrid,
 )
+from tests.flujo_anthropic import como_flujo
 
 PRECIOS = TablaPrecios(
     consultado_el=date(2026, 1, 1),
@@ -483,7 +484,8 @@ class _Queue:
             raise response
         return response
 
-    stream = create
+    def stream(self, **kwargs):
+        return como_flujo(self.create(**kwargs))
 
 
 def _anthropic_client(responses: list) -> SimpleNamespace:

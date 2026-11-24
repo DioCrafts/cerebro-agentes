@@ -32,7 +32,7 @@ def _thread_safe_singleton[T](factory: Callable[[], T]) -> Callable[[], T]:
     happens exactly once.
 
     A FAILED build is cached too: a misconfiguration (missing API key,
-    absent FAISS index, a model that won't load) would otherwise re-run the
+    absent corpus index, a model that won't load) would otherwise re-run the
     expensive factory — reloading the multi-GB embedder — on *every* request.
     The cached exception is re-raised cheaply instead. ``cache_clear()`` resets
     both success and failure so a fixed deployment can recover in-process (and
@@ -509,7 +509,7 @@ class AgentResponse(AgentResult):
 
 @_thread_safe_singleton
 def _build_agent() -> Agente:
-    """Build the agent once (loads the embedder + FAISS index)."""
+    """Build the agent once (loads the embedder + the corpus index)."""
     from asistente.nucleo.agent.agent import build_agent
 
     return build_agent()

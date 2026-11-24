@@ -88,7 +88,7 @@ usuarios se sostiene en todas las rutas probadas.
 | S-14 | media | corregido | `/qa` (flujo antiguo) y el extractor de OpenAI llaman al modelo sin medir ni presupuesto | `api.py`, `decision/fact_extractor.py` |
 | S-15 | media | corregido | Pregunta e historial sin límite de longitud: una sola pregunta puede costar una ventana de contexto completa por paso | `api/security.py`, `api.py`, `frontend/src/lib/historial.ts` |
 | S-16 | baja | corregido | `registrar_hechos` escribe hechos sin comprobar que salen de palabras del usuario | `asistente/nucleo/agent/procedencia.py`, `agent/tools.py` |
-| S-17 | baja | corregido | El indexador incremental deserializa FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `asistente/conocimiento/processor/document_loader.py` |
+| S-17 | baja | eliminado | El indexador incremental deserializaba FAISS (pickle) sin `FAISS_TRUSTED_INDEX` | `asistente/conocimiento/processor/document_loader.py` |
 | S-18 | baja | corregido | `/docs`, `/redoc` y `/openapi.json` públicos | `api.py`, `api/security.py` |
 
 ### S-01 (alta, corregido): el lector de XLSX se podía tumbar con ficheros diminutos
@@ -336,7 +336,11 @@ etiqueta de un cargo bancario guardada por suscripciones intentan escribir hecho
 `test_an_email_cannot_make_the_core_advisor_record_a_fact` (`tests/modulos/correo/test_integracion_nucleo.py`:
 un correo leído por el especialista de correo intenta que el asesor central registre hechos).
 
-### S-17 (baja, corregido): pickle de FAISS en el indexador
+### S-17 (baja, eliminado): pickle de FAISS en el indexador
+
+**Noviembre de 2026**: el índice FAISS y LangChain se han retirado. El corpus vive en un fichero SQLite
+(`indice.sqlite`, con sqlite-vec y FTS5) y no queda ningún pickle que cargar, así que el riesgo ha desaparecido y
+`FAISS_TRUSTED_INDEX` ya no existe. Lo que sigue es el registro de cómo se corrigió entonces.
 
 `agent/search.py` exige `FAISS_TRUSTED_INDEX=true` antes de `allow_dangerous_deserialization`;
 el indexador incremental (`processor/document_loader.py:869`) no. Lo ejecuta el operador sobre su
@@ -429,7 +433,6 @@ inventario de rutas.
    `PRIVACY_NOTICE_URL`. No activar `NOTIFY_*` con usuarios reales mientras siga abierto S-10.
    Opcionales (S-15, S-18): `API_MAX_QUERY_CHARS` (20 000), `API_MAX_HISTORY_MESSAGES` (40),
    `API_MAX_HISTORY_CHARS` (60 000) y `API_DOCS_PUBLICAS` (por defecto, no con cuentas).
-   `FAISS_TRUSTED_INDEX=true` solo con un índice construido por el propio operador.
 7. **Secretos** (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `NOTIFY_SMTP_PASSWORD`, `NOTIFY_WEBHOOK_URL`,
    `HACIENDA_API_KEY`, `HACIENDA_OPERATOR_KEY`) en un gestor de secretos o un fichero `0600` del
    usuario del servicio, nunca en el repositorio ni en la línea de órdenes; límites de gasto también

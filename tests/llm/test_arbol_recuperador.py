@@ -119,14 +119,14 @@ def test_selector_llm_parsea_json_ignora_ids_inventados_y_cuenta_tokens() -> Non
 
 def test_envolver_recuperador_respeta_el_flag() -> None:
     base = _Fijo(docs=[])
-    assert envolver_recuperador("faiss", base, CORPUS, SelectorLexico()) is base
+    assert envolver_recuperador("denso", base, CORPUS, SelectorLexico()) is base
     assert isinstance(envolver_recuperador("PageIndex", base, CORPUS, SelectorLexico()), RecuperadorArbol)
     with pytest.raises(ValueError, match="Recuperador desconocido"):
         envolver_recuperador("bm42", base, CORPUS, SelectorLexico())
 
 
 def test_valores_del_flag() -> None:
-    assert arbol.RECUPERADORES == ("faiss", "pageindex")
+    assert arbol.RECUPERADORES == ("denso", "pageindex")
 
 
 def test_navegar_baja_hasta_el_articulo_aunque_la_raiz_tenga_chunks():

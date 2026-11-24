@@ -9,20 +9,15 @@ license = "MIT"
 readme = "README.md"
 requires-python = ">=3.14,<3.15"
 dependencies = [
-    "requests==2.34.2",
-    # The project's one HTTP client (asistente/plataforma/http.py). requests stays only for
-    # asistente/investigador/web.py until that module moves to it.
+    # The project's one HTTP library: the shared client (asistente/plataforma/http.py) and the researcher's
+    # address-pinned reader (asistente/investigador/web.py).
     "httpx==0.28.1",
     "openai==3.57.0",
-    # The FAISS index on disk is LangChain's pickle format: only conocimiento/indice/faiss_legado.py loads it.
-    # Goes with faiss-cpu when INDICE_BACKEND=sqlite becomes the default.
-    "langchain-community==0.4.2",
     # Ingestion + chunking: Docling (PDF/HTML layout- and table-aware parsing,
     # tokenization-aware HybridChunker) is the single ingestion backend, called
     # directly (DocumentConverter + HybridChunker).
     "docling==2.96.0",
-    "faiss-cpu==1.16.0",
-    # Corpus index in one SQLite file (vectors; BM25 is SQLite FTS5). Replaces faiss-cpu + rank-bm25 once validated.
+    # Corpus index in one SQLite file: vectors in sqlite-vec, the text in FTS5 (BM25), no pickle.
     "sqlite-vec==0.1.9",
     "cryptography==50.0.2",
     "huggingface-hub==1.33.0",

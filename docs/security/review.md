@@ -1,5 +1,8 @@
 # Revisión de seguridad — HaciendaGPT (2026-05-19)
 
+> Nota de noviembre de 2026: el índice FAISS (pickle de LangChain) se ha retirado; el corpus está en SQLite
+> (sqlite-vec y FTS5) y no se deserializa nada. Los puntos sobre FAISS de esta revisión ya no aplican.
+
 ## Alcance
 Revisión estática del repositorio enfocada en:
 - secretos

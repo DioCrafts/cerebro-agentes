@@ -1,10 +1,8 @@
 """End-to-end coverage of the incremental indexing flow.
 
 Stubs ``_iter_chunks_streaming`` (the primary parallelism seam) so we never
-need the heavy Docling stack, but exercises the **real** FAISS code path
-(langchain-community 0.4.1, behind ``conocimiento/indice/faiss_legado.py``) so the add/delete semantics that the plan
-depends on are validated against the actual library, not our wishful
-thinking.
+need the heavy Docling stack, but exercises the **real** index (``IndiceHibrido``: sqlite-vec + FTS5) so the
+add/delete semantics that the plan depends on are validated against the actual store, not our wishful thinking.
 
 Each test is a tiny end-to-end scenario from the section "4.2 Tests de
 integración" of ``docs/incremental_indexing_plan.md``.
@@ -17,21 +15,16 @@ from pathlib import Path
 import pytest
 
 from asistente.conocimiento.fragmento import FragmentoRecuperado
+from asistente.conocimiento.indice import IndiceHibrido
+from asistente.conocimiento.indice.ingesta import EscritorSqlite, ruta_indice
 from asistente.conocimiento.processor import document_loader as dl
 from asistente.conocimiento.processor import manifest as mf
-from asistente.plataforma import settings
-
-
-@pytest.fixture(autouse=True)
-def indice_de_confianza(monkeypatch: pytest.MonkeyPatch) -> None:
-    """These tests build their own index, so they may load it back (docs/seguridad.md, S-17)."""
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", True)
 
 
 class _DeterministicEmbed:
     """Tiny embedder that returns a stable vector per text.
 
-    FAISS only checks that all vectors have the same dimensionality and that
+    The index only checks that all vectors have the same dimensionality and that
     we can compute one for an arbitrary query. The content of the vector
     doesn't matter for the incremental flow (add/delete by id), so we keep
     it deterministic and dimension-stable.
@@ -55,7 +48,7 @@ def corpus(tmp_path: Path) -> tuple[Path, Path]:
     that the processor will populate."""
     content_dir = tmp_path / "html"
     content_dir.mkdir()
-    output_dir = tmp_path / "faiss"
+    output_dir = tmp_path / "indice"
     return content_dir, output_dir
 
 
@@ -133,9 +126,11 @@ def test_first_run_builds_index_and_manifest(corpus, patch_docling) -> None:
 
     _make_processor(content_dir, output_dir).process_documents()
 
-    assert (output_dir / "index.faiss").exists()
-    assert (output_dir / "index.pkl").exists()
+    assert ruta_indice(output_dir).exists()
+    assert not (output_dir / "index.pkl").exists()  # no pickle anywhere
     assert (output_dir / mf.MANIFEST_FILENAME).exists()
+    with IndiceHibrido(ruta_indice(output_dir)) as ind:
+        assert len(ind) == 4 and ind.num_vectores() == 4
 
     manifest = mf.load_manifest(output_dir)
     assert manifest is not None
@@ -221,16 +216,14 @@ def test_modified_file_evicts_old_chunks_and_adds_new(corpus, patch_docling, mon
     _write(content_dir / "a.html", "<html>v2 different content</html>")
     patch_docling["a.html"] = 3  # produce 3 chunks this time
 
-    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
-
     delete_calls: list[list[str]] = []
-    real_delete = AlmacenFaissLegado.delete
+    real_delete = EscritorSqlite.delete
 
     def spy_delete(self, ids):
         delete_calls.append(list(ids))
         return real_delete(self, ids)
 
-    monkeypatch.setattr(AlmacenFaissLegado, "delete", spy_delete)
+    monkeypatch.setattr(EscritorSqlite, "delete", spy_delete)
 
     _make_processor(content_dir, output_dir).process_documents()
 
@@ -264,16 +257,14 @@ def test_removed_file_evicts_chunks(corpus, patch_docling, monkeypatch) -> None:
 
     (content_dir / "b.html").unlink()
 
-    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
-
     deleted: list[list[str]] = []
-    real_delete = AlmacenFaissLegado.delete
+    real_delete = EscritorSqlite.delete
 
     def spy_delete(self, ids):
         deleted.append(list(ids))
         return real_delete(self, ids)
 
-    monkeypatch.setattr(AlmacenFaissLegado, "delete", spy_delete)
+    monkeypatch.setattr(EscritorSqlite, "delete", spy_delete)
 
     _make_processor(content_dir, output_dir).process_documents()
 
@@ -505,42 +496,11 @@ def test_batch_size_one_still_works(corpus, patch_docling) -> None:
 
 
 # --------------------------------------------------------------------------- #
-# The existing index is a pickle: never loaded unless the operator trusts it
+# The incremental flow, read back from the index itself
 # --------------------------------------------------------------------------- #
 
 
-def test_an_incremental_run_refuses_to_unpickle_an_untrusted_index(corpus, patch_docling, monkeypatch) -> None:
-    content_dir, output_dir = corpus
-    _write(content_dir / "a.html")
-    _make_processor(content_dir, output_dir).process_documents()
-    _write(content_dir / "b.html")
-    antes = (output_dir / "index.pkl").read_bytes()
-
-    from asistente.conocimiento.indice.faiss_legado import AlmacenFaissLegado
-
-    def no_cargar(*_a, **_k):
-        raise AssertionError("the index was unpickled")
-
-    monkeypatch.setattr(AlmacenFaissLegado, "cargar", no_cargar)
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)
-    with pytest.raises(RuntimeError, match="FAISS_TRUSTED_INDEX"):
-        _make_processor(content_dir, output_dir).process_documents()
-    # Not silently rebuilt either: the index is as it was.
-    assert (output_dir / "index.pkl").read_bytes() == antes
-
-
-# --------------------------------------------------------------------------- #
-# INDICE_BACKEND=sqlite: same incremental flow over sqlite-vec + FTS5
-# --------------------------------------------------------------------------- #
-
-
-def test_sqlite_backend_incremental_add_modify_remove(corpus, patch_docling, monkeypatch) -> None:
-    pytest.importorskip("sqlite_vec")
-    from asistente.conocimiento.indice import IndiceHibrido
-    from asistente.conocimiento.indice.ingesta import ruta_indice
-
-    monkeypatch.setattr(settings, "INDICE_BACKEND", "sqlite")
-    monkeypatch.setattr(settings, "FAISS_TRUSTED_INDEX", False)  # no pickle on this path
+def test_incremental_add_modify_remove_in_the_index(corpus, patch_docling) -> None:
     content_dir, output_dir = corpus
     _write(content_dir / "a.html")
     _write(content_dir / "b.html")

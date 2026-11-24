@@ -27,6 +27,9 @@ def test_consultas_cubren_citas_de_los_evals_fiscales_y_abstenciones() -> None:
     assert len(consultas) >= 100
     assert sum(q["tipo"] == "abstencion" for q in consultas) >= 20
     assert estilos["cuerpo"] >= 30 and estilos["aeat"] >= 15 and estilos["original"] == 32
+    # Fiscal questions whose answer is in a norm the corpus does not hold: the hard abstentions.
+    casi = [q for q in consultas if q.get("estilo") == "casi"]
+    assert len(casi) >= 10 and all(q["tipo"] == "abstencion" and "espera" not in q for q in casi)
 
 
 def test_las_32_originales_tienen_su_cita_en_el_corpus_de_juguete() -> None:
@@ -37,7 +40,7 @@ def test_las_32_originales_tienen_su_cita_en_el_corpus_de_juguete() -> None:
 
 
 def test_toda_cita_esperada_existe_en_el_indice_real() -> None:
-    """Contra el manifiesto versionado de ``data/faiss`` (si no, el benchmark mediría ruido)."""
+    """Contra el manifiesto versionado del índice (si no, el benchmark mediría ruido)."""
     manifiesto = json.loads(MANIFIESTO.read_text(encoding="utf-8"))
     faltan = [
         q["id"]
@@ -47,15 +50,12 @@ def test_toda_cita_esperada_existe_en_el_indice_real() -> None:
     assert faltan == []
 
 
-@pytest.mark.skipif(
-    not (bench.RAIZ / "data/faiss/index.pkl").exists() and not os.environ.get("FAISS_INDEX_PATH"),
-    reason="sin índice local",
-)
+INDICE_LOCAL = Path(os.environ.get("INDICE_DIR") or bench.RAIZ / "data/indice")
+
+
+@pytest.mark.skipif(not (INDICE_LOCAL / "indice.sqlite").exists(), reason="sin índice local")
 def test_manifiesto_coincide_con_el_indice_local() -> None:
-    ruta = bench.RAIZ / "data/faiss"
-    if not (ruta / "index.pkl").exists():
-        ruta = Path(os.environ["FAISS_INDEX_PATH"])
-    real = bench.manifiesto_de_corpus(bench.cargar_corpus_de_indice(ruta))
+    real = bench.manifiesto_de_corpus(bench.cargar_corpus_de_indice(INDICE_LOCAL))
     guardado = json.loads(MANIFIESTO.read_text(encoding="utf-8"))
     for q in bench.cargar_consultas(bench.CONSULTAS_POR_DEFECTO):
         if q["tipo"] == "cita":
@@ -87,28 +87,48 @@ def test_puntuacion_de_paginas_aeat_y_de_normas() -> None:
     assert m == {"normas": {"LISD": ["21"]}, "aeat": {h: "Quiero un certificado de mi declaración de renta"}}
 
 
-def test_la_variante_faiss_es_el_buscador_del_agente() -> None:
-    """La base es FaissCorpusSearcher: los k vecinos más parecidos, saneados y sin abstención propia."""
-    from asistente.nucleo.agent.search import FaissCorpusSearcher
-
+def _buscador(*, k: int = 3, hibrido: bool = False, reranker=None):
     corpus = bench.cargar_corpus(bench.CORPUS_POR_DEFECTO)
-    base = bench.construir_base(corpus, bench.EmbeddingsHash(), k=3, primera_etapa=5)
-    assert isinstance(base.buscador, FaissCorpusSearcher)
+    emb = bench.EmbeddingsConCache(bench.EmbeddingsHash())
+    indice = bench.construir_indice(corpus, emb)
+    return (
+        corpus,
+        indice,
+        bench.construir_buscador(indice, emb, k=k, primera_etapa=5, hibrido=hibrido, reranker=reranker),
+    )
+
+
+def test_la_variante_densa_es_el_buscador_del_agente() -> None:
+    """SqliteCorpusSearcher sobre el índice en memoria: los k vecinos más parecidos, saneados, sin abstención."""
+    from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
+
+    _, indice, base = _buscador()
+    assert isinstance(base.buscador, SqliteCorpusSearcher) and not base.buscador.hibrido
     consulta = "¿Qué tipo de IVA se aplica al pan?"
-    sims = base.buscador._vectorstore.similitudes(consulta)
     docs = base.invoke(consulta)
-    assert len(docs) == 3
-    assert [sims[corpus.index(d)] for d in docs] == sorted(sims, reverse=True)[:3]
+    vecinos = indice.buscar_denso(bench.EmbeddingsHash().embed_query(consulta), k=3)
+    assert [d.id for d in docs] == [a.fragmento.chunk_id for a in vecinos]
 
 
-def test_la_variante_faiss_pasa_por_el_reranker() -> None:
+def test_la_variante_rrf_fusiona_el_ranking_lexico() -> None:
+    _, indice, rrf = _buscador(hibrido=True)
+    assert rrf.buscador.hibrido
+    consulta = "residencia habitual 183 días"
+    lexico = [a.fragmento.chunk_id for a in indice.buscar_lexico(consulta, k=5)]
+    denso = [a.fragmento.chunk_id for a in indice.buscar_denso(bench.EmbeddingsHash().embed_query(consulta), k=5)]
+    fusion = [d.id for d in rrf.primera_etapa(consulta, 5)]
+    assert lexico and denso
+    # RRF: the first of each ranking is among the fused candidates, and nothing outside both rankings is.
+    assert {lexico[0], denso[0]} <= set(fusion) <= set(lexico) | set(denso)
+
+
+def test_las_variantes_pasan_por_el_reranker() -> None:
     class _Invierte:
         def reordenar(self, docs, consulta):
             return list(reversed(docs))
 
-    corpus = bench.cargar_corpus(bench.CORPUS_POR_DEFECTO)
-    sin = bench.construir_base(corpus, bench.EmbeddingsHash(), k=5, primera_etapa=5)
-    con = bench.construir_base(corpus, bench.EmbeddingsHash(), k=5, primera_etapa=5, reranker=_Invierte())
+    _, _, sin = _buscador(k=5)
+    _, _, con = _buscador(k=5, reranker=_Invierte())
     consulta = "¿Qué tipo de IVA se aplica al pan?"
     assert con.invoke(consulta) == list(reversed(sin.invoke(consulta)))
 
@@ -129,20 +149,105 @@ def test_ejecutar_es_reproducible_y_mide_todas_las_metricas() -> None:
         return {v["variante"]: {k: x for k, x in v["resumen"].items() if "latencia" not in k} for v in r["variantes"]}
 
     assert resumen(a) == resumen(b)
-    assert [v["variante"] for v in a["variantes"]] == ["faiss", "pageindex"]
-    faiss, pageindex = (v["resumen"] for v in a["variantes"])
-    assert faiss["llamadas_llm_por_consulta"] == 0 and faiss["coste_por_consulta"] == 0
+    assert [v["variante"] for v in a["variantes"]] == ["denso", "rrf", "pageindex"]
+    denso, rrf, pageindex = (v["resumen"] for v in a["variantes"])
+    assert denso["llamadas_llm_por_consulta"] == 0 and denso["coste_por_consulta"] == 0
     assert pageindex["llamadas_llm_por_consulta"] > 0
-    assert set(faiss["por_estilo"]) == {"original", "cuerpo", "aeat"}
-    for r in (faiss, pageindex):
+    assert set(denso["por_estilo"]) == {"original", "cuerpo", "aeat"}
+    for r in (denso, rrf, pageindex):
         assert 0 <= r["cita_top1"] <= r["cita_en_k"] <= 1
-    assert faiss["falsa_abstencion"] == 0  # the agent's searcher never abstains by itself
+    assert denso["falsa_abstencion"] == rrf["falsa_abstencion"] == 0  # the agent's searcher never abstains
+
+
+def test_auroc() -> None:
+    assert bench.auroc([], [0.1]) is None
+    assert bench.auroc([0.9, 0.8], [0.1, 0.2]) == 1.0
+    assert bench.auroc([0.1], [0.9]) == 0.0
+    assert bench.auroc([0.5, 0.5], [0.5]) == 0.5
+
+
+def test_rango_es_la_posicion_de_la_primera_cita_correcta() -> None:
+    corpus, _, base = _buscador()
+    consulta = "¿Qué tipo de IVA se aplica al pan?"
+    ranking = base.primera_etapa(consulta, len(corpus))
+    objetivo = next(i for i, d in enumerate(ranking) if bench.cita_de(d)[1])
+    espera = {"norma": str(ranking[objetivo].metadatos["norma"]), "articulo": bench.cita_de(ranking[objetivo])[1]}
+    rango = bench.rango_primera_etapa(base, consulta, espera, profundidad=len(corpus))
+    assert rango is not None and rango <= objetivo + 1
+    assert bench.es_cita_correcta(ranking[rango - 1], espera)
+    assert bench.rango_primera_etapa(base, consulta, {"norma": "LIVA", "articulo": "99999"}) is None
+
+
+def test_diagnostico_de_la_primera_etapa() -> None:
+    r = bench.ejecutar(variantes=["denso", "rrf", "pageindex"])
+    assert "primera_etapa" not in r["variantes"][2]  # the tree has no first stage
+    for variante in r["variantes"][:2]:
+        diag = variante["primera_etapa"]
+        res = diag["resumen"]
+        recall = list(res["recall"].values())
+        assert list(res["recall"]) == ["@1", "@3", "@10", "@30", "@50"]
+        assert recall == sorted(recall) and all(0 <= x <= 1 for x in recall)
+        fallos = sum(not f["en_k"] for f in variante["filas"] if f["tipo"] == "cita")
+        assert res["fallos_primera_etapa"] + res["fallos_reordenacion"] == fallos
+        for f in diag["filas"]:
+            if f.get("fallo") == "reordenacion":
+                assert f["rango"] is not None and f["rango"] <= diag["primera_etapa"]
+        sep = res["separabilidad_abstencion"]
+        assert {"casi", "fuera_de_corpus"} <= set(sep)
+        assert sep["casi"]["n"] >= 10 and 0 <= sep["casi"]["denso"] <= 1
+        assert sep["casi"]["reranker"] is None  # no reranker in simulated mode
+    with pytest.raises(ValueError, match="faiss"):
+        bench.ejecutar(variantes=["faiss"])
+
+
+def test_corpus_del_indice_sqlite_con_sus_vectores(tmp_path) -> None:
+    """``--indice`` lee indice.sqlite: solo las normas citadas (y la AEAT), con los vectores guardados."""
+    from asistente.conocimiento.indice import Fragmento, IndiceHibrido
+    from asistente.conocimiento.indice.ingesta import ruta_indice
+
+    h = "7991f475f1019abe0f193dc325ae99bf"
+    filas = [
+        Fragmento(
+            "l-0",
+            "Artículo 9. Contribuyentes.",
+            {"headings": ["Artículo 9. Contribuyentes"]},
+            "x/BOE-A-2006-20764.html",
+        ),
+        Fragmento("o-0", "Otra ley.", {"headings": ["Artículo 1. Objeto"]}, "x/BOE-A-1999-1.html"),
+        Fragmento("p-0", "Certificado.", {"headings": ["Certificados"]}, f"x/{h}.html"),
+    ]
+    with IndiceHibrido(ruta_indice(tmp_path)) as ind:
+        ind.anadir(filas, [[1.0, 0.0], [0.0, 1.0], [0.6, 0.8]])
+    pares = bench.leer_corpus_de_indice(tmp_path)
+    assert [(d.id, d.metadatos["norma"]) for d, _ in pares] == [("l-0", "LIRPF"), ("p-0", "AEAT")]
+    assert pares[0][1] == pytest.approx([1.0, 0.0])
+    assert [d.id for d in bench.cargar_corpus_de_indice(ruta_indice(tmp_path), aeat=False)] == ["l-0"]
 
 
 def test_cli_imprime_tabla_y_guarda_json(tmp_path) -> None:
     salida = tmp_path / "r.json"
-    res = CliRunner().invoke(bench.cli, ["--variantes", "faiss,pageindex", "--salida", str(salida)])
+    res = CliRunner().invoke(bench.cli, ["--variantes", "denso,rrf,pageindex", "--salida", str(salida)])
     assert res.exit_code == 0, res.output
-    assert "| pageindex |" in res.output and "| faiss |" in res.output
+    assert "| pageindex |" in res.output and "| denso |" in res.output and "| rrf |" in res.output
     datos = json.loads(salida.read_text())
-    assert datos["modo"] == "simulado" and len(datos["variantes"]) == 2 and datos["reranker"] is False
+    assert datos["modo"] == "simulado" and len(datos["variantes"]) == 3 and datos["reranker"] is False
+    assert "Primera etapa de `rrf`" in res.output and "| casi |" in res.output
+    assert datos["variantes"][0]["primera_etapa"]["profundidad"] == 50
+    assert datos["pesos_rrf"] == {"denso": 0.6, "lexico": 0.4}
+
+
+def test_recalcular_vectores_mide_otro_modelo_y_lo_compara() -> None:
+    """``--modelo-embeddings`` recalcula los vectores del corpus con cada modelo y acaba en una tabla comparativa."""
+    a = bench.ejecutar(variantes=["denso"], recalcular_vectores=True, modelo_embeddings="data/models/a")
+    b = bench.ejecutar(variantes=["denso"], recalcular_vectores=True, modelo_embeddings="data/models/b")
+    assert a["vectores_recalculados"] and a["modelo_embeddings"] == "data/models/a"
+    assert a["segundos_indice"] >= 0
+    tabla = bench.tabla_comparativa([a, b]).splitlines()
+    assert tabla[0].startswith("| modelo | variante | cita top-1 |") and "recall denso @30" in tabla[0]
+    assert tabla[2].startswith("| a | denso |") and tabla[3].startswith("| b | denso |")
+    assert len(tabla) == 4
+
+
+def test_modelo_embeddings_exige_real(tmp_path) -> None:
+    res = CliRunner().invoke(bench.cli, ["--modelo-embeddings", str(tmp_path)])
+    assert res.exit_code != 0 and "--real" in res.output

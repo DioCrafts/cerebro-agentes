@@ -140,7 +140,7 @@ def _ahora() -> datetime:
 
 
 # --------------------------------------------------------------------------- #
-# The app's corpus (FAISS index + doctrine validity graph)
+# The app's corpus (SQLite index + doctrine validity graph)
 # --------------------------------------------------------------------------- #
 
 

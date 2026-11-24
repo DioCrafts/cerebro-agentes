@@ -270,13 +270,13 @@ _buscador: Any = None
 
 
 def _buscador_del_corpus() -> Any:
-    """The corpus searcher (FAISS), loaded once per process; raises when the index is not available."""
+    """The corpus searcher, loaded once per process; raises when the index is not available."""
     global _buscador
     with _buscador_lock:
         if _buscador is None:
-            from asistente.nucleo.agent.search import FaissCorpusSearcher
+            from asistente.nucleo.agent.search import buscador_del_corpus
 
-            _buscador = FaissCorpusSearcher.from_settings()
+            _buscador = buscador_del_corpus()
         return _buscador
 
 

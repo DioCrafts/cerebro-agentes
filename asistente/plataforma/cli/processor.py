@@ -7,13 +7,13 @@ from asistente.conocimiento.processor.document_loader import build_index
 from asistente.plataforma.utils import configure_logging
 
 PRJ_DATA_DIR = os.environ.get("PRJ_DATA_DIR", os.path.expanduser("~"))
-FAISS_DIR = os.path.join(PRJ_DATA_DIR, "faiss")
+INDICE_DIR = os.path.join(PRJ_DATA_DIR, "indice")
 CONTENT_DIR = os.path.join(PRJ_DATA_DIR, "html")
 
 
 @click.command()
 @click.option("--content-dir", type=click.Path(exists=True, file_okay=False, dir_okay=True), default=CONTENT_DIR)
-@click.option("--output-dir", type=click.Path(exists=False, file_okay=False, dir_okay=True), default=FAISS_DIR)
+@click.option("--output-dir", type=click.Path(exists=False, file_okay=False, dir_okay=True), default=INDICE_DIR)
 @click.option(
     "--max-tokens",
     type=click.IntRange(min=1),
@@ -57,8 +57,8 @@ CONTENT_DIR = os.path.join(PRJ_DATA_DIR, "html")
     type=click.IntRange(min=1),
     default=200,
     help=(
-        "Number of files per persistence batch. After every batch, FAISS and "
-        "manifest are written atomically to disk, so a crash loses at most "
+        "Number of files per persistence batch. After every batch, the index and "
+        "manifest are committed to disk, so a crash loses at most "
         "the current batch — re-running with --incremental resumes from the "
         "manifest. Smaller = finer recovery granularity, more I/O. 200 ~95s "
         "of work-at-risk on M-series hardware."
@@ -91,7 +91,7 @@ def cli(content_dir, output_dir, max_tokens, num_workers, incremental, overwrite
 
     build_index(args)
 
-    logging.info("Local FAISS index has been successfully saved")
+    logging.info("Corpus index saved to %s", output_dir)
 
 
 if __name__ == "__main__":

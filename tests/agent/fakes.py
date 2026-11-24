@@ -1,4 +1,4 @@
-"""Scripted doubles for the agent tests: no network, no models, no FAISS."""
+"""Scripted doubles for the agent tests: no network, no models, no corpus index."""
 
 from __future__ import annotations
 

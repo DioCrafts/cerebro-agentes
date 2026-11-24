@@ -266,7 +266,7 @@ def _salida_por_defecto(variante_id: str) -> Path:
 @click.option("--out", "out_path", type=click.Path(dir_okay=False, path_type=Path), help="Informe JSON.")
 @click.option("--baseline", type=click.Path(exists=True, dir_okay=False, path_type=Path), help="Informe base.")
 @click.option("--presupuesto-usd", type=Decimal, help="Detiene la ejecución al superar este coste.")
-@click.option("--sin-corpus", is_flag=True, help="No carga el índice FAISS.")
+@click.option("--sin-corpus", is_flag=True, help="No carga el índice del corpus.")
 @click.option("--sin-juez", is_flag=True, help="No evalúa las rúbricas (quedan como aviso en el informe).")
 @click.option("--exigir-criticas", is_flag=True, help="Termina con error si falla algún caso de una categoría crítica.")
 @click.option("--yes", is_flag=True, help="No pide confirmación antes de llamar al modelo.")

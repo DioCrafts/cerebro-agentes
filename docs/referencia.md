@@ -71,11 +71,11 @@ modelo:
 ## 📚 Referencia técnica
 
 Lo que sigue documenta el sistema tal como está hoy. Buena parte describe el **módulo fiscal** (corpus del BOE y la
-AEAT, índice FAISS, reglas, calculadoras), que fue el origen del proyecto y sigue siendo el módulo más completo.
+AEAT, índice del corpus, reglas, calculadoras), que fue el origen del proyecto y sigue siendo el módulo más completo.
 
 ### Piezas del módulo fiscal
 
-- 📚 **RAG sobre contenido fiscal** (HTML/PDF) con FAISS.
+- 📚 **RAG sobre contenido fiscal** (HTML/PDF) con un índice SQLite: vectores en sqlite-vec y texto en FTS5.
 - 🧠 **Motor de reglas** para evaluación de obligaciones y casos.
 - 🛡️ **Grounding gate**: abstención forzada cuando no hay citas normativas suficientes (modos `cited` / `uncited` / `abstained`).
 - 🧭 **Detector de drift normativo**: cada regla declara las fuentes BOE/AEAT que la sustentan; un CLI compara los hashes contra el último snapshot.
@@ -89,7 +89,7 @@ AEAT, índice FAISS, reglas, calculadoras), que fue el origen del proyecto y sig
 ## 🧱 Arquitectura (alto nivel)
 
 1. **Crawler**: descarga contenido fuente (web/PDF).
-2. **Processor**: convierte y trocea PDF/HTML con **Docling** (análisis de layout, tablas y *chunking* por estructura + presupuesto de tokens) y construye el índice vectorial FAISS.
+2. **Processor**: convierte y trocea PDF/HTML con **Docling** (análisis de layout, tablas y *chunking* por estructura + presupuesto de tokens) y construye el índice del corpus (`indice.sqlite`: sqlite-vec y FTS5).
 3. **Retrieval + LLM**: recupera contexto relevante y genera respuesta.
 4. **Decision Engine**: evalúa reglas por periodo fiscal y hechos detectados.
 5. **UI/API**: expone experiencia de usuario e integración.
@@ -156,10 +156,8 @@ uv sync                  # crea .venv e instala deps (main + dev) desde uv.lock
 Variables de entorno recomendadas:
 
 ```bash
-export OPENAI_API_KEY="sk-..."          # solo para el LLM de chat (ChatOpenAI)
-export OPENAI_MODEL="gpt-4o-mini"
-export OPENAI_TEMPERATURE="0"
-export TOP_K="3"
+export OPENAI_API_KEY="sk-..."          # solo con LLM_PROVIDER=openai
+export OPENAI_AGENT_MODEL="gpt-6.2-sol"
 
 # Umbrales de similitud (coseno) del EmbeddingsFilter. Defaults pensados para
 # Qwen3 (coseno normalizado); calíbralos con benchmark_retrieval. Subirlos =
@@ -175,9 +173,7 @@ export EMBEDDING_MODEL="data/models/qwen3-emb-mlx-bf16"
 # export EMBEDDING_BATCH_SIZE="32"        # opcional: batch en cada forward pass
 # export EMBEDDING_MAX_SEQ_LENGTH="512"   # opcional: cap defensivo de tokens
 
-export FAISS_INDEX_PATH="./data/faiss"
-# Seguridad: activa solo si el índice FAISS proviene de una fuente 100% confiable
-export FAISS_TRUSTED_INDEX="true"
+export INDICE_DIR="./data/indice"          # indice.sqlite + manifest.json
 export DECISION_DEBUG_MODE="false"
 export DECISION_STATE_DB_PATH="./data/decision_state.sqlite3"
 ```
@@ -210,7 +206,7 @@ defecto. Para cambiar de modelo, convierte uno nuevo con
 > El LLM de chat sigue siendo OpenAI (`OPENAI_API_KEY`); solo los *embeddings*
 > son locales.
 >
-> ⚠️ Si cambias de modelo de embedding **reconstruye el índice FAISS** (los
+> ⚠️ Si cambias de modelo de embedding **reconstruye el índice del corpus** (los
 > espacios vectoriales no son intercambiables — el sistema incremental detecta
 > el cambio vía pipeline fingerprint y fuerza un rebuild automático). Los
 > umbrales de similitud viven en `settings.py` y se configuran vía
@@ -222,8 +218,8 @@ defecto. Para cambiar de modelo, convierte uno nuevo con
 > (Streamlit) el proceso muere con
 > `OMP: Error #15: Initializing libomp.dylib, but found libomp.dylib
 > already initialized`, exporta `KMP_DUPLICATE_LIB_OK=TRUE` antes de
-> lanzar el servicio. La causa es que `faiss-cpu` y `docling` enlazan dos
-> copias de libomp en el mismo proceso.
+> lanzar el servicio. La causa es que `docling` y otra librería nativa pueden enlazar
+> dos copias de libomp en el mismo proceso.
 
 ---
 
@@ -286,7 +282,7 @@ nuevos.
 > a través de su Centro de Documentación Judicial."*
 >
 > Por eso este repo **no incluye** un crawler automatizado de CENDOJ.
-> Construir uno y volcar resultados en este índice FAISS sería
+> Construir uno y volcar resultados en este índice sería
 > "elaboración de base de datos" y, salvo autorización expresa del
 > CGPJ, infringiría las condiciones. Si necesitas cobertura de
 > jurisprudencia a escala, gestiona la autorización con el Centro de
@@ -374,7 +370,7 @@ documentos en el índice. Un fallo de descarga no para la cadena; el índice se 
 lo que haya llegado y el script sale con código 1.
 
 ```bash
-PYTHON=.venv/bin/python INDEX_DIR=./data/faiss-v2 scripts/actualizar_corpus.sh
+PYTHON=.venv/bin/python INDEX_DIR=./data/indice scripts/actualizar_corpus.sh
 SALTAR=dgt,aeat scripts/actualizar_corpus.sh   # solo BOE e índice
 ```
 
@@ -386,23 +382,24 @@ Para programarlo hay un plist de ejemplo en
 0 4 * * 0 REPO=/ruta/hacienda-asesor PYTHON=/ruta/hacienda-asesor/.venv/bin/python /ruta/hacienda-asesor/scripts/actualizar_corpus.sh
 ```
 
-Ninguno de los dos se instala solo. Para que el servicio use el índice nuevo, apunta
-`FAISS_INDEX_PATH` a `./data/faiss-v2`.
+Ninguno de los dos se instala solo. El servicio lee el índice de `INDICE_DIR` (por defecto `data/indice`), el
+mismo directorio que actualiza el script.
 
 
 ---
 
-## 🧩 2) Construcción del índice FAISS
+## 🧩 2) Construcción del índice del corpus
 
-> ℹ️ El índice y la consulta comparten el mismo embedder local (Qwen3-Embedding,
-> ver sección **Embeddings**), así que no hay nada que elegir. Reconstruye el
-> índice solo si cambias `EMBEDDING_MODEL`.
+> ℹ️ El índice es un solo fichero, `<directorio>/indice.sqlite`: los vectores en una tabla `vec0` de sqlite-vec
+> (coseno), el texto en FTS5 (tokenizador `unicode61 remove_diacritics 2`) y los metadatos en JSON. No hay
+> pickle. El índice y la consulta comparten el mismo embedder local (Qwen3-Embedding, ver sección
+> **Embeddings**). Reconstruye el índice solo si cambias `EMBEDDING_MODEL`.
 
 ### Primera vez (full build)
 
 ```bash
 uv run python -m asistente.plataforma.cli.processor \
-  --content-dir ./data/html --output-dir ./data/faiss \
+  --content-dir ./data/html --output-dir ./data/indice \
   --full --overwrite-output
 ```
 
@@ -414,12 +411,12 @@ parsear con Docling + embebir los ficheros **nuevos o modificados**:
 
 ```bash
 uv run python -m asistente.plataforma.cli.processor \
-  --content-dir ./data/html --output-dir ./data/faiss
+  --content-dir ./data/html --output-dir ./data/indice
 # (--incremental es el default; --full fuerza reconstrucción)
 ```
 
-- **Ficheros nuevos / modificados** → Docling + embebido + `FAISS.add_documents`.
-- **Ficheros eliminados del corpus** → `FAISS.delete(ids=…)` quita sus vectores.
+- **Ficheros nuevos / modificados** → Docling + embebido + alta en `indice.sqlite` (una transacción por lote).
+- **Ficheros eliminados del corpus** → baja de sus `chunk_id` (vector, texto FTS5 y metadatos).
 - **Ficheros sin cambios** → se saltan por completo (no Docling, no embebido).
 - **Pipeline fingerprint cambiado** (embedder, `max_tokens` o versión de
   Docling) → reconstrucción full automática con warning, porque mezclar
@@ -451,10 +448,10 @@ La API expone **dos pipelines distintos** con capacidades muy diferentes.
 
 #### `/qa` — Q&A retrieval-augmented (madura)
 
-RAG completo: FAISS + LLM + grounding gate.
+RAG completo: índice del corpus + LLM + grounding gate.
 
 - Query libre en español.
-- Recupera top-K chunks del índice FAISS y compone la respuesta citando
+- Recupera top-K chunks del índice del corpus y compone la respuesta citando
   documentos AEAT (`mode: cited`).
 - Abstención automática (`mode: abstained`) si no hay citas suficientes o
   el modelo expresa duda.
@@ -935,7 +932,7 @@ export ANTHROPIC_EFFORT="high"             # low | medium | high | xhigh | max
 # OpenAI
 export LLM_PROVIDER="openai"
 export OPENAI_API_KEY="sk-..."
-export OPENAI_AGENT_MODEL="gpt-4o"         # por defecto: OPENAI_MODEL
+export OPENAI_AGENT_MODEL="gpt-6.2-sol"    # el valor por defecto
 # API de OpenAI: responses (por defecto con OpenAI) | chat (Chat Completions).
 # Vacío = chat si LLM_PROVIDER=local o si OPENAI_BASE_URL apunta a localhost.
 export OPENAI_API_STYLE=""
@@ -2157,7 +2154,7 @@ El comando:
 - Si cambió: re-descarga el HTML consolidado a `data/html/<snapshot>/<subdir>/<ID>.html`.
 - Registra el cambio en `data/html/_boe_changes.jsonl` (audit log append-only).
 
-Cuando el script reporta `changed` o `new`, basta con relanzar el processor para que los nuevos vectores entren a FAISS:
+Cuando el script reporta `changed` o `new`, basta con relanzar el processor para que los nuevos vectores entren en el índice:
 
 ```bash
 uv run python -m asistente.plataforma.cli.processor --incremental --max-tokens 512 --num-workers 8
@@ -2234,12 +2231,12 @@ Para comparar dos configuraciones de retrieval (p. ej. reranker on/off, BM25 on/
 
 ```bash
 # 1) baseline (config actual)
-FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
+INDICE_DIR=./data/indice-test OPENAI_API_KEY=sk-... \
     uv run python scripts/ragas_eval.py \
     --out /tmp/hacienda-run/ragas_baseline.json --label baseline
 
 # 2) variante (ej. desactivando reranker)
-RERANKER_ENABLED=false FAISS_INDEX_PATH=./data/faiss-test OPENAI_API_KEY=sk-... \
+RERANKER_ENABLED=false INDICE_DIR=./data/indice-test OPENAI_API_KEY=sk-... \
     uv run python scripts/ragas_eval.py \
     --out /tmp/hacienda-run/ragas_no_reranker.json --label no-reranker
 
@@ -2262,16 +2259,14 @@ Notas operativas:
 - Latencia: ~15–25 s por escenario (15 escenarios → ~5 min). Tras el primer escenario el modelo queda cacheado en RAM.
 - A esta escala (15 muestras) los scores son **ruidosos en términos absolutos**; úsalos como señal de **regresión** entre dos configs, no como número de referencia.
 - `--samples-only` salta el paso de juez — útil para iterar el chain sin re-juzgar cada vez.
-- Para ejecutar contra el corpus completo: `FAISS_INDEX_PATH=./data/faiss` (asegúrate de que el índice esté construido).
+- Para ejecutar contra el corpus completo: `INDICE_DIR=./data/indice` (asegúrate de que el índice esté construido).
 
 ---
 
 ## 🔐 Notas de seguridad
 
-- Se usa `FAISS.load_local(..., allow_dangerous_deserialization=True)` por compatibilidad con índices serializados por LangChain/FAISS.
-- Para reducir riesgo, la carga está protegida por `FAISS_TRUSTED_INDEX`.
-- Si `FAISS_TRUSTED_INDEX` no está en `true`, la app rechaza cargar el índice.
-- Activa `FAISS_TRUSTED_INDEX=true` **solo** con índices creados por ti o por fuentes plenamente confiables.
+- El índice del corpus es un fichero SQLite sin pickle: abrirlo no ejecuta código, así que no hace falta ninguna marca
+  de confianza. El antiguo índice FAISS de LangChain (y `FAISS_TRUSTED_INDEX`) se retiró en noviembre de 2026.
 
 ---
 

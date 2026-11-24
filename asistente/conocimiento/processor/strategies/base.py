@@ -27,7 +27,7 @@ Every ``FragmentoRecuperado`` a strategy emits **must** carry:
 * ``metadata["source_file"]`` — absolute path of the **parent** file. If the
   strategy internally splits the file into temp fragments, those temp paths
   never leak; the chunk always points back at the original source so the
-  manifest, FAISS deletion-by-id, and citation rendering all stay coherent.
+  manifest, index deletion-by-id, and citation rendering all stay coherent.
 * ``metadata["chunk_id"]`` — globally unique, deterministic identifier.
   Stamped by the strategy itself; the loader will stamp a fallback if
   missing but strategies should set it explicitly to control collisions.

@@ -12,6 +12,10 @@ from pydantic import ValidationError
 
 from asistente.ambitos.luz import esios
 from asistente.ambitos.luz.analisis import (
+    AVISO_IMPUESTOS_Y_COSTES,
+    CambioPotencia,
+    PotenciaOptima,
+    cambio_de_potencia,
     comparar,
     dia_valle_texto,
     horas_baratas,
@@ -29,12 +33,18 @@ from asistente.ambitos.luz.consumo import (
     importar_csv,
 )
 from asistente.ambitos.luz.datos import PERIODOS, DatoNoDisponibleError, cargar_regulados
-from asistente.ambitos.luz.factura import CERO, Contrato, FacturaError, calcular_factura, euros, fmt
+from asistente.ambitos.luz.factura import CERO, Contrato, Factura, FacturaError, calcular_factura, euros, fmt, fmt_pct
 from asistente.ambitos.luz.ofertas import Oferta, cargar_oferta, cargar_ofertas
 from asistente.ambitos.luz.periodos import ZONAS, Zona, describir_periodos
 from asistente.ambitos.numeros import importe
 from asistente.nucleo.agent.providers.base import ToolSpec
-from asistente.nucleo.modulos.contrato import ContextoModulo, HerramientaModulo, ResultadoHerramienta
+from asistente.nucleo.modulos.contrato import (
+    CifraHerramienta,
+    ContextoModulo,
+    HerramientaModulo,
+    ResultadoHerramienta,
+    UnidadCifra,
+)
 
 HECHO_CUPS = "luz_cups"
 HECHO_P1 = "luz_potencia_p1_kw"
@@ -208,7 +218,8 @@ def calcular(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
         return _error(str(exc))
     except esios.PreciosNoDisponiblesError as exc:
         return _error(str(exc))
-    partes = [factura.texto(), "", f"Consumo usado: {origen}."]
+    lineas_resumen, cifras = _resumen_factura(factura)
+    partes = [factura.texto(), "", *lineas_resumen, "", f"Consumo usado: {origen}."]
     resumen = f"Factura {factura.desde:%d-%m-%Y}–{factura.hasta:%d-%m-%Y}: {fmt(factura.total)} €"
     real = args.get("total_factura_real")
     if real not in (None, ""):
@@ -221,6 +232,7 @@ def calcular(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
             partes.append(f"Coincide al céntimo con el total de tu factura ({fmt(real_d)} €).")
             resumen += " (coincide con la real)"
         else:
+            cifras.append(_cifra("diferencia con la factura real", diferencia, "EUR", f"{fmt(diferencia)} €"))
             partes.append(
                 f"Tu factura dice {fmt(real_d)} €: diferencia de {fmt(diferencia)} €. Revisa línea a línea: días del "
                 "periodo, kWh por periodo, precios exactos (con todos sus decimales), si cobran el bono social y "
@@ -229,7 +241,38 @@ def calcular(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
             resumen += f" (real {fmt(real_d)} €, dif. {fmt(diferencia)} €)"
     partes.extend(f"Aviso: {a}" for a in avisos)
     partes.append(_fuentes_texto(factura.citas))
-    return ResultadoHerramienta(contenido="\n".join(partes), resumen=resumen, citas=factura.citas)
+    return ResultadoHerramienta(contenido="\n".join(partes), resumen=resumen, citas=factura.citas, cifras=tuple(cifras))
+
+
+def _resumen_factura(factura: Factura) -> tuple[list[str], list[CifraHerramienta]]:
+    """The bill's key figures, written once in the text and declared in structure (so the household brain does
+    not have to read them from the line-by-line detail)."""
+    potencia = factura.importe("Potencia")
+    energia = factura.importe("Energía")
+    iee = factura.importe("Impuesto sobre la electricidad")
+    iva = factura.importe("IVA")
+    otros = factura.total - potencia - energia - iee - iva
+    kwh = sum(factura.kwh.values(), CERO)
+    lineas = [
+        "Resumen de la factura simulada:",
+        f"- Término de potencia: {fmt(potencia)} €.",
+        f"- Término de energía: {fmt(energia)} €.",
+        f"- Impuesto sobre la electricidad: {fmt(iee)} €.",
+        f"- IVA: {fmt(iva)} €.",
+        f"- Otros conceptos (bono social, alquiler del contador, servicios y descuentos): {fmt(otros)} €.",
+        f"- TOTAL: {fmt(factura.total)} € ({factura.dias} días, {fmt(kwh, 3)} kWh).",
+    ]
+    cifras = [
+        _cifra("término de potencia", potencia, "EUR", f"{fmt(potencia)} €"),
+        _cifra("término de energía", energia, "EUR", f"{fmt(energia)} €"),
+        _cifra("impuesto sobre la electricidad", iee, "EUR", f"{fmt(iee)} €"),
+        _cifra("IVA", iva, "EUR", f"{fmt(iva)} €"),
+        _cifra("otros conceptos (bono social, contador, servicios, descuentos)", otros, "EUR", f"{fmt(otros)} €"),
+        _cifra("TOTAL de la factura simulada", factura.total, "EUR", f"{fmt(factura.total)} €"),
+        _cifra("días facturados", Decimal(factura.dias), "dias", f"{factura.dias} días"),
+        _cifra("consumo total", kwh, "kWh", f"{fmt(kwh, 3)} kWh"),
+    ]
+    return lineas, cifras
 
 
 # --- luz_comparar_tarifas --------------------------------------------------------------------------
@@ -478,6 +521,65 @@ def baratas(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramient
 # --- luz_potencia_optima ---------------------------------------------------------------------------
 
 
+def _kw(x: Decimal) -> str:
+    """kW as the user writes them: 4,6 / 3,45 / 10 (up to three decimals, no trailing zeros)."""
+    texto = fmt(x, 3).rstrip("0")
+    return texto[:-1] if texto.endswith(",") else texto
+
+
+def _potencia_valida(valor: Any, que: str) -> Decimal:
+    kw = _dec(valor, que)
+    if not CERO < kw <= Decimal(15):
+        raise _EntradaError(f"«{que}» debe estar entre 0 y 15 kW (peaje 2.0TD); recibido: {valor}.")
+    return kw
+
+
+def _cifra(concepto: str, valor: Decimal, unidad: UnidadCifra | None, literal: str) -> CifraHerramienta:
+    return CifraHerramienta(concepto=concepto, valor=valor, unidad=unidad, literal=literal)
+
+
+def _texto_cambio(c: CambioPotencia) -> tuple[list[str], list[CifraHerramienta]]:
+    """The lines and the declared figures of a change of contracted power."""
+    misma_p2 = c.actual_p2 == c.actual_p1 and c.nueva_p2 == c.nueva_p1
+    actual_txt = f"{_kw(c.actual_p1)} kW" if misma_p2 else f"P1 {_kw(c.actual_p1)} kW y P2 {_kw(c.actual_p2)} kW"
+    nueva_txt = f"{_kw(c.nueva_p1)} kW" if misma_p2 else f"P1 {_kw(c.nueva_p1)} kW y P2 {_kw(c.nueva_p2)} kW"
+    precio = c.precio
+    sube = c.ahorro_anual < 0
+    que = "Coste anual adicional" if sube else "Ahorro anual"
+    anual, base = abs(c.ahorro_anual), abs(c.ahorro_sin_impuestos)
+    lineas = [
+        f"Cambio de potencia contratada: de {actual_txt} a {nueva_txt}.",
+        f"Precio del término de potencia usado: P1 {fmt(precio.p1, 6)} €/kW·año y P2 {fmt(precio.p2, 6)} €/kW·año "
+        f"({precio.descripcion}).",
+        f"{que} en el término de potencia sin impuestos: {fmt(base)} €/año.",
+        f"{que} en el término de potencia con impuesto sobre la electricidad ({fmt_pct(c.iee_tipo)}) e IVA "
+        f"({fmt_pct(c.iva_tipo)}): {fmt(anual)} €/año.",
+        "Lo que pagas por la energía (kWh) no cambia con la potencia: la diferencia está solo en el término de "
+        "potencia.",
+    ]
+    if precio.origen == "regulado":
+        lineas.append(
+            "No hay tarifa guardada: el precio usado es solo la parte regulada (peajes y cargos), el mínimo que "
+            "cobra cualquier comercializadora. El margen de tu comercializadora se añade a esto, así que tu ahorro "
+            "real será mayor; con tu factura (precio por kW y día) se calcula exacto."
+        )
+    concepto = "coste anual adicional" if sube else "ahorro anual"
+    cifras = [
+        _cifra("potencia contratada actual P1", c.actual_p1, "kW", f"{_kw(c.actual_p1)} kW"),
+        _cifra("potencia contratada nueva P1", c.nueva_p1, "kW", f"{_kw(c.nueva_p1)} kW"),
+    ]
+    if not misma_p2:
+        cifras += [
+            _cifra("potencia contratada actual P2", c.actual_p2, "kW", f"{_kw(c.actual_p2)} kW"),
+            _cifra("potencia contratada nueva P2", c.nueva_p2, "kW", f"{_kw(c.nueva_p2)} kW"),
+        ]
+    cifras += [
+        _cifra(f"{concepto} en el término de potencia sin impuestos", base, "EUR/año", f"{fmt(base)} €/año"),
+        _cifra(f"{concepto} en el término de potencia con impuestos", anual, "EUR/año", f"{fmt(anual)} €/año"),
+    ]
+    return lineas, cifras
+
+
 def potencia(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramienta:
     try:
         contrato = _contrato(args, ctx)
@@ -495,6 +597,17 @@ def potencia(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
         tarifa = ctx.perfil.get(HECHO_TARIFA)
         actual = cargar_oferta(tarifa) if tarifa else None
         margen = _dec(args.get("margen_pct", 10), "margen_pct")
+        objetivo = args.get("potencia_objetivo_kw")
+        if objetivo not in (None, ""):
+            nueva_p1 = _potencia_valida(objetivo, "potencia_objetivo_kw")
+            objetivo_p2 = args.get("potencia_objetivo_p2_kw")
+            nueva_p2 = (
+                _potencia_valida(objetivo_p2, "potencia_objetivo_p2_kw") if objetivo_p2 not in (None, "") else nueva_p1
+            )
+            cambio = cambio_de_potencia(contrato, nueva_p1, nueva_p2, actual, ctx.hoy)
+            hay_datos = bool(maximos) or (consumo is not None and bool(consumo.meses))
+            r = potencia_optima(contrato, consumo, maximos, actual, margen, ctx.hoy) if hay_datos else None
+            return _resultado_cambio(cambio, r, bool(maximos), margen)
         r = potencia_optima(contrato, consumo, maximos, actual, margen, ctx.hoy)
     except (_EntradaError, FacturaError, DatoNoDisponibleError) as exc:
         return _error(str(exc))
@@ -504,12 +617,23 @@ def potencia(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
         f"Potencia contratada: P1 {fmt(contrato.potencia_p1_kw, 3)} kW, P2 {fmt(contrato.potencia_p2_kw, 3)} kW.",
         f"Máximo observado ({r.fuente_datos}): P1 {fmt(r.max_p1, 3)} kW, P2 {fmt(r.max_p2, 3)} kW.",
     ]
+    cifras = [
+        _cifra("potencia contratada P1", contrato.potencia_p1_kw, "kW", f"{fmt(contrato.potencia_p1_kw, 3)} kW"),
+        _cifra("potencia máxima observada P1", r.max_p1, "kW", f"{fmt(r.max_p1, 3)} kW"),
+    ]
     if maximos:
         partes.append(
             f"Potencia suficiente con margen: P1 {fmt(r.recomendada_p1, 1)} kW, P2 {fmt(r.recomendada_p2, 1)} kW."
         )
+        cifras += [
+            _cifra("potencia suficiente con margen P1", r.recomendada_p1, "kW", f"{fmt(r.recomendada_p1, 1)} kW"),
+            _cifra("potencia suficiente con margen P2", r.recomendada_p2, "kW", f"{fmt(r.recomendada_p2, 1)} kW"),
+        ]
         if r.ahorro_anual is not None:
             partes.append(f"Bajando a esa potencia ahorrarías unos {fmt(r.ahorro_anual)} € al año con tu tarifa.")
+            cifras.append(
+                _cifra("ahorro anual de ajustar la potencia", r.ahorro_anual, "EUR/año", f"{fmt(r.ahorro_anual)} €")
+            )
         if r.recomendada_p1 > contrato.potencia_p1_kw:
             partes.append("Tu máximo supera la potencia contratada en P1: si salta el limitador, valora subirla.")
     else:
@@ -521,6 +645,47 @@ def potencia(args: Mapping[str, Any], ctx: ContextoModulo) -> ResultadoHerramien
         contenido="\n".join(partes),
         resumen=f"Potencia: máximo P1 {fmt(r.max_p1, 2)} kW ({r.fuente_datos})",
         citas=citas,
+        cifras=tuple(cifras),
+    )
+
+
+def _resultado_cambio(
+    cambio: CambioPotencia, r: PotenciaOptima | None, con_maximetro: bool, margen: Decimal
+) -> ResultadoHerramienta:
+    partes, cifras = _texto_cambio(cambio)
+    nueva = _kw(cambio.nueva_p1)
+    if r is None:
+        partes.append(
+            f"Aviso: no sé si {nueva} kW te bastan. Si enciendes a la vez aparatos que sumen más (horno, "
+            "vitrocerámica, lavadora, lavavajillas, radiador), saltará el limitador (ICP) y tendrás que repartir el "
+            "uso. Tu potencia máxima real la registra el contador (maxímetro): descárgala de Datadis o mírala en la "
+            "factura y pásala en «maximos» para comprobar si cabe."
+        )
+    else:
+        necesaria = r.recomendada_p1
+        partes.append(f"Máximo observado ({r.fuente_datos}): P1 {fmt(r.max_p1, 3)} kW, P2 {fmt(r.max_p2, 3)} kW.")
+        cifras.append(_cifra("potencia máxima observada P1", r.max_p1, "kW", f"{fmt(r.max_p1, 3)} kW"))
+        if necesaria > cambio.nueva_p1:
+            partes.append(
+                f"Aviso: con tu máximo observado y un margen del {fmt(margen, 0)} % necesitas unos "
+                f"{fmt(necesaria, 1)} kW en P1: con {nueva} kW es probable que salte el limitador (ICP)."
+            )
+        elif con_maximetro:
+            partes.append(
+                f"Tu máximo observado cabe en {nueva} kW con un margen del {fmt(margen, 0)} %; aun así, si enciendes "
+                "a la vez más aparatos que en esos meses, saltará el limitador (ICP)."
+            )
+        partes.extend(f"Aviso: {a}" for a in r.avisos if a != AVISO_IMPUESTOS_Y_COSTES)
+    partes.append(f"Aviso: {AVISO_IMPUESTOS_Y_COSTES}")
+    partes.append(_fuentes_texto(cambio.citas))
+    verbo = "coste" if cambio.ahorro_anual < 0 else "ahorro"
+    return ResultadoHerramienta(
+        contenido="\n".join(partes),
+        resumen=(f"Potencia {_kw(cambio.actual_p1)} → {nueva} kW: {verbo} de {fmt(abs(cambio.ahorro_anual))} €/año")[
+            :120
+        ],
+        citas=cambio.citas,
+        cifras=tuple(cifras),
     )
 
 
@@ -658,12 +823,32 @@ def herramientas() -> list[HerramientaModulo]:
             spec=ToolSpec(
                 name="luz_potencia_optima",
                 description=(
-                    "Estima la potencia contratada necesaria a partir del maxímetro (o, como mínimo orientativo, del "
-                    "consumo horario) y el ahorro anual de ajustarla."
+                    "Úsala para «¿me compensa bajar (o subir) de X a Y kW?, ¿cuánto ahorraría?»: con "
+                    "potencia_p1_kw = X y potencia_objetivo_kw = Y calcula el ahorro anual en el término de "
+                    "potencia, con impuestos, sin necesitar factura ni maxímetro (con la tarifa guardada si la hay; "
+                    "si no, con los peajes y cargos regulados, que son el mínimo). Sin potencia_objetivo_kw estima "
+                    "la potencia necesaria a partir del maxímetro (o, como mínimo orientativo, del consumo horario) "
+                    "y el ahorro de ajustarla."
                 ),
                 input_schema={
                     "type": "object",
                     "properties": {
+                        "potencia_p1_kw": {
+                            "type": "number",
+                            "description": "Potencia contratada ahora en P1 (kW); la guardada si no se indica.",
+                        },
+                        "potencia_p2_kw": {
+                            "type": "number",
+                            "description": "Potencia contratada ahora en P2 (kW); la de P1 si no se indica.",
+                        },
+                        "potencia_objetivo_kw": {
+                            "type": "number",
+                            "description": "Potencia a la que se quiere cambiar (kW), p. ej. 3.45.",
+                        },
+                        "potencia_objetivo_p2_kw": {
+                            "type": "number",
+                            "description": "Potencia nueva en P2 si es distinta de la de P1 (kW).",
+                        },
                         "maximos": {
                             "type": "array",
                             "description": "Potencias máximas por mes: [{mes: 'AAAA-MM', p1_kw, p2_kw}].",

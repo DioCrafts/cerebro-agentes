@@ -288,3 +288,12 @@ def test_effort_reaches_reasoning_models_only_and_routing_variants_keep_the_styl
     assert "reasoning" not in plano
     assert (o4["model"], o4["reasoning"]) == ("o4-mini", {"effort": "low"})
     assert (gpt5["model"], gpt5["reasoning"]) == ("gpt-5.2", {"effort": "medium"})
+
+
+def test_reasoning_models_are_gpt5_onwards_and_the_o_series() -> None:
+    from asistente.nucleo.agent.providers.openai_provider import is_reasoning_model
+
+    for modelo in ("gpt-6.2-sol", "gpt-6-luna", "gpt-5.4-mini", "gpt-5.2", "o3", "o4-mini"):
+        assert is_reasoning_model(modelo), modelo
+    for modelo in ("gpt-4o-mini", "gpt-4.1", "gpt-5-chat-latest", "chat-latest", "llama3.2"):
+        assert not is_reasoning_model(modelo), modelo

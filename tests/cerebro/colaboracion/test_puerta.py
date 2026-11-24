@@ -368,3 +368,79 @@ def test_the_search_is_bounded() -> None:
     resultado = revisar_cifras(respuesta, informes, ledger=EvidenceLedger(), textos_usuario=[])
     assert time.monotonic() - inicio < 5
     assert len(resultado.violaciones) == 20
+
+
+# --------------------------------------------------------------------------------------------------------------
+# Rule 4: literals of the sources the answer cites (bateria cer-alquiler-madrid, 2026-11-24)
+# --------------------------------------------------------------------------------------------------------------
+
+_ART_8 = (
+    "Artículo 8. Deducción por arrendamiento de vivienda habitual. Los contribuyentes menores de cuarenta años podrán "
+    "deducir el 30 por ciento, con un máximo de deducción de 1.237,20 euros, de las cantidades que hayan satisfecho."
+)
+_ART_18 = (
+    "Solo tendrán derecho a la aplicación de las deducciones aquellos contribuyentes cuya base imponible no sea "
+    "superior a 26.414,22 euros en tributación individual o a 37.322,20 euros en tributación conjunta."
+)
+_MADRID = [
+    "Vivo de alquiler en Madrid, tengo 33 años y gano 42.000 € brutos al año. ¿Puedo aplicarme la deducción "
+    "autonómica madrileña por alquiler de vivienda habitual?"
+]
+
+
+def _ledger_madrid() -> EvidenceLedger:
+    ledger = EvidenceLedger()
+    for texto, fuente in (
+        (_ART_8, "https://bocm.es/dl-1-2010#a8"),  # F1
+        (_ART_18, "https://bocm.es/dl-1-2010#a18"),  # F2
+        ("El plazo de presentación es de 15 días hábiles.", "https://bocm.es/otra"),  # F3, never cited
+    ):
+        ledger.register(text=texto, metadata={"source": fuente, "title": fuente})
+    return ledger
+
+
+def test_a_source_literal_repeated_without_citation_and_a_number_in_words_pass() -> None:
+    """The offline reproduction: only the model's own arithmetic (13.600 €) is left."""
+    respuesta = (
+        "| Tener menos de 40 años [F1] | ✅ Tienes 33 |\n"
+        "| Base imponible no superior a 26.414,22 € (37.322,20 € en conjunta) [F2] | ❌ |\n"
+        "Para quedar por debajo de 26.414,22 € tendría que bajar unos 13.600 € desde tus 42.000 €.\n"
+        "Un año en que tu base baje de 26.414,22 € podrías aplicártela."
+    )
+    resultado = revisar_cifras(respuesta, [], ledger=_ledger_madrid(), textos_usuario=_MADRID)
+    assert [(v.tipo, v.literal) for v in resultado.violaciones] == [("cifra_sin_origen", "13.600 €")]
+    por_literal = {a.literal: a.fragment_id for a in resultado.atribuciones}
+    assert por_literal["40 años"] == "F1"
+    assert por_literal["26.414,22 €"] == "F2"
+
+
+def test_a_figure_only_in_an_uncited_sentence_and_in_no_cited_fragment_is_still_flagged() -> None:
+    respuesta = "El límite es 26.414,22 € [F2]. Además el máximo anual es de 2.500 €."
+    resultado = revisar_cifras(respuesta, [], ledger=_ledger_madrid(), textos_usuario=[])
+    assert [(v.tipo, v.literal) for v in resultado.violaciones] == [("cifra_sin_origen", "2.500 €")]
+
+
+def test_the_second_pass_never_reads_fragments_the_answer_does_not_cite() -> None:
+    # 15 días is in F3, which the answer never cites; 1.237,20 € is in F1, which it does not cite either.
+    respuesta = "El límite es 26.414,22 € [F2]. Tienes 15 días. El máximo es 1.237,20 €."
+    resultado = revisar_cifras(respuesta, [], ledger=_ledger_madrid(), textos_usuario=[])
+    assert [v.literal for v in resultado.violaciones] == ["15 días", "1.237,20 €"]
+
+
+def test_a_sentence_citing_one_fragment_answers_for_its_own_numbers() -> None:
+    # 26.414,22 € is in F2 (cited elsewhere), but its own sentence cites F1, which does not contain it.
+    respuesta = "El límite de renta es 37.322,20 € en conjunta [F2]. En individual, 26.414,22 € [F1]."
+    resultado = revisar_cifras(respuesta, [], ledger=_ledger_madrid(), textos_usuario=[])
+    assert [(v.tipo, v.literal) for v in resultado.violaciones] == [("cifra_sin_origen", "26.414,22 €")]
+
+
+def test_numbers_in_words_are_read_on_the_fragment_side_only() -> None:
+    """The answer is still read digits-only, and a source's words give only their own value."""
+    resultado = revisar_cifras("Debes tener menos de cuarenta años.", [], ledger=EvidenceLedger(), textos_usuario=[])
+    assert resultado.ok and resultado.atribuciones == []
+    ledger = EvidenceLedger()
+    ledger.register(text="Los menores de treinta y cinco años.", metadata={"source": "https://bocm.es/x", "title": "x"})
+    assert [
+        v.literal for v in revisar_cifras("Menos de 40 años [F1].", [], ledger=ledger, textos_usuario=[]).violaciones
+    ] == ["40 años"]
+    assert revisar_cifras("Menos de 35 años [F1].", [], ledger=ledger, textos_usuario=[]).ok

@@ -9,8 +9,8 @@ El código vive en `asistente/`:
 
 - `nucleo/`: el agente, sus herramientas, la memoria de decisiones, la memoria de conversaciones (sobre
   [Hindsight](https://github.com/vectorize-io/hindsight)) y la evaluación.
-- `conocimiento/`: ingesta con Docling, índice del corpus (FAISS por defecto; SQLite con sqlite-vec y FTS5 detrás de
-  `INDICE_BACKEND=sqlite`) y modelos locales en MLX.
+- `conocimiento/`: ingesta con Docling, índice del corpus en un fichero SQLite (vectores con sqlite-vec y texto con
+  FTS5) y modelos locales en MLX.
 - `ambitos/`: los dominios (fiscal, hipoteca…) con sus reglas y sus datos de la norma.
 - `capacidades/`: correo, navegador y otras acciones fuera del índice.
 - `plataforma/`: API (FastAPI), worker de trabajos programados, CLI y configuración.
@@ -69,7 +69,7 @@ uv run python -m asistente.plataforma.cli.plataforma worker
 
 Para responder con normativa, el asesor necesita el índice del corpus y el modelo de embeddings. Sin ellos se
 abstiene en esas preguntas, aunque las calculadoras y los módulos funcionan. Si ya los tienes, indícalo al arrancar
-la API con `FAISS_INDEX_PATH=<carpeta> FAISS_TRUSTED_INDEX=true EMBEDDING_MODEL=<modelo MLX>`. Para crearlos:
+la API con `INDICE_DIR=<carpeta con indice.sqlite> EMBEDDING_MODEL=<modelo MLX>`. Para crearlos:
 `scripts/convert_to_mlx.py` y `python -m asistente.plataforma.cli.processor` (ver la referencia de operación;
 cargan mucho la máquina). El proveedor de LLM por defecto es Claude; las demás variables están en
 [docs/despliegue.md](docs/despliegue.md).

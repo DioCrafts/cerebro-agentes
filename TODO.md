@@ -4,10 +4,12 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 
 ## Antes de nada: medir
 
-- [ ] Fijar la línea base de la batería con modelo real. El código está hecho y reanuda por casos (`reports/bateria/en_curso.jsonl`); la ejecución se cortó dos veces.
-- [ ] Terminar la comparación faiss frente a pageindex con Claude sobre las 118 consultas del benchmark ampliado y actualizar `docs/cerebro/benchmark-recuperacion.md`. El umbral de explicación ya está en 0,525; falta la tabla de PageIndex.
-- [ ] Pasar el índice a SQLite y sacar LangChain: medir la línea base con FAISS, migrar con `cli.indice migrar`, medir con `INDICE_BACKEND=sqlite` y, si ningún caso crítico empeora, poner `sqlite` por defecto y borrar `conocimiento/indice/faiss_legado.py` junto con `faiss-cpu`, `langchain-community` y `langchain-core`. Los pasos y la lista de lo que se borra están en `docs/cerebro/benchmark-recuperacion.md`, sección «Retirar FAISS y LangChain».
-- [ ] Terminar el índice `data/faiss-v2` (3.310 documentos descargados, solo 200 indexados) con 2 o 3 procesos, y medirlo con el benchmark antes de cambiar `FAISS_INDEX_PATH`.
+- [ ] Fijar la línea base de la batería con modelo real. El código está hecho y reanuda por casos (`reports/bateria/en_curso.jsonl`); la ejecución se cortó dos veces. El 24 de noviembre no se pudo lanzar porque en esta máquina no hay `ANTHROPIC_API_KEY` (ni `.env`).
+- [x] Línea base del buscador del agente sobre 130 consultas (97 con cita, 33 abstenciones, 12 de ellas fiscales «casi»), con recall denso a 50, reparto de fallos entre primera etapa y reranker, y AUROC de las abstenciones. Cifras en `docs/cerebro/benchmark-recuperacion.md` (24 de noviembre).
+- [ ] La variante pageindex con Claude sobre las 130 consultas (`--variantes denso,pageindex`). Necesita `ANTHROPIC_API_KEY`.
+- [ ] Descargar las páginas de la AEAT y reindexar `data/indice`: el índice local no tiene ninguna, así que las 20 consultas de estilo `aeat` no se pueden medir y `test_manifiesto_coincide_con_el_indice_local` falla.
+- [x] Índice en SQLite y fuera FAISS y LangChain (24 de noviembre): migración verificada, la misma medición que con FAISS, búsqueda híbrida RRF activada por defecto (`BM25_ENABLED=true`) y `FAISS_INDEX_PATH` sustituido por `INDICE_DIR`. Detalle en `docs/cerebro/benchmark-recuperacion.md`.
+- [ ] Terminar el índice ampliado (3.310 documentos descargados, solo 200 indexados en `data/faiss-v2`) con 2 o 3 procesos, y medirlo con el benchmark antes de cambiar `INDICE_DIR`. `data/faiss-v2` es FAISS y ya no se puede migrar: hay que construirlo de nuevo con el procesador en un directorio propio (por ejemplo `data/indice-v2`).
 
 ## Memoria de conversaciones (Hindsight)
 

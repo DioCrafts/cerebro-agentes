@@ -320,7 +320,7 @@ def test_cli_threads_num_workers_into_build_index(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(cli_module, "build_index", fake_build_index)
     content_dir = tmp_path / "html"
     content_dir.mkdir()
-    output_dir = tmp_path / "faiss"
+    output_dir = tmp_path / "indice"
 
     runner = CliRunner()
     result = runner.invoke(
@@ -352,7 +352,7 @@ def test_cli_num_workers_default_targets_mac_perf_cores(monkeypatch: pytest.Monk
     monkeypatch.setattr(cli_module, "build_index", lambda args: captured.update(args))
     content_dir = tmp_path / "html"
     content_dir.mkdir()
-    output_dir = tmp_path / "faiss"
+    output_dir = tmp_path / "indice"
     runner = CliRunner()
     result = runner.invoke(
         cli_module.cli,

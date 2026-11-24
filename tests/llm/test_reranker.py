@@ -112,7 +112,7 @@ def test_reordenar_keeps_all_when_input_smaller_than_top_k(stub_mlx) -> None:
 
 
 def test_original_documents_are_not_mutated(stub_mlx) -> None:
-    """The wrapper stamps the rerank score onto a *copy* — the FAISS docstore
+    """The wrapper stamps the rerank score onto a *copy* — the index
     hands back the same FragmentoRecuperado instances on every retrieval, so mutating
     them would leak state across requests."""
     original = FragmentoRecuperado(texto="hello", metadatos={"id": "x"})

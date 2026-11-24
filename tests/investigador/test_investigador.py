@@ -497,3 +497,60 @@ def test_completar_json_cuenta_los_tokens_que_informa_el_proveedor():
     contador = Contador(Presupuesto())
     assert completar_json(ConUso([{"ok": 1}]), "sistema", "usuario", contador) == {"ok": 1}
     assert contador.coste.tokens == 1500
+
+
+def test_obtener_fijado_conecta_a_la_ip_con_el_host_original():
+    """Over loopback HTTP: the connection goes to the given address, the Host header keeps the name, nothing is
+    followed and the body arrives in chunks."""
+    import http.server
+    import threading
+
+    from asistente.investigador import web as w
+
+    vistos: list[str] = []
+
+    class _H(http.server.BaseHTTPRequestHandler):
+        def do_GET(self):
+            vistos.append(self.headers["Host"])
+            self.send_response(200)
+            self.send_header("Content-Type", "text/html; charset=utf-8")
+            self.end_headers()
+            self.wfile.write("<p>Exención</p>".encode())
+
+        def log_message(self, *a):
+            pass
+
+    servidor = http.server.HTTPServer(("127.0.0.1", 0), _H)
+    hilo = threading.Thread(target=servidor.serve_forever, daemon=True)
+    hilo.start()
+    try:
+        puerto = servidor.server_address[1]
+        r = w._obtener_fijado(f"http://ejemplo.es:{puerto}/a?b=1", ip="127.0.0.1", timeout=5, headers={})
+        assert r.status_code == 200 and "html" in r.headers["content-type"]
+        assert b"".join(r.iter_content(4)).decode() == "<p>Exención</p>"
+        r.close()  # idempotent after the body iterator closed it
+        assert vistos == [f"ejemplo.es:{puerto}"]
+    finally:
+        servidor.shutdown()
+
+
+def test_obtener_fijado_verifica_tls_contra_el_nombre(monkeypatch):
+    """HTTPS: the URL carries the IP, while SNI (and so the certificate check) uses the host name."""
+    import httpx
+
+    from asistente.investigador import web as w
+
+    peticiones: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        peticiones.append(request)
+        return httpx.Response(301, headers={"Location": "https://otro.es/"})
+
+    cliente_real = httpx.Client
+    monkeypatch.setattr(w.httpx, "Client", lambda **k: cliente_real(transport=httpx.MockTransport(handler), **k))
+    r = w._obtener_fijado("https://sede.ejemplo.es/x", ip="2001:db8::1", timeout=5, headers={"Accept": "text/html"})
+    assert r.status_code == 301 and r.headers["location"] == "https://otro.es/"  # not followed
+    r.close()
+    (p,) = peticiones
+    assert p.url.host == "2001:db8::1" and p.url.scheme == "https" and p.url.path == "/x"
+    assert p.headers["Host"] == "sede.ejemplo.es" and p.extensions["sni_hostname"] == "sede.ejemplo.es"

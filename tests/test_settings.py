@@ -23,11 +23,25 @@ def test_env_bool_default_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_settings_defaults(monkeypatch: pytest.MonkeyPatch) -> None:
-    for key in ["OPENAI_AGENT_MODEL", "FAISS_INDEX_PATH", "FAISS_TRUSTED_INDEX"]:
+    for key in ["OPENAI_AGENT_MODEL", "INDICE_DIR", "INDICE_SQLITE_PATH", "FAISS_INDEX_PATH", "BM25_ENABLED"]:
         monkeypatch.delenv(key, raising=False)
 
     reloaded = importlib.reload(settings)
 
-    assert reloaded.OPENAI_AGENT_MODEL == "gpt-4o-mini"
-    assert reloaded.FAISS_INDEX_PATH == ".faiss"
-    assert reloaded.FAISS_TRUSTED_INDEX is False
+    assert reloaded.OPENAI_AGENT_MODEL == "gpt-6.2-sol"
+    assert reloaded.INDICE_DIR == "data/indice"
+    assert reloaded.INDICE_SQLITE_PATH == "data/indice/indice.sqlite"
+    assert reloaded.BM25_ENABLED is True  # hybrid search by default (docs/cerebro/benchmark-recuperacion.md)
+    assert not hasattr(reloaded, "FAISS_INDEX_PATH") and not hasattr(reloaded, "INDICE_BACKEND")
+
+
+def test_the_old_faiss_variable_is_reported(monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture) -> None:
+    """A deployment that still sets FAISS_INDEX_PATH is told the index moved instead of searching nothing."""
+    monkeypatch.delenv("INDICE_DIR", raising=False)
+    monkeypatch.setenv("FAISS_INDEX_PATH", "/srv/cerebro/faiss")
+    with caplog.at_level("WARNING"):
+        reloaded = importlib.reload(settings)
+    assert "FAISS_INDEX_PATH ya no se usa" in caplog.text
+    assert reloaded.INDICE_DIR == "data/indice"
+    monkeypatch.delenv("FAISS_INDEX_PATH")
+    importlib.reload(settings)

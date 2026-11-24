@@ -297,3 +297,83 @@ def test_tools_return_spanish_errors_instead_of_raising() -> None:
         assert r.es_error and r.contenido, (nombre, args)
     r = _tool("luz_horas_baratas").ejecutar({"fecha": "2026-11-17"}, ctx)
     assert not r.es_error and "LUZ_ESIOS_TOKEN" in r.contenido and "Valle (P3)" in r.contenido
+
+
+# --- lowering the contracted power (no bill, no maxímetro) ----------------------------------------------
+
+
+def _con_impuestos(base: Decimal) -> Decimal:
+    from asistente.ambitos.luz.datos import cargar_regulados
+
+    impuestos = cargar_regulados().impuestos
+    return (base * (1 + impuestos.iee_general.tipo) * (1 + impuestos.iva_general.tipo)).quantize(D("0.01"))
+
+
+def _cifra(r: Any, empieza: str) -> Any:
+    return next(c for c in r.cifras if c.concepto.startswith(empieza))
+
+
+def test_lowering_power_without_a_bill_uses_the_regulated_minimum() -> None:
+    from asistente.ambitos.luz.datos import cargar_regulados
+
+    hoy = date(2026, 11, 24)
+    ctx = ContextoModulo(perfil={}, hoy=hoy)
+    r = _tool("luz_potencia_optima").ejecutar({"potencia_p1_kw": 4.6, "potencia_objetivo_kw": 3.45}, ctx)
+    assert not r.es_error, r.contenido
+
+    datos = cargar_regulados()
+    peaje, cargo = datos.peaje(hoy), datos.cargo(hoy)
+    precio = {p: peaje.potencia_eur_kw_anio[p] + cargo.potencia_eur_kw_anio[p] for p in ("p1", "p2")}
+    assert precio == {"p1": D("27.704413"), "p2": D("0.725423")}  # 2026: CNMC tolls + TED/1524/2025 charges
+    base = D("1.15") * (precio["p1"] + precio["p2"])
+    ahorro = _cifra(r, "ahorro anual en el término de potencia con impuestos")
+    assert ahorro.unidad == "EUR/año" and ahorro.valor == _con_impuestos(base) == D("41.58")
+    assert _cifra(r, "ahorro anual en el término de potencia sin impuestos").valor == D("32.69")
+    assert _cifra(r, "potencia contratada actual").valor == D("4.6")
+    assert _cifra(r, "potencia contratada nueva").valor == D("3.45")
+    assert all(c.literal in r.contenido for c in r.cifras)
+    assert "mínimo regulado" in r.contenido and "margen" in r.contenido
+    assert "limitador" in r.contenido and "maxímetro" in r.contenido
+    assert "BOE-A-2025-26348" in " ".join(r.citas) and "BOE-A-2025-26705" in " ".join(r.citas)
+
+
+def test_lowering_power_uses_the_saved_tariff_and_checks_the_maximeter() -> None:
+    ctx = ContextoModulo(perfil=_perfil(), hoy=HOY)  # ACTUAL: 0,098 / 0,030 €/kW·día, tolls included
+    r = _tool("luz_potencia_optima").ejecutar({"potencia_objetivo_kw": 3.45}, ctx)
+    assert not r.es_error, r.contenido
+    esperado = _con_impuestos(D("1.15") * (D("0.098") + D("0.030")) * 365)
+    assert _cifra(r, "ahorro anual en el término de potencia con impuestos").valor == esperado
+    assert "Mi tarifa 3 periodos" in r.contenido and "mínimo regulado" not in r.contenido
+
+    r = _tool("luz_potencia_optima").ejecutar(
+        {"potencia_objetivo_kw": 3.45, "maximos": [{"mes": "2026-01", "p1_kw": 3.4, "p2_kw": 2.0}]}, ctx
+    )
+    assert not r.es_error and "es probable que salte el limitador" in r.contenido
+
+    r = _tool("luz_potencia_optima").ejecutar({"potencia_objetivo_kw": 5.75}, ctx)
+    assert not r.es_error and _cifra(r, "coste anual adicional").valor > 0
+
+    assert _tool("luz_potencia_optima").ejecutar({"potencia_objetivo_kw": 16}, ctx).es_error
+
+
+def test_bill_declares_its_key_figures() -> None:
+    ctx = ContextoModulo(perfil={}, hoy=date(2026, 11, 24))
+    oferta = {"nombre": "Fija", "energia_eur_kwh": "0.13", "potencia_eur_kw_dia": {"p1": "0.0821", "p2": "0.0036"}}
+    r = _tool("luz_calcular_factura").ejecutar(
+        {
+            "fecha_inicio": "2025-11-01",
+            "fecha_fin": "2026-10-31",
+            "potencia_p1_kw": 4.6,
+            "consumo_kwh": {"p1": 800, "p2": 800, "p3": 1600},
+            "oferta": oferta,
+        },
+        ctx,
+    )
+    assert not r.es_error, r.contenido
+    assert 0 < len(r.cifras) <= 10
+    total = next(c for c in r.cifras if "TOTAL" in c.concepto)
+    assert total.unidad == "EUR" and f"TOTAL: {total.literal}" in r.contenido
+    assert not any("×" in c.concepto or not c.concepto.strip() for c in r.cifras)
+    assert all(c.literal in r.contenido for c in r.cifras)
+    partes = [_cifra(r, p).valor for p in ("término de potencia", "término de energía", "impuesto", "IVA", "otros")]
+    assert sum(partes) == total.valor

@@ -124,6 +124,11 @@ _RANGO = {
 MARCA_RETIRADA = "[cifra retirada: no sale de ningún cálculo]"
 AVISO_PUERTA_CAIDA = "No se pudo comprobar que las cifras de la respuesta salgan de los cálculos; revísalas."
 REFUSAL = "El modelo ha declinado responder a esta consulta."
+# An order to move money, pay or sign (``Senales.mueve_dinero``): no tool does it, and it is never left pending.
+NEGATIVA_DINERO = (
+    "No hago transferencias, pagos ni firmas, ni los dejo programados: eso lo haces tú, desde tu banco o donde "
+    "toque. Si quieres, te apunto un recordatorio para que no se te pase."
+)
 
 FabricaEspecialistas = Callable[[Sequence[Modulo]], Mapping[str, Especialista]]
 
@@ -607,6 +612,8 @@ class Cerebro:
         intencion = comprension.intencion
         emit(EVENTO_PLAN, intencion=intencion.model_dump(mode="json"))
 
+        if comprension.senales.mueve_dinero:
+            return self._directa(turno, NEGATIVA_DINERO, AgentMode.ABSTAINED)
         if intencion.aclaracion:
             return self._directa(turno, intencion.aclaracion, AgentMode.CLARIFICATION)
         if intencion.tipo == "fuera_de_ambito":

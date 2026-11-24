@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -59,7 +60,7 @@ RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "data/models/qwen3-reranker-ml
 # context tokens to the LLM, +5-10% latency. Acceptable for fiscal advisor
 # where hallucination is strictly forbidden.
 RERANKER_TOP_K = int(os.environ.get("RERANKER_TOP_K", "8"))
-# Reranker first-stage k: when reranker is enabled we bump the FAISS retriever
+# Reranker first-stage k: when reranker is enabled we bump the first-stage
 # top-k so the reranker has more candidates to reorder. Raised from 20 to 30
 # alongside the RERANKER_TOP_K bump — the reranker needs proportionally more
 # raw recall to keep choosing 8 *good* chunks instead of 5.
@@ -77,7 +78,7 @@ RERANKER_FIRST_STAGE_K = int(os.environ.get("RERANKER_FIRST_STAGE_K", "30"))
 # their benchmarks.
 #
 # Implementation note: changing this flag (or the model / max-tokens)
-# **invalidates the entire FAISS index** via the pipeline fingerprint —
+# **invalidates the entire corpus index** via the pipeline fingerprint —
 # the chunks under it are embeddings of a different text. Off by default
 # so existing indexes stay valid; flip to ``true`` and run the processor
 # with ``--full --overwrite-output`` to rebuild.
@@ -91,15 +92,23 @@ CONTEXTUAL_MODEL_PATH = os.environ.get("CONTEXTUAL_MODEL_PATH", "data/models/qwe
 # truncating, larger ones inflate ingest wall-clock without quality gain.
 CONTEXTUAL_MAX_TOKENS = int(os.environ.get("CONTEXTUAL_MAX_TOKENS", "80"))
 
-FAISS_INDEX_PATH = os.environ.get("FAISS_INDEX_PATH", ".faiss")
-FAISS_TRUSTED_INDEX = _env_bool("FAISS_TRUSTED_INDEX", default=False)
-# Corpus index backend: "faiss" (pickle + rank-bm25, legacy) or "sqlite" (sqlite-vec + FTS5 in one file,
-# no pickle). Stays "faiss" until the retrieval benchmark validates the switch (docs/cerebro/benchmark-recuperacion.md).
-INDICE_BACKEND = os.environ.get("INDICE_BACKEND", "faiss").strip().lower()
-INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(FAISS_INDEX_PATH, "indice.sqlite"))
-# Hybrid retrieval in the sqlite backend: dense (sqlite-vec) + lexical (FTS5) fused with weighted RRF.
-# Off by default: on the fiscal benchmark BM25 cost one cited answer net; measure before turning it on.
-BM25_ENABLED = _env_bool("BM25_ENABLED", default=False)
+# --- Corpus index -------------------------------------------------------------
+# One SQLite file, <INDICE_DIR>/indice.sqlite: the vectors in sqlite-vec (cosine), the text in FTS5 (BM25) and the
+# metadata in JSON. No pickle, so opening it never runs anyone's code. The directory also holds the ingestion
+# manifest (manifest.json) that the processor writes next to it.
+INDICE_DIR = os.environ.get("INDICE_DIR", "data/indice")
+INDICE_SQLITE_PATH = os.environ.get("INDICE_SQLITE_PATH", os.path.join(INDICE_DIR, "indice.sqlite"))
+if os.environ.get("FAISS_INDEX_PATH") and not os.environ.get("INDICE_DIR"):
+    # The FAISS index is gone (docs/cerebro/benchmark-recuperacion.md): say so instead of silently searching nothing.
+    logging.getLogger(__name__).warning(
+        "FAISS_INDEX_PATH ya no se usa: el índice es %s. Define INDICE_DIR (y migra o reconstruye el índice).",
+        INDICE_SQLITE_PATH,
+    )
+# First stage of the corpus search: dense (sqlite-vec) alone, or hybrid, the weighted RRF of the dense and the
+# FTS5 rankings. See docs/cerebro/benchmark-recuperacion.md for the measurement behind the default.
+# On by default since 2026-11-24: on the 77 measurable benchmark queries RRF put 2 more citations in the top-3 and
+# lost none, at the price of 3 fewer first places; the agent reads 6 fragments per search, not one.
+BM25_ENABLED = _env_bool("BM25_ENABLED", default=True)
 BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.6"))
 BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.4"))
 
@@ -137,7 +146,9 @@ ANTHROPIC_EFFORT = os.environ.get("ANTHROPIC_EFFORT", "high")
 # Re-run a request another Claude model when a safety classifier declines it
 # (server-side fallback). Only applied to models that support it.
 ANTHROPIC_REFUSAL_FALLBACK = _env_bool("ANTHROPIC_REFUSAL_FALLBACK", default=True)
-OPENAI_AGENT_MODEL = os.environ.get("OPENAI_AGENT_MODEL", "gpt-4o-mini")
+# gpt-6.2-sol: OpenAI's newest general model open to every developer (pricing page read on 2026-11-24), at the same
+# price as Claude Sonnet 5.5. gpt-4o-mini (2024) was the default before.
+OPENAI_AGENT_MODEL = os.environ.get("OPENAI_AGENT_MODEL", "gpt-6.2-sol")
 # Which OpenAI wire API the openai/local providers speak: "responses" (OpenAI's own API) or
 # "chat" (Chat Completions, what Ollama, LM Studio, mlx_lm.server and vLLM implement).
 # Empty = automatic: chat for the local provider and for a local OPENAI_BASE_URL, else responses.
