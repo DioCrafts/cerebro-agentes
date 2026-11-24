@@ -110,9 +110,12 @@ sus especialistas, con su rigor intacto (citas del BOE y verificador). `CEREBRO_
   paralelo; un especialista pide un dato a otro **a través del cerebro** (`pedir_dato`), y la puerta de cifras exige
   que cada número de la respuesta salga de una herramienta o de las palabras del usuario, atribuido a quien lo dio y
   sin sumar cifras de especialistas distintos que ninguna herramienta haya combinado.
-- [**Memoria de conversaciones**](cerebro/memoria.md): un resumen de cada conversación y «lo que sé de ti», cada
-  dato con su origen (la conversación, la fecha y las palabras literales del usuario). El usuario lo ve, lo corrige y
-  lo borra; va en la exportación y en el borrado de la cuenta.
+- [**Memoria de conversaciones**](cerebro/memoria.md): «lo que sé de ti», sobre
+  [Hindsight](https://github.com/vectorize-io/hindsight). Solo se guardan las palabras del usuario, pasadas por las
+  puertas de privacidad, en un banco por usuario y expediente; Hindsight extrae los hechos con su propio modelo y
+  cada uno conserva la conversación, la fecha y el fragmento del que sale. El usuario lo ve, lo corrige, lo borra o
+  pausa la memoria; va en la exportación y en el borrado de la cuenta. La decisión, en el
+  [ADR 0007](adr/0007-memoria-hindsight.md).
 - [**Repaso proactivo**](cerebro/repaso.md): una vez por semana (o por día) repasa lo nuevo —correo, avisos,
   plazos, cambios del BOE, decisiones— y escribe UN resumen priorizado («esta semana importa esto, por esto, y te
   propongo esto»). El código decide qué hay y qué se propone; el modelo pequeño solo redacta, tras una puerta
@@ -126,7 +129,7 @@ sus especialistas, con su rigor intacto (citas del BOE y verificador). `CEREBRO_
 
 | Paquete | Qué contiene |
 |---|---|
-| `asistente/nucleo/` | El cerebro central (`agent/`: agente, especialistas, prompts, proveedores, enrutado por propósito), el contrato y el registro de ámbitos (`modulos/`: contrato v1 y ganchos v2, perfil, acciones, preferencias, puentes), tareas de larga duración (`tareas/`), bus de eventos (`eventos/`), memoria de decisiones (`memoria/`), expediente y extracción de hechos (`decision/`), bandeja, resumen y entrega (`proactive/`), evaluación continua (`evaluacion/`, `evals/`) y el planificador del hogar (`planificador/`, transversal a varios ámbitos). |
+| `asistente/nucleo/` | El cerebro central (`agent/`: agente, especialistas, prompts, proveedores, enrutado por propósito), el contrato y el registro de ámbitos (`modulos/`: contrato v1 y ganchos v2, perfil, acciones, preferencias, puentes), tareas de larga duración (`tareas/`), bus de eventos (`eventos/`), memoria de decisiones (`memoria/`), memoria de conversaciones sobre Hindsight (`recuerdos/`) y sus puertas de privacidad (`privacidad.py`), expediente y extracción de hechos (`decision/`), bandeja, resumen y entrega (`proactive/`), evaluación continua (`evaluacion/`, `evals/`) y el planificador del hogar (`planificador/`, transversal a varios ámbitos). |
 | `asistente/capacidades/` | Medios que cualquier ámbito pide con `pedir`: `correo`, `navegador`, `documentos`, `investigacion` (y su contrato, registro y consentimiento). |
 | `asistente/ambitos/` | Los dominios: `fiscal` (con `calculo/` y sus datos legales en `data/`), `luz`, `hipoteca`, `ayudas`, `caducidades`, `suscripciones`. Solo paquetes de ámbito: el registro los descubre aquí. |
 | `asistente/conocimiento/` | Datos legales con cita literal, su comprobación y recodificación (`recodificacion/`), fuentes y vigencia de las normas, vigilancia del BOE y de formatos (`formatos*.py`, `data/formatos/`), y el corpus: `crawler/`, `processor/`, `llm/`, `doctrine/`. |
@@ -2039,7 +2042,7 @@ aplica si **no la empeora** (`asistente/nucleo/evaluacion/`,
   reales; los del cerebro, que requieren modelo, se omiten con el motivo);
   `run [--config variante.json] [--motor cerebro]` usa un proveedor real y da
   tasa por categoría, regresiones, coste y latencia.
-- **La puerta**: los *prompts* (también los del cerebro, el repaso y la memoria)
+- **La puerta**: los *prompts* (también los del cerebro, el repaso y el consejo)
   están versionados por su huella y una variante es lo que el asistente
   ejecuta. `promote --config candidata.json` ejecuta la activa y la candidata
   sobre la suite y los casos reales y escribe la candidata **solo si no

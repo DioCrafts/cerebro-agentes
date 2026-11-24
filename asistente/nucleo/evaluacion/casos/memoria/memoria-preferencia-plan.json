@@ -36,7 +36,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "preferencia",
+      "tipo": "hecho",
       "texto": "No quiere planes de pensiones porque necesita liquidez",
       "origen": {
         "conversacion_id": "conv_r1_0001",

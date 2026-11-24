@@ -40,7 +40,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "El seguro de hogar vence el 1 de febrero",
       "origen": {
         "conversacion_id": "conv_r1_0001",

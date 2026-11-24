@@ -64,10 +64,10 @@ def test_the_suite_covers_the_household_brain(casos: list[CasoEvaluacion]) -> No
             assert "cerebro" in caso.requiere, caso.id
         if caso.categoria == "repaso":
             assert caso.requiere == ["repaso"] and caso.entrada_repaso is not None, caso.id
-    # Memory cases include other people's memories that must never show, and corrected ones.
+    # Memory cases include other people's memories that must never show, and items with the user's own words.
     memoria = [c for c in casos if c.categoria == "memoria"]
     assert any(r.usuario and r.usuario != c.usuario for c in memoria for r in c.memoria)
-    assert any(r.corregido for c in memoria for r in c.memoria)
+    assert any(r.origen.cita for c in memoria for r in c.memoria)
     assert any("recuerdos" in c.requiere for c in memoria)
 
 

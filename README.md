@@ -7,7 +7,8 @@ y un agente con navegador.
 
 El código vive en `asistente/`:
 
-- `nucleo/`: el agente, sus herramientas, la memoria de decisiones y la evaluación.
+- `nucleo/`: el agente, sus herramientas, la memoria de decisiones, la memoria de conversaciones (sobre
+  [Hindsight](https://github.com/vectorize-io/hindsight)) y la evaluación.
 - `conocimiento/`: ingesta con Docling, índice del corpus (FAISS por defecto; SQLite con sqlite-vec y FTS5 detrás de
   `INDICE_BACKEND=sqlite`) y modelos locales en MLX.
 - `ambitos/`: los dominios (fiscal, hipoteca…) con sus reglas y sus datos de la norma.
@@ -36,8 +37,14 @@ make dev
 
 Arranca la API en el puerto 8000 y la interfaz en http://localhost:5173. Con `WORKER=1 make dev` arranca también el
 worker. Si existe `.env`, lo lee (ahí puedes dejar `ANTHROPIC_API_KEY`), y si no defines `AUTH_MODE` entra sin
-cuentas. Ctrl+C lo para todo. El script es `scripts/dev.sh` y necesita bash 4.3 o posterior; el bash 3.2 que trae
-macOS no vale, el de Homebrew sí.
+cuentas. Ctrl+C lo para todo menos el demonio de la memoria (abajo). El script es `scripts/dev.sh` y necesita bash 4.3
+o posterior; el bash 3.2 que trae macOS no vale, el de Homebrew sí.
+
+Al arrancar la API, la memoria de conversaciones arranca en segundo plano un demonio de Hindsight, con su propio
+PostgreSQL en `~/.pg0/`. Sin `ANTHROPIC_API_KEY` no arranca y el asistente funciona sin memoria. La primera vez descarga los modelos locales y tarda uno o dos minutos; mientras tanto el
+asistente responde sin memoria. El demonio sigue vivo al parar la app: se para con
+`uv run hindsight-embed -p cerebro daemon stop`. Con `MEMORIA_CONVERSACIONES=false` no arranca. Cada mensaje que
+recuerda cuesta llamadas a `claude-haiku-5-5` con la misma clave ([docs/cerebro/memoria.md](docs/cerebro/memoria.md)).
 
 Si prefieres arrancar cada pieza por separado, la API va en una terminal. Sin cuentas solo arranca si lo permites de forma explícita:
 

@@ -165,8 +165,12 @@ _logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def _arranque(_app: FastAPI) -> AsyncGenerator[None]:
-    """Refuses to serve with no authentication at all (see ``comprobar_arranque``)."""
+    """Refuses to serve with no authentication at all (see ``comprobar_arranque``), and starts the conversation
+    memory's Hindsight daemon in the background so the first question does not find it cold."""
     comprobar_arranque()
+    from asistente.nucleo.recuerdos.servicio import calentar_memoria
+
+    calentar_memoria()
     yield
 
 

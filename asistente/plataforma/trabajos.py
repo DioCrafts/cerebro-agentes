@@ -131,12 +131,6 @@ TRABAJOS: tuple[Trabajo, ...] = (
         por_defecto=False,
     ),
     Trabajo(
-        "memoria-resumir",
-        "Memoria de conversaciones: resume las inactivas y borra los mensajes literales caducados.",
-        Programacion(cada_minutos=15),
-        orden=("asistente.nucleo.recuerdos", "resumir"),
-    ),
-    Trabajo(
         "repaso",
         "Repaso del asistente: el resumen priorizado de la semana o del día (lotes del modelo; sin REPASO_ACTIVO no "
         "hace nada).",

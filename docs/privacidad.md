@@ -36,8 +36,9 @@ Lo que sigue describe el modo `required`.
 
 ## Qué datos se guardan y dónde
 
-Todo lo persistente está en **un único fichero SQLite** (`DECISION_STATE_DB_PATH`, por defecto
-`./data/decision_state.sqlite3`), más sus ficheros `-wal` y `-shm`.
+Casi todo lo persistente está en **un único fichero SQLite** (`DECISION_STATE_DB_PATH`, por defecto
+`./data/decision_state.sqlite3`), más sus ficheros `-wal` y `-shm`. La excepción es la memoria de conversaciones,
+que vive en la base PostgreSQL de Hindsight (ver «Memoria de conversaciones» más abajo).
 
 | Tabla | Contenido | Observaciones |
 |---|---|---|
@@ -136,6 +137,7 @@ no salen de la máquina que ejecuta el modelo; con los otros dos salen hacia un 
 | Turno del motor de decisión (`/cases/{id}/turn`) | La frase del usuario y el historial reciente, para extraer hechos (cuando el extractor configurado es un modelo de lenguaje). |
 | Pregunta al flujo antiguo (`/qa`) | La pregunta, el historial y los fragmentos recuperados, a OpenAI. |
 | Subir un documento (`/cases/{id}/documents`) | El texto extraído del documento, o el propio fichero si es un escaneado o una foto. **Solo si el usuario ha dado el consentimiento `envio_documentos_a_proveedor_llm`**; sin él el servidor responde 403 antes de leer el fichero. |
+| Escribir al asistente con la memoria de conversaciones activa | Después de responder, el mensaje del usuario (no la respuesta) pasa por las puertas de privacidad y Hindsight lo manda al proveedor de `HINDSIGHT_LLM_PROVEEDOR` (por defecto Anthropic, `claude-haiku-5-5`) para extraer los hechos y consolidar las observaciones. Con `LLM_PROVIDER=local` esto sigue saliendo de la máquina salvo que se cambie también `HINDSIGHT_LLM_PROVEEDOR`. |
 | Simulador, calendario, avisos proactivos, edición manual del expediente | Nada. Son cálculos deterministas locales. |
 | Diagnóstico de un formato externo (`ops formatos diagnose`, lo lanza el operador) | Muestras de fuentes públicas (BOE, boletines, TEAC, DGT, sede de la AEAT). De los documentos de usuarios, solo esqueletos anónimos y solo si el operador los ha activado; de las sentencias del CENDOJ, solo su esqueleto estructural. Ningún dato de expedientes. |
 
@@ -262,6 +264,49 @@ Gmail del usuario **solo si él lo conecta** («Conectar Gmail») y con un únic
   privacidad qué datos de Gmail trata, para qué y cuánto tiempo, y el encargado del tratamiento si usa un
   proveedor de modelo con el clasificador opcional.
 
+## Memoria de conversaciones («Lo que sé de ti»)
+
+El asistente recuerda lo que el usuario le contó en conversaciones anteriores para no preguntárselo dos veces
+(`asistente/nucleo/recuerdos/`, [cerebro/memoria.md](cerebro/memoria.md)). La memoria la lleva
+[Hindsight](https://github.com/vectorize-io/hindsight), un motor de memoria de código abierto (licencia MIT) que
+corre en la misma máquina.
+
+Solo se guarda lo que escribe el usuario, nunca las respuestas del asistente. Cada mensaje se guarda tal como queda
+tras las puertas de privacidad, y de él Hindsight saca hechos («tiene la hipoteca con ING»), cada uno con la
+conversación, la fecha y el fragmento del mensaje del que sale. También escribe observaciones que resumen varios
+hechos.
+
+Las puertas (`asistente/nucleo/privacidad.py`) son reglas fijas, sin modelo, y se aplican antes de que el mensaje
+salga del proceso. Las contraseñas, PIN, códigos, *tokens* y claves se sustituyen por «[dato secreto omitido]»; el
+IBAN y las tarjetas se quedan en sus cuatro últimas cifras; DNI/NIE, teléfonos, correos y números largos se tapan.
+Un mensaje con datos de salud, religión, ideología, afiliación sindical, orientación sexual, origen étnico, datos
+biométricos o genéticos o antecedentes penales (RGPD, arts. 9 y 10) no se guarda, salvo que en ese mismo mensaje el
+usuario pida que se recuerde. El texto pegado (correos citados, reenvíos, bloques de código) no son palabras del
+usuario y se quita.
+
+Los datos están en la base PostgreSQL embebida de Hindsight (`~/.pg0/instances/hindsight-embed-cerebro/` del
+usuario del sistema que ejecuta la API) o, si el operador configura `HINDSIGHT_URL`, en ese servidor. Hay un banco
+por usuario y expediente, con un nombre derivado por SHA-256, así que Hindsight no ve identificadores de usuario ni de
+expediente. En SQLite solo queda el interruptor de pausa (`recuerdos_pausa`).
+
+El proveedor del modelo recibe dos cosas: cada mensaje retenido, para que el modelo de Hindsight extraiga los hechos
+(tabla de arriba), y los recuerdos relevantes para cada pregunta, como datos en el contexto del cerebro cuando
+responde. La búsqueda de esos recuerdos se hace en local, sin modelo de lenguaje.
+
+En «Lo que sé de ti» el usuario ve cada hecho con su conversación y su fecha. Puede corregirlo (la corrección se
+guarda como palabras suyas y el hecho anterior queda invalidado), olvidarlo (se borra el mensaje del que salió, con
+todo lo que se extrajo de él), borrar una conversación entera, olvidar todo (se borra su banco) o pausar la memoria
+(no se guarda ni se usa nada nuevo y no se borra nada). No hay plazo de conservación automático: lo guardado se queda
+hasta que el usuario lo borra, borra su cuenta o el operador lo elimina.
+
+La memoria va en `GET /me/export` (`recuerdos` de cada expediente y de fuera de expediente: los hechos y los
+mensajes guardados, sin las observaciones). `DELETE /me` borra todos los bancos de la cuenta; si no puede hablar con
+Hindsight, se detiene antes de borrar la cuenta para que el usuario lo repita.
+
+Dos límites conocidos. Borrar un expediente suelto todavía no borra su banco en Hindsight, y después `DELETE /me` ya
+no lo alcanza. Y PostgreSQL no sobrescribe al momento lo borrado: los bytes pueden quedar en sus ficheros hasta el
+siguiente `VACUUM`, y en las copias de `~/.pg0` que haga el operador.
+
 ## Memoria de decisiones («Lo que sé de tus preferencias»)
 
 El asistente guarda lo que el usuario **decide** sobre lo que se le propone (no quiere planes de pensiones
@@ -379,6 +424,11 @@ Las cifras del cónyuge y las preferencias del optimizador (`datos_conyuge`,
 Las decisiones que recuerda el asistente («Lo que sé de tus preferencias») van en `decisiones` de cada
 expediente: `decisiones` (cada una con las palabras del usuario, fechas y estado) e `historial`.
 
+La memoria de conversaciones («Lo que sé de ti») va en `recuerdos`, dentro de cada expediente y en la raíz para lo
+que no tiene expediente: el estado de la pausa, los hechos con su conversación y fecha, y los mensajes guardados de
+cada conversación, y las observaciones que Hindsight deriva de los hechos. Si Hindsight no responde, la exportación
+sale igual y `recuerdos` lleva un aviso de que la memoria no está incluida y de que hay que pedirla otra vez.
+
 No incluye lo que el servidor no tiene (los documentos subidos) ni lo que haya quedado en poder de
 terceros (proveedor del modelo, correo ya enviado).
 
@@ -387,7 +437,8 @@ terceros (proveedor del modelo, correo ya enviado).
 `DELETE /me` con la contraseña (en la web: «Privacidad y datos» → «Eliminar mi cuenta») borra, por
 este orden, los avisos y registros de entrega de cada expediente, sus acciones pendientes, cada expediente
 con su rastro de auditoría (y con él los datos de los módulos) y, al final, la cuenta con sus sesiones,
-consentimientos, elecciones de módulos y relaciones de propiedad. Es
+consentimientos, elecciones de módulos y relaciones de propiedad. Antes de los expedientes borra en Hindsight los
+bancos de la memoria de conversaciones de la cuenta; si Hindsight no responde, se detiene ahí. Es
 irreversible. Si el proceso falla a medias, la cuenta sigue existiendo y basta repetirlo.
 
 Quitar un solo dato del expediente (la papelera de «Tu expediente», `DELETE /cases/{id}/facts/{nombre}`,
@@ -408,7 +459,8 @@ borra el expediente o la cuenta. Lo comprueba `tests/auth/test_datos_optimizador
 
 Lo que **no** alcanza ese borrado:
 
-- **Copias de seguridad** y réplicas del fichero SQLite hechas por el operador.
+- **Copias de seguridad** y réplicas del fichero SQLite hechas por el operador, y las copias de la base de
+  Hindsight (memoria de conversaciones).
 - **Restos en el propio fichero**: SQLite marca las páginas como libres pero no las sobrescribe.
   Hasta un `VACUUM` (o con `PRAGMA secure_delete=ON`, que este código no activa) los datos pueden
   recuperarse con herramientas forenses; también pueden quedar en el fichero `-wal`.
@@ -507,6 +559,7 @@ Nada de esto lo resuelve el código. Sin ello, el despliegue no debería recibir
 | Comprobación de sesión, propiedad y consentimiento | `asistente/plataforma/auth/deps.py` |
 | Endpoints de cuenta, exportación y borrado | `asistente/plataforma/api/routers/auth.py` |
 | Pruebas | `tests/auth/` |
+| Memoria de conversaciones: puertas de privacidad, bancos de Hindsight, exportación y borrado | `asistente/nucleo/privacidad.py`, `asistente/nucleo/recuerdos/`, `asistente/plataforma/api/routers/recuerdos.py` |
 | Decisiones y preferencias recordadas (tabla, exportación, borrado) | `asistente/nucleo/memoria/`, `asistente/plataforma/api/routers/memoria.py`, `tests/memoria/` |
 | Consejo del hogar: seudonimización del expediente, sesiones, exportación y borrado | `asistente/nucleo/consejo/seudonimos.py`, `expediente.py`, `almacen.py`, `asistente/plataforma/api/routers/consejo.py`, `tests/consejo/` |
 | Pantalla de acceso y panel de privacidad | `frontend/src/components/Auth*.tsx`, `PrivacyPanel.tsx` |

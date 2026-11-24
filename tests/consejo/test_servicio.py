@@ -74,7 +74,7 @@ def test_the_job_runs_a_confirmed_session_end_to_end(db: str) -> None:
     fabrica = FabricaFalsa(
         motor=motor,
         especialistas={"hipoteca": hipoteca(), "fiscal": fiscal()},
-        memoria=MemoriaFalsa([("dato", "Tiene un fondo de emergencia de seis meses de gastos.")]),
+        memoria=MemoriaFalsa([("hecho", "Tiene un fondo de emergencia de seis meses de gastos.")]),
     )
     servicio = _servicio(db, fabrica)
     sesion = servicio.convocar(case=_caso(db), pregunta=PREGUNTA, preferencia="Creo que amortizar es lo mejor.")

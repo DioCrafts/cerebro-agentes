@@ -14,9 +14,10 @@ What each requirement needs (the only coupling, in one table, :data:`REQUISITOS`
   modules). Its ``run(query, chat_history=…, case=…, modulos=…, conversacion_id=…, user_id=…)`` returns an ``AgentResult``
   whose ``cerebro`` is the turn's :class:`~asistente.nucleo.cerebro.contrato.InformeCerebro`. The case's memory
   is :class:`MemoriaDeCaso` (the case's ``memoria`` items, each answered only to its own user).
-* ``recuerdos`` — the real conversation memory (``asistente.nucleo.recuerdos.servicio.ServicioMemoria`` over a
-  throw-away database), seeded with the case's ``memoria`` items through its store (``almacen.Recuerdo``,
-  ``almacen.Titular``): other users' items are stored under THEIR user and case, so isolation is tested for real.
+* ``recuerdos`` — the real conversation memory (``asistente.nucleo.recuerdos.servicio.ServicioMemoria`` on Hindsight,
+  with a throw-away database for the pause switch), seeded by retaining each of the case's ``memoria`` items as the
+  user's own words (its quote, else its text) in the bank of THEIR user and case (``servicio.Titular``): other
+  users' items live in other banks, so isolation is tested for real. Needs Hindsight and its model.
 * ``repaso`` — ``asistente.nucleo.repaso.evaluacion.ejecutar(entrada: dict, *, proveedor) -> dict``: the pass on
   the case's ``entrada_repaso`` (``{"hoy", "senales": [{"id", "tipo", "titulo", "detalle", "fecha", "importe"}]}``)
   returning :class:`SalidaRepaso` (``{"texto", "afirmaciones": [{"texto", "senales": [ids]}], "propuestas":
@@ -55,8 +56,7 @@ REQUISITOS: dict[str, tuple[tuple[str, str], ...]] = {
     ),
     "recuerdos": (
         ("asistente.nucleo.recuerdos.servicio", "ServicioMemoria"),
-        ("asistente.nucleo.recuerdos.almacen", "Recuerdo"),
-        ("asistente.nucleo.recuerdos.almacen", "Titular"),
+        ("asistente.nucleo.recuerdos.servicio", "Titular"),
     ),
     "repaso": (("asistente.nucleo.repaso.evaluacion", "ejecutar"),),
     "consejo": (
@@ -128,34 +128,26 @@ def caso_de_usuario(caso: CasoEvaluacion, usuario: str) -> str:
 
 
 def memoria_real(caso: CasoEvaluacion, directorio: Path) -> ProveedorMemoria:
-    """The real conversation memory over a throw-away database, seeded with the case's items (each under its own
-    user and case)."""
+    """The real conversation memory (Hindsight), each of the case's items retained under its own user and case.
+    The case's banks are emptied first, so a run never sees what an earlier run left."""
     servicio_cls = _resolver("asistente.nucleo.recuerdos.servicio", "ServicioMemoria")
-    recuerdo_cls = _resolver("asistente.nucleo.recuerdos.almacen", "Recuerdo")
-    titular_cls = _resolver("asistente.nucleo.recuerdos.almacen", "Titular")
-    db = str(directorio / "recuerdos.sqlite3")
-    parametros = inspect.signature(servicio_cls).parameters
-    servicio = (
-        servicio_cls(db, usar_incrustador_configurado=False)
-        if "usar_incrustador_configurado" in parametros
-        else servicio_cls(db)
-    )
-    ahora = datetime.now(UTC)
+    titular_cls = _resolver("asistente.nucleo.recuerdos.servicio", "Titular")
+    servicio = servicio_cls(str(directorio / "recuerdos.sqlite3"))
+    cliente = servicio.cliente()
+    vaciados: set[str] = set()
     for r in caso.memoria:
         usuario = r.usuario or caso.usuario
         titular = titular_cls.de(caso_de_usuario(caso, usuario), usuario)
-        datos = {
-            "id": r.id,
-            "tipo": r.tipo,
-            "clave": r.id,
-            "texto": r.texto,
-            "origen": {"conversacion_id": r.origen.conversacion_id, "fecha": r.origen.fecha, "cita": r.origen.cita},
-            "creado": ahora,
-            "actualizado": ahora,
-            "corregido": r.corregido,
-        }
-        servicio.store.guardar(
-            titular, recuerdo_cls(**{k: v for k, v in datos.items() if k in recuerdo_cls.model_fields})
+        if titular.banco not in vaciados:
+            cliente.borrar_banco(titular.banco)
+            servicio.olvidar_banco(titular.banco)
+            vaciados.add(titular.banco)
+        servicio.sembrar(
+            titular,
+            texto=r.origen.cita or r.texto,
+            conversacion_id=r.origen.conversacion_id or f"eval-{r.id}",
+            fecha=datetime.combine(r.origen.fecha, datetime.min.time(), UTC) if r.origen.fecha else datetime.now(UTC),
+            documento_id=f"eval-{r.id}",
         )
     return servicio
 

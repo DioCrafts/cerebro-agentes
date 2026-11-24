@@ -40,7 +40,11 @@ export function AuthPrivacyNotice({ open, onClose, noticeUrl }: AuthPrivacyNotic
             de las consultas que los generaron.
           </li>
           <li>Los avisos que el asesor prepara para ti y los consentimientos que das o retiras, con su fecha.</li>
-          <li>El texto de las conversaciones se guarda solo en este navegador, no en el servidor.</li>
+          <li>
+            El historial de las conversaciones se guarda en este navegador. Con la memoria de conversaciones activada, el servidor guarda
+            además tus mensajes (nunca las respuestas del asesor) y lo que el asesor saca de ellos; lo ves, lo corriges y lo borras en
+            «Recuerdos».
+          </li>
         </Seccion>
         <Seccion titulo="Qué se envía al proveedor del modelo de lenguaje">
           <li>Tus preguntas, la conversación en curso y los datos de tu expediente que el asesor necesita para responder.</li>
@@ -52,7 +56,7 @@ export function AuthPrivacyNotice({ open, onClose, noticeUrl }: AuthPrivacyNotic
         </Seccion>
         <Seccion titulo="Qué puedes hacer">
           <li>Descargar todo lo que hay guardado sobre ti, en cualquier momento.</li>
-          <li>Eliminar tu cuenta: se borran tu expediente, tus avisos, tus consentimientos y tus sesiones. No se puede deshacer.</li>
+          <li>Eliminar tu cuenta: se borran tu expediente, lo que el asesor recuerda de ti, tus avisos, tus consentimientos y tus sesiones. No se puede deshacer.</li>
           <li>Dar o retirar cada consentimiento cuando quieras, desde «Privacidad y datos».</li>
         </Seccion>
         <Flash variant={noticeUrl ? "default" : "warning"}>

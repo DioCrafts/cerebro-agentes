@@ -71,7 +71,6 @@ una tarea que falla no tumba al worker. Las horas son peninsulares (`Europe/Madr
 | `doctor` | 09:00 | `asistente.plataforma.cli.ops doctor` | sí |
 | `correo-sincronizar` | cada 30 min | `asistente.capacidades.correo sincronizar` | sí (no hace nada sin cuentas conectadas) |
 | `indice-corpus` | 03:40 | `asistente.plataforma.cli.processor --incremental` | **no** (necesita el corpus y los modelos) |
-| `memoria-resumir` | cada 15 min | `asistente.nucleo.recuerdos resumir` | sí (resume las conversaciones inactivas, por lotes si el proveedor los admite; sin modelo configurado solo aplica la retención) |
 | `repaso` | cada 30 min | `asistente.plataforma.cli.repaso trabajo` | sí (sin `REPASO_ACTIVO` no hace nada; recoge los lotes en curso y, cuando toca por `REPASO_DIA`/`REPASO_HORA`, escribe el repaso priorizado de cada caso: [cerebro/repaso.md](cerebro/repaso.md)) |
 | `consejo` | cada 5 min | `asistente.plataforma.cli.consejo ejecutar` | sí (sin `CONSEJO_ACTIVO` no hace nada; caduca las convocatorias sin confirmar, recupera las sesiones interrumpidas, ejecuta las confirmadas —una por caso a la vez— y aplica la retención: [consejo/arquitectura.md](consejo/arquitectura.md)) |
 
@@ -190,7 +189,7 @@ Base `casos` = `DECISION_STATE_DB_PATH`; base `doctrina` = `DOCTRINE_GRAPH_PATH`
 | `plataforma` | `asistente.plataforma` | casos | `plataforma_procesos`, `plataforma_trabajos` | | 1 | Latido de los workers y turnos de las tareas programadas. |
 | `tareas` | `asistente.nucleo.tareas` | casos | `tareas`, `tareas_historial`, `tareas_senales` | `idx_tareas_case`, `idx_tareas_estado`, `idx_tareas_historial`, `idx_tareas_historial_case`, `idx_tareas_senales`, `tareas_borrar_con_caso` | 2 | Tareas de larga duración: plan, pasos, historial (sin valores) y señales del bus. La v2 (disparador) espera a que exista `case_states`. |
 | `push` | `asistente.plataforma.push` | casos | `push_suscripciones`, `push_consentimientos` | `idx_push_suscripciones_propietario`, `idx_push_consentimientos`, `push_borrar_suscripciones_con_usuario` | 1 | Avisos en el móvil (Web Push): dispositivos suscritos y consentimiento de cada usuario. |
-| `recuerdos` | `asistente.nucleo.recuerdos` | casos | `recuerdos_conversaciones`, `recuerdos_mensajes`, `recuerdos`, `recuerdos_lotes`, `recuerdos_interruptor` | `idx_recuerdos_conversaciones_titular`, `idx_recuerdos_conversaciones_estado`, `idx_recuerdos_mensajes_conversacion`, `idx_recuerdos_mensajes_fecha`, `idx_recuerdos_titular`, `idx_recuerdos_lotes_lote`, `recuerdos_borrar_con_caso`, `recuerdos_borrar_con_usuario` | 1 | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): conversaciones con su resumen, mensajes (se purgan a los `MEMORIA_RETENCION_MENSAJES_DIAS`), «lo que sé de ti» con su origen, lotes pendientes (solo identificadores) y el interruptor del usuario. Se borra con el caso y con la cuenta (disparadores). Depende de `decision` y `auth`. |
+| `recuerdos_hindsight` | `asistente.nucleo.recuerdos` | casos | `recuerdos_pausa` | `recuerdos_pausa_borrar_con_caso`, `recuerdos_pausa_borrar_con_usuario` | 2 | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)). Aquí solo está el interruptor «pausar la memoria» de cada usuario; los recuerdos viven en Hindsight, fuera de SQLite (§5). La v1 borra las cinco tablas y los dos disparadores de la memoria anterior y sus filas de `schema_migrations`. Se borra con el caso y con la cuenta (la v2, disparadores, espera a que existan `case_states` y `users`). Depende de `decision` y `auth`. |
 | `repaso` | `asistente.nucleo.repaso` | casos | `repaso_pasadas` | `idx_repaso_pasadas_lote`, `repaso_borrar_con_caso` | 2 | Repaso proactivo del cerebro ([cerebro/repaso.md](cerebro/repaso.md)): una fila por caso y periodo con los puntos priorizados tal como se redactaron, el texto aceptado por la puerta, el aviso que escribió y, mientras hay un lote en curso, su identificador (los `custom_id` son *hashes*, sin datos del caso). Marca de agua de la pasada siguiente. Se borra con el caso (la v2, disparador, espera a que exista `case_states`); se purga a los 120 días salvo la última de cada caso. |
 | `consejo` | `asistente.nucleo.consejo` | casos | `consejo_sesiones` | `idx_consejo_sesiones_caso`, `idx_consejo_sesiones_estado`, `consejo_borrar_con_caso`, `consejo_borrar_con_usuario` | 1 | Consejo del hogar ([consejo/arquitectura.md](consejo/arquitectura.md)): una fila por sesión con su estado, el arriendo del trabajador, la estimación y el tope de coste que aceptó el usuario, el coste gastado y, en JSON, el expediente seudonimizado, las propuestas, las críticas anónimas, los rankings y el dictamen. Se borra con el caso y con la cuenta (disparadores); las terminadas se purgan a los `CONSEJO_RETENCION_DIAS`. Depende de `decision` y `auth`. |
 | `doctrina` | `asistente.conocimiento.doctrine` | doctrina | `nodos`, `alias`, `aristas` | `aristas_destino` | 1 | Grafo de doctrina (datos públicos; se reconstruye con `cli.doctrine_graph build`). |
@@ -201,7 +200,10 @@ Además, `sqlite_sequence` (de SQLite, por los `AUTOINCREMENT`) y `schema_migrat
 (`_jobs_state.json`, `_formatos_state.json`, `formatos/`, `_estado_normas.json`, `recodificacion/`,
 `_lotes/`, `_modulos_fuentes_state.json`, `navegador/` con diagnósticos redactados, `modulos/ayudas/`
 con las convocatorias del BOE), el índice de búsqueda (`FAISS_INDEX_PATH`, reconstruible) y los datos
-legales versionados del repositorio (`asistente/ambitos/fiscal/data`, `asistente/ambitos/*/data`).
+legales versionados del repositorio (`asistente/ambitos/fiscal/data`, `asistente/ambitos/*/data`). La memoria de
+conversaciones tampoco está aquí: vive en Hindsight, por defecto en el PostgreSQL embebido de
+`~/.pg0/instances/hindsight-embed-<HINDSIGHT_PERFIL>/` del usuario que ejecuta la API, o en el servidor de
+`HINDSIGHT_URL` ([cerebro/memoria.md](cerebro/memoria.md)).
 
 Cada almacén con tablas propias está en el catálogo (`asistente/plataforma/migraciones/catalogo/`), con su
 línea base y la llamada `asegurar_esquema`; `tests/plataforma/test_migraciones.py` comprueba que esta tabla
@@ -325,13 +327,15 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `API_DOCS_PUBLICAS` | vacío (= solo sin cuentas) | Servir `/docs`, `/redoc`, `/openapi.json`. |
 | `VITE_API_BASE` | `/api` | (Compilación de la interfaz React) prefijo de la API. |
 | `VITE_API_PROXY` | `http://127.0.0.1:8000` | (Solo desarrollo con Vite) destino del proxy `/api`. |
-| `MEMORIA_CONVERSACIONES` | `true` | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): guardar las conversaciones, su resumen y «lo que sé de ti». Con `false` no se guarda ni se usa nada nuevo (lo guardado se puede seguir viendo, exportando y borrando). |
-| `MEMORIA_RETENCION_MENSAJES_DIAS` | `30` | Días que se guardan los mensajes tal cual (mínimo 1); los resúmenes y los recuerdos quedan hasta que el usuario los borre. |
-| `MEMORIA_MAX_RECUERDOS` | `200` | Recuerdos activos por usuario y caso (al llegar, se van primero los de contexto más antiguos). |
-| `MEMORIA_RESUMEN_TRAS_MINUTOS` | `30` | Minutos de inactividad tras los que se resume una conversación (tarea `memoria-resumir`). |
-| `MEMORIA_RESUMEN_LOTES` | `true` | Resumir con la API de lotes del proveedor cuando la tiene (más barato; el resultado llega en una pasada posterior). |
-| `MEMORIA_RESUMEN_EN_SEGUNDO_PLANO` | `false` | Resumir también desde la API, en un hilo, cuando el usuario empieza una conversación nueva (despliegues sin worker). |
-| `MEMORIA_EMBEDDINGS` | `false` | Ordenar también con el modelo de *embeddings* del proyecto (`EMBEDDING_MODEL`, solo MLX). Nunca imprescindible. |
+| `MEMORIA_CONVERSACIONES` | `true` | Memoria de conversaciones ([cerebro/memoria.md](cerebro/memoria.md)): guardar en Hindsight lo que escribe el usuario y recordarlo en las preguntas siguientes. Con `false` no se guarda ni se recuerda nada nuevo y no arranca el demonio (lo guardado se puede seguir viendo, exportando y borrando, con Hindsight en marcha). |
+| `HINDSIGHT_URL` | vacío | Un servidor de Hindsight ya en marcha (`http://host:puerto`). Vacío: la app arranca y reutiliza un demonio local embebido (`hindsight-all`, proceso propio en `127.0.0.1` con PostgreSQL embebido en `~/.pg0/`). Con un servidor externo, `HINDSIGHT_LLM_*`, `HINDSIGHT_EMBEDDINGS` y `HINDSIGHT_IDIOMA` no se aplican: valen los ajustes de ese servidor. En Docker, obligatorio (§8). |
+| `HINDSIGHT_PERFIL` | `cerebro` | Perfil del demonio embebido: nombre de su configuración (`~/.hindsight/profiles/`) y de su PostgreSQL (`~/.pg0/instances/hindsight-embed-<perfil>/`). |
+| `HINDSIGHT_LLM_PROVEEDOR` | `anthropic` | Proveedor del modelo con el que Hindsight extrae los hechos (`anthropic` u `openai`). La clave sale de `ANTHROPIC_API_KEY` u `OPENAI_API_KEY` por el entorno; no se escribe en el perfil. |
+| `HINDSIGHT_LLM_MODELO` | `claude-haiku-5-5` | Modelo de esas llamadas de extracción y consolidación (se pagan aparte de las del asistente). |
+| `HINDSIGHT_EMBEDDINGS` | `BAAI/bge-m3` | Modelo local de *embeddings* de Hindsight, multilingüe (el de Hindsight por defecto solo sirve para inglés). |
+| `HINDSIGHT_IDIOMA` | `spanish` | Diccionario de PostgreSQL para la búsqueda BM25 de Hindsight. |
+| `HINDSIGHT_PRESUPUESTO` | `mid` | Esfuerzo de cada recuperación (`low`, `mid` o `high`). |
+| `HINDSIGHT_TIMEOUT_S` | `8` | Segundos como mucho por llamada a Hindsight; si se pasa, ese turno va sin memoria. |
 | `REPASO_ACTIVO` | `false` | Repaso proactivo del cerebro ([cerebro/repaso.md](cerebro/repaso.md)): con `true` y un modelo configurado, el resumen semanal (o diario) lo escribe el repaso priorizado, con su puerta; sin modelo, su versión determinista. Con `false`, el resumen semanal determinista de siempre. |
 | `REPASO_FRECUENCIA` | `semanal` | `semanal` (un resumen por semana ISO, la clave del resumen semanal) o `diaria` (uno por día). |
 | `REPASO_DIA` | `0` | Día de la pasada semanal (0 = lunes … 6 = domingo); si ese día no corrió, se hace el siguiente de la misma semana. |
@@ -560,6 +564,10 @@ uv run python -m asistente.plataforma.cli.plataforma copia --base doctrina --des
 - Las copias grandes se cifran en memoria; para bases de varios GB, usa `--sin-cifrar` hacia un directorio
   temporal privado y cifra con `age` o `gpg` en flujo.
 - Copia también lo que no está en SQLite (§2.1): `data/` completo salvo las bases (que van por esta vía).
+- La memoria de conversaciones (Hindsight) no entra en `copia`. Con el demonio embebido, páralo
+  (`uv run hindsight-embed -p cerebro daemon stop`), copia `~/.pg0/instances/hindsight-embed-cerebro/` y cifra la
+  copia como las demás: guarda las palabras de los usuarios. Con `HINDSIGHT_URL`, copia el PostgreSQL de ese
+  servidor con su propio procedimiento.
 
 **Restaurar** (con los procesos parados):
 
@@ -652,6 +660,9 @@ docker compose -f docs/despliegue/docker-compose.yml exec worker python -m asist
   súbelo a mano (ver [operacion.md](operacion.md), apartado 4).
 - El agente con navegador necesita Chromium en la imagen de la API (`playwright install --with-deps
   chromium`) y, en modo `ventana`, una pantalla: en un servidor, usa solo el modo `sesion`.
+- La memoria de conversaciones necesita un servidor de Hindsight: pon su dirección en `HINDSIGHT_URL`. Sin ella,
+  `api` y `worker` arrancarían cada uno su propio demonio embebido, con los datos dentro del contenedor, y se
+  perderían al reconstruirlo. Si no vas a montar ese servidor, deja `MEMORIA_CONVERSACIONES=false`.
 
 ### Actualizar desde `hacienda_gpt` (paquete renombrado a `asistente`)
 

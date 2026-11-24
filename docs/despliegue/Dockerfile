@@ -8,7 +8,12 @@
 #
 # Linux no tiene el embedder MLX: los modelos *-mlx (EMBEDDING_MODEL, RERANKER_MODEL,
 # CONTEXTUAL_MODEL_PATH…) solo funcionan en Apple Silicon. En esta imagen la búsqueda funciona sin ellos
-# (léxica) y MEMORIA_EMBEDDINGS debe quedarse en false; la indexación con embeddings se hace en un Mac.
+# (léxica); la indexación con embeddings se hace en un Mac.
+#
+# Memoria de conversaciones (Hindsight, docs/cerebro/memoria.md): esta imagen no lleva un servidor de Hindsight.
+# Pon HINDSIGHT_URL apuntando a uno externo. Sin esa variable, cada contenedor (api y worker) arrancaría su propio
+# demonio embebido de hindsight-all, con su PostgreSQL dentro del contenedor, y los recuerdos se perderían al
+# reconstruirlo. Sin servidor, MEMORIA_CONVERSACIONES=false.
 #
 # Datos actualizables dentro del código: hipoteca-indices escribe en asistente/ambitos/hipoteca/data
 # (ruta fija en asistente/ambitos/hipoteca/indices.py, DATA_DIR). Dentro del contenedor esa escritura se

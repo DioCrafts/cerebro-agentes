@@ -497,6 +497,14 @@ def restricciones_de(
     return salida
 
 
+# A remembered fact that states a leaning («prefiere…», «no quiere…», «le gusta…»): Hindsight stores preferences as
+# ordinary facts, so the dossier recognises them by their wording.
+_ES_INCLINACION = re.compile(
+    r"\b(prefier\w*|no\s+quier\w*|quier\w*|le\s+gust\w*|no\s+le\s+gust\w*|evit\w*|descart\w*|odi\w*)\b",
+    re.IGNORECASE,
+)
+
+
 def _recuerdos(
     memoria: ProveedorMemoria | None, *, case: CaseState | None, user_id: str | None, consulta: str
 ) -> BloqueMemoria:
@@ -538,7 +546,7 @@ def instruir(
     household specialists of ``modulos`` (no tax advisor). ``decisiones``: the decisions memory (default: read from
     the cases' database)."""
     from asistente.nucleo.agent.procedencia import mensajes_del_usuario
-    from asistente.nucleo.recuerdos.privacidad import categoria_especial
+    from asistente.nucleo.privacidad import categoria_especial
 
     def emitir(tipo: str, **datos: Any) -> None:
         if emit is None:
@@ -665,23 +673,24 @@ def instruir(
     palabras_opciones = set().union(*(_palabras(o.descripcion) for o in lista_opciones)) if lista_opciones else set()
     anadidos_pref: list[str] = []
     for n, recuerdo in enumerate(bloque.recuerdos, start=1):
-        if categoria_especial(recuerdo.texto) or categoria_especial(recuerdo.origen.cita):
+        if categoria_especial(recuerdo.texto) or categoria_especial(recuerdo.origen.cita or ""):
             if NOTA_RECUERDO_ESPECIAL not in notas:
                 notas.append(NOTA_RECUERDO_ESPECIAL)
             continue
         texto = seudonimizar_texto(recuerdo.texto, notas)[:MAX_HECHO]
         if not texto:
             continue
-        if recuerdo.tipo == "preferencia" and _palabras(recuerdo.texto) & palabras_opciones:
+        cuando = recuerdo.origen.fecha.strftime("%d/%m/%Y") if recuerdo.origen.fecha else "fecha desconocida"
+        if _ES_INCLINACION.search(recuerdo.texto) and _palabras(recuerdo.texto) & palabras_opciones:
             # A remembered leaning about THIS decision is part of the user's preference: sealed with it.
-            anadidos_pref.append(f"En otra conversación ({recuerdo.origen.fecha.strftime('%d/%m/%Y')}): {texto}")
+            anadidos_pref.append(f"En otra conversación ({cuando}): {texto}")
             continue
         hechos.append(
             HechoExpediente(
                 clave=f"memoria_{n}",
                 texto=texto,
                 origen="memoria",
-                referencia=f"{recuerdo.id} · {recuerdo.origen.fecha.strftime('%d/%m/%Y')}"[:120],
+                referencia=f"{recuerdo.id} · {cuando}"[:120],
             )
         )
     if anadidos_pref:

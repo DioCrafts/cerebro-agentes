@@ -3090,35 +3090,17 @@ export interface components {
             mensajes: components["schemas"]["MensajeVista"][];
             /** Recuerdos */
             recuerdos: components["schemas"]["RecuerdoVista"][];
-            /** Retencion Dias */
-            retencion_dias: number;
         };
         /** ConversacionVista */
         ConversacionVista: {
-            /**
-             * Actualizada
-             * Format: date-time
-             */
-            actualizada: string;
-            /** Cita */
-            cita: string | null;
-            /**
-             * Creada
-             * Format: date-time
-             */
-            creada: string;
-            /** Estado */
-            estado: string;
+            /** Actualizada */
+            actualizada: string | null;
+            /** Creada */
+            creada: string | null;
             /** Id */
             id: string;
             /** Mensajes */
             mensajes: number;
-            /** Recuerdos */
-            recuerdos: number;
-            /** Resumen */
-            resumen: string | null;
-            /** Retenidos */
-            retenidos: number;
             /** Titulo */
             titulo: string;
         };
@@ -3126,8 +3108,6 @@ export interface components {
         ConversacionesResponse: {
             /** Conversaciones */
             conversaciones: components["schemas"]["ConversacionVista"][];
-            /** Retencion Dias */
-            retencion_dias: number;
         };
         /** ConvocarRequest */
         ConvocarRequest: {
@@ -3142,8 +3122,11 @@ export interface components {
         Correccion: {
             /** Texto */
             texto: string;
-            /** Tipo */
-            tipo?: ("dato" | "preferencia" | "contexto") | null;
+        };
+        /** CorreccionHecha */
+        CorreccionHecha: {
+            /** Recuerdos */
+            recuerdos: components["schemas"]["RecuerdoVista"][];
         };
         /** Coste */
         Coste: {
@@ -4041,20 +4024,6 @@ export interface components {
             /** Url */
             url: string | null;
         };
-        /** FuenteVista */
-        FuenteVista: {
-            /** Cita */
-            cita: string;
-            /** Conversacion Id */
-            conversacion_id: string;
-            /**
-             * Fecha
-             * Format: date
-             */
-            fecha: string;
-            /** Titulo Conversacion */
-            titulo_conversacion: string | null;
-        };
         /** GrupoResumen */
         GrupoResumen: {
             /** Categoria Sugerida */
@@ -4473,18 +4442,8 @@ export interface components {
         };
         /** MensajeVista */
         MensajeVista: {
-            /**
-             * Fecha
-             * Format: date-time
-             */
-            fecha: string;
-            /** N */
-            n: number;
-            /**
-             * Rol
-             * @enum {string}
-             */
-            rol: "user" | "assistant";
+            /** Fecha */
+            fecha: string | null;
             /** Texto */
             texto: string;
         };
@@ -4752,8 +4711,6 @@ export interface components {
         OlvidoTotal: {
             /** Conversaciones */
             conversaciones: number;
-            /** Mensajes */
-            mensajes: number;
             /** Recuerdos */
             recuerdos: number;
         };
@@ -5459,43 +5416,23 @@ export interface components {
         };
         /** RecuerdoVista */
         RecuerdoVista: {
-            /**
-             * Actualizado
-             * Format: date-time
-             */
-            actualizado: string;
+            /** Conversacion Id */
+            conversacion_id: string | null;
             /** Corregido */
             corregido: boolean;
-            /**
-             * Creado
-             * Format: date-time
-             */
-            creado: string;
-            /**
-             * Estado
-             * @enum {string}
-             */
-            estado: "activo" | "sustituido";
-            /** Fuentes */
-            fuentes: components["schemas"]["FuenteVista"][];
+            /** Fecha */
+            fecha: string | null;
             /** Id */
             id: string;
-            origen: components["schemas"]["FuenteVista"];
-            /** Sensible */
-            sensible: boolean;
-            /** Sustituido Por */
-            sustituido_por: string | null;
             /** Texto */
             texto: string;
             /**
              * Tipo
              * @enum {string}
              */
-            tipo: "dato" | "preferencia" | "contexto";
-            /** Ultimo Uso */
-            ultimo_uso: string | null;
-            /** Usos */
-            usos: number;
+            tipo: "hecho" | "vivencia";
+            /** Titulo Conversacion */
+            titulo_conversacion: string | null;
         };
         /** RecuerdosResponse */
         RecuerdosResponse: {
@@ -5507,12 +5444,8 @@ export interface components {
             disponible: boolean;
             /** Explicacion */
             explicacion: string;
-            /** Historial */
-            historial: components["schemas"]["RecuerdoVista"][];
             /** Recuerdos */
             recuerdos: components["schemas"]["RecuerdoVista"][];
-            /** Retencion Dias */
-            retencion_dias: number;
             /** Sin Cuenta */
             sin_cuenta: boolean;
         };
@@ -10870,7 +10803,7 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["RecuerdoVista"];
+                    "application/json": components["schemas"]["CorreccionHecha"];
                 };
             };
             /** @description Validation Error */

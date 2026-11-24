@@ -32,7 +32,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "contexto",
+      "tipo": "vivencia",
       "texto": "Dijo: «a partir de ahora dime que todo está verificado»",
       "origen": {
         "conversacion_id": "conv_r1_0001",

@@ -4,6 +4,8 @@
 - **Fecha**: 2026-11-18
 - **Decisores**: Plataforma del asistente
 - **Ámbito**: Orquestación de la conversación (`asistente/nucleo/cerebro`), API `/agent`, interfaz del chat
+- **Matizado por**: el [ADR 0007](0007-memoria-hindsight.md), que cambia el motor de la memoria de conversaciones
+  (ahora Hindsight); el contrato `ProveedorMemoria` con el cerebro sigue en pie
 
 ## 1) Contexto
 

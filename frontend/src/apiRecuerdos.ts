@@ -1,6 +1,9 @@
-// Client for the conversation memory (asistente/plataforma/api/routers/recuerdos.py): «lo que sé de ti» — every
-// remembered item with where it came from (the conversation, the date and the user's own words) — the earlier
-// conversations with their summaries, and the on/off switch.
+// Client for the conversation memory (asistente/plataforma/api/routers/recuerdos.py), kept by Hindsight: «lo que sé
+// de ti» — every remembered fact with the conversation and the date it came from — the earlier conversations with
+// the user's own messages (the assistant's answers are never kept), and the on/off switch.
+//
+// Any of these calls can answer 503 while the memory engine starts or after it stops; the server's `detail` says so
+// and api.ts's `request` turns it into the ApiError message the panel shows.
 //
 // Everything goes through api.ts's `request`: same session token, timeout and error messages.
 
@@ -10,37 +13,49 @@ import type { Peticion, Respuesta } from "./api/tipos";
 
 // The shapes come from the backend's OpenAPI schema (src/api/esquema.d.ts).
 export type RecuerdosResponse = Respuesta<"/recuerdos", "get">;
+// `titulo_conversacion`: the conversation's title while it exists (null once it has been deleted).
 export type Recuerdo = RecuerdosResponse["recuerdos"][number];
-// `titulo_conversacion`: the conversation's title while it exists (null: deleted, or its messages were purged
-// before a summary).
-export type FuenteRecuerdo = Recuerdo["origen"];
 export type TipoRecuerdo = Recuerdo["tipo"];
 export type Interruptor = Respuesta<"/recuerdos/interruptor", "get">;
 export type ConversacionesResponse = Respuesta<"/conversaciones", "get">;
 export type ConversacionResumen = ConversacionesResponse["conversaciones"][number];
+export type ConversacionDetalle = Respuesta<"/conversaciones/{conversacion_id}", "get">;
 export type OlvidoTotal = Respuesta<"/recuerdos", "delete">;
-export type CambiosRecuerdo = Peticion<"/recuerdos/{recuerdo_id}", "patch">;
+export type Correccion = Peticion<"/recuerdos/{recuerdo_id}", "patch">;
+export type CorreccionHecha = Respuesta<"/recuerdos/{recuerdo_id}", "patch">;
 
 export const TIPO_RECUERDO_LABEL: Record<TipoRecuerdo, string> = {
-  preferencia: "Cómo prefieres las cosas",
-  dato: "Datos que me has contado",
-  contexto: "Tu situación ahora",
+  hecho: "Lo que me has contado",
+  vivencia: "Lo que te ha pasado",
 };
 
-export const TIPOS_RECUERDO: TipoRecuerdo[] = ["preferencia", "dato", "contexto"];
+export const TIPOS_RECUERDO: TipoRecuerdo[] = ["hecho", "vivencia"];
+
+// A correction waits while a model reads it and extracts the facts: give it more than the default 30 s.
+const CORRECCION_TIMEOUT_MS = 60_000;
 
 function isRecuerdo(value: unknown): value is Recuerdo {
-  return isRecord(value) && typeof value.id === "string" && typeof value.texto === "string" && isRecord(value.origen);
+  return (
+    isRecord(value) &&
+    typeof value.id === "string" &&
+    typeof value.texto === "string" &&
+    (value.tipo === "hecho" || value.tipo === "vivencia")
+  );
 }
 
 function isRecuerdos(value: unknown): value is RecuerdosResponse {
   return (
     isRecord(value) &&
     typeof value.activa === "boolean" &&
+    typeof value.disponible === "boolean" &&
     Array.isArray(value.recuerdos) &&
-    Array.isArray(value.historial) &&
+    value.recuerdos.every(isRecuerdo) &&
     typeof value.explicacion === "string"
   );
+}
+
+function isCorreccion(value: unknown): value is CorreccionHecha {
+  return isRecord(value) && Array.isArray(value.recuerdos) && value.recuerdos.every(isRecuerdo);
 }
 
 function isInterruptor(value: unknown): value is Interruptor {
@@ -49,6 +64,10 @@ function isInterruptor(value: unknown): value is Interruptor {
 
 function isConversaciones(value: unknown): value is ConversacionesResponse {
   return isRecord(value) && Array.isArray(value.conversaciones);
+}
+
+function isConversacion(value: unknown): value is ConversacionDetalle {
+  return isRecord(value) && isRecord(value.conversacion) && Array.isArray(value.mensajes) && Array.isArray(value.recuerdos);
 }
 
 function isOlvido(value: unknown): value is OlvidoTotal {
@@ -68,14 +87,15 @@ export function getRecuerdos(caseId: string | null, signal?: AbortSignal): Promi
   return request(conCaso("/recuerdos", caseId), undefined, isRecuerdos, { signal, method: "GET" });
 }
 
-export function corregirRecuerdo(
-  caseId: string | null,
-  id: string,
-  cambios: CambiosRecuerdo,
-): Promise<Recuerdo> {
-  return request(conCaso(`/recuerdos/${encodeURIComponent(id)}`, caseId), cambios, isRecuerdo, { method: "PATCH" });
+/** The user's wording is kept as their own message and the old fact is invalidated; answers what was learnt from it. */
+export function corregirRecuerdo(caseId: string | null, id: string, correccion: Correccion): Promise<CorreccionHecha> {
+  return request(conCaso(`/recuerdos/${encodeURIComponent(id)}`, caseId), correccion, isCorreccion, {
+    method: "PATCH",
+    timeoutMs: CORRECCION_TIMEOUT_MS,
+  });
 }
 
+/** Deletes the message the item came from, with everything learnt from that message. */
 export function olvidarRecuerdo(caseId: string | null, id: string): Promise<null> {
   return request(conCaso(`/recuerdos/${encodeURIComponent(id)}`, caseId), undefined, isNull, { method: "DELETE" });
 }
@@ -90,6 +110,14 @@ export function cambiarInterruptor(caseId: string | null, activa: boolean): Prom
 
 export function getConversaciones(caseId: string | null, signal?: AbortSignal): Promise<ConversacionesResponse> {
   return request(conCaso("/conversaciones", caseId), undefined, isConversaciones, { signal, method: "GET" });
+}
+
+/** One conversation with the user's kept messages and what was learnt from them. */
+export function getConversacion(caseId: string | null, id: string, signal?: AbortSignal): Promise<ConversacionDetalle> {
+  return request(conCaso(`/conversaciones/${encodeURIComponent(id)}`, caseId), undefined, isConversacion, {
+    signal,
+    method: "GET",
+  });
 }
 
 export function borrarConversacion(caseId: string | null, id: string): Promise<null> {

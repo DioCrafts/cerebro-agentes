@@ -1,24 +1,21 @@
-"""The deterministic privacy gates of the conversation memory (no model involved).
+"""Deterministic privacy gates for the user's words (no model involved).
 
-The memory keeps the user's words for weeks (raw messages) and for good (summaries, «lo que sé de ti»). Every
-text that reaches its tables, or the summariser's prompt, goes through here first:
+Two users: the conversation memory (:mod:`asistente.nucleo.recuerdos`) runs every user message through here before
+it is handed to Hindsight, and the household council (:mod:`asistente.nucleo.consejo`) masks what it shows its
+members. The rules:
 
 * **Credentials are never stored.** Passwords, PINs, CVVs, one-time codes, tokens, API keys and private keys
-  are replaced by :data:`SECRETO` in the raw messages, and any candidate item that still carries one is dropped
-  (a credential is never «something I know about you»).
+  are replaced by :data:`SECRETO`; a message that still carries one is not remembered.
 * **Identifiers are masked.** Full IBANs keep only their last four digits («IBAN terminado en 1234»: enough to
   tell accounts apart), card numbers (Luhn-valid) likewise; DNI/NIE, phone numbers, e-mail addresses and long
   digit runs (account, social-security or policy numbers) are replaced by a label. The memory needs the fact
   («cobra la nómina en ING»), not the identifier.
 * **Special categories of data** (GDPR art. 9 and 10: health, religion, political opinion, union membership,
   sexual orientation, ethnic origin, biometric or genetic data, criminal records) are not remembered unless the
-  user explicitly asked to («recuerda que…», «apúntalo», «tenlo en cuenta») in the very message that says it;
-  then the item is kept and flagged ``sensible`` so the panel shows it as such.
+  user explicitly asked to («recuerda que…», «apúntalo», «tenlo en cuenta») in the very message that says it.
 * **Pasted text is not the user's words.** Quoted e-mail lines («> …»), fenced blocks and forwarded/original
-  messages are cut out before looking for the user's quote: what an e-mail or a document says about the user is
-  not something the user said.
-* **Injection bait** (the project's shared detector, ``conocimiento/llm/security.py``) disqualifies a candidate
-  and is neutralised in free text (summaries, titles).
+  messages are cut out: what an e-mail or a document says about the user is not something the user said.
+* **Injection bait** (the project's shared detector, ``conocimiento/llm/security.py``) is neutralised.
 
 These rules are conservative on purpose: a lost memory costs a question; a wrongly kept one is a privacy
 incident.

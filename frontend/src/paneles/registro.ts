@@ -187,7 +187,7 @@ export const REGISTRO: DefinicionPanel[] = [
     titulo: "Recuerdos de nuestras conversaciones",
     icono: BookmarkIcon,
     presentacion: "dialogo",
-    descripcion: "Lo que recuerdo de ti, con tus palabras: puedes verlo, corregirlo o borrarlo",
+    descripcion: "Lo que recuerdo de nuestras conversaciones, con la fecha en que me lo dijiste: puedes verlo, corregirlo o borrarlo",
     ancho: "large",
     orden: 82,
     cargar: () => import("./recuerdos"),

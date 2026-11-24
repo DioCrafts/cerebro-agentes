@@ -2931,17 +2931,12 @@
             },
             "title": "Recuerdos",
             "type": "array"
-          },
-          "retencion_dias": {
-            "title": "Retencion Dias",
-            "type": "integer"
           }
         },
         "required": [
           "conversacion",
           "mensajes",
-          "recuerdos",
-          "retencion_dias"
+          "recuerdos"
         ],
         "title": "ConversacionDetalle",
         "type": "object"
@@ -2950,29 +2945,28 @@
         "additionalProperties": false,
         "properties": {
           "actualizada": {
-            "format": "date-time",
-            "title": "Actualizada",
-            "type": "string"
-          },
-          "cita": {
             "anyOf": [
               {
+                "format": "date-time",
                 "type": "string"
               },
               {
                 "type": "null"
               }
             ],
-            "title": "Cita"
+            "title": "Actualizada"
           },
           "creada": {
-            "format": "date-time",
-            "title": "Creada",
-            "type": "string"
-          },
-          "estado": {
-            "title": "Estado",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Creada"
           },
           "id": {
             "title": "Id",
@@ -2980,25 +2974,6 @@
           },
           "mensajes": {
             "title": "Mensajes",
-            "type": "integer"
-          },
-          "recuerdos": {
-            "title": "Recuerdos",
-            "type": "integer"
-          },
-          "resumen": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Resumen"
-          },
-          "retenidos": {
-            "title": "Retenidos",
             "type": "integer"
           },
           "titulo": {
@@ -3011,12 +2986,7 @@
           "titulo",
           "creada",
           "actualizada",
-          "estado",
-          "resumen",
-          "cita",
-          "mensajes",
-          "retenidos",
-          "recuerdos"
+          "mensajes"
         ],
         "title": "ConversacionVista",
         "type": "object"
@@ -3030,14 +3000,9 @@
             },
             "title": "Conversaciones",
             "type": "array"
-          },
-          "retencion_dias": {
-            "title": "Retencion Dias",
-            "type": "integer"
           }
         },
         "required": [
-          "retencion_dias",
           "conversaciones"
         ],
         "title": "ConversacionesResponse",
@@ -3087,28 +3052,29 @@
             "minLength": 1,
             "title": "Texto",
             "type": "string"
-          },
-          "tipo": {
-            "anyOf": [
-              {
-                "enum": [
-                  "dato",
-                  "preferencia",
-                  "contexto"
-                ],
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Tipo"
           }
         },
         "required": [
           "texto"
         ],
         "title": "Correccion",
+        "type": "object"
+      },
+      "CorreccionHecha": {
+        "additionalProperties": false,
+        "properties": {
+          "recuerdos": {
+            "items": {
+              "$ref": "#/components/schemas/RecuerdoVista"
+            },
+            "title": "Recuerdos",
+            "type": "array"
+          }
+        },
+        "required": [
+          "recuerdos"
+        ],
+        "title": "CorreccionHecha",
         "type": "object"
       },
       "Coste": {
@@ -5741,43 +5707,6 @@
         "title": "FuenteInforme",
         "type": "object"
       },
-      "FuenteVista": {
-        "additionalProperties": false,
-        "properties": {
-          "cita": {
-            "title": "Cita",
-            "type": "string"
-          },
-          "conversacion_id": {
-            "title": "Conversacion Id",
-            "type": "string"
-          },
-          "fecha": {
-            "format": "date",
-            "title": "Fecha",
-            "type": "string"
-          },
-          "titulo_conversacion": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Titulo Conversacion"
-          }
-        },
-        "required": [
-          "conversacion_id",
-          "fecha",
-          "cita",
-          "titulo_conversacion"
-        ],
-        "title": "FuenteVista",
-        "type": "object"
-      },
       "GrupoResumen": {
         "additionalProperties": false,
         "properties": {
@@ -6945,21 +6874,16 @@
         "additionalProperties": false,
         "properties": {
           "fecha": {
-            "format": "date-time",
-            "title": "Fecha",
-            "type": "string"
-          },
-          "n": {
-            "title": "N",
-            "type": "integer"
-          },
-          "rol": {
-            "enum": [
-              "user",
-              "assistant"
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
             ],
-            "title": "Rol",
-            "type": "string"
+            "title": "Fecha"
           },
           "texto": {
             "title": "Texto",
@@ -6967,8 +6891,6 @@
           }
         },
         "required": [
-          "n",
-          "rol",
           "texto",
           "fecha"
         ],
@@ -7727,10 +7649,6 @@
             "title": "Conversaciones",
             "type": "integer"
           },
-          "mensajes": {
-            "title": "Mensajes",
-            "type": "integer"
-          },
           "recuerdos": {
             "title": "Recuerdos",
             "type": "integer"
@@ -7738,8 +7656,7 @@
         },
         "required": [
           "recuerdos",
-          "conversaciones",
-          "mensajes"
+          "conversaciones"
         ],
         "title": "OlvidoTotal",
         "type": "object"
@@ -9856,47 +9773,7 @@
       "RecuerdoVista": {
         "additionalProperties": false,
         "properties": {
-          "actualizado": {
-            "format": "date-time",
-            "title": "Actualizado",
-            "type": "string"
-          },
-          "corregido": {
-            "title": "Corregido",
-            "type": "boolean"
-          },
-          "creado": {
-            "format": "date-time",
-            "title": "Creado",
-            "type": "string"
-          },
-          "estado": {
-            "enum": [
-              "activo",
-              "sustituido"
-            ],
-            "title": "Estado",
-            "type": "string"
-          },
-          "fuentes": {
-            "items": {
-              "$ref": "#/components/schemas/FuenteVista"
-            },
-            "title": "Fuentes",
-            "type": "array"
-          },
-          "id": {
-            "title": "Id",
-            "type": "string"
-          },
-          "origen": {
-            "$ref": "#/components/schemas/FuenteVista"
-          },
-          "sensible": {
-            "title": "Sensible",
-            "type": "boolean"
-          },
-          "sustituido_por": {
+          "conversacion_id": {
             "anyOf": [
               {
                 "type": "string"
@@ -9905,22 +9782,13 @@
                 "type": "null"
               }
             ],
-            "title": "Sustituido Por"
+            "title": "Conversacion Id"
           },
-          "texto": {
-            "title": "Texto",
-            "type": "string"
+          "corregido": {
+            "title": "Corregido",
+            "type": "boolean"
           },
-          "tipo": {
-            "enum": [
-              "dato",
-              "preferencia",
-              "contexto"
-            ],
-            "title": "Tipo",
-            "type": "string"
-          },
-          "ultimo_uso": {
+          "fecha": {
             "anyOf": [
               {
                 "format": "date-time",
@@ -9930,27 +9798,44 @@
                 "type": "null"
               }
             ],
-            "title": "Ultimo Uso"
+            "title": "Fecha"
           },
-          "usos": {
-            "title": "Usos",
-            "type": "integer"
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "texto": {
+            "title": "Texto",
+            "type": "string"
+          },
+          "tipo": {
+            "enum": [
+              "hecho",
+              "vivencia"
+            ],
+            "title": "Tipo",
+            "type": "string"
+          },
+          "titulo_conversacion": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Titulo Conversacion"
           }
         },
         "required": [
           "id",
           "tipo",
           "texto",
-          "origen",
-          "fuentes",
-          "corregido",
-          "sensible",
-          "estado",
-          "sustituido_por",
-          "creado",
-          "actualizado",
-          "usos",
-          "ultimo_uso"
+          "conversacion_id",
+          "titulo_conversacion",
+          "fecha",
+          "corregido"
         ],
         "title": "RecuerdoVista",
         "type": "object"
@@ -9974,23 +9859,12 @@
             "title": "Explicacion",
             "type": "string"
           },
-          "historial": {
-            "items": {
-              "$ref": "#/components/schemas/RecuerdoVista"
-            },
-            "title": "Historial",
-            "type": "array"
-          },
           "recuerdos": {
             "items": {
               "$ref": "#/components/schemas/RecuerdoVista"
             },
             "title": "Recuerdos",
             "type": "array"
-          },
-          "retencion_dias": {
-            "title": "Retencion Dias",
-            "type": "integer"
           },
           "sin_cuenta": {
             "title": "Sin Cuenta",
@@ -10001,10 +9875,8 @@
           "disponible",
           "activa",
           "sin_cuenta",
-          "retencion_dias",
           "explicacion",
           "recuerdos",
-          "historial",
           "conversaciones"
         ],
         "title": "RecuerdosResponse",
@@ -23617,7 +23489,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/RecuerdoVista"
+                  "$ref": "#/components/schemas/CorreccionHecha"
                 }
               }
             },

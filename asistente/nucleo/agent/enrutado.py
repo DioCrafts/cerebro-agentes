@@ -90,7 +90,6 @@ TABLA: tuple[Proposito, ...] = (
     Proposito("formatos-revisor", "grande", "Reflexión independiente sobre el diagnóstico."),
     Proposito("ayudas*", "pequeno", "Clasificador de convocatorias de ayudas."),
     Proposito("correo:*", "pequeno", "Clasificador del correo: categoría de un correo ya reducido a datos."),
-    Proposito("memoria:resumen", "pequeno", "Resume una conversación y propone recuerdos con cita literal (puerta)."),
     Proposito("evaluacion-juez", "grande", "Juez de las evaluaciones del agente."),
     # The brain's proactive pass (asistente/nucleo/repaso): it only writes points code ranked, behind a gate.
     Proposito("cerebro:repaso", "pequeno", "Redacta el repaso semanal o diario a partir de puntos ya priorizados."),
