@@ -28,7 +28,18 @@ uv sync
 npm --prefix frontend ci
 ```
 
-La API, en una terminal. Sin cuentas solo arranca si lo permites de forma explícita:
+Para levantarlo todo con un comando:
+
+```bash
+make dev
+```
+
+Arranca la API en el puerto 8000 y la interfaz en http://localhost:5173. Con `WORKER=1 make dev` arranca también el
+worker. Si existe `.env`, lo lee (ahí puedes dejar `ANTHROPIC_API_KEY`), y si no defines `AUTH_MODE` entra sin
+cuentas. Ctrl+C lo para todo. El script es `scripts/dev.sh` y necesita bash 4.3 o posterior; el bash 3.2 que trae
+macOS no vale, el de Homebrew sí.
+
+Si prefieres arrancar cada pieza por separado, la API va en una terminal. Sin cuentas solo arranca si lo permites de forma explícita:
 
 ```bash
 PERMITIR_SIN_AUTENTICACION=1 ANTHROPIC_API_KEY=... uv run uvicorn asistente.plataforma.api.api:app --host 127.0.0.1 --port 8000

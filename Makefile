@@ -1,5 +1,9 @@
-.PHONY: format lint type-check imports test test-rapido test-completo \
+.PHONY: dev format lint type-check imports test test-rapido test-completo \
 	tipos tipos-check frontend-test frontend-lint frontend-typecheck frontend quality
+
+# Levanta API e interfaz en http://localhost:5173 (WORKER=1 añade el worker). Ctrl+C para todo.
+dev:
+	./scripts/dev.sh
 
 format:
 	uv run ruff format .
