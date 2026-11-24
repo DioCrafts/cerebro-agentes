@@ -27,7 +27,9 @@ def ejecutor_investigador() -> Any:
         evidencias = [f.texto for f in informe.fuentes] + [h.cita for h in informe.hallazgos]
         evidencias += [c for a in informe.afirmaciones for c in a.citas]
         if informe.presupuesto_agotado:
-            modo = "presupuesto_agotado"
+            # Which cap stopped it («Presupuesto agotado: tokens (…)»), so the report says more than "agotado".
+            motivo = (informe.motivo_presupuesto or "").removeprefix("Presupuesto agotado: ")
+            modo = f"presupuesto_agotado ({motivo})" if motivo else "presupuesto_agotado"
         elif not informe.afirmaciones:
             modo = "abstained"
         else:
