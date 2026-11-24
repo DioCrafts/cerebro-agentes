@@ -46,11 +46,25 @@ class Contador:
                 euros = tokens * self.presupuesto.euros_por_millon_tokens / 1_000_000
             self.coste.euros += euros
 
-    def reservar_lectura(self) -> None:
+    def registrar_gasto(self, euros: float) -> None:
+        """Money spent outside the roles' model calls (the web searcher's search and fetch calls): it counts for
+        ``max_euros``, not for the token cap, which measures what the roles read and write."""
+        if euros > 0:
+            with self._lock:
+                self.coste.euros += euros
+
+    def reservar_lectura(self) -> bool:
+        """One more page read; False once ``max_lecturas`` are spent.
+
+        Reaching the reads cap only stops reading new pages: the research goes on with what it has read. (It used
+        to raise PresupuestoAgotadoError, and as the first round could spend every read — 5 subquestions × 3
+        sources = 15 — the gap-filling round aborted the whole research on its first new page.)
+        """
         with self._lock:
             if self.coste.lecturas >= self.presupuesto.max_lecturas:
-                raise PresupuestoAgotadoError(f"Presupuesto agotado: lecturas ({self.presupuesto.max_lecturas})")
+                return False
             self.coste.lecturas += 1
+            return True
 
     @property
     def agotado(self) -> bool:

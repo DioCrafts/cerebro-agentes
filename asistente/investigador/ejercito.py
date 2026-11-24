@@ -87,6 +87,10 @@ class Ejercito:
         self.plan: list[Subpregunta] = []
         self.avisos: list[str] = []
         self._vistas: set[str] = set()
+        self._sin_lecturas_avisado = False
+        # The web searcher's own calls (search + fetch) cost money too: they count for max_euros.
+        if hasattr(web, "al_gastar"):
+            setattr(web, "al_gastar", self.contador.registrar_gasto)  # noqa: B010 - optional hook, not in the protocol
 
     # -- helpers ----------------------------------------------------------------------------------------------
     def _emitir(self, tipo: Any, mensaje: str, **datos: Any) -> None:
@@ -134,6 +138,8 @@ class Ejercito:
         return nuevas
 
     def buscar(self, sub: Subpregunta) -> list[Fuente]:
+        # A web call is paid after it ends (its tokens are only known then): never start one once a cap is spent.
+        self.contador.comprobar()
         self._emitir("busqueda", f"{sub.id}: buscando {list(sub.consultas)}", subpregunta=sub.id)
         docs = self.web.buscar_y_leer(
             pregunta=sub.texto, consultas=sub.consultas, max_lecturas=self.presupuesto.max_fuentes_por_subpregunta
@@ -150,7 +156,15 @@ class Ejercito:
                 if ya not in leidas:
                     leidas.append(ya)
                 continue
-            self.contador.reservar_lectura()
+            if not self.contador.reservar_lectura():
+                with self.contador._lock:
+                    primero, self._sin_lecturas_avisado = not self._sin_lecturas_avisado, True
+                if primero:
+                    self._aviso(
+                        f"Se alcanzó el máximo de {self.presupuesto.max_lecturas} páginas leídas: "
+                        "se sigue con las ya leídas."
+                    )
+                break
             with self.contador._lock:
                 if d.url in self._vistas:
                     continue
@@ -312,7 +326,7 @@ class Ejercito:
         return hallazgos
 
     def investigar(self, pregunta: str) -> Informe:
-        profundidad, agotado = 0, False
+        profundidad, agotado, motivo = 0, False, None
         try:
             subs = self.planificar(pregunta, 1)
             while subs:
@@ -322,13 +336,13 @@ class Ejercito:
                     break
                 subs = self.planificar(pregunta, profundidad + 1, lagunas)
         except PresupuestoAgotadoError as exc:
-            agotado = True
+            agotado, motivo = True, str(exc)
             self._emitir("presupuesto", str(exc))
             self._aviso(f"{exc}. El informe usa lo reunido hasta ese momento.")
         try:
             resumen, afirmaciones, eliminadas = self.redactar(pregunta)
         except PresupuestoAgotadoError as exc:
-            agotado = True
+            agotado, motivo = True, motivo or str(exc)
             self._aviso(f"{exc} al redactar: el informe lista los hallazgos verificados sin redacción.")
             dudosos = {c.hallazgo for c in self.criticas if c.veredicto == "dudoso"}
             resumen, afirmaciones, eliminadas = self._verificar(
@@ -346,6 +360,7 @@ class Ejercito:
             coste=self.contador.coste,
             profundidad_alcanzada=profundidad,
             presupuesto_agotado=agotado,
+            motivo_presupuesto=motivo,
             avisos=self.avisos,
         )
         self._emitir(

@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import threading
 
+import pytest
+
 from asistente.investigador import Documento, Presupuesto, investigar
 from asistente.nucleo.agent.providers.base import ModelTurn
 
@@ -554,3 +556,79 @@ def test_obtener_fijado_verifica_tls_contra_el_nombre(monkeypatch):
     (p,) = peticiones
     assert p.url.host == "2001:db8::1" and p.url.scheme == "https" and p.url.path == "/x"
     assert p.headers["Host"] == "sede.ejemplo.es" and p.extensions["sni_hostname"] == "sede.ejemplo.es"
+
+
+def test_el_tope_de_lecturas_no_aborta_la_investigacion():
+    """With every read spent the research goes on with what it has: it is not «presupuesto agotado»."""
+    informe = investigar(
+        "¿IVA?",
+        _presupuesto(max_lecturas=1),
+        llm={
+            "planificador": _llm(PLAN),
+            "lector": _llm(*LECTURAS),
+            "critico": _llm(CRITICA),
+            "redactor": _llm({"resumen": "", "afirmaciones": []}),
+        },
+        web=_web(),
+    )
+    assert not informe.presupuesto_agotado and informe.motivo_presupuesto is None
+    assert sum("máximo de 1 páginas leídas" in a for a in informe.avisos) == 1  # said once, not per page
+
+
+def test_el_motivo_del_presupuesto_queda_en_el_informe():
+    informe = investigar(
+        "¿Qué tipos de IVA hay?",
+        _presupuesto(max_tokens=3000),
+        llm={
+            "planificador": _llm(PLAN),
+            "lector": _llm(*LECTURAS),
+            "critico": _llm(CRITICA),
+            "redactor": _llm({"resumen": "", "afirmaciones": []}),
+        },
+        web=_web(),
+    )
+    assert informe.presupuesto_agotado and "tokens" in (informe.motivo_presupuesto or "")
+
+
+def test_el_gasto_es_el_real_y_cuenta_la_web():
+    """Role calls are priced with the price table; the web searcher's calls (tokens + searches) count for euros."""
+    from types import SimpleNamespace
+
+    from asistente.investigador import web as w
+    from asistente.investigador.llm import coste_real
+    from asistente.investigador.presupuesto import Contador
+    from asistente.nucleo.agent.providers.base import Usage
+
+    sonnet = SimpleNamespace(name="anthropic", model="claude-sonnet-5-5")
+    # $2 / $10 per million: 100.000 in + 10.000 out = 0,20 + 0,10.
+    assert coste_real(sonnet, {"input_tokens": 100_000, "output_tokens": 10_000}) == pytest.approx(0.30)
+    assert coste_real(SimpleNamespace(name="x", model="sin-precio"), {"input_tokens": 10}) is None
+    assert coste_real(sonnet, {}) is None
+
+    resultado = SimpleNamespace(
+        documentos=[], vistos=[], errores=[], busquedas=2,
+        usos=[Usage("anthropic", "claude-sonnet-5-5", input_tokens=50_000, output_tokens=1_000)],
+    )  # fmt: skip
+    assert w.coste_de_busqueda(resultado) == pytest.approx(0.02 + 0.10 + 0.01)
+    contador = Contador(Presupuesto())
+    web = w.WebDeCapacidad(SimpleNamespace(buscar=lambda **k: resultado))
+    web.al_gastar = contador.registrar_gasto
+    web.buscar_y_leer(pregunta="p", consultas=["q"], max_lecturas=3)
+    assert contador.coste.euros == pytest.approx(0.13) and contador.coste.tokens == 0
+
+
+def test_no_se_lanza_otra_busqueda_web_con_el_presupuesto_gastado():
+    """Web calls are paid after they end, so the cap is checked before each one: none starts once it is spent."""
+    from types import SimpleNamespace
+
+    from asistente.investigador.ejercito import Ejercito
+    from asistente.investigador.modelo import Subpregunta
+    from asistente.investigador.presupuesto import PresupuestoAgotadoError
+
+    llamadas: list[str] = []
+    web = SimpleNamespace(buscar_y_leer=lambda **k: llamadas.append(k["pregunta"]) or [])
+    ejercito = Ejercito(_llm(PLAN), web, _presupuesto(max_euros=1.0))
+    ejercito.contador.registrar_gasto(1.2)
+    with pytest.raises(PresupuestoAgotadoError, match="euros"):
+        ejercito.buscar(Subpregunta("S1", "IVA general", ("iva",), 1))
+    assert llamadas == []

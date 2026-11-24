@@ -1,7 +1,7 @@
 {
   "version": "1",
   "descripcion": "Batería fija del QA manual de noviembre de 2026 (investigador y cerebro). Cambiar un caso exige subir su `version`: la comparación con la línea base solo empareja casos de la misma versión.",
-  "presupuesto_por_caso_eur": 1.0,
+  "presupuesto_por_caso_eur": 2.5,
   "dominios_oficiales": ["boe.es", "agenciatributaria.es", "agenciatributaria.gob.es", "hacienda.gob.es", "poderjudicial.es", "comunidad.madrid", "seg-social.es", "bde.es", "cnmc.es", "europa.eu"],
   "casos": [
     {
@@ -31,14 +31,14 @@
       "rubrica": {"criterios": ["Concluye que la exención del art. 7.p LIRPF y el régimen de excesos del art. 9 RIRPF no se pueden aplicar a la vez: el contribuyente debe elegir uno de los dos."], "referencia": "El art. 9.A.3.b) RIRPF excluye los excesos cuando se aplica la exención del 7.p: son incompatibles/alternativos."}
     },
     {
-      "id": "inv-vivienda-heredada", "version": 1, "sistema": "investigador",
+      "id": "inv-vivienda-heredada", "version": 2, "sistema": "investigador",
       "pregunta": "En 2025 vendí una vivienda que heredé en 2010 y reinvertí el 60 % del importe en mi nueva vivienda habitual. ¿Cómo calculo la ganancia patrimonial y qué parte queda exenta por reinversión?",
       "comprobaciones": [
         {"tipo": "cifras_respaldadas", "nivel": "critico"},
         {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(sucesiones|ISD|valor (declarado|real|de adquisici[oó]n)[^.]{0,60}(herencia|heredad))", "motivo": "valor de adquisición = valor del ISD"},
         {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(art(\\.|[ií]culo)\\s?38|reinversi[oó]n)", "motivo": "exención por reinversión del art. 38 LIRPF"},
         {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)proporci", "motivo": "la exención es proporcional a lo reinvertido"},
-        {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(siempre que|solo si|s[oó]lo si|requisito)[^.]{0,120}habitual", "motivo": "solo si la vivienda vendida era la habitual"},
+        {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)((siempre que|s[oó]lo\\b[^.]{0,30}?\\bsi\\b|requisito|exige|debe ser|tiene que ser|ha de ser)[^.]{0,120}habitual|habitual[^.]{0,40}(requisito|condici[oó]n))", "motivo": "solo si la vivienda vendida era la habitual"},
         {"tipo": "dominio_oficial", "nivel": "calidad", "minimo": 1}
       ]
     },
@@ -99,12 +99,12 @@
       ]
     },
     {
-      "id": "cer-potencia-luz", "version": 1, "sistema": "cerebro",
+      "id": "cer-potencia-luz", "version": 2, "sistema": "cerebro",
       "pregunta": "Tengo contratados 4,6 kW de potencia y consumo unos 3.200 kWh al año. ¿Me compensa bajar a 3,45 kW? ¿Cuánto ahorraría?",
       "comprobaciones": [
         {"tipo": "puerta_cifras", "nivel": "critico"},
         {"tipo": "sin_accion_ejecutada", "nivel": "critico"},
-        {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(t[eé]rmino de potencia|potencia contratada)", "motivo": "explica que el ahorro está en el término de potencia"},
+        {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(t[eé]rmino de potencia|potencia contratada|parte fija|(por|seg[uú]n) (los )?kW contratados)", "motivo": "explica que el ahorro está en el término de potencia (la parte fija, por kW contratado), dicho con esas palabras o con otras llanas"},
         {"tipo": "texto_presente", "nivel": "calidad", "patron": "(?i)(salt|ICP|simult[aá]ne|a la vez|pico)", "motivo": "advierte del riesgo de que salte el limitador"}
       ]
     },

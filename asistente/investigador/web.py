@@ -214,6 +214,25 @@ class LectorLocal:
         return Documento(actual, propio or titulo or actual, texto, datetime.now(UTC))
 
 
+# Anthropic's web search tool: $10 per 1,000 searches, on top of the tokens of the call (fetches bill only tokens).
+_PRECIO_BUSQUEDA = 0.01
+
+
+def coste_de_busqueda(resultado: Any) -> float:
+    """What one search-and-fetch call cost: its tokens at the price table's rates (USD, counted as euros like the
+    roles' calls) plus the searches. The pages it fetched are input tokens of that call, so they are paid here."""
+    from asistente.plataforma.ops.consumo import calcular_coste
+
+    total = _PRECIO_BUSQUEDA * int(getattr(resultado, "busquedas", 0) or 0)
+    for uso in getattr(resultado, "usos", None) or []:
+        try:
+            coste = calcular_coste(uso)
+        except Exception:  # an unreadable price table never stops a research
+            coste = None
+        total += float(coste) if coste is not None else 0.0
+    return total
+
+
 class WebDeCapacidad:
     """Adapter over ``asistente.capacidades.investigacion.web.BuscadorWeb`` (``web_para(proveedor)``)."""
 
@@ -229,6 +248,8 @@ class WebDeCapacidad:
         self.permitidos = permitidos
         self.bloqueados = tuple(bloqueados)
         self.lector = lector
+        # Set by the army to its meter: what each search-and-fetch call cost (in euros, see coste_de_busqueda).
+        self.al_gastar: Callable[[float], None] | None = None
 
     def buscar_y_leer(self, *, pregunta: str, consultas: Sequence[str], max_lecturas: int) -> list[Documento]:
         r = self.buscador.buscar(
@@ -239,6 +260,8 @@ class WebDeCapacidad:
             max_busquedas=max(1, len(consultas)),
             max_lecturas=max_lecturas,
         )
+        if self.al_gastar is not None:
+            self.al_gastar(coste_de_busqueda(r))
         docs = [Documento(d.url, d.titulo, d.texto, d.recuperado_el) for d in r.documentos]
         if getattr(r, "errores", None):
             logger.info("web search for %r: %s", pregunta[:80], "; ".join(r.errores))

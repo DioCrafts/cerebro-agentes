@@ -15,11 +15,13 @@ class Presupuesto:
     """Caps for one research. ``max_euros`` None = no money cap (tokens still cap)."""
 
     max_tokens: int = 200_000
-    max_euros: float | None = 1.0
+    # A full research costs 1,5–2,5 € once the web searcher's calls are counted (see Contador.registrar_gasto).
+    max_euros: float | None = 2.5
     max_profundidad: int = 2  # rounds of plan → search → critique (1 = no follow-up round)
     max_subpreguntas: int = 5
     max_fuentes_por_subpregunta: int = 3
-    max_lecturas: int = 15
+    # Room for a gap-filling round after a full first one (5 subquestions × 3 sources).
+    max_lecturas: int = 25
     paralelismo: int = 4
     # Price used when the provider reports no cost (estimated tokens × price).
     euros_por_millon_tokens: float = 5.0
@@ -92,6 +94,8 @@ class Informe:
     coste: Coste = field(default_factory=Coste)
     profundidad_alcanzada: int = 0
     presupuesto_agotado: bool = False
+    # Which cap stopped the research («tokens (…)», «euros (…)»), when one did.
+    motivo_presupuesto: str | None = None
     avisos: list[str] = field(default_factory=list)
 
     def fuentes_citadas(self) -> list[Fuente]:

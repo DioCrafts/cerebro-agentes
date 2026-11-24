@@ -31,7 +31,9 @@ def completar_json(llm: Any, sistema: str, usuario: str, contador: Contador, *, 
     texto = turno.text or ""
     uso = getattr(turno, "usage", None) or {}
     tokens = sum(int(uso.get(k, 0) or 0) for k in _TOKENS)
-    contador.registrar(tokens or (estimar_tokens(sistema) + estimar_tokens(usuario) + estimar_tokens(texto)), None)
+    contador.registrar(
+        tokens or (estimar_tokens(sistema) + estimar_tokens(usuario) + estimar_tokens(texto)), coste_real(llm, uso)
+    )
     encontrado = _JSON.search(texto)
     if not encontrado:
         raise RespuestaInvalidaError("El modelo no devolvió JSON.")
@@ -42,6 +44,30 @@ def completar_json(llm: Any, sistema: str, usuario: str, contador: Contador, *, 
     if not isinstance(datos, dict):
         raise RespuestaInvalidaError("Se esperaba un objeto JSON.")
     return datos
+
+
+def coste_real(llm: Any, uso: dict[str, Any]) -> float | None:
+    """What the call cost at the price table's rates (``ops/data/precios_llm.json``, in USD, counted here as euros:
+    close enough for a cap); None when the model has no price or the provider reported no usage, and the meter then
+    falls back to its flat estimate (``euros_por_millon_tokens``)."""
+    if not uso:
+        return None
+    from asistente.nucleo.agent.providers.base import Usage
+    from asistente.plataforma.ops.consumo import calcular_coste
+
+    usage = Usage(
+        provider=str(getattr(llm, "name", "") or ""),
+        model=str(getattr(llm, "model", "") or ""),
+        input_tokens=int(uso.get("input_tokens", 0) or 0),
+        output_tokens=int(uso.get("output_tokens", 0) or 0),
+        cache_read_tokens=int(uso.get("cache_read_input_tokens", 0) or 0),
+        cache_write_tokens=int(uso.get("cache_creation_input_tokens", 0) or 0),
+    )
+    try:
+        coste = calcular_coste(usage)
+    except Exception:  # a price table that cannot be read never stops a research
+        return None
+    return float(coste) if coste is not None else None
 
 
 def llm_por_defecto() -> Any:

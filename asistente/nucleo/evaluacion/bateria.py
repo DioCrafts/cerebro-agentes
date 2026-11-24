@@ -98,7 +98,7 @@ class Bateria(_Modelo):
     version: str
     descripcion: str = ""
     # The researcher's own default (``investigador.modelo.Presupuesto.max_euros``): measure what users get.
-    presupuesto_por_caso_eur: float = 1.0
+    presupuesto_por_caso_eur: float = 2.5
     dominios_oficiales: list[str] = Field(default_factory=list)
     casos: list[CasoBateria]
 
