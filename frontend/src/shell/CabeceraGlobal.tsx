@@ -1,6 +1,6 @@
 // The shell's global header (ui/CabeceraApp): menu (phone), mark, "Cerebro / conversation", the
 // command palette (/ or Ctrl+K), theme, notices and account; under it, the section tabs (PestanasNavegacion,
-// GitHub's UnderlineNav): «Conversación» and every panel of the registry. A page panel's tab is the current
+// GitHub's UnderlineNav): «Inicio» (the conversation, with the home page when it is empty) and every panel of the registry. A page panel's tab is the current
 // one while it is shown; a sheet opens over the conversation and leaves the tab where it was. The tabs that
 // do not fit go into «Más».
 
@@ -27,7 +27,7 @@ import {
 } from "../ui";
 import {
   BellIcon,
-  CommentDiscussionIcon,
+  HomeIcon,
   DesktopDownloadIcon,
   MoonIcon,
   PlusIcon,
@@ -97,7 +97,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
   const hayAvisos = paneles.some((p) => p.id === "avisos");
 
   const comandos: Comando[] = [
-    { id: "nueva", grupo: "Acciones", etiqueta: "Nueva consulta", icono: PlusIcon, palabras: "empezar pregunta", ejecutar: onNuevaConsulta },
+    { id: "nueva", grupo: "Acciones", etiqueta: "Nueva conversación", icono: PlusIcon, palabras: "empezar pregunta consulta", ejecutar: onNuevaConsulta },
     {
       id: "tema",
       grupo: "Acciones",
@@ -106,7 +106,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
       palabras: "tema oscuro claro modo",
       ejecutar: onToggleTheme,
     },
-    { id: "conversacion", grupo: "Secciones", etiqueta: "Conversación", icono: CommentDiscussionIcon, ejecutar: onCerrar },
+    { id: "conversacion", grupo: "Secciones", etiqueta: "Inicio", icono: HomeIcon, palabras: "conversación portada", ejecutar: onCerrar },
     ...paneles.map((p) => ({
       id: `panel-${p.id}`,
       grupo: "Secciones",
@@ -119,7 +119,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
   ];
 
   const pestanas: Pestana[] = [
-    { id: "conversacion", etiqueta: "Conversación", href: enlace(null), icono: CommentDiscussionIcon, actual: pagina === null, alElegir: onCerrar },
+    { id: "conversacion", etiqueta: "Inicio", href: enlace(null), icono: HomeIcon, actual: pagina === null, alElegir: onCerrar },
     ...paneles.map((p) => ({
       id: p.id,
       etiqueta: p.etiqueta,
@@ -142,7 +142,7 @@ export function CabeceraGlobal(props: CabeceraGlobalProps) {
         saltarA="contenido"
         inicio={
           <span className="md:hidden">
-            <IconButton icon={ThreeBarsIcon} aria-label="Abrir las consultas" variant="invisible" onClick={onAbrirConsultas} />
+            <IconButton icon={ThreeBarsIcon} aria-label="Abrir las conversaciones" variant="invisible" onClick={onAbrirConsultas} />
           </span>
         }
         marca={<Monogram size={32} />}

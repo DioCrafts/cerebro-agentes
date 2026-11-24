@@ -176,7 +176,7 @@ export function useSimulacion({ open, caseId, facts, taxPeriod, onSaveFact, seed
         caseId,
         ejercicio: caseId ? null : requestYear,
         escenarios: [
-          { nombre: "Tu expediente", cambios: {} },
+          { nombre: "Tus datos", cambios: {} },
           { nombre: "Simulación", cambios: JSON.parse(cambiosKey) as Record<string, unknown> },
         ],
         leversForLastScenario: true,

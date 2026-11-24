@@ -199,7 +199,7 @@ function AvisoNormal({ n, caseId, kind, onMarkRead, onRefresh, onAsk }: Omit<Avi
       {n.sources.length > 0 && <p className="m-0 text-xs text-fg-muted">{n.sources.join(" · ")}</p>}
       <div className="flex flex-wrap gap-2">
         <Button size="small" leadingVisual={CommentDiscussionIcon} onClick={() => onAsk(`Sobre el aviso «${n.title}»: explícame cómo me afecta y qué debería hacer.`)}>
-          Preguntar al asesor
+          Preguntar a Cerebro
         </Button>
         {unread && (
           <Button size="small" variant="invisible" leadingVisual={CheckIcon} onClick={marcar}>

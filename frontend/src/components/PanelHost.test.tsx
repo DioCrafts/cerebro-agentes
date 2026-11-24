@@ -49,7 +49,7 @@ const panel = (id: string, extra: Partial<DefinicionPanel>, componente: (p: Prop
   titulo: `Título de ${id}`,
   icono: BellIcon,
   orden: 1,
-  grupo: "hogar",
+  grupo: "dinero",
   cargar: () => Promise.resolve({ default: componente }),
   ...extra,
 });

@@ -1,4 +1,4 @@
-// «Tu expediente»: what the advisor knows in this consultation, editable. Shown as a page (registro.ts).
+// «Tus datos»: what Cerebro knows in this consultation, editable. Shown as a page (registro.ts).
 
 import { CasePanel } from "../components/CasePanel";
 import type { PropsPanel } from "./tipos";

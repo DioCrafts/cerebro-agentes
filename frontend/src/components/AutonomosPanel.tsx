@@ -490,7 +490,7 @@ export function AutonomosPanel({ open, onUse, taxPeriod = null, caseId = null, f
           {!conExpediente && fields(ACTIVIDAD_MAS, actividadValues, setActividad)}
           {conExpediente && (
             <p className="m-0 text-xs text-fg-muted sm:col-span-2">
-              Tus otros ingresos (sueldo, intereses, alquileres…) y tu grado de discapacidad se toman de tu expediente: cámbialos en «Tu expediente» o en el simulador.
+              Tus otros ingresos (sueldo, intereses, alquileres…) y tu grado de discapacidad se toman de tu expediente: cámbialos en «Tus datos» o en el simulador.
             </p>
           )}
           <MoneyField field={ACTIVIDAD_IRREGULARES} values={actividadValues} onChange={setIn(setActividad)} />

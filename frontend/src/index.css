@@ -227,7 +227,7 @@ a:has(> svg:only-child) {
   min-height: 24px;
 }
 
-/* «Saltar a la consulta»: hidden until it gets the keyboard focus. Fixed, not absolute: Tab reaches it again
+/* «Saltar a la caja de mensajes»: hidden until it gets the keyboard focus. Fixed, not absolute: Tab reaches it again
    after the last control of a scrolled page, and it must show where the user is looking. */
 .saltar-enlace {
   position: fixed;

@@ -43,7 +43,7 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "", alEscribir
 
   return (
     <form
-      aria-label="Nueva consulta"
+      aria-label="Nuevo mensaje"
       className="rounded-medium border border-border-default bg-canvas-default"
       onSubmit={(e) => {
         e.preventDefault();
@@ -68,8 +68,8 @@ export function Composer({ onSubmit, onStop, busy, initialValue = "", alEscribir
               submit();
             }
           }}
-          placeholder="Escribe tu consulta fiscal…"
-          aria-label="Escribe tu consulta"
+          placeholder="Pídeme lo que necesites…"
+          aria-label="Escribe tu mensaje"
           aria-describedby="composer-ayuda"
           style={{ maxHeight: MAX_HEIGHT_PX }}
         />
