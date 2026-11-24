@@ -1,8 +1,8 @@
 {
   "id": "/",
-  "name": "Cerebro personal fiable",
+  "name": "Cerebro, tu mayordomo digital",
   "short_name": "Cerebro",
-  "description": "Asistente del hogar que responde con fuentes: impuestos, luz, hipoteca, ayudas, caducidades y más. Verifica cada afirmación contra su fuente y te avisa de lo que vence.",
+  "description": "Tu mayordomo digital: suscripciones y movimientos del banco, luz, hipoteca, impuestos, ayudas, caducidades e investigaciones con fuentes. Verifica cada afirmación y te avisa de lo que vence.",
   "lang": "es-ES",
   "dir": "ltr",
   "start_url": "/",
@@ -11,7 +11,7 @@
   "orientation": "any",
   "background_color": "#f6f4ef",
   "theme_color": "#0f4f4a",
-  "categories": ["finance", "productivity"],
+  "categories": ["productivity", "finance", "lifestyle"],
   "icons": [
     { "src": "/icons/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
     { "src": "/icons/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
@@ -20,7 +20,7 @@
   ],
   "shortcuts": [
     { "name": "Avisos", "short_name": "Avisos", "url": "/?panel=avisos", "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }] },
-    { "name": "Tu expediente", "short_name": "Expediente", "url": "/?panel=expediente", "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }] },
-    { "name": "Simulador de IRPF", "short_name": "Simulador", "url": "/?panel=simulador", "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }] }
+    { "name": "Áreas", "short_name": "Áreas", "url": "/?panel=modulos", "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }] },
+    { "name": "Tus datos", "short_name": "Tus datos", "url": "/?panel=expediente", "icons": [{ "src": "/icons/icono-192.png", "sizes": "192x192" }] }
   ]
 }

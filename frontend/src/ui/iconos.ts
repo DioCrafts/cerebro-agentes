@@ -11,6 +11,7 @@
 export type { Icon } from "@primer/octicons-react";
 export {
   AlertIcon,
+  AppsIcon,
   ArrowLeftIcon,
   ArrowRightIcon,
   BellIcon,
@@ -31,6 +32,7 @@ export {
   CommentDiscussionIcon,
   CommentIcon,
   CopyIcon,
+  CreditCardIcon,
   DesktopDownloadIcon,
   DeviceMobileIcon,
   DownloadIcon,
@@ -41,10 +43,12 @@ export {
   GearIcon,
   GlobeIcon,
   GraphIcon,
+  HeartIcon,
   HistoryIcon,
   HomeIcon,
   HourglassIcon,
   InfoIcon,
+  KeyIcon,
   LawIcon,
   LightBulbIcon,
   LinkExternalIcon,

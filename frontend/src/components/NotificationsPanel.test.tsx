@@ -71,7 +71,7 @@ describe("NotificationsPanel", () => {
     expect(articulo).toHaveTextContent("hasta el");
     await user.click(screen.getByRole("button", { name: "Marcar como leído" }));
     expect(onMarkRead).toHaveBeenCalledWith("n1");
-    await user.click(screen.getByRole("button", { name: "Preguntar al asesor" }));
+    await user.click(screen.getByRole("button", { name: "Preguntar a Cerebro" }));
     expect(onAsk).toHaveBeenCalledWith(expect.stringContaining("Presenta el modelo 130"));
   });
 });

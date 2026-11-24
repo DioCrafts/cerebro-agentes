@@ -213,7 +213,7 @@ export function ModulosPanel(props: ModulosPanelProps) {
         )}
 
         <p className="m-0 text-xs text-fg-muted">
-          Cada módulo calcula con datos oficiales y sus propias fuentes. El asistente nunca suma cifras de módulos distintos si ningún
+          Cada módulo calcula con datos oficiales y sus propias fuentes. Cerebro nunca suma cifras de módulos distintos si ningún
           módulo ha calculado esa combinación.
         </p>
       </div>
@@ -242,7 +242,7 @@ function SeccionGeneral(
   const { modulos, nombres, pendientes, onAbrir } = props;
   return (
     <section aria-labelledby="modulos-general" className="flex flex-col gap-4">
-      <Subcabecera id="modulos-general" titulo="General" descripcion="Activa los módulos que quieras que tu asistente lleve por ti." />
+      <Subcabecera id="modulos-general" titulo="General" descripcion="Activa lo que quieres que Cerebro lleve por ti. Cada módulo es una parte de un área: la luz y la hipoteca son de Casa y suministros." />
 
       {pendientes.length > 0 && (
         <Caja as="section" variante="atencion" aria-label="Pendiente de tu confirmación">
@@ -530,7 +530,7 @@ function SeccionModulo({
         </Flash>
       )}
 
-      {modulo.activo && modulo.clave === "fiscal" && <p className="m-0 text-fg-muted">Sus datos se editan en «Tu expediente».</p>}
+      {modulo.activo && modulo.clave === "fiscal" && <p className="m-0 text-fg-muted">Sus datos se editan en «Tus datos».</p>}
       {modulo.activo && actua && (
         <Flash variant="warning">Este módulo puede preparar acciones fuera de la aplicación; ninguna se ejecuta sin tu confirmación.</Flash>
       )}

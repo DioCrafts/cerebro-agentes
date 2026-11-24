@@ -280,7 +280,7 @@ async function entrar(page, contexto) {
   await rellenar(page.locator("input[type=email]"), "ana.lopez@example.com", c, "Escribir el correo");
   await rellenar(page.locator("input[type=password]"), "una-clave-de-prueba", c, "Escribir la contraseña");
   await clic(page, page.locator("form button[type=submit]"), c, "Pulsar «Entrar»");
-  await page.getByRole("textbox", { name: "Escribe tu consulta" }).waitFor();
+  await page.getByRole("textbox", { name: "Escribe tu mensaje" }).waitFor();
   await esperarCalma(page);
   contexto.flujos.entrar = { ...c.resumen(), ms: Date.now() - t0 };
   await medirPantalla(page, contexto, "inicio", { foco: contexto.tema === "claro" });
@@ -288,7 +288,7 @@ async function entrar(page, contexto) {
 
 async function preguntar(page, contexto) {
   const c = new Contador();
-  const caja = page.getByRole("textbox", { name: "Escribe tu consulta" });
+  const caja = page.getByRole("textbox", { name: "Escribe tu mensaje" });
   await clic(page, caja, c, "Pulsar en la caja de la consulta");
   await rellenar(caja, PREGUNTA, c, "Escribir la pregunta");
   const t0 = Date.now();
@@ -474,13 +474,13 @@ async function recorridoTeclado(browser, viewport) {
     await page.keyboard.type("una-clave-de-prueba");
     await page.keyboard.press("Enter");
     r.pulsaciones += 3;
-    await page.getByRole("textbox", { name: "Escribe tu consulta" }).waitFor();
+    await page.getByRole("textbox", { name: "Escribe tu mensaje" }).waitFor();
     await esperarCalma(page);
     await page.keyboard.press("Tab");
     r.pulsaciones++;
     r.saltoAlContenido = await page.evaluate(() => /saltar|ir al contenido/i.test(document.activeElement?.innerText ?? ""));
     for (let i = 0; i < 60; i++) {
-      if (await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Escribe tu consulta")) {
+      if (await page.evaluate(() => document.activeElement?.getAttribute("aria-label") === "Escribe tu mensaje")) {
         r.llegaALaCaja = true;
         break;
       }
@@ -557,7 +557,7 @@ async function medirEstados(browser, paneles) {
   await page.locator("input[type=email]").fill("ana.lopez@example.com");
   await page.locator("input[type=password]").fill("una-clave-de-prueba");
   await page.locator("form button[type=submit]").click();
-  const caja = page.getByRole("textbox", { name: "Escribe tu consulta" });
+  const caja = page.getByRole("textbox", { name: "Escribe tu mensaje" });
   await caja.waitFor();
   await caja.fill(PREGUNTA);
   await page.getByRole("button", ENVIAR).click();

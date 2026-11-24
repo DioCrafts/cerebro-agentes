@@ -1,9 +1,8 @@
-// The user's consultations (the conversation history in this browser), as GitHub's dashboard sidebar:
-// a heading with the primary «Nueva» button, a NavList with the current one marked, what the advisor
-// covers and the disclaimer. Shown in the PageLayout pane on a computer and in a side sheet on a phone.
+// The user's conversations (the history in this browser), as GitHub's dashboard sidebar: a heading with the
+// primary «Nueva» button, a NavList with the current one marked, the areas Cerebro looks after now
+// (src/lib/areas.ts) and the disclaimer. Shown in the PageLayout pane on a computer and in a side sheet on a phone.
 
 import { relativeTime } from "../lib/presentation";
-import { TOPICS } from "../lib/mock";
 import type { Conversation } from "../lib/storage";
 import { Button, Heading, Label, NavList, VisuallyHidden } from "../ui";
 import { CommentDiscussionIcon, InfoIcon, PlusIcon, TrashIcon } from "../ui/iconos";
@@ -14,22 +13,24 @@ interface ListaConsultasProps {
   onSelect: (id: string) => void;
   onDelete: (id: string) => void;
   onNewConsultation: () => void;
+  /** The areas that can be used now (their names). */
+  areas: string[];
 }
 
-export function ListaConsultas({ conversations, activeId, onSelect, onDelete, onNewConsultation }: ListaConsultasProps) {
+export function ListaConsultas({ conversations, activeId, onSelect, onDelete, onNewConsultation, areas }: ListaConsultasProps) {
   return (
     <div className="flex flex-col gap-6">
       <section aria-labelledby="titulo-consultas" className="flex flex-col gap-2">
         <div className="flex items-center justify-between gap-2">
           <Heading as="h2" variant="small" id="titulo-consultas">
-            Consultas
+            Conversaciones
           </Heading>
           <Button variant="primary" size="small" leadingVisual={PlusIcon} onClick={onNewConsultation}>
             Nueva
           </Button>
         </div>
         {conversations.length === 0 ? (
-          <p className="m-0 text-fg-muted">Tus consultas aparecerán aquí y se conservan en este navegador.</p>
+          <p className="m-0 text-fg-muted">Tus conversaciones aparecerán aquí y se guardan en este navegador.</p>
         ) : (
           <NavList aria-labelledby="titulo-consultas">
             {conversations.map((c) => (
@@ -49,19 +50,19 @@ export function ListaConsultas({ conversations, activeId, onSelect, onDelete, on
                   <VisuallyHidden>, </VisuallyHidden>
                   {relativeTime(c.updatedAt)}
                 </span>
-                <NavList.TrailingAction label={`Eliminar la consulta «${c.title}»`} icon={TrashIcon} onClick={() => onDelete(c.id)} />
+                <NavList.TrailingAction label={`Eliminar la conversación «${c.title}»`} icon={TrashIcon} onClick={() => onDelete(c.id)} />
               </NavList.Item>
             ))}
           </NavList>
         )}
       </section>
 
-      <section aria-labelledby="titulo-cubre" className="flex flex-col gap-2 border-t border-border-muted pt-4">
-        <Heading as="h2" variant="small" id="titulo-cubre">
-          Qué cubre
+      <section aria-labelledby="titulo-mis-areas" className="flex flex-col gap-2 border-t border-border-muted pt-4">
+        <Heading as="h2" variant="small" id="titulo-mis-areas">
+          Tus áreas
         </Heading>
         <ul className="m-0 flex list-none flex-wrap gap-1 p-0">
-          {TOPICS.map((t) => (
+          {areas.map((t) => (
             <li key={t}>
               <Label variant="accent">{t}</Label>
             </li>
@@ -71,8 +72,8 @@ export function ListaConsultas({ conversations, activeId, onSelect, onDelete, on
         <p className="m-0 mt-2 flex gap-2 border-t border-border-muted pt-4 text-xs text-fg-muted">
           <InfoIcon className="mt-0.5 shrink-0" />
           <span>
-            <strong className="text-fg-default">Herramienta de apoyo.</strong> No sustituye el asesoramiento fiscal profesional ni el
-            criterio oficial.
+            <strong className="text-fg-default">Herramienta de apoyo.</strong> En decisiones con consecuencias legales, fiscales o de
+            salud, contrasta también con un profesional.
           </span>
         </p>
       </section>

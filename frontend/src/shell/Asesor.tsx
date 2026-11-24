@@ -9,7 +9,8 @@ import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } fro
 import { getCase } from "../api";
 import { AvisoInstalar } from "../components/AvisoInstalar";
 import { Composer } from "../components/Composer";
-import { EmptyState } from "../components/EmptyState";
+import { Portada } from "../components/Portada";
+import { AREAS, estadoArea } from "../lib/areas";
 import { PanelHost } from "../components/PanelHost";
 import type { SimulatorSeed } from "../components/SimulatorPanel";
 import { newId } from "../lib/id";
@@ -36,7 +37,7 @@ import { useModulos } from "./useModulos";
 import { cargarHilo } from "./precargas";
 
 // The conversation's turns (answers, sources, checks, the council…) are out of the first load: an empty
-// conversation shows EmptyState, which is light. The chunk downloads with the first keystroke in the
+// conversation shows the home page (Portada), which is light. The chunk downloads with the first keystroke in the
 // question box (the answer takes longer than the chunk), or straight away when a conversation with turns
 // is on screen (main.tsx asks for it even earlier, see precargas.ts). Not when the browser is idle: on a
 // deep-linked panel the browser is idle while the panel's chunk arrives, and the turns then competed with
@@ -230,7 +231,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
   };
   const comandosConsultas: Comando[] = conversaciones.map((c) => ({
     id: `consulta-${c.id}`,
-    grupo: "Consultas",
+    grupo: "Conversaciones",
     etiqueta: c.title,
     icono: CommentDiscussionIcon,
     ejecutar: () => {
@@ -248,6 +249,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
         consulta.switchTo(id);
       }}
       onDelete={consulta.remove}
+      areas={AREAS.filter((a) => estadoArea(a, modulos.datos?.modulos ?? null) === "lista").map((a) => a.nombre)}
       onNewConsultation={() => {
         alElegir?.();
         nuevaConsulta();
@@ -259,7 +261,10 @@ export function Asesor({ account }: { account?: AccountControls }) {
     (p) => p.id === abierto && p.presentacion === "pagina",
   );
 
-  // «Saltar a la consulta»: straight to the question box (a page panel open is closed first).
+  // An empty conversation shows the home page instead of the thread.
+  const portada = active.turns.length === 0 && !consulta.busy;
+
+  // «Saltar a la caja de mensajes»: straight to the question box (a page panel open is closed first).
   const saltarALaConsulta = (e: { preventDefault: () => void }) => {
     e.preventDefault();
     if (paginaAbierta) cerrarYLimpiar();
@@ -269,7 +274,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
   return (
     <div className="flex min-h-dvh flex-col">
       <a href="#consulta" className="saltar-enlace" onClick={saltarALaConsulta}>
-        Saltar a la consulta
+        Saltar a la caja de mensajes
       </a>
       <CabeceraGlobal
         title={active.title}
@@ -298,7 +303,7 @@ export function Asesor({ account }: { account?: AccountControls }) {
           width="medium"
           sticky
           hidden={{ narrow: true }}
-          aria-label="Tus consultas y temas"
+          aria-label="Tus conversaciones y áreas"
           divider="none"
         >
           {lista()}
@@ -313,11 +318,19 @@ export function Asesor({ account }: { account?: AccountControls }) {
             onClose={cerrarYLimpiar}
           />
           <div hidden={paginaAbierta} className="flex flex-col gap-4">
-            {/* The level between the page's h1 (the breadcrumb) and each comment's h3. */}
-            <h2 className="sr-only">Conversación</h2>
-            {active.turns.length === 0 && !consulta.busy ? (
-              <EmptyState onPick={(prompt) => void consulta.submit(prompt)} />
+            {portada ? (
+              <Portada
+                onPick={(pregunta) => void consulta.submit(pregunta)}
+                onAbrir={abrirDesde}
+                paneles={paneles}
+                modulos={modulos.datos?.modulos ?? null}
+                avisosSinLeer={avisos.sinLeer}
+                accionesPendientes={modulos.pendientes}
+              />
             ) : (
+              <>
+              {/* The level between the page's h1 (the breadcrumb) and each comment's h3. */}
+              <h2 className="sr-only">Conversación</h2>
               <Suspense fallback={<CargandoTexto lineas={3} etiqueta="Cargando la conversación" />}>
             <Hilo
               active={active}
@@ -332,11 +345,13 @@ export function Asesor({ account }: { account?: AccountControls }) {
               bottomRef={consulta.bottomRef}
             />
               </Suspense>
+              </>
             )}
             <div
               className={`sticky bottom-0 z-[1] -mx-2 flex flex-col gap-2 bg-canvas-default px-2 pb-[max(env(safe-area-inset-bottom),16px)] pt-2 ${active.turns.length > 0 || consulta.busy ? "md:ml-14" : ""}`}
             >
-              {modulos.pendientes > 0 && (
+              {/* On the home page the pending actions are already in «Pendiente para ti». */}
+              {modulos.pendientes > 0 && !portada && (
                 <Flash variant="warning" role="status">
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span>

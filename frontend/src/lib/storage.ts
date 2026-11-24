@@ -109,7 +109,7 @@ export function conversacionActivaGuardada(conversations: readonly Conversation[
 export function emptyConversation(id: string): Conversation {
   return {
     id,
-    title: "Nueva consulta",
+    title: "Nueva conversación",
     caseId: null,
     turns: [],
     facts: [],

@@ -40,7 +40,7 @@ interface BrandHeaderProps {
 
 export function BrandHeader({
   title = "Cerebro",
-  subtitle = "ASISTENTE DEL HOGAR",
+  subtitle = "TU MAYORDOMO DIGITAL",
 }: BrandHeaderProps) {
   return (
     <div className="flex items-center gap-3 px-1 py-2">

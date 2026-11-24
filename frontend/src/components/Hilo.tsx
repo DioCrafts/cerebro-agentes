@@ -13,7 +13,6 @@ import { ActivitySummary, LiveActivity } from "./ActivityPanel";
 import { Monogram } from "./Brand";
 import { ConsejoEnHilo } from "./ConvocarConsejo";
 import { DoctrineNotice } from "./DoctrineNotice";
-import { EmptyState } from "./EmptyState";
 import { EvaluacionFeedback } from "./EvaluacionFeedback";
 import { ObligationCardList } from "./ObligationCard";
 import { ConsultadosLinea, PlanEnVivo, ProcedenciaRespuesta, type TurnoConCerebro } from "./ProcedenciaRespuesta";
@@ -79,7 +78,8 @@ interface HiloProps {
 }
 
 export function Hilo({ active, turno, busy, highlightedId, onSubmit, onCite, lastTurnRef, bottomRef }: HiloProps) {
-  if (active.turns.length === 0 && !busy) return <EmptyState onPick={(prompt) => onSubmit(prompt)} />;
+  // An empty conversation shows the home page (Portada, in the shell) instead of the thread.
+  if (active.turns.length === 0 && !busy) return null;
   return (
     <Conversacion aria-label="Conversación">
       {active.turns.map((t, index) => {

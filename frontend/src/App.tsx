@@ -1,4 +1,4 @@
-// Application entry: the account gate around the advisor's shell (src/shell/Asesor.tsx).
+// Application entry: the account gate around Cerebro's shell (src/shell/Asesor.tsx).
 //
 // When the backend requires an account (AUTH_MODE=required) the shell is
 // wrapped by a gate that shows the login screen first; with accounts off the
@@ -222,7 +222,7 @@ function Puerta() {
 
   function handleLogout() {
     const confirmed = window.confirm(
-      "Al cerrar sesión se borra de este navegador el historial de conversaciones. Tu expediente sigue guardado en tu cuenta. ¿Cerrar sesión?",
+      "Al cerrar sesión se borra de este navegador el historial de conversaciones. Tus datos siguen guardados en tu cuenta. ¿Cerrar sesión?",
     );
     if (!confirmed) return;
     // Best effort: the session is dropped here even if the server cannot be told. This device first stops

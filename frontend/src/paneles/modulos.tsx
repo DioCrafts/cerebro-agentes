@@ -1,4 +1,4 @@
-// «Módulos del hogar»: switch modules on/off, their data and documents, the actions waiting for confirmation
+// «Áreas» (the backend's modules): switch them on/off, their data and documents, the actions waiting for confirmation
 // (and the Gmail section of the mail module). Shown as a page (registro.ts).
 
 import { ModulosPanel } from "../components/ModulosPanel";

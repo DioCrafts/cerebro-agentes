@@ -28,7 +28,7 @@ export interface ContextoPanel {
   cambiarDato: (nombre: string, valor: ValorDato) => Promise<boolean>;
   guardandoDato: string | null;
   errorCaso: string | null;
-  /** The facts that belong to household modules (shown in «Módulos», not in «Tu expediente»). */
+  /** The facts that belong to the areas' modules (shown in «Áreas», not in «Tus datos»). */
   datosDeModulos: Set<string>;
   /** Put a case the server returned on screen. */
   aplicarCaso: (caso: CaseState) => void;
@@ -86,14 +86,14 @@ export interface Visibilidad {
   conCuenta: boolean;
 }
 
-/** Sections of the «Más» menu, in this order. */
-export type GrupoPanel = "impuestos" | "hogar" | "datos" | "agentes";
+/** Sections of the «Más» menu, in this order: the areas of life (src/lib/areas.ts), then the user's own data. */
+export type GrupoPanel = "dinero" | "impuestos" | "decidir" | "datos";
 
 export const GRUPOS: { id: GrupoPanel; nombre: string }[] = [
-  { id: "impuestos", nombre: "Impuestos" },
-  { id: "hogar", nombre: "Hogar" },
+  { id: "dinero", nombre: "Dinero y casa" },
+  { id: "impuestos", nombre: "Impuestos y trámites" },
+  { id: "decidir", nombre: "Investigar y decidir" },
   { id: "datos", nombre: "Tú y tus datos" },
-  { id: "agentes", nombre: "Agentes" },
 ];
 
 export interface DefinicionPanel {

@@ -91,7 +91,7 @@ export function RepasoCard({ notification: n, caseId, onMarkRead, onRefresh, onA
 
       <div className="flex flex-wrap gap-2">
         <Button size="small" leadingVisual={CommentDiscussionIcon} onClick={() => onAsk(`Sobre mi repaso «${n.title}»: ¿por dónde empiezo y qué me recomiendas hacer?`)}>
-          Preguntar al asesor
+          Preguntar a Cerebro
         </Button>
         {unread && (
           <Button size="small" variant="invisible" leadingVisual={CheckIcon} onClick={() => onMarkRead(n.id)} aria-label="Ya está: marcar el repaso como leído">
