@@ -4,6 +4,9 @@ Uso::
 
     python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal            # simulado, sin red
     python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal --real --indice data/indice --variantes denso,rrf
+    # Compara modelos de embeddings sobre los mismos fragmentos (recalcula los vectores con cada uno):
+    python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal --real --indice data/indice --variantes denso,rrf \
+        --modelo-embeddings data/models/qwen3-emb-mlx-bf16 --modelo-embeddings data/models/f2llm-v2-0.6b-mlx-bf16
 
 Datos (versionados en ``eval_data/recuperacion/``):
 
@@ -586,8 +589,15 @@ def ejecutar(
     profundidad: int = 50,
     peso_denso: float = 0.6,
     peso_lexico: float = 0.4,
+    recalcular_vectores: bool = False,
+    modelo_embeddings: str | None = None,
 ) -> dict:
-    """Run every variant over the same corpus and queries; the searchers carry their first-stage diagnosis."""
+    """Run every variant over the same corpus and queries; the searchers carry their first-stage diagnosis.
+
+    ``recalcular_vectores`` ignores the vectors stored in the index and embeds the corpus with ``embeddings``:
+    that is how another embedding model is measured on the same chunks. ``modelo_embeddings`` only labels the
+    result.
+    """
     desconocidas = [v for v in variantes if v not in VARIANTES]
     if desconocidas:
         raise ValueError(f"Variantes desconocidas: {', '.join(desconocidas)} (usa {', '.join(VARIANTES)})")
@@ -596,10 +606,14 @@ def ejecutar(
         corpus, vectores = [d for d, _ in pares], [v for _, v in pares]
     else:
         corpus, vectores = cargar_corpus(corpus_path), None
+    if recalcular_vectores:
+        vectores = None
     consultas = cargar_consultas(consultas_path)
     precios = precios or Precios(0.15, 0.60, 800.0)
     emb = EmbeddingsConCache(embeddings or EmbeddingsHash())
+    inicio = time.perf_counter()
     almacen = construir_indice(corpus, emb, vectores)
+    segundos_indice = time.perf_counter() - inicio
     resultados = []
     for v in variantes:
         if v in BUSCADORES:
@@ -629,6 +643,10 @@ def ejecutar(
         else (str(corpus_path.relative_to(RAIZ)) if corpus_path.is_relative_to(RAIZ) else str(corpus_path)),
         "chunks": len(corpus),
         "chunks_aeat": sum(d.metadatos.get("norma") == "AEAT" for d in corpus),
+        "modelo_embeddings": modelo_embeddings,
+        "vectores_recalculados": vectores is None,
+        # With recalculated vectors this is the time to embed the whole corpus: what a reindex would cost.
+        "segundos_indice": round(segundos_indice, 1),
         "consultas": len(consultas),
         "k": k,
         "primera_etapa": primera_etapa,
@@ -679,6 +697,40 @@ def tabla_markdown(resultado: dict) -> str:
     for v in resultado["variantes"]:
         if "primera_etapa" in v:
             out.extend(_tabla_primera_etapa(v["variante"], v["primera_etapa"]))
+    return "\n".join(out)
+
+
+def tabla_comparativa(resultados: Sequence[dict]) -> str:
+    """One row per embedding model and searcher variant, to choose a model at a glance.
+
+    The first-stage recall is the part the embedder decides alone; top-1 and top-k already include the reranker.
+    """
+    filas = [(r, v) for r in resultados for v in r["variantes"] if "primera_etapa" in v]
+    if not filas:
+        return ""
+    cols = list(filas[0][1]["primera_etapa"]["resumen"]["recall"])
+    estilos = list(filas[0][1]["resumen"]["por_estilo"])
+    out = [
+        "| modelo | variante | cita top-1 | cita en top-k (IC 95 %) | "
+        + " | ".join(f"recall denso {c}" for c in cols)
+        + " | fallos 1.ª etapa / reordenación | "
+        + " | ".join(f"{e} top-1 / top-k" for e in estilos)
+        + " | s indexar corpus |",
+        "|" + "---|" * (6 + len(cols) + len(estilos)),
+    ]
+    for r, v in filas:
+        res, diag = v["resumen"], v["primera_etapa"]["resumen"]
+        nombre = Path(r.get("modelo_embeddings") or "vectores del índice").name
+        out.append(
+            f"| {nombre} | {v['variante']} | {_pct(res['cita_top1'])} | "
+            f"{_pct(res['cita_en_k'])} ({_ic(res['cita_en_k_ic95'])}) | "
+            + " | ".join(_pct(diag["recall"].get(c, 0.0)) for c in cols)
+            + f" | {diag['fallos_primera_etapa']} / {diag['fallos_reordenacion']} | "
+            + " | ".join(
+                f"{_pct(x['top1'])} / {_pct(x['en_k'])}" if (x := res["por_estilo"].get(e)) else "—" for e in estilos
+            )
+            + f" | {r['segundos_indice'] if r.get('vectores_recalculados') else '—'} |"
+        )
     return "\n".join(out)
 
 
@@ -808,6 +860,17 @@ class _OpenAITexto:
 @click.option(
     "--latencia-llm-ms", default=800.0, show_default=True, help="Latencia supuesta por llamada LLM (simulado)."
 )
+@click.option(
+    "--modelo-embeddings",
+    "modelos_embeddings",
+    type=click.Path(path_type=Path, exists=True, file_okay=False),
+    multiple=True,
+    help=(
+        "Con --real: directorio de un modelo MLX de embeddings con el que recalcular los vectores del corpus. "
+        "Repetible: mide cada modelo sobre los mismos fragmentos, con el mismo reranker, y termina con una tabla "
+        "comparativa."
+    ),
+)
 @click.option("--salida", type=click.Path(path_type=Path), default=None, help="Guarda el JSON completo.")
 def cli(
     variantes: str,
@@ -826,9 +889,13 @@ def cli(
     precio_entrada: float,
     precio_salida: float,
     latencia_llm_ms: float,
+    modelos_embeddings: tuple[Path, ...],
     salida: Path | None,
 ) -> None:
     from asistente.plataforma import settings
+
+    if modelos_embeddings and not real:
+        raise click.UsageError("--modelo-embeddings necesita --real")
 
     if escribir_manifiesto is not None:
         if indice is None:
@@ -846,7 +913,8 @@ def cli(
     if real:
         from asistente.conocimiento.llm.embeddings import create_embeddings
 
-        embeddings = create_embeddings()
+        # With --modelo-embeddings each model brings its own embedder: do not load the default one too.
+        embeddings = None if modelos_embeddings else create_embeddings()
         if settings.RERANKER_ENABLED:
             from asistente.conocimiento.llm.reranker import MLXReranker
 
@@ -855,26 +923,50 @@ def cli(
             # Only the tree needs the LLM: the searchers run with the local models and no API key.
             selector = SelectorLLM(_ClaudeTexto() if proveedor == "anthropic" else _OpenAITexto())
         latencia_llm_ms = 0.0  # con LLM real la latencia ya va medida
-    resultado = ejecutar(
-        variantes=lista,
-        corpus_path=corpus_path,
-        consultas_path=consultas_path,
-        embeddings=embeddings,
-        selector=selector,
-        k=k,
-        precios=Precios(precio_entrada, precio_salida, latencia_llm_ms),
-        indice=indice,
-        aeat=aeat,
-        primera_etapa=primera_etapa,
-        reranker=reranker,
-        profundidad=profundidad,
-        peso_denso=settings.BM25_DENSE_WEIGHT if peso_denso is None else peso_denso,
-        peso_lexico=settings.BM25_BM25_WEIGHT if peso_lexico is None else peso_lexico,
-    )
-    resultado["modo"] = "real" if real else "simulado"
+    comun: dict[str, Any] = {
+        "variantes": lista,
+        "corpus_path": corpus_path,
+        "consultas_path": consultas_path,
+        "selector": selector,
+        "k": k,
+        "precios": Precios(precio_entrada, precio_salida, latencia_llm_ms),
+        "indice": indice,
+        "aeat": aeat,
+        "primera_etapa": primera_etapa,
+        "reranker": reranker,
+        "profundidad": profundidad,
+        "peso_denso": settings.BM25_DENSE_WEIGHT if peso_denso is None else peso_denso,
+        "peso_lexico": settings.BM25_BM25_WEIGHT if peso_lexico is None else peso_lexico,
+    }
+    modo = "real" if real else "simulado"
+    if not modelos_embeddings:
+        resultado = ejecutar(embeddings=embeddings, **comun)
+        resultado["modo"] = modo
+        if salida:
+            salida.write_text(json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
+        click.echo(tabla_markdown(resultado))
+        return
+
+    from asistente.conocimiento.llm.embeddings import create_embeddings
+
+    resultados = []
+    for modelo in modelos_embeddings:
+        click.echo(f"Midiendo {modelo.name}: vectores del corpus y {len(lista)} variante(s)…", err=True)
+        r = ejecutar(
+            embeddings=create_embeddings(str(modelo)),
+            recalcular_vectores=True,
+            modelo_embeddings=str(modelo),
+            **comun,
+        )
+        r["modo"] = modo
+        resultados.append(r)
+        click.echo(f"\n## {modelo.name}\n\n{tabla_markdown(r)}")
     if salida:
-        salida.write_text(json.dumps(resultado, ensure_ascii=False, indent=2), encoding="utf-8")
-    click.echo(tabla_markdown(resultado))
+        salida.write_text(
+            json.dumps({"modo": modo, "modelos": resultados}, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    click.echo(f"\n## Comparativa\n\n{tabla_comparativa(resultados)}")
+
 
 if __name__ == "__main__":
     cli()

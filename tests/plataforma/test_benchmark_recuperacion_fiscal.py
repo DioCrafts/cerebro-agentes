@@ -234,3 +234,20 @@ def test_cli_imprime_tabla_y_guarda_json(tmp_path) -> None:
     assert "Primera etapa de `rrf`" in res.output and "| casi |" in res.output
     assert datos["variantes"][0]["primera_etapa"]["profundidad"] == 50
     assert datos["pesos_rrf"] == {"denso": 0.6, "lexico": 0.4}
+
+
+def test_recalcular_vectores_mide_otro_modelo_y_lo_compara() -> None:
+    """``--modelo-embeddings`` recalcula los vectores del corpus con cada modelo y acaba en una tabla comparativa."""
+    a = bench.ejecutar(variantes=["denso"], recalcular_vectores=True, modelo_embeddings="data/models/a")
+    b = bench.ejecutar(variantes=["denso"], recalcular_vectores=True, modelo_embeddings="data/models/b")
+    assert a["vectores_recalculados"] and a["modelo_embeddings"] == "data/models/a"
+    assert a["segundos_indice"] >= 0
+    tabla = bench.tabla_comparativa([a, b]).splitlines()
+    assert tabla[0].startswith("| modelo | variante | cita top-1 |") and "recall denso @30" in tabla[0]
+    assert tabla[2].startswith("| a | denso |") and tabla[3].startswith("| b | denso |")
+    assert len(tabla) == 4
+
+
+def test_modelo_embeddings_exige_real(tmp_path) -> None:
+    res = CliRunner().invoke(bench.cli, ["--modelo-embeddings", str(tmp_path)])
+    assert res.exit_code != 0 and "--real" in res.output

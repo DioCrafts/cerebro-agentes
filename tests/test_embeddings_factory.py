@@ -141,6 +141,21 @@ def test_embed_query_prepends_instruction_prefix(monkeypatch, model_dir: Path) -
     assert sent_to_tokenizer == ["Instruct: test\nQuery: ¿es deducible el coche?"]
 
 
+def test_prompt_que_ya_acaba_en_espacio_no_recibe_otro(monkeypatch, tmp_path: Path) -> None:
+    """F2LLM-v2 ships "...Query: " (trailing space): the query must read "Query: texto", as in sentence-transformers."""
+    _, tokenizer = _install_fake_mlx(monkeypatch)
+    d = tmp_path / "f2llm"
+    d.mkdir()
+    (d / "config_sentence_transformers.json").write_text(
+        json.dumps({"prompts": {"query": "Instruct: test\nQuery: ", "document": ""}}), encoding="utf-8"
+    )
+    monkeypatch.setattr(factory.settings, "EMBEDDING_MODEL", str(d))
+
+    factory.create_embeddings().embed_query("¿es deducible el coche?")
+
+    assert tokenizer.calls[0]["batch"] == ["Instruct: test\nQuery: ¿es deducible el coche?"]
+
+
 def test_missing_prompt_config_disables_prefix_gracefully(monkeypatch, tmp_path: Path) -> None:
     """No ``config_sentence_transformers.json`` → no prefix, no crash."""
     _, tokenizer = _install_fake_mlx(monkeypatch)

@@ -56,6 +56,42 @@ El reranker da más de 0,9 a 9 de las 12 consultas `casi`. Ante «¿qué bonific
 
 Pendiente con clave de API: la variante `pageindex` sobre las 130 consultas (`--variantes denso,pageindex`). Su selector usa ahora esfuerzo bajo y 8.000 tokens de salida, porque Opus 5.5 siempre piensa y los 1.024 de antes podían agotarse antes de la respuesta.
 
+## Modelo de embeddings: Qwen3-Embedding-0.6B frente a F2LLM-v2-0.6B (24 de noviembre de 2026)
+
+**Decisión:** se queda Qwen3-Embedding-0.6B. Con la búsqueda híbrida de producción (`rrf`), F2LLM-v2-0.6B mete la cita en el top-3 en una consulta más y acierta la primera posición en dos menos; con la densa, tres más en el top-3 y cinco menos en primera posición. Ninguna de esas diferencias es significativa con 77 consultas, y cambiar de modelo obliga a reindexar los 15.219 fragmentos del índice de producción.
+
+[F2LLM-v2-0.6B](https://huggingface.co/codefuse-ai/F2LLM-v2-0.6B) es de CodeFuse (Ant Group), tiene licencia Apache-2.0 y está entrenado sobre Qwen3-0.6B-Base. Comparte con Qwen3-Embedding-0.6B la arquitectura, el tokenizador, el pooling del último token y las 1024 dimensiones, así que el embedder del proyecto lo carga sin cambios. Se comparó solo con el modelo del mismo tamaño: la familia llega a 14B, y un modelo mayor ganaría por tamaño, no por calidad.
+
+Los dos modelos recalculan los vectores de los mismos 4.732 fragmentos (las seis normas del benchmark, sacadas de `data/indice/indice.sqlite`). Usan el mismo reranker (Qwen3-Reranker-0.6B con 30 candidatos) y `k=3`. El índice no tiene páginas de la AEAT, así que las 20 consultas de ese estilo quedan fuera, como en la línea base, y se cuentan 77 consultas con cita. El JSON completo está en `reports/benchmark/embeddings-qwen3-vs-f2llm.json`, fuera de git.
+
+| variante | modelo | top-1 | en top-3 | recall denso @3 | @10 | @30 |
+|---|---|---|---|---|---|---|
+| `denso` | Qwen3-Embedding | 48 % | 65 % | 62 % | 79 % | 90 % |
+| | F2LLM-v2 | 42 % | 69 % | 64 % | 81 % | 92 % |
+| `rrf` (la de producción) | Qwen3-Embedding | 44 % | 68 % | 52 % | 70 % | 90 % |
+| | F2LLM-v2 | 42 % | 69 % | 51 % | 75 % | 95 % |
+
+Consulta a consulta, con `rrf`: Qwen3 acierta la primera posición en 3 consultas que F2LLM falla y F2LLM en 1 que Qwen3 falla (p = 0,62 con la prueba binomial exacta sobre esos pares); en el top-3, 4 consultas son solo de F2LLM y 3 solo de Qwen3 (p = 1). Con `denso` la primera posición se reparte 6 a 1 a favor de Qwen3 (p = 0,12) y el top-3, 5 a 2 a favor de F2LLM (p = 0,45). El rango recíproco medio del ranking denso casi no cambia (0,588 frente a 0,575). Con Qwen3 recalculado salen las mismas cifras que con los vectores guardados en el índice (48 % y 65 % en `denso`, 44 % y 68 % en `rrf`), así que el recálculo no introduce diferencias.
+
+Abstenciones: F2LLM separa algo mejor las preguntas ajenas a la fiscalidad por similitud densa (AUROC 0,90 frente a 0,86) y peor las de estilo `casi` (0,62 frente a 0,71). Ninguno de los dos sirve para decidir la abstención con un umbral, que es la conclusión de la línea base.
+
+El benchmark midió 749 s para vectorizar el corpus con Qwen3 y 312 s con F2LLM, pero esa cifra no compara los modelos: mientras se medía Qwen3 corría a la vez la batería de tests. Con la misma arquitectura y el mismo tamaño, los dos tardan lo mismo.
+
+Para medir otro modelo de embeddings se convierte a MLX bf16 en su propia carpeta y se pasa con `--modelo-embeddings`, que se puede repetir. El benchmark recalcula los vectores del corpus con cada modelo y termina con una tabla comparativa:
+
+```bash
+.venv/bin/python scripts/convert_to_mlx.py --hf-path codefuse-ai/F2LLM-v2-0.6B --mlx-path data/models/f2llm-v2-0.6b-mlx-bf16
+KMP_DUPLICATE_LIB_OK=TRUE .venv/bin/python -m asistente.plataforma.cli.benchmark_recuperacion_fiscal \
+  --indice data/indice --real --variantes denso,rrf \
+  --modelo-embeddings data/models/qwen3-emb-mlx-bf16 \
+  --modelo-embeddings data/models/f2llm-v2-0.6b-mlx-bf16 \
+  --salida reports/benchmark/embeddings-qwen3-vs-f2llm.json
+```
+
+La medición de los dos modelos, con el reranker, tardó 50 minutos en este Mac. Conviene no lanzar a la vez otras cargas pesadas si se quieren comparar tiempos. Si algún día gana otro modelo, basta con cambiar `EMBEDDING_MODEL`: cambia la huella del manifiesto y la siguiente ingesta reconstruye el índice entero.
+
+Para volver a comparar F2LLM hace falta más muestra: las páginas de la AEAT indexadas y más consultas de estilo `cuerpo`, que es donde F2LLM saca ventaja (63 % en top-3 frente a 57 %).
+
 ## Resultado con LLM real (32 consultas, 22 de noviembre)
 
 Medido sobre el corpus real del procesador (las cinco normas que citan las consultas, tal como quedaron en `data/faiss` tras quitar el banner del BOE), embeddings Qwen3-Embedding-0.6B en MLX y Claude Sonnet 5.5 como selector del árbol. 32 consultas: 26 esperan norma y artículo, 6 son abstenciones. `k=3`, umbral denso 0,45. El coste usa 3 $ / 15 $ por millón de tokens de entrada / salida, un supuesto configurable con `--precio-entrada` y `--precio-salida`.

@@ -118,7 +118,10 @@ class MLXEmbeddings:
 
     def _encode_sin_cerrojo(self, texts: list[str], *, prefix: str) -> list[list[float]]:
         if prefix:
-            texts = [f"{prefix} {t}" for t in texts]
+            # Qwen3-Embedding's prompt ends in "Query:" and gets a space; F2LLM-v2's already ends in "Query: " and
+            # must not get a second one (sentence-transformers concatenates prompt and text as they are).
+            separador = "" if prefix[-1].isspace() else " "
+            texts = [f"{prefix}{separador}{t}" for t in texts]
 
         all_vecs: list[list[float]] = []
         for start in range(0, len(texts), self._batch_size):
