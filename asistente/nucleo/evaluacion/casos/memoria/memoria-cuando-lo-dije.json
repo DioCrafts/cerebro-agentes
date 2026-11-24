@@ -35,7 +35,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "preferencia",
+      "tipo": "hecho",
       "texto": "Quiere cambiar de compañía de luz antes del invierno",
       "origen": {
         "conversacion_id": "conv_r1_0001",

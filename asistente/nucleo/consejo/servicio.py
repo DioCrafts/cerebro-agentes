@@ -523,7 +523,7 @@ class ServicioConsejo:
                 f"({formatear_usd(tope_maximo())}).",
                 codigo="tope",
             )
-        from asistente.nucleo.recuerdos.privacidad import limpiar
+        from asistente.nucleo.privacidad import limpiar
 
         momento = self._reloj()
         dueno = user_id or case.user_id or None

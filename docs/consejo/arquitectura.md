@@ -119,10 +119,12 @@ The chat (`Hilo.tsx` → `ConsejoEnHilo`) lists the case's pending and running s
    discarded: the council never writes to the case.
 3. **Facts**: the specialists' reports (minus sentences that echo the user's leaning), the minimum profile, the
    decisions memory as `restricciones` (in force, of the domains involved, with their date), the conversation memory
-   as facts with their origin (`r_… · 01/10/2026`).
+   (Hindsight, [../cerebro/memoria.md](../cerebro/memoria.md)) as facts with their origin (the item's id and the date
+   the user said it, or «fecha desconocida»).
 4. **The preference, SEALED** in `preferencia_usuario`: the one the user gave when convening, else the quote-checked
-   one, else the rules' («prefiero…», «me inclino por…», «creo que voy a…»); a remembered leaning about THIS decision
-   joins it. Members see it only in the revision round (sycophancy: told what the user wants, a model tends to agree).
+   one, else the rules' («prefiero…», «me inclino por…», «creo que voy a…»); a remembered fact that states a
+   leaning («prefiere…», «no quiere…», «le gusta…», «evita…», «descarta…») and shares words with THIS decision's
+   options joins it. Hindsight has no preference type, so the dossier recognises them by their wording. Members see it only in the revision round (sycophancy: told what the user wants, a model tends to agree).
 
 ## Anti-bias measures, and why
 
@@ -152,7 +154,7 @@ What leaves the server (to the members' model providers) is ONLY the pseudonymis
   home tenure, the mortgage's type and years left; per domain a few more (tax: pension contributions, pre-2013
   home…). Names, documents, contact data, sex, nationality/origin, religion, health, specially protected situations
   and birth dates are dropped; anything else not allowlisted is dropped and only COUNTED;
-* **free text** (`seudonimizar_texto`, the memory's own helpers): credentials redacted, IBAN/cards/DNI/phones/e-mails
+* **free text** (`seudonimizar_texto`, with the privacy gates of `asistente/nucleo/privacidad.py`): credentials redacted, IBAN/cards/DNI/phones/e-mails
   /long numbers masked, names replaced (by context «me llamo…», «mi hermana Lucía» → «mi hermana», «Sr./Sra.», and a
   list of common given names), origin and nationality removed, gendered self-descriptions made neutral («viuda» →
   «viudo/a»), injection bait from mail/web/memory neutralised; memory items with special-category data are left out;

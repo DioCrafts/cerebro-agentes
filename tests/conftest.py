@@ -107,6 +107,19 @@ def _sin_red_por_el_cliente_comun(monkeypatch):
     )
 
 
+@pytest.fixture(autouse=True)
+def hindsight():
+    """Every test's conversation memory talks to an in-memory Hindsight (``tests/recuerdos/falso.py``), never to the
+    embedded daemon. Tests that check what was retained or recalled take this fixture and inspect it."""
+    from asistente.nucleo.recuerdos import servicio
+    from tests.recuerdos.falso import HindsightFalso
+
+    falso = HindsightFalso()
+    servicio.configurar_hindsight(falso.cliente, listo=lambda: True)
+    yield falso
+    servicio.configurar_hindsight(None)
+
+
 @pytest.fixture
 def red_falsa(monkeypatch):
     """``red_falsa(handler)`` answers every request of the shared HTTP client with ``handler(request)``

@@ -426,22 +426,23 @@ CEREBRO_MAX_REPLANES = int(os.environ.get("CEREBRO_MAX_REPLANES", "2"))
 CEREBRO_MEMORIA_LIMITE = int(os.environ.get("CEREBRO_MEMORIA_LIMITE", "8"))
 
 # --- recuerdos (household brain) -------------------------------------------------------
-# Conversation memory (asistente/nucleo/recuerdos, docs/cerebro/memoria.md): the server keeps each conversation, a
-# summary of it and «lo que sé de ti» (every item with the user's literal words). false: nothing new is stored or
-# retrieved (what was stored can still be seen, exported and erased).
+# Conversation memory (asistente/nucleo/recuerdos, docs/cerebro/memoria.md), backed by Hindsight: the user's own
+# words of each turn are retained in a Hindsight memory bank per owner (case, account) and recalled for the next
+# question. false: nothing new is retained or recalled (what was stored can still be seen, exported and erased).
 MEMORIA_CONVERSACIONES = _env_bool("MEMORIA_CONVERSACIONES", default=True)
-# Days the raw messages are kept (then purged; the summary and the remembered items stay). Minimum 1.
-MEMORIA_RETENCION_MENSAJES_DIAS = int(os.environ.get("MEMORIA_RETENCION_MENSAJES_DIAS", "30"))
-# Active remembered items per user and case (the oldest context items go first when it is reached).
-MEMORIA_MAX_RECUERDOS = int(os.environ.get("MEMORIA_MAX_RECUERDOS", "200"))
-# A conversation is summarised once it has been idle this many minutes (job `memoria-resumir`).
-MEMORIA_RESUMEN_TRAS_MINUTOS = int(os.environ.get("MEMORIA_RESUMEN_TRAS_MINUTOS", "30"))
-# Summaries go through the provider's batch API when it has one (cheaper; results in a later run of the job).
-MEMORIA_RESUMEN_LOTES = _env_bool("MEMORIA_RESUMEN_LOTES", default=True)
-# Also summarise from the API process, in a background thread, when a user comes back (deployments without worker).
-MEMORIA_RESUMEN_EN_SEGUNDO_PLANO = _env_bool("MEMORIA_RESUMEN_EN_SEGUNDO_PLANO", default=False)
-# Rank with the project's embedder too (EMBEDDING_MODEL, MLX only); never required: lexical ranking otherwise.
-MEMORIA_EMBEDDINGS = _env_bool("MEMORIA_EMBEDDINGS", default=False)
+# An already running Hindsight server (http://host:port). Empty (default): the app starts and reuses a local
+# embedded daemon (hindsight-all: its own process and embedded PostgreSQL under ~/.pg0), profile HINDSIGHT_PERFIL.
+HINDSIGHT_URL = os.environ.get("HINDSIGHT_URL", "").strip().rstrip("/")
+HINDSIGHT_PERFIL = os.environ.get("HINDSIGHT_PERFIL", "cerebro")
+# The model Hindsight uses to extract facts and consolidate observations (its own calls, billed to the same key).
+HINDSIGHT_LLM_PROVEEDOR = os.environ.get("HINDSIGHT_LLM_PROVEEDOR", "anthropic")
+HINDSIGHT_LLM_MODELO = os.environ.get("HINDSIGHT_LLM_MODELO", "claude-haiku-5-5")
+# Local multilingual embedder and the PostgreSQL dictionary of the BM25 arm (Hindsight's defaults are English-only).
+HINDSIGHT_EMBEDDINGS = os.environ.get("HINDSIGHT_EMBEDDINGS", "BAAI/bge-m3")
+HINDSIGHT_IDIOMA = os.environ.get("HINDSIGHT_IDIOMA", "spanish")
+# Recall of one turn: Hindsight's budget (low | mid | high) and a hard timeout so a slow daemon never holds a turn.
+HINDSIGHT_PRESUPUESTO = os.environ.get("HINDSIGHT_PRESUPUESTO", "mid")
+HINDSIGHT_TIMEOUT_S = float(os.environ.get("HINDSIGHT_TIMEOUT_S", "8"))
 
 # --- repaso (household brain) ----------------------------------------------------------
 # The brain's proactive pass (asistente/nucleo/repaso, docs/cerebro/repaso.md): a weekly or daily review of what is

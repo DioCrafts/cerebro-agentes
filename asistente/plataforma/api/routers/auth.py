@@ -385,8 +385,8 @@ def build_router(
                     "tareas": exportar_tareas(cases.db_path, case_id),
                     # Browser tasks (capacidades/navegador): state, steps and the parameters of a prepared one.
                     "navegador": exportar_navegador(cases.db_path, case_id),
-                    # Conversation memory (asistente/nucleo/recuerdos): conversations, summaries, retained messages
-                    # and «lo que sé de ti» with the origin of each item.
+                    # Conversation memory (asistente/nucleo/recuerdos, in Hindsight): the user's retained messages
+                    # and «lo que sé de ti» with the conversation and date of each fact.
                     "recuerdos": recuerdos_servicio.exportar_recuerdos(cases.db_path, case_id=case_id, user_id=user.id),
                     # The brain's proactive passes (asistente/nucleo/repaso): the ranked points and the text of each
                     # digest, and the batch in flight (the digest notifications themselves are in «notifications»).
@@ -417,8 +417,9 @@ def build_router(
             # Conversation memory outside any case (each case's is in its own entry above).
             "recuerdos": recuerdos_servicio.exportar_recuerdos(cases.db_path, case_id=None, user_id=user.id),
             "not_included": (
-                "Las conversaciones que el servidor guarda (memoria de conversaciones) están en «recuerdos»; el "
-                "resto del historial vive solo en tu navegador. Los documentos que subes no se almacenan."
+                "Tus mensajes que guarda la memoria de conversaciones, y lo que aprendió de ellos, están en «recuerdos»; "
+                "las respuestas del asistente y el resto del historial viven solo en tu navegador. Los documentos que "
+                "subes no se almacenan."
             ),
         }
 
@@ -449,7 +450,8 @@ def build_router(
         anonimizar_consumo(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         # Revoke the Gmail grants at Google now (the rows go with each case through the store's erasure hook).
         correo_oauth.revocar_de_usuario(store.case_ids_of(user.id), db_path=cases.db_path)
-        # Conversation memory: the user's and their cases' (the triggers erase it too; this also checkpoints the WAL).
+        # Conversation memory: every Hindsight bank of the account and of its cases. Raises if Hindsight cannot be
+        # reached, so nothing else is erased yet and the user can ask again.
         recuerdos_servicio.borrar_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))
         # The household council's sessions (the triggers erase them too; this also checkpoints the WAL).
         borrar_consejo_de_usuario(cases.db_path, user_id=user.id, case_ids=store.case_ids_of(user.id))

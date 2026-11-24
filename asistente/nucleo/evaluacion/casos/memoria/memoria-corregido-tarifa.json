@@ -40,14 +40,13 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Tiene la tarifa regulada PVPC",
       "origen": {
         "conversacion_id": "conv_r1_0001",
         "fecha": "2026-04-11",
-        "cita": "tengo una tarifa fija de 0,14"
-      },
-      "corregido": true
+        "cita": "Tiene la tarifa regulada PVPC"
+      }
     }
   ],
   "version": 1

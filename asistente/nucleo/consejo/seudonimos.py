@@ -38,7 +38,7 @@ import re
 from typing import Any
 
 from asistente.conocimiento.llm.security import neutralizar_inyeccion, quitar_invisibles
-from asistente.nucleo.recuerdos.privacidad import enmascarar_identificadores, redactar_credenciales
+from asistente.nucleo.privacidad import enmascarar_identificadores, redactar_credenciales
 
 PERSONA = "[persona]"
 ORIGEN = "[origen omitido]"

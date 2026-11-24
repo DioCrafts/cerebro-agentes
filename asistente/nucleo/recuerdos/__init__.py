@@ -1,18 +1,12 @@
-"""Conversation memory: each conversation, a summary of it, and «lo que sé de ti» — every item with its origin.
+"""Conversation memory on Hindsight: what the user told the assistant, remembered across conversations.
 
-Until this package the server kept no conversations (the browser sent the history), so a new session started
-almost from zero. Now:
+* :mod:`~asistente.nucleo.recuerdos.servicio` — the memory as the brain, the API and the account erasure use it
+  (one Hindsight bank per owner; only the user's own words are retained, after the privacy gates);
+* :mod:`~asistente.nucleo.recuerdos.cliente` — the thin client of Hindsight's REST API;
+* :mod:`~asistente.nucleo.recuerdos.daemon` — where Hindsight runs (``HINDSIGHT_URL`` or the local embedded daemon);
+* :mod:`~asistente.nucleo.recuerdos.pausa` — the user's «pausar la memoria» switch (the only table here).
 
-* :mod:`~asistente.nucleo.recuerdos.almacen` — the tables (same SQLite file as the cases), strictly per owner
-  ``(case_id, user_id)``, erased with the case and with the account;
-* :mod:`~asistente.nucleo.recuerdos.privacidad` — the deterministic privacy gates (credentials, identifiers,
-  special categories, pasted text, injection bait);
-* :mod:`~asistente.nucleo.recuerdos.resumen` and :mod:`~asistente.nucleo.recuerdos.prompts` — the summariser:
-  the model proposes, the gate keeps only what the user said in their own words;
-* :mod:`~asistente.nucleo.recuerdos.recuperacion` — hybrid retrieval (per-owner BM25, optional embeddings,
-  priors, explicit references, MMR) with calibrated relevance;
-* :mod:`~asistente.nucleo.recuerdos.servicio` — :func:`~asistente.nucleo.recuerdos.servicio.servicio_memoria`,
-  the ``ProveedorMemoria`` the brain uses, and the user's and the jobs' operations.
-
-See ``docs/cerebro/memoria.md``. This ``__init__`` imports nothing on purpose (the stores import lazily).
+Hindsight (https://github.com/vectorize-io/hindsight) extracts facts with its own model, keeps them with their
+dates and source, consolidates them into observations (a newer fact supersedes an older one), and recalls with
+semantic, BM25, graph and temporal search plus a reranker. See ``docs/cerebro/memoria.md``.
 """

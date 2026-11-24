@@ -182,7 +182,7 @@ class MemoriaFalsa:
             recuerdos=[
                 RecuerdoMemoria(
                     id=f"R{i}",
-                    tipo="dato",
+                    tipo="hecho",
                     texto=texto,
                     origen=OrigenRecuerdo(conversacion_id="conv-anterior-1", fecha=date(2026, 10, 1), cita=texto),
                 )

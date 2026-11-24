@@ -45,7 +45,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Tiene dos hijos",
       "origen": {
         "conversacion_id": "conv_r1_0001",
@@ -55,7 +55,7 @@
     },
     {
       "id": "r2",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Tiene tres hijos",
       "origen": {
         "conversacion_id": "conv_r2_0001",

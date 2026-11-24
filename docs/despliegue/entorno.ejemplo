@@ -36,8 +36,11 @@ HEALTHCHECK_URL=
 # servicio expuesto a Internet.
 API_RATE_LIMIT_PER_MIN=60
 
-# Linux no tiene MLX: sin modelos de embeddings, la memoria se ordena sin ellos.
-MEMORIA_EMBEDDINGS=false
+# Memoria de conversaciones (Hindsight): en Docker hace falta un servidor de Hindsight aparte. Sin él, deja
+# MEMORIA_CONVERSACIONES=false; con él, pon su dirección (http://host:puerto) en HINDSIGHT_URL y
+# MEMORIA_CONVERSACIONES=true.
+MEMORIA_CONVERSACIONES=false
+HINDSIGHT_URL=
 
 # Plataforma.
 MIGRACIONES_AUTOMATICAS=true

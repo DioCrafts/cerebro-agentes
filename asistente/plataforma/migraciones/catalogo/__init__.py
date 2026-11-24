@@ -22,7 +22,7 @@ from asistente.plataforma.migraciones.catalogo import (
     plataforma,
     proactive,
     push,
-    recuerdos,
+    recuerdos_hindsight,
     repaso,
     tareas,
 )
@@ -44,7 +44,7 @@ PROPIETARIOS: tuple[Propietario, ...] = (
     doctrina.PROPIETARIO,
     tareas.PROPIETARIO,
     push.PROPIETARIO,
-    recuerdos.PROPIETARIO,
+    recuerdos_hindsight.PROPIETARIO,
     repaso.PROPIETARIO,
     consejo.PROPIETARIO,
 )

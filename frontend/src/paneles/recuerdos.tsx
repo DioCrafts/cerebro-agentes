@@ -1,5 +1,6 @@
-// «Lo que sé de ti»: the conversation memory (what the assistant remembers, with the user's own words), and the
-// earlier conversations with their summaries. Works with a case, or with the signed-in account alone.
+// «Lo que sé de ti»: the conversation memory kept by Hindsight (what the assistant remembers, each fact with its
+// conversation and date), and the earlier conversations with the user's own messages. Works with a case, or with the
+// signed-in account alone.
 // Shown in a side sheet (registro.ts).
 
 import { RecuerdosPanel } from "../components/RecuerdosPanel";

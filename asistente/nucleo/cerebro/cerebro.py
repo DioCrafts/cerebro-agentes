@@ -394,13 +394,11 @@ class _Turno:
 
     def textos_usuario(self) -> list[str]:
         """The user's own words for the figures gate: this conversation's messages and, from the conversation memory,
-        the literal quote each remembered item rests on (and the user's own correction of it). A figure the user gave
-        in an earlier conversation is theirs, not an invention."""
+        the literal words each remembered fact was extracted from (Hindsight's source chunk, which only ever holds
+        what the user wrote). A figure the user gave in an earlier conversation is theirs, not an invention; a
+        figure only in an observation (written by Hindsight's model) is not."""
         textos = list(self.contexto.mensajes_usuario)
-        for recuerdo in self.contexto.memoria.recuerdos:
-            textos.append(recuerdo.origen.cita)
-            if recuerdo.corregido:
-                textos.append(recuerdo.texto)
+        textos.extend(r.origen.cita for r in self.contexto.memoria.recuerdos if r.origen.cita)
         return textos
 
     def para_puerta(self) -> list[InformeEspecialista]:

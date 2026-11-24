@@ -16,7 +16,6 @@ from asistente.nucleo.evaluacion import variantes as v
 
 CEREBRO = "asistente.nucleo.cerebro.prompts"
 REPASO = "asistente.nucleo.repaso.prompts"
-RECUERDOS = "asistente.nucleo.recuerdos.prompts"
 CONSEJO = "asistente.nucleo.consejo.prompts"
 CONSEJO_EXPEDIENTE = "asistente.nucleo.consejo.prompts_expediente"
 
@@ -32,7 +31,6 @@ def paquetes(monkeypatch: pytest.MonkeyPatch) -> Iterator[dict[str, types.Module
             "SINTESIS_SYSTEM_PROMPT": "Une los informes.",
         },
         REPASO: {"REPASO_SYSTEM_PROMPT": "Resume la semana."},
-        RECUERDOS: {"RESUMEN_SYSTEM_PROMPT": "Resume la conversación."},
         CONSEJO: {
             "MIEMBRO_SYSTEM_PROMPT": "Analiza la decisión.",
             "CRITICA_SYSTEM_PROMPT": "Critica las propuestas anónimas.",
@@ -64,7 +62,6 @@ def test_the_roles_and_where_their_text_lives() -> None:
         "cerebro_intencion",
         "cerebro_sintesis",
         "repaso",
-        "memoria_resumen",
         "consejo_miembro",
         "consejo_critica",
         "consejo_revision",
@@ -73,7 +70,6 @@ def test_the_roles_and_where_their_text_lives() -> None:
     }
     assert v.origen_de("cerebro") == (CEREBRO, "CEREBRO_SYSTEM_PROMPT")
     assert v.origen_de("repaso") == (REPASO, "REPASO_SYSTEM_PROMPT")
-    assert v.origen_de("memoria_resumen") == (RECUERDOS, "RESUMEN_SYSTEM_PROMPT")
     assert v.origen_de("agente") == ("asistente.nucleo.agent.prompts", "AGENT_SYSTEM_PROMPT")
 
 
@@ -144,13 +140,13 @@ def test_registering_a_new_role(tmp_path: Path, paquetes: dict[str, types.Module
     registro = tmp_path / "registro.json"
     shutil.copy(v.REGISTRO_PROMPTS, registro)
     datos = json.loads(antes)
-    datos.pop("memoria_resumen", None)  # as if it had never been registered
+    datos.pop("repaso", None)  # as if it had never been registered
     registro.write_text(json.dumps(datos), encoding="utf-8")
-    nueva = v.registrar_version("memoria_resumen", nota="Primera versión", ruta=registro)
-    assert nueva.version == "memoria_resumen@1"
-    assert v.cargar_registro(registro)["memoria_resumen"][-1].huella == v.huella("Resume la conversación.")
+    nueva = v.registrar_version("repaso", nota="Primera versión", ruta=registro)
+    assert nueva.version == "repaso@1"
+    assert v.cargar_registro(registro)["repaso"][-1].huella == v.huella("Resume la semana.")
     with pytest.raises(ValueError, match="no ha cambiado"):
-        v.registrar_version("memoria_resumen", nota="otra", ruta=registro)
+        v.registrar_version("repaso", nota="otra", ruta=registro)
     # The repository's registry was not touched.
     assert v.REGISTRO_PROMPTS.read_text(encoding="utf-8") == antes
 

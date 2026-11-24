@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from asistente.nucleo.recuerdos import privacidad as p
+from asistente.nucleo import privacidad as p
 
 
 @pytest.mark.parametrize(

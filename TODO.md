@@ -9,6 +9,11 @@ Lo pendiente tras la ronda del 22 de noviembre de 2026: el plan de rendimiento y
 - [ ] Pasar el índice a SQLite y sacar LangChain: medir la línea base con FAISS, migrar con `cli.indice migrar`, medir con `INDICE_BACKEND=sqlite` y, si ningún caso crítico empeora, poner `sqlite` por defecto y borrar `conocimiento/indice/faiss_legado.py` junto con `faiss-cpu`, `langchain-community` y `langchain-core`. Los pasos y la lista de lo que se borra están en `docs/cerebro/benchmark-recuperacion.md`, sección «Retirar FAISS y LangChain».
 - [ ] Terminar el índice `data/faiss-v2` (3.310 documentos descargados, solo 200 indexados) con 2 o 3 procesos, y medirlo con el benchmark antes de cambiar `FAISS_INDEX_PATH`.
 
+## Memoria de conversaciones (Hindsight)
+
+- [ ] Medir la memoria nueva con modelo real: `uv run python -m asistente.plataforma.cli.evaluacion run --categoria memoria --out reports/evaluacion/memoria-hindsight.json`. Los cuatro casos `memoria-real-*` usan bancos reales de Hindsight. No hay cifras de este motor sobre datos personales en español (ADR 0007).
+- [ ] Apuntar en `llm_usage` las llamadas de extracción de Hindsight (`HINDSIGHT_LLM_MODELO`). Ahora solo se ven en la consola del proveedor y no cuentan para el presupuesto por pregunta.
+
 ## Memoria (sin cambio de resultados)
 
 - [ ] Una sola instancia del modelo de embeddings por proceso. `create_embeddings()` crea un `MLXEmbeddings` nuevo en cada llamada y cada uno carga 1,1 GB con `load()`; se llama desde seis sitios (buscador del asesor, capacidad de investigación, consejo, evaluación, cadena de QA, procesador). Lo mismo para el reranker y el índice FAISS.

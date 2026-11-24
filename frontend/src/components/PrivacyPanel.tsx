@@ -220,8 +220,8 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
           <Caja.Cabecera titulo="Una copia de mis datos" />
           <Caja.Cuerpo className="flex flex-col gap-3">
             <p className="m-0">
-              Descarga en un archivo JSON todo lo que hay guardado sobre ti: tu perfil, tus expedientes con su historial, tus avisos y tus
-              consentimientos, más las conversaciones guardadas en este navegador.
+              Descarga en un archivo JSON todo lo que hay guardado sobre ti: tu perfil, tus expedientes con su historial, la memoria de
+              conversaciones, tus avisos y tus consentimientos, más las conversaciones guardadas en este navegador.
             </p>
             <div>
               <Button leadingVisual={DownloadIcon} onClick={handleExport} loading={exporting}>
@@ -246,8 +246,8 @@ export function PrivacyPanel({ open, onClose, email, noticeUrl, onAccountDeleted
           <Caja.Cuerpo>
             <form onSubmit={(e) => void handleDelete(e)} className="flex flex-col gap-3">
               <p className="m-0">
-                Se borran del servidor tu cuenta, tus expedientes con su historial, tus avisos, tus consentimientos y tus sesiones, y de este
-                navegador tus conversaciones. <strong>No se puede deshacer.</strong>
+                Se borran del servidor tu cuenta, tus expedientes con su historial, la memoria de conversaciones, tus avisos, tus
+                consentimientos y tus sesiones, y de este navegador tus conversaciones. <strong>No se puede deshacer.</strong>
               </p>
               <FormControl>
                 <FormControl.Label>Confirma tu contraseña</FormControl.Label>

@@ -42,14 +42,13 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Tiene la hipoteca con Openbank",
       "origen": {
         "conversacion_id": "conv_r1_0001",
         "fecha": "2026-05-20",
-        "cita": "tengo la hipoteca en ING"
-      },
-      "corregido": true
+        "cita": "Tiene la hipoteca con Openbank"
+      }
     }
   ],
   "version": 1

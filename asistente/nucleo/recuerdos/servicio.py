@@ -1,160 +1,276 @@
-"""The conversation memory as the brain, the API and the jobs use it.
+"""The conversation memory, on Hindsight, as the brain, the API and the account erasure use it.
 
-* The brain: :func:`servicio_memoria` returns the :class:`~asistente.nucleo.cerebro.contrato.ProveedorMemoria` —
-  :class:`MemoriaNula` when ``MEMORIA_CONVERSACIONES`` is off. ``recuperar`` ranks the owner's memory for one
-  question (no model call: a few SQLite reads and a BM25); ``registrar_turno`` appends the turn's two messages
-  (one write). Both NEVER raise: a failing memory degrades to «no memory», it never fails the user's turn.
-* The user (``/recuerdos``, ``/conversaciones``): list with origins, correct (the user's wording wins), forget one
-  (its earlier versions too), forget everything (the conversations too: nothing is left to learn it from again),
-  pause (nothing new is stored, summarised or retrieved; what is there stays visible and erasable).
-* The jobs (``python -m asistente.nucleo.recuerdos resumir``): :meth:`ServicioMemoria.resumir_pendientes`
-  summarises idle conversations (through the provider's batch API when it has one) and
-  :meth:`ServicioMemoria.purgar_caducados` applies the retention of the raw messages. With
-  ``MEMORIA_RESUMEN_EN_SEGUNDO_PLANO`` the API process also summarises, in a background thread that carries the
-  request's context (``contextvars.copy_context``), when a user starts a new conversation.
+Whose memory: one Hindsight bank per owner — (case, account), ``''`` for an absent part — named by a hash of both
+(:func:`banco_de`), so no request can reach another owner's bank and Hindsight never sees a case or user id.
 
-Whose memory: the owner is ``(case_id, user_id)`` exactly as the caller passes them (``''`` for None). The API
-and the brain must resolve ``user_id`` the same way: the signed-in account's id, else the case's ``user_id``
-(what ``api.py`` already uses for ``contexto_consumo``).
+* The brain (:class:`ServicioMemoria` as :class:`~asistente.nucleo.cerebro.contrato.ProveedorMemoria`):
+  ``recuperar`` is one Hindsight recall (facts, experiences and consolidated observations, ranked by its own
+  semantic, BM25, graph and temporal arms and reranker); ``registrar_turno`` retains the USER's words of the turn,
+  asynchronously (Hindsight extracts the facts with its own model in the background). Neither ever raises nor
+  waits for the embedded daemon to start: a memory that is not ready degrades to «no memory» for that turn.
+* What is retained: only what the user wrote, after the deterministic privacy gates of
+  :mod:`asistente.nucleo.privacidad` (no credentials, identifiers masked, nothing pasted, no special-category data
+  unless the user asked to remember it). The assistant's answers are never retained, so nothing the assistant said
+  becomes «something you told me», and every fact's source chunk is the user's own words.
+* The user (``/recuerdos``, ``/conversaciones``): list what is remembered with its origin, correct a fact (the
+  correction is retained as the user's words and the old fact is invalidated), forget one (its source message and
+  everything extracted from it are deleted), forget everything (the bank is deleted), pause (nothing retained or
+  recalled; nothing deleted). Each user message is its own Hindsight document, tagged with its conversation.
 """
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Callable, Sequence
-import contextvars
-from datetime import datetime, timedelta
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime
+import hashlib
 import logging
 from pathlib import Path
 import threading
 from typing import Any
+from uuid import uuid4
 
+from asistente.nucleo import privacidad
 from asistente.nucleo.cerebro.contrato import (
     BloqueMemoria,
     MemoriaNula,
     OrigenRecuerdo,
     ProveedorMemoria,
     RecuerdoMemoria,
+    TipoRecuerdo,
     TurnoConversacion,
 )
-from asistente.nucleo.recuerdos import almacen as almacen_mod
-from asistente.nucleo.recuerdos import privacidad, recuperacion, resumen
-from asistente.nucleo.recuerdos.almacen import (
-    TIPOS_GUARDADOS,
-    AlmacenRecuerdos,
-    Conversacion,
-    FilaLote,
-    Mensaje,
-    Recuerdo,
-    Titular,
-    fecha_local,
-    tabla_existe,
+from asistente.nucleo.recuerdos import daemon
+from asistente.nucleo.recuerdos.cliente import (
+    TIPO_OBSERVACION,
+    TIPOS_HECHO,
+    ClienteHindsight,
+    HindsightError,
+    NoEncontradoError,
 )
-from asistente.nucleo.recuerdos.recuperacion import Documento, Incrustador
+from asistente.nucleo.recuerdos.pausa import AlmacenPausa
 from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
-MAX_LIMITE = 30
-MAX_INTENTOS = 3
-MIN_MENSAJE_RECUPERABLE = 15
-MAX_CITA_MENSAJE = 400
+# A message shorter than this (after the gates) carries no fact worth a model call.
+MIN_MENSAJE = 12
+MAX_CITA = 400
+MAX_TEXTO = 600
+ETIQUETA_CONVERSACION = "conversacion:"
+CONTEXTO_MENSAJE = "Mensaje que la persona usuaria escribió a su asistente personal en una conversación."
+CONTEXTO_CORRECCION = "Corrección que la persona usuaria hizo de algo que el asistente recordaba de ella."
+
+TIPO_DE_HINDSIGHT: dict[str, TipoRecuerdo] = {"world": "hecho", "experience": "vivencia", "observation": "observacion"}
+
+PERFIL_BANCO: dict[str, Any] = {
+    "name": "Memoria de conversaciones",
+    "mission": (
+        "Memoria de una persona y su hogar para su asistente personal: su situación, su dinero, su casa, su "
+        "familia, sus planes y cómo prefiere las cosas. Todo en español."
+    ),
+    "retain_mission": (
+        "Extrae solo lo que la persona dice de sí misma, de su hogar y de su vida: datos, situaciones, planes, "
+        "decisiones y preferencias, con fechas y cifras exactas tal como las escribe. No extraigas preguntas "
+        "genéricas sin datos personales ni opiniones del asistente. Escribe los hechos en español."
+    ),
+    "observations_mission": (
+        "Consolida lo que se sabe de la persona: si un dato nuevo sustituye a uno anterior (otro sueldo, otro "
+        "banco, otra casa), deja claro cuál está vigente y desde cuándo."
+    ),
+    "enable_observations": True,
+}
+# Hindsight's own regex scrubber, on top of the gates applied here before anything is sent.
+CONFIG_BANCO: dict[str, Any] = {
+    "memory_defense": {"enabled": True, "rules": [{"on": "sensitive_data", "action": "redact"}]},
+}
 
 
 class CorreccionInvalidaError(ValueError):
-    """The user's correction cannot be stored as written (the message is Spanish, for the user)."""
+    """The correction cannot be stored (nothing left after the privacy gates, or the item is not a fact)."""
 
 
-def _retencion_dias() -> int:
-    return max(1, int(getattr(settings, "MEMORIA_RETENCION_MENSAJES_DIAS", 30)))
+# -- owners --------------------------------------------------------------------------------------------------
 
 
-def _max_recuerdos() -> int:
-    return max(1, int(getattr(settings, "MEMORIA_MAX_RECUERDOS", 200)))
+@dataclass(frozen=True)
+class Titular:
+    """Whose memory: (case, account); ``''`` for an absent part."""
+
+    case_id: str
+    user_id: str
+
+    @classmethod
+    def de(cls, case_id: str | None, user_id: str | None) -> Titular:
+        return cls(case_id or "", user_id or "")
+
+    @property
+    def vacio(self) -> bool:
+        return not self.case_id and not self.user_id
+
+    @property
+    def banco(self) -> str:
+        return banco_de(self.case_id, self.user_id)
 
 
-def _minutos_inactiva() -> int:
-    return max(0, int(getattr(settings, "MEMORIA_RESUMEN_TRAS_MINUTOS", 30)))
+def banco_de(case_id: str | None, user_id: str | None) -> str:
+    """The Hindsight bank of an owner: a hash, so the bank id reveals neither the case nor the account."""
+    huella = hashlib.sha256(f"{case_id or ''}\x1f{user_id or ''}".encode()).hexdigest()[:40]
+    return f"cerebro-{huella}"
+
+
+# -- what the user sees --------------------------------------------------------------------------------------
+
+
+@dataclass
+class Recuerdo:
+    id: str
+    tipo: TipoRecuerdo
+    texto: str
+    conversacion_id: str | None
+    fecha: datetime | None
+    documento_id: str | None
+    corregido: bool = False
+
+
+@dataclass
+class Mensaje:
+    documento_id: str
+    texto: str
+    fecha: datetime | None
+
+
+@dataclass
+class Conversacion:
+    id: str
+    titulo: str
+    creada: datetime | None
+    actualizada: datetime | None
+    mensajes: list[Mensaje] = field(default_factory=list)
+
+
+def _fecha(valor: Any) -> datetime | None:
+    if not isinstance(valor, str) or not valor:
+        return None
+    try:
+        momento = datetime.fromisoformat(valor.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    return momento if momento.tzinfo else momento.replace(tzinfo=UTC)
+
+
+def _dia(valor: Any) -> date | None:
+    momento = _fecha(valor)
+    return momento.date() if momento else None
 
 
 def _recortar(texto: str, maximo: int) -> str:
-    texto = " ".join(texto.split())
-    return texto if len(texto) <= maximo else texto[: maximo - 1].rsplit(" ", 1)[0] + "…"
+    texto = " ".join(str(texto).split())
+    return texto if len(texto) <= maximo else texto[: maximo - 1].rstrip() + "…"
 
 
-# --------------------------------------------------------------------------------------------------------------
-# Providers and embedder (optional)
-# --------------------------------------------------------------------------------------------------------------
-
-_fabrica: list[Callable[[], Any]] = []
-
-
-def configurar_proveedor(fabrica: Callable[[], Any] | None) -> None:
-    """Register (None: remove) the factory of the provider the background summariser uses (default:
-    :func:`proveedor_por_defecto`, which the job uses too)."""
-    _fabrica.clear()
-    if fabrica is not None:
-        _fabrica.append(fabrica)
-
-
-def proveedor_por_defecto() -> Any:
-    """The configured provider, metered (and routed) as purpose ``memoria:resumen``."""
-    from asistente.nucleo.agent.providers import create_provider
-    from asistente.plataforma.ops.consumo import medir
-
-    return medir(create_provider(), resumen.prompts.PROPOSITO)
-
-
-_incrustador: list[Incrustador | None] = []
-_incrustador_lock = threading.Lock()
-
-
-def incrustador_configurado() -> Incrustador | None:
-    """The project's embedder when ``MEMORIA_EMBEDDINGS`` is on (built once; None if it cannot be built)."""
-    if not getattr(settings, "MEMORIA_EMBEDDINGS", False):
+def preparar(texto: str) -> str | None:
+    """The user's own words of a message as the memory may keep them, or None when nothing should be retained."""
+    propias = " ".join(privacidad.quitar_pegado(texto).split())
+    if privacidad.tiene_credencial(propias):
+        # Conservative on purpose: a message that carries a password, PIN or key is not remembered at all.
         return None
-    with _incrustador_lock:
-        if not _incrustador:
-            try:
-                from asistente.conocimiento.llm.embeddings import create_embeddings
-
-                _incrustador.append(create_embeddings())
-            except Exception:
-                logger.warning("The memory's embedder could not be built: lexical ranking only.", exc_info=True)
-                _incrustador.append(None)
-        return _incrustador[0]
+    if privacidad.es_inyeccion(propias):
+        propias = privacidad.neutralizar(propias)
+    limpio = privacidad.limpiar(propias)
+    if len(limpio) < MIN_MENSAJE or not limpio.replace(privacidad.SECRETO, "").strip(" .,;:"):
+        return None
+    if privacidad.categoria_especial(limpio) is not None and not privacidad.pidio_recordar(limpio, [limpio]):
+        return None
+    return limpio
 
 
-# --------------------------------------------------------------------------------------------------------------
-# The service
-# --------------------------------------------------------------------------------------------------------------
+def _conversacion_de(fila: dict[str, Any]) -> str | None:
+    metadatos = fila.get("metadata") or fila.get("document_metadata") or {}
+    if isinstance(metadatos, dict) and metadatos.get("conversacion_id"):
+        return str(metadatos["conversacion_id"])
+    for etiqueta in fila.get("tags") or []:
+        if isinstance(etiqueta, str) and etiqueta.startswith(ETIQUETA_CONVERSACION):
+            return etiqueta[len(ETIQUETA_CONVERSACION) :]
+    return None
+
+
+def _recuerdo(fila: dict[str, Any]) -> Recuerdo | None:
+    tipo = TIPO_DE_HINDSIGHT.get(str(fila.get("fact_type") or fila.get("type") or ""))
+    texto = str(fila.get("text") or "").strip()
+    if tipo is None or not texto:
+        return None
+    return Recuerdo(
+        id=str(fila["id"]),
+        tipo=tipo,
+        texto=_recortar(texto, MAX_TEXTO),
+        conversacion_id=_conversacion_de(fila),
+        fecha=_fecha(fila.get("mentioned_at")) or _fecha(fila.get("date")),
+        documento_id=fila.get("document_id"),
+        corregido=bool((fila.get("metadata") or {}).get("corrige")),
+    )
+
+
+# -- the service ---------------------------------------------------------------------------------------------
 
 
 class ServicioMemoria:
-    """The conversation memory over the cases' SQLite file (implements ``ProveedorMemoria``)."""
+    """The memory of every owner, over one Hindsight server. Thread-safe; one per process (:func:`servicio`)."""
 
     def __init__(
         self,
         db_path: str,
         *,
-        incrustador: Incrustador | None = None,
-        usar_incrustador_configurado: bool = True,
+        fabrica_cliente: Callable[[], ClienteHindsight] | None = None,
+        listo: Callable[[], bool] | None = None,
     ) -> None:
         self.db_path = str(Path(db_path))
-        self._incrustador = incrustador
-        self._configurado = usar_incrustador_configurado and incrustador is None
-        self._fondo_lock = threading.Lock()
-        self._en_curso: set[Titular] = set()
+        self.pausa = AlmacenPausa(self.db_path)
+        self._fabrica = fabrica_cliente or (
+            lambda: ClienteHindsight(daemon.url(), timeout=float(settings.HINDSIGHT_TIMEOUT_S))
+        )
+        self._listo = listo or daemon.listo
+        self._cliente: ClienteHindsight | None = None
+        self._bancos: set[str] = set()
+        self._lock = threading.Lock()
 
-    @property
-    def store(self) -> AlmacenRecuerdos:
-        return almacen_mod.almacen(self.db_path)
+    # -- plumbing ----------------------------------------------------------------------------------------------
 
-    @property
-    def incrustador(self) -> Incrustador | None:
-        return self._incrustador if not self._configurado else incrustador_configurado()
+    def cliente(self) -> ClienteHindsight:
+        """The Hindsight client. Never waits for the embedded daemon: until it is up this raises HindsightError (the
+        API answers 503, a turn is not retained) after asking for it to start in the background."""
+        with self._lock:
+            if self._cliente is not None:
+                return self._cliente
+        if not self._disponible_ya():
+            raise HindsightError("Hindsight todavía no está listo")
+        try:
+            nuevo = self._fabrica()
+        except HindsightError:
+            raise
+        except Exception as exc:
+            raise HindsightError(f"Hindsight no se pudo usar ({type(exc).__name__}: {exc})") from exc
+        with self._lock:
+            if self._cliente is None:
+                self._cliente = nuevo
+            return self._cliente
 
-    # ------------------------------------------------------------------ the brain's interface (never raises)
+    def _asegurar_banco(self, titular: Titular) -> ClienteHindsight:
+        cliente = self.cliente()
+        if titular.banco not in self._bancos:
+            cliente.crear_banco(titular.banco, perfil=PERFIL_BANCO, config=CONFIG_BANCO)
+            with self._lock:
+                self._bancos.add(titular.banco)
+        return cliente
+
+    def _disponible_ya(self) -> bool:
+        """Hindsight answers now; if the embedded daemon is not up yet, start it in the background and say no."""
+        if self._listo():
+            return True
+        daemon.calentar()
+        return False
+
+    # -- the brain (ProveedorMemoria) ----------------------------------------------------------------------------
 
     def recuperar(
         self,
@@ -165,494 +281,370 @@ class ServicioMemoria:
         conversacion_id: str | None = None,
         limite: int = 8,
     ) -> BloqueMemoria:
-        """What the owner's memory holds that is relevant to ``consulta`` (empty, with the reason, otherwise)."""
+        if not settings.MEMORIA_CONVERSACIONES:
+            return BloqueMemoria(vacio_por="desactivada")
         titular = Titular.de(case_id, user_id)
         if titular.vacio:
             return BloqueMemoria(vacio_por="sin_cuenta")
         try:
-            store = self.store
-            if not store.activa(titular):
+            if self.pausa.pausada(case_id, user_id):
                 return BloqueMemoria(vacio_por="desactivada")
-            documentos = self.documentos(titular, excluir=conversacion_id)
-            if not documentos or not (consulta or "").strip():
-                return BloqueMemoria(vacio_por="sin_resultados")
-            vector = None
-            incrustador = self.incrustador
-            if incrustador is not None and any(d.vector is not None for d in documentos):
-                try:
-                    vector = incrustador.embed_query(consulta)
-                except Exception:
-                    logger.warning("Could not embed the memory query; lexical ranking only.", exc_info=True)
-            elegidos = recuperacion.recuperar(
-                documentos,
-                consulta,
-                limite=max(1, min(int(limite), MAX_LIMITE)),
-                hoy=fecha_local(almacen_mod.ahora()),
-                vector_consulta=vector,
+            if not self._disponible_ya():
+                return BloqueMemoria(vacio_por="no_disponible")
+            datos = self.cliente().recordar(
+                titular.banco,
+                consulta[:4000],
+                presupuesto=settings.HINDSIGHT_PRESUPUESTO,
+                max_tokens=2048,
+                momento=datetime.now(UTC),
+                timeout=float(settings.HINDSIGHT_TIMEOUT_S),
             )
-            recuerdos = [
-                _memoria(p.documento).model_copy(update={"relevancia": min(1.0, max(0.0, p.relevancia))})
-                for p in elegidos
-            ]
-            return BloqueMemoria(recuerdos=recuerdos, vacio_por=None if recuerdos else "sin_resultados")
-        except Exception:
-            logger.exception("The conversation memory could not be read; the turn goes on without it.")
+        except NoEncontradoError:
             return BloqueMemoria(vacio_por="sin_resultados")
+        except Exception:
+            logger.exception("conversation memory: recall failed")
+            return BloqueMemoria(vacio_por="no_disponible")
+        recuerdos = _de_recall(datos, excluir=conversacion_id, limite=max(1, min(limite, 30)))
+        return BloqueMemoria(recuerdos=recuerdos, vacio_por=None if recuerdos else "sin_resultados")
 
     def registrar_turno(self, turno: TurnoConversacion) -> None:
-        """Store the turn's question and answer (masked) in its conversation. One write; never raises."""
+        if not settings.MEMORIA_CONVERSACIONES:
+            return
+        titular = Titular.de(turno.case_id, turno.user_id)
+        if titular.vacio:
+            return
         try:
-            titular = Titular.de(turno.case_id, turno.user_id)
-            if titular.vacio:
+            if self.pausa.pausada(turno.case_id, turno.user_id):
                 return
-            store = self.store
-            if not store.activa(titular):
-                return
-            meta: dict[str, Any] = {"especialistas": list(turno.especialistas)}
-            if turno.modo:
-                meta["modo"] = turno.modo
-            if turno.recuerdos_usados:
-                meta["recuerdos_usados"] = list(turno.recuerdos_usados)
-            total = store.registrar_turno(
+            self.sembrar(
                 titular,
-                turno.conversacion_id,
+                texto=turno.pregunta,
+                conversacion_id=turno.conversacion_id,
                 fecha=turno.fecha,
-                pregunta=privacidad.limpiar(turno.pregunta),
-                respuesta=privacidad.limpiar(turno.respuesta),
-                meta=meta,
+                documento_id=f"msg-{turno.conversacion_id}-{turno.fecha.strftime('%Y%m%dT%H%M%S%f')}",
+                asincrono=True,
             )
-            usados = [i for i in turno.recuerdos_usados if i.startswith("r_")]
-            if usados:
-                store.registrar_usos(titular, usados, almacen_mod.ahora())
-            if total == 2 and getattr(settings, "MEMORIA_RESUMEN_EN_SEGUNDO_PLANO", False):
-                self._resumir_en_segundo_plano(titular, excluir=turno.conversacion_id)
         except Exception:
-            logger.exception("A conversation turn could not be stored in the memory; the turn goes on without it.")
+            logger.exception("conversation memory: the turn could not be retained")
 
-    # ------------------------------------------------------------------ retrieval documents
+    def sembrar(
+        self,
+        titular: Titular,
+        *,
+        texto: str,
+        conversacion_id: str,
+        fecha: datetime,
+        documento_id: str,
+        asincrono: bool = False,
+    ) -> bool:
+        """Retain one user message (after the privacy gates) as its own document. False when nothing was kept."""
+        limpio = preparar(texto)
+        if limpio is None:
+            return False
+        self._asegurar_banco(titular).retener(
+            titular.banco,
+            contenido=limpio,
+            documento_id=documento_id,
+            fecha=fecha,
+            contexto=CONTEXTO_MENSAJE,
+            etiquetas=[ETIQUETA_CONVERSACION + conversacion_id],
+            metadatos={"conversacion_id": conversacion_id},
+            asincrono=asincrono,
+        )
+        return True
 
-    def documentos(self, titular: Titular, *, excluir: str | None = None) -> list[Documento]:
-        """Everything retrievable of the owner: active items, summaries of other conversations, and the user's
-        own words in conversations not summarised yet (so the memory works before the summariser runs)."""
-        store = self.store
-        terminos_items, terminos_conv = store.terminos(titular)
-        vectores = store.vectores(titular) if self.incrustador is not None else {}
-        documentos: list[Documento] = []
-        for r in store.recuerdos(titular):
-            fecha = r.origen.fecha
-            if r.corregido:
-                fecha = max(fecha, fecha_local(r.actualizado))
-            documentos.append(
-                Documento(
-                    id=r.id,
-                    tipo=r.tipo,
-                    terminos=terminos_items.get(r.id, "").split(),
-                    fecha=fecha,
-                    conversacion_id=r.origen.conversacion_id,
-                    corregido=r.corregido,
-                    usos=r.usos,
-                    vector=vectores.get(r.id),
-                    extra={"memoria": r.como_memoria()},
-                )
-            )
-        for c in store.conversaciones(titular, limite=1000):
-            if c.id == excluir or not c.resumen or not c.cita:
-                continue
-            documentos.append(
-                Documento(
-                    id=f"conv-{c.id}",
-                    tipo="resumen",
-                    terminos=terminos_conv.get(c.id, "").split(),
-                    fecha=fecha_local(c.actualizada),
-                    conversacion_id=c.id,
-                    vector=vectores.get(f"c:{c.id}"),
-                    es_conversacion=True,
-                    extra={"memoria": _memoria_de_resumen(c)},
-                )
-            )
-        for conversacion_id, mensaje in store.sin_resumir(titular, excluir=excluir):
-            documento = _documento_de_mensaje(conversacion_id, mensaje)
-            if documento is not None:
-                documentos.append(documento)
-        return documentos
+    def olvidar_banco(self, banco: str) -> None:
+        """Forget that a bank was set up (after deleting it elsewhere), so the next write creates it again."""
+        with self._lock:
+            self._bancos.discard(banco)
 
-    # ------------------------------------------------------------------ the user's operations
+    # -- the user ----------------------------------------------------------------------------------------------
 
     def activa(self, titular: Titular) -> bool:
-        return self.store.activa(titular)
+        return not self.pausa.pausada(titular.case_id, titular.user_id)
 
     def fijar_activa(self, titular: Titular, activa: bool) -> None:
-        """Pause or resume the memory. Pausing stores, summarises and retrieves nothing; it deletes nothing."""
-        self.store.fijar_activa(titular, activa, almacen_mod.ahora())
+        self.pausa.fijar(titular.case_id, titular.user_id, pausada=not activa)
 
-    def listar(self, titular: Titular) -> tuple[list[Recuerdo], list[Recuerdo]]:
-        """(active items, earlier versions they replaced), newest first."""
-        store = self.store
-        return store.recuerdos(titular), store.recuerdos(titular, estados=("sustituido",))
+    def listar(self, titular: Titular) -> list[Recuerdo]:
+        """What is remembered about the owner: the facts and experiences, newest first (observations are derived
+        from them and change with them, so they are not listed one by one)."""
+        cliente = self.cliente()
+        filas = [f for tipo in TIPOS_HECHO for f in cliente.listar_memorias(titular.banco, tipo=tipo)]
+        recuerdos = [r for r in map(_recuerdo, filas) if r is not None]
+        return sorted(recuerdos, key=lambda r: r.fecha or datetime.min.replace(tzinfo=UTC), reverse=True)
 
-    def corregir(self, titular: Titular, recuerdo_id: str, *, texto: str, tipo: str | None = None) -> Recuerdo | None:
-        """The user rewrites an item: their wording wins (``corregido``). None when it is not theirs / active."""
-        actual = self.store.recuerdo(titular, recuerdo_id)
-        if actual is None or actual.estado != "activo":
+    def corregir(self, titular: Titular, recuerdo_id: str, *, texto: str) -> list[Recuerdo] | None:
+        """Retain the user's correction as their own words and invalidate the fact it corrects. Returns the facts
+        Hindsight extracted from the correction; None when the item does not exist in this owner's bank."""
+        cliente = self.cliente()
+        fila = cliente.memoria(titular.banco, recuerdo_id)
+        if fila is None:
             return None
-        limpio = " ".join((texto or "").split())
-        if not limpio:
-            raise CorreccionInvalidaError("Escribe cómo quieres que lo recuerde.")
-        if len(limpio) > 600:
-            raise CorreccionInvalidaError("Como mucho 600 caracteres.")
-        if privacidad.tiene_credencial(limpio):
-            raise CorreccionInvalidaError("No guardo contraseñas, PIN ni claves: quítalo del texto.")
-        if tipo is not None and tipo not in TIPOS_GUARDADOS:
-            raise CorreccionInvalidaError("El tipo debe ser «dato», «preferencia» o «contexto».")
-        nuevo = actual.model_copy(
-            update={
-                "texto": privacidad.limpiar(limpio),
-                "tipo": tipo or actual.tipo,
-                "corregido": True,
-                "actualizado": almacen_mod.ahora(),
-            }
+        if str(fila.get("fact_type") or "") == TIPO_OBSERVACION:
+            raise CorreccionInvalidaError("Eso es una conclusión de la memoria, no algo que dijeras: corrige el dato.")
+        limpio = preparar(texto)
+        if limpio is None:
+            raise CorreccionInvalidaError("La corrección está vacía o solo contenía datos que no se guardan.")
+        documento = f"corr-{uuid4().hex}"
+        conversacion = _conversacion_de(fila)
+        etiquetas = [ETIQUETA_CONVERSACION + conversacion] if conversacion else []
+        metadatos = {"corrige": recuerdo_id, **({"conversacion_id": conversacion} if conversacion else {})}
+        cliente.retener(
+            titular.banco,
+            contenido=limpio,
+            documento_id=documento,
+            fecha=datetime.now(UTC),
+            contexto=CONTEXTO_CORRECCION,
+            etiquetas=etiquetas,
+            metadatos=metadatos,
+            asincrono=False,
         )
-        vectores = resumen._vectores(self.incrustador, {nuevo.id: nuevo.texto})
-        self.store.guardar(titular, nuevo, vectores=vectores)
-        return nuevo
+        cliente.invalidar(titular.banco, recuerdo_id, motivo="corregido por la persona usuaria")
+        nuevos = [r for r in map(_recuerdo, cliente.listar_memorias(titular.banco, documento_id=documento)) if r]
+        for r in nuevos:
+            r.corregido = True
+        return nuevos
 
     def olvidar(self, titular: Titular, recuerdo_id: str) -> bool:
-        """Forget one item (an active one takes its earlier versions with it). False when it is not theirs."""
-        store = self.store
-        objetivo = store.recuerdo(titular, recuerdo_id)
-        if objetivo is None:
+        """Forget an item: delete the message it was extracted from, with everything Hindsight learnt from it."""
+        cliente = self.cliente()
+        fila = cliente.memoria(titular.banco, recuerdo_id)
+        if fila is None or str(fila.get("fact_type") or "") == TIPO_OBSERVACION:
             return False
-        ids = {objetivo.id}
-        if objetivo.estado == "activo":
-            historia = store.recuerdos(titular, estados=("sustituido",))
-            cambiado = True
-            while cambiado:
-                cambiado = False
-                for r in historia:
-                    if r.id not in ids and r.sustituido_por in ids:
-                        ids.add(r.id)
-                        cambiado = True
-        return store.olvidar(titular, sorted(ids)) > 0
+        documento = fila.get("document_id")
+        if documento:
+            cliente.borrar_documento(titular.banco, str(documento))
+        else:
+            cliente.invalidar(titular.banco, recuerdo_id, motivo="olvidado por la persona usuaria")
+        return True
 
     def olvidar_todo(self, titular: Titular) -> dict[str, int]:
-        """Every item, conversation and message of the owner (the switch stays as the user left it)."""
-        return self.store.borrar_titular(titular)
+        cliente = self.cliente()
+        recuerdos = len(self.listar(titular))
+        conversaciones = len(self.conversaciones(titular))
+        cliente.borrar_banco(titular.banco)
+        with self._lock:
+            self._bancos.discard(titular.banco)
+        return {"recuerdos": recuerdos, "conversaciones": conversaciones}
 
-    def conversaciones(self, titular: Titular) -> list[tuple[Conversacion, int]]:
-        """The owner's conversations with how many messages are still retained."""
-        store = self.store
-        retenidos = store.mensajes_retenidos(titular)
-        return [(c, retenidos.get(c.id, 0)) for c in store.conversaciones(titular)]
+    def conversaciones(self, titular: Titular) -> list[Conversacion]:
+        """The owner's conversations, rebuilt from the retained messages (one Hindsight document each)."""
+        por_id: dict[str, Conversacion] = {}
+        for doc in self.cliente().listar_documentos(titular.banco):
+            conversacion_id = _conversacion_de(doc)
+            if not conversacion_id:
+                continue
+            creado = _fecha(doc.get("created_at"))
+            c = por_id.setdefault(conversacion_id, Conversacion(conversacion_id, "", creado, creado))
+            c.mensajes.append(Mensaje(str(doc["id"]), "", creado))
+            if creado and (c.creada is None or creado < c.creada):
+                c.creada = creado
+            if creado and (c.actualizada is None or creado > c.actualizada):
+                c.actualizada = creado
+        return sorted(por_id.values(), key=lambda c: c.actualizada or datetime.min.replace(tzinfo=UTC), reverse=True)
 
-    def conversacion(
-        self, titular: Titular, conversacion_id: str
-    ) -> tuple[Conversacion, list[Mensaje], list[Recuerdo]] | None:
-        """A conversation of the owner, its retained messages and the items learnt from it."""
-        store = self.store
-        conversacion = store.conversacion(titular, conversacion_id)
-        if conversacion is None:
+    def conversacion(self, titular: Titular, conversacion_id: str) -> tuple[Conversacion, list[Recuerdo]] | None:
+        """One conversation with the user's retained messages and what was learnt from them."""
+        cliente = self.cliente()
+        docs = cliente.listar_documentos(titular.banco, etiquetas=[ETIQUETA_CONVERSACION + conversacion_id])
+        if not docs:
             return None
-        derivados = [
-            r
-            for r in store.recuerdos(titular, estados=("activo", "sustituido"))
-            if any(f.conversacion_id == conversacion_id for f in r.fuentes)
-        ]
-        return conversacion, store.mensajes(titular, conversacion_id), derivados
+        mensajes: list[Mensaje] = []
+        recuerdos: list[Recuerdo] = []
+        for doc in docs:
+            detalle = cliente.documento(titular.banco, str(doc["id"])) or {}
+            mensajes.append(
+                Mensaje(str(doc["id"]), str(detalle.get("original_text") or ""), _fecha(doc.get("created_at")))
+            )
+            for fila in cliente.listar_memorias(titular.banco, documento_id=str(doc["id"])):
+                r = _recuerdo(fila)
+                if r is not None and r.tipo != "observacion":
+                    recuerdos.append(r)
+        mensajes.sort(key=lambda m: m.fecha or datetime.min.replace(tzinfo=UTC))
+        primera = next((m.texto for m in mensajes if m.texto), "")
+        conversacion = Conversacion(
+            id=conversacion_id,
+            titulo=_recortar(primera, 80) or "Conversación",
+            creada=mensajes[0].fecha if mensajes else None,
+            actualizada=mensajes[-1].fecha if mensajes else None,
+            mensajes=mensajes,
+        )
+        return conversacion, recuerdos
 
     def borrar_conversacion(self, titular: Titular, conversacion_id: str) -> bool:
-        return self.store.borrar_conversacion(titular, conversacion_id)
+        cliente = self.cliente()
+        docs = cliente.listar_documentos(titular.banco, etiquetas=[ETIQUETA_CONVERSACION + conversacion_id])
+        for doc in docs:
+            cliente.borrar_documento(titular.banco, str(doc["id"]))
+        return bool(docs)
 
-    # ------------------------------------------------------------------ jobs
+    def titulos(self, titular: Titular, conversaciones: Sequence[Conversacion]) -> dict[str, str]:
+        """A title per conversation: the start of its first message (one document read each)."""
+        cliente = self.cliente()
+        salida: dict[str, str] = {}
+        for c in conversaciones:
+            primero = min(c.mensajes, key=lambda m: m.fecha or datetime.min.replace(tzinfo=UTC), default=None)
+            detalle = cliente.documento(titular.banco, primero.documento_id) if primero else None
+            salida[c.id] = _recortar(str((detalle or {}).get("original_text") or ""), 80) or "Conversación"
+        return salida
 
-    def resumir_pendientes(
-        self,
-        proveedor: Any | None,
-        *,
-        lotes: bool | None = None,
-        limite: int = 50,
-        titular: Titular | None = None,
-        excluir: str | None = None,
-    ) -> dict[str, int]:
-        """Summarise the conversations idle for ``MEMORIA_RESUMEN_TRAS_MINUTOS`` (of every owner, or of
-        ``titular``). With a batch-capable provider (and ``MEMORIA_RESUMEN_LOTES``) finished batches are
-        collected first and the new ones submitted as one batch; otherwise one call per conversation."""
-        informe: Counter[str] = Counter()
-        if proveedor is None:
-            informe["sin_proveedor"] += 1
-            return dict(informe)
-        store = self.store
-        momento = almacen_mod.ahora()
-        quiere_lotes = bool(getattr(settings, "MEMORIA_RESUMEN_LOTES", True)) if lotes is None else lotes
-        con_lotes = quiere_lotes and resumen.admite_lotes(proveedor)
-        if resumen.admite_lotes(proveedor) and titular is None:
-            informe.update(self._recoger(proveedor, momento))
 
-        hasta = momento - timedelta(minutes=_minutos_inactiva())
-        entradas: list[resumen.EntradaResumen] = []
-        for dueno, conversacion in store.pendientes(hasta=hasta, limite=max(1, limite) + 1, titular=titular):
-            if len(entradas) >= limite:
-                break
-            if conversacion.id == excluir:
-                continue
-            if not store.activa(dueno):
-                informe["pausada"] += 1
-                continue
-            entrada = resumen.preparar(store, dueno, conversacion)
-            if not entrada.del_usuario:
-                store.fijar_estado(dueno, conversacion.id, "sin_resumen")
-                informe["sin_mensajes"] += 1
-                continue
-            entradas.append(entrada)
-
-        if con_lotes:
-            enviables = [e for e in entradas if _hay_presupuesto(proveedor, e.titular)]
-            if len(enviables) < len(entradas):
-                informe["presupuesto"] += len(entradas) - len(enviables)
-            try:
-                if resumen.enviar_en_lote(store, proveedor, enviables, momento=momento):
-                    informe["enviadas_en_lote"] += len(enviables)
-            except Exception:
-                logger.exception("The memory batch could not be submitted; it will be retried on the next run.")
-                informe["error_lote"] += 1
-            return dict(informe)
-
-        for entrada in entradas:
-            informe.update(self._resumir_una(proveedor, entrada, momento))
-        return dict(informe)
-
-    def _resumir_una(self, proveedor: Any, entrada: resumen.EntradaResumen, momento: datetime) -> Counter[str]:
-        from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo
-
-        informe: Counter[str] = Counter()
-        titular = entrada.titular
-        # Each conversation is its own «question» for the usage log and the per-question cap.
-        with contexto_consumo(user_id=titular.user_id or None, case_id=titular.case_id or None):
-            try:
-                resultado = resumen.resumir(proveedor, entrada)
-            except PresupuestoAgotadoError:
-                informe["presupuesto"] += 1
-                return informe
-            except Exception:
-                logger.warning("A conversation could not be summarised (attempt recorded).", exc_info=True)
-                self.store.fallo_de_resumen(titular, entrada.conversacion.id, max_intentos=MAX_INTENTOS)
-                informe["error"] += 1
-                return informe
-        informe.update(
-            resumen.aplicar(
-                self.store,
-                entrada,
-                resultado,
-                momento=momento,
-                max_recuerdos=_max_recuerdos(),
-                incrustador=self.incrustador,
+def _de_recall(datos: dict[str, Any], *, excluir: str | None, limite: int) -> list[RecuerdoMemoria]:
+    """Hindsight's ranked results as the brain's items: the quote is the source chunk (the user's words)."""
+    trozos = datos.get("chunks") or {}
+    filas = [f for f in datos.get("results") or [] if isinstance(f, dict)]
+    salida: list[RecuerdoMemoria] = []
+    for fila in filas:
+        recuerdo = _recuerdo(fila)
+        if recuerdo is None or (excluir and recuerdo.conversacion_id == excluir):
+            continue
+        cita = None
+        if recuerdo.tipo != "observacion":
+            trozo = trozos.get(str(fila.get("chunk_id") or "")) or {}
+            cita = _recortar(str(trozo.get("text") or ""), MAX_CITA) or None
+        salida.append(
+            RecuerdoMemoria(
+                id=recuerdo.id,
+                tipo=recuerdo.tipo,
+                texto=recuerdo.texto,
+                origen=OrigenRecuerdo(
+                    conversacion_id=recuerdo.conversacion_id,
+                    fecha=recuerdo.fecha.date() if recuerdo.fecha else None,
+                    cita=cita,
+                ),
+                relevancia=round(1.0 - len(salida) / max(len(filas), 1), 3),
             )
         )
-        informe["resumidas"] += 1
-        return informe
-
-    def _recoger(self, proveedor: Any, momento: datetime) -> Counter[str]:
-        store = self.store
-
-        def procesar(fila: FilaLote, datos: dict[str, Any]) -> bool:
-            conversacion = store.conversacion(fila.titular, fila.conversacion_id)
-            if conversacion is None or conversacion.mensajes != fila.mensajes or not store.activa(fila.titular):
-                return False  # deleted, continued or paused since it was sent: summarised again later (or never)
-            entrada = resumen.preparar(store, fila.titular, conversacion)
-            if entrada.cubiertos != fila.mensajes:
-                return False
-            resumen.aplicar(
-                store,
-                entrada,
-                resumen.puerta(datos, entrada),
-                momento=momento,
-                max_recuerdos=_max_recuerdos(),
-                incrustador=self.incrustador,
-            )
-            return True
-
-        def registrar_uso(fila: FilaLote, uso: Any) -> None:
-            registrar = getattr(proveedor, "registrar_externo", None)
-            if not callable(registrar):
-                return
-            from dataclasses import replace
-
-            from asistente.plataforma.ops.consumo import contexto_consumo
-
-            ruta = getattr(proveedor, "ruta", None)
-            with contexto_consumo(user_id=fila.titular.user_id or None, case_id=fila.titular.case_id or None):
-                try:
-                    registrar(
-                        replace(
-                            uso,
-                            purpose=resumen.prompts.PROPOSITO,
-                            tier=str(getattr(ruta, "nivel", "") or ""),
-                            batch=True,
-                        )
-                    )
-                except Exception:
-                    logger.warning("Could not record the usage of a memory batch result.", exc_info=True)
-
-        return resumen.recoger_lotes(
-            store, proveedor, momento=momento, procesar=procesar, registrar_uso=registrar_uso, max_intentos=MAX_INTENTOS
-        )
-
-    def purgar_caducados(self) -> dict[str, int]:
-        """Retention: raw messages older than ``MEMORIA_RETENCION_MENSAJES_DIAS`` go (summaries and items stay)."""
-        return self.store.purgar_mensajes(antes_de=almacen_mod.ahora() - timedelta(days=_retencion_dias()))
-
-    def _resumir_en_segundo_plano(self, titular: Titular, *, excluir: str) -> None:
-        """A user started a new conversation: summarise their idle ones now, off the request path."""
-        with self._fondo_lock:
-            if titular in self._en_curso:
-                return
-            self._en_curso.add(titular)
-        fabrica = _fabrica[0] if _fabrica else proveedor_por_defecto
-        contexto = contextvars.copy_context()
-
-        def trabajo() -> None:
-            try:
-                self.resumir_pendientes(fabrica(), lotes=False, limite=3, titular=titular, excluir=excluir)
-            except Exception:
-                logger.exception("Background summarising of the memory failed.")
-            finally:
-                with self._fondo_lock:
-                    self._en_curso.discard(titular)
-
-        threading.Thread(target=contexto.run, args=(trabajo,), name="memoria-resumen", daemon=True).start()
+        if len(salida) >= limite:
+            break
+    return salida
 
 
-def _hay_presupuesto(proveedor: Any, titular: Titular) -> bool:
-    comprobar = getattr(proveedor, "comprobar_presupuesto", None)
-    if not callable(comprobar):
-        return True
-    from asistente.plataforma.ops.consumo import PresupuestoAgotadoError, contexto_consumo
-
-    with contexto_consumo(user_id=titular.user_id or None, case_id=titular.case_id or None):
-        try:
-            comprobar()
-        except PresupuestoAgotadoError:
-            return False
-    return True
-
-
-def _memoria(documento: Documento) -> RecuerdoMemoria:
-    item = documento.extra["memoria"]
-    assert isinstance(item, RecuerdoMemoria)
-    return item
-
-
-def _memoria_de_resumen(c: Conversacion) -> RecuerdoMemoria:
-    fecha = fecha_local(c.actualizada)
-    texto = _recortar(f"Conversación del {fecha.strftime('%d/%m/%Y')} «{c.titulo}»: {c.resumen or ''}", 600)
-    return RecuerdoMemoria(
-        id=f"conv-{c.id}",
-        tipo="resumen",
-        texto=texto,
-        origen=OrigenRecuerdo(conversacion_id=c.id, fecha=fecha, cita=_recortar(c.cita or c.titulo, 400)),
-    )
-
-
-def _documento_de_mensaje(conversacion_id: str, mensaje: Mensaje) -> Documento | None:
-    """A user message of a conversation not summarised yet, as a retrievable item — through the same privacy
-    rules as a summary (own words only, no injection bait, no special-category data)."""
-    propias = " ".join(privacidad.quitar_pegado(mensaje.texto).split())
-    if len(propias) < MIN_MENSAJE_RECUPERABLE or privacidad.es_inyeccion(propias):
-        return None
-    if privacidad.categoria_especial(propias) is not None or privacidad.SECRETO in propias:
-        return None
-    cita = _recortar(propias, MAX_CITA_MENSAJE)
-    fecha = fecha_local(mensaje.fecha)
-    item = RecuerdoMemoria(
-        id=f"msg-{conversacion_id}-{mensaje.n}",
-        tipo="contexto",
-        texto=_recortar(
-            f"En una conversación del {fecha.strftime('%d/%m/%Y')} (aún sin resumir) dijiste: «{cita}»", 600
-        ),
-        origen=OrigenRecuerdo(conversacion_id=conversacion_id, fecha=fecha, cita=cita),
-    )
-    return Documento(
-        id=item.id,
-        tipo="contexto",
-        terminos=recuperacion.analizar(propias),
-        fecha=fecha,
-        conversacion_id=conversacion_id,
-        es_conversacion=True,
-        extra={"memoria": item},
-    )
-
-
-# --------------------------------------------------------------------------------------------------------------
-# Module-level entry points
-# --------------------------------------------------------------------------------------------------------------
+# -- process-wide ----------------------------------------------------------------------------------------------
 
 _servicios: dict[str, ServicioMemoria] = {}
 _servicios_lock = threading.Lock()
+# Where the process-wide services reach Hindsight: None = the configured server or the embedded daemon. Tests install
+# an in-memory fake here (``configurar_hindsight``).
+_fabrica_global: Callable[[], ClienteHindsight] | None = None
+_listo_global: Callable[[], bool] | None = None
+
+
+def configurar_hindsight(
+    fabrica: Callable[[], ClienteHindsight] | None, *, listo: Callable[[], bool] | None = None
+) -> None:
+    """Make every process-wide service use ``fabrica`` for its Hindsight client (None: back to the default)."""
+    global _fabrica_global, _listo_global
+    with _servicios_lock:
+        _fabrica_global = fabrica
+        _listo_global = listo
+        _servicios.clear()
 
 
 def servicio(db_path: str | None = None) -> ServicioMemoria:
     """The process-wide service for ``db_path`` (default: the cases' database), whatever the switch says."""
     ruta = str(Path(db_path or settings.DECISION_STATE_DB_PATH))
     with _servicios_lock:
-        actual = _servicios.get(ruta)
-        if actual is None:
-            actual = _servicios[ruta] = ServicioMemoria(ruta)
-        return actual
+        if ruta not in _servicios:
+            _servicios[ruta] = ServicioMemoria(ruta, fabrica_cliente=_fabrica_global, listo=_listo_global)
+        return _servicios[ruta]
 
 
 def servicio_memoria(db_path: str | None = None) -> ProveedorMemoria:
-    """THE interface of the brain: the conversation memory, or :class:`MemoriaNula` when it is switched off."""
-    if not getattr(settings, "MEMORIA_CONVERSACIONES", True):
+    """What the brain gets: the Hindsight memory, or :class:`MemoriaNula` with ``MEMORIA_CONVERSACIONES`` off."""
+    if not settings.MEMORIA_CONVERSACIONES:
         return MemoriaNula()
+    if _fabrica_global is None:
+        daemon.calentar()
     return servicio(db_path)
 
 
+def calentar_memoria() -> None:
+    """Start the embedded daemon in the background (the API's start-up). Nothing with a test client installed."""
+    if _fabrica_global is None:
+        daemon.calentar()
+
+
 def olvidar_servicios() -> None:
-    """Forget the cached services and stores (tests that recreate their database files)."""
+    """Drop the process-wide services (tests)."""
     with _servicios_lock:
         _servicios.clear()
-    almacen_mod.olvidar_almacenes()
 
 
 def exportar_recuerdos(db_path: str, *, case_id: str | None, user_id: str | None) -> dict[str, Any]:
-    """The account export's entry: a case's memory (every owner key stored under the case, which is the
-    user's), or the user's memory without a case. Never creates the tables."""
-    vacio: dict[str, Any] = {"memoria_activa": True, "conversaciones": [], "recuerdos": []}
-    if not tabla_existe(db_path):
-        return vacio
-    store = almacen_mod.almacen(db_path)
-    titulares: Sequence[Titular]
-    if case_id:
-        titulares = store.titulares_de_caso(case_id) or [Titular.de(case_id, user_id)]
-    else:
-        titulares = [Titular.de(None, user_id)]
-    salida = dict(vacio, conversaciones=[], recuerdos=[])
-    salida["memoria_activa"] = store.activa(Titular.de(case_id, user_id))
-    for titular in titulares:
-        if titular.vacio:
-            continue
-        datos = store.exportar(titular)
-        salida["conversaciones"].extend(datos["conversaciones"])
-        salida["recuerdos"].extend(datos["recuerdos"])
+    """Everything the memory holds about one owner, for the data export (``GET /me/export``): the retained messages,
+    the facts and the observations Hindsight consolidated. If Hindsight cannot be reached the rest of the export still
+    goes out, and this part says so instead of pretending to be empty."""
+    titular = Titular.de(case_id, user_id)
+    s = servicio(db_path)
+    salida: dict[str, Any] = {"motor": "hindsight", "pausada": not s.activa(titular)}
+    try:
+        conversaciones = []
+        for c in s.conversaciones(titular):
+            detalle = s.conversacion(titular, c.id)
+            if detalle is not None:
+                conv, _ = detalle
+                conversaciones.append(
+                    {
+                        "id": conv.id,
+                        "mensajes": [
+                            {"texto": m.texto, "fecha": m.fecha.isoformat() if m.fecha else None} for m in conv.mensajes
+                        ],
+                    }
+                )
+        observaciones = [
+            r for r in map(_recuerdo, s.cliente().listar_memorias(titular.banco, tipo=TIPO_OBSERVACION)) if r
+        ]
+        salida["recuerdos"] = [
+            {
+                "id": r.id,
+                "tipo": r.tipo,
+                "texto": r.texto,
+                "conversacion_id": r.conversacion_id,
+                "fecha": r.fecha.isoformat() if r.fecha else None,
+            }
+            for r in [*s.listar(titular), *observaciones]
+        ]
+        salida["conversaciones"] = conversaciones
+    except HindsightError:
+        logger.exception("conversation memory: export failed")
+        salida["error"] = (
+            "La memoria no respondía al exportar: vuelve a pedir la exportación en unos minutos para incluirla."
+        )
     return salida
 
 
 def borrar_de_usuario(db_path: str, *, user_id: str, case_ids: Sequence[str]) -> int:
-    """Account erasure: the user's memory and their cases' (the triggers would do it too; this also
-    checkpoints the WAL so no erased word is left in it). Never creates the tables."""
-    if not tabla_existe(db_path):
-        return 0
-    return almacen_mod.almacen(db_path).borrar_de_usuario(user_id, list(case_ids))
+    """Delete every bank of an account: the one outside any case and one per case (how many were deleted; deleting
+    a bank that never existed is harmless). Raises if Hindsight cannot be reached, so the account erasure stops before
+    the account goes and can be asked for again."""
+    s = servicio(db_path)
+    cliente = s.cliente()
+    bancos = [banco_de(case_id, user_id) for case_id in [None, *case_ids]]
+    for banco in bancos:
+        cliente.borrar_banco(banco)
+        s.olvidar_banco(banco)
+    s.pausa.borrar_de_usuario(user_id)
+    return len(bancos)
 
 
 __all__ = [
+    "CONFIG_BANCO",
+    "PERFIL_BANCO",
+    "Conversacion",
     "CorreccionInvalidaError",
+    "Mensaje",
+    "Recuerdo",
     "ServicioMemoria",
+    "Titular",
+    "banco_de",
     "borrar_de_usuario",
-    "configurar_proveedor",
+    "calentar_memoria",
+    "configurar_hindsight",
     "exportar_recuerdos",
-    "incrustador_configurado",
     "olvidar_servicios",
-    "proveedor_por_defecto",
+    "preparar",
     "servicio",
     "servicio_memoria",
 ]

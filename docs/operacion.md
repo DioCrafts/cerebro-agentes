@@ -922,7 +922,7 @@ en una tabla declarativa (`asistente/nucleo/agent/enrutado.py`, `TABLA`):
 
 | Nivel | Propósitos |
 |---|---|
-| `pequeno` (clasificar, enrutar, extraer, redactar por lotes) | `equipo:planificador`, `cerebro:intencion`, `cerebro:repaso`, `memoria:resumen`, `consejo:expediente`, `hechos`, `ayudas*`, `correo:*`, `investigacion:planificar` |
+| `pequeno` (clasificar, enrutar, extraer, redactar por lotes) | `equipo:planificador`, `cerebro:intencion`, `cerebro:repaso`, `consejo:expediente`, `hechos`, `ayudas*`, `correo:*`, `investigacion:planificar` |
 | `mediano` (especialistas, lectores) | `especialista:*`, `consejo:miembro:*`, `equipo:investigador`, `documentos`, `recodificacion`, `formatos` |
 | `grande` (razonar, criticar, revisar) | `cerebro`, `consejo:presidente`, `agente`, `verificador`, `equipo:critico`, `recodificacion-revisor`, `formatos-revisor`, `evaluacion-juez`, y cualquier propósito que no esté en la tabla |
 
@@ -1202,7 +1202,9 @@ haber cambiado un parámetro leído del BOE), pero conviene mirar por qué (`--e
 
 Los casos del cerebro del hogar declaran `requiere` (`cerebro`, `recuerdos`, `repaso`): no tienen guion, así que
 `run --reproduccion` los **omite** con el motivo (no cuentan ni como aprobados ni como fallos) y se evalúan con
-modelo. Un caso cuyo código no está instalado también se omite con el motivo. `validar` dice cuántos hay de cada uno.
+modelo. Los que piden `recuerdos` (`memoria-real-*`) retienen sus datos en bancos reales de Hindsight, así que
+necesitan Hindsight en marcha y su modelo ([cerebro/memoria.md](cerebro/memoria.md)).
+Un caso cuyo código no está instalado también se omite con el motivo. `validar` dice cuántos hay de cada uno.
 
 ### Con modelo
 
@@ -1215,8 +1217,8 @@ uv run python -m asistente.plataforma.cli.evaluacion promote --config candidata.
 
 - Una **variante** es un JSON: `{"id": "breve", "prompts": {"agente": "agente@breve"}, "modelo": "…"}`; el texto
   de `agente@breve` va en `prompts/agente@breve.txt` junto al fichero o en `textos`. Puede cambiar cualquier *prompt*
-  registrado: `agente`, `modulos`, `especialista`, `cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso` y
-  `memoria_resumen` (los que son plantillas deben conservar sus campos, como `{especialistas}`).
+  registrado: `agente`, `modulos`, `especialista`, `cerebro`, `cerebro_intencion`, `cerebro_sintesis` y `repaso`
+  (los que son plantillas deben conservar sus campos, como `{especialistas}`).
 - El agente evaluado se mide con los MISMOS propósitos que en producción (`agente`, `verificador`,
   `especialista:<clave>`, `cerebro`, `cerebro:intencion`…), así que la tabla de enrutado elige el mismo modelo que el
   asistente desplegado; el juez usa el propósito `evaluacion-juez` y el modelo configurado (el mismo para base y
@@ -1258,8 +1260,8 @@ avisan de que hay que volver a evaluarla. Para volver a la de siempre, borra ese
 ### Cambiar un *prompt*
 
 El registro `asistente/nucleo/evaluacion/prompts/registro.json` guarda la huella SHA-256 de cada *prompt* integrado —
-los de `asistente/nucleo/agent/prompts.py` y los del cerebro (`cerebro/prompts.py`), el repaso (`repaso/prompts.py`) y
-la memoria (`recuerdos/prompts.py`)—; la prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el
+los de `asistente/nucleo/agent/prompts.py` y los del cerebro (`cerebro/prompts.py`) y el repaso
+(`repaso/prompts.py`)—; la prueba `tests/evaluacion/test_variantes.py` falla mientras el registro y el
 código no coinciden, también con un *prompt* nuevo sin registrar. Al cambiar un *prompt*:
 
 1. Evalúa el texto nuevo como candidata (`promote` con una variante que lo lleve en un fichero de *prompts*).

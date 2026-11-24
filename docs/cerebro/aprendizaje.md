@@ -30,7 +30,7 @@ flowchart LR
 | `ejecutores.py` | The stable adapters to the brain's packages (`requiere`: `cerebro`, `recuerdos`, `repaso`), resolved lazily; a case whose code is missing is skipped with the reason. |
 | `estadistica.py`, `gate.py` | Paired bootstrap, exact McNemar, the promotion rules and the auditable decision report. |
 | `reproduccion.py` | Script replays; `guion_de_captura` turns a captured run into a script (the accepted case's standing negative control). |
-| `variantes.py` | Prompt roles, including those whose text lives in other packages (`cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso`, `memoria_resumen`, and the council's `consejo_miembro`, `consejo_critica`, `consejo_revision`, `consejo_presidente`, `consejo_expediente`). |
+| `variantes.py` | Prompt roles, including those whose text lives in other packages (`cerebro`, `cerebro_intencion`, `cerebro_sintesis`, `repaso`, and the council's `consejo_miembro`, `consejo_critica`, `consejo_revision`, `consejo_presidente`, `consejo_expediente`). |
 | `consejo_eval.py`, `sesgos.py`, `sesgos_falsos.py`, `calibracion.py`, `modelos_consejo.py` | The household council's evaluation: `decision` and `sesgo` cases (`requiere: ["consejo"]`), the bias harness, calibration and «¿Merece la pena el consejo?» — see [../consejo/evaluacion.md](../consejo/evaluacion.md). |
 
 ## Where candidates come from
@@ -163,8 +163,10 @@ the replay commands without user data, point them at the synthetic real-shaped c
 * The weekly pass: `asistente.nucleo.repaso.evaluacion.ejecutar(entrada: dict, *, proveedor) -> dict` with
   `{"texto", "afirmaciones": [{"texto", "senales": [ids]}], "propuestas": [{"texto", "senal": id | None}]}` — until it
   exists the `repaso` cases are skipped with that reason.
-* The memory: `recuerdos.servicio.ServicioMemoria` and `recuerdos.almacen.{Recuerdo, Titular}` (the `recuerdos` cases
-  seed a throw-away store, each item under its own user and case).
+* The memory: `recuerdos.servicio.ServicioMemoria` and `recuerdos.servicio.Titular`. The `recuerdos` cases
+  (`memoria-real-*`) empty the banks they use, then retain each item as the user's own words (its quote, else its
+  text) in the Hindsight bank of its own user and case, so another user's items really are in another bank. They need
+  Hindsight running and its model ([memoria.md](memoria.md)).
 * Prompts read through `variantes.prompt_activo("<rol>")` (it raises `RolNoDisponibleError`, a `LookupError`, only if the
   package itself is missing); new or edited prompts are registered with `prompts sincronizar --motivo "…"` (or
   `prompts registrar --informe`), until then `tests/evaluacion/test_variantes.py` fails on purpose.

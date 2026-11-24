@@ -28,7 +28,7 @@ was (the legacy mode, still tested). Decision record: [ADR 0003](../adr/0003-cer
 
 ```mermaid
 flowchart TD
-    Q[Pregunta del usuario + historial + expediente] --> M[Memoria de conversaciones<br/>recuperar - sin modelo]
+    Q[Pregunta del usuario + historial + expediente] --> M[Memoria de conversaciones<br/>recuperar en Hindsight - sin LLM]
     M --> I{Entendimiento<br/>reglas}
     I -- seguras --> P[Intencion]
     I -- dudosas --> IM[Modelo pequeño<br/>cerebro:intencion - 1 llamada]
@@ -54,8 +54,10 @@ flowchart TD
 ```
 
 1. **Memory.** `ProveedorMemoria.recuperar(case_id, user_id, consulta, conversacion_id, limite)` (the conversation
-   memory, `asistente.nucleo.recuerdos`; `MemoriaNula` when it is off or missing). No model call; it never raises.
-   Its block reaches the brain's prompt and the tax specialist's as DATA.
+   memory, `asistente.nucleo.recuerdos` on Hindsight; `MemoriaNula` when it is off or missing). One recall request
+   to Hindsight, which ranks with its local embedder and reranker and makes no language-model call. It never raises
+   and never waits for Hindsight to start: while the daemon starts, the turn goes on without memory. Its block
+   reaches the brain's prompt and the tax specialist's as DATA ([memoria.md](memoria.md)).
 2. **Understanding** (`intencion.Entendimiento.entender`). See below.
 3. **Fast paths.** A clarification or a switched-off module: answered with no model call. Small talk, a memory
    question, a task with no domain: the brain alone (one call; small talk gets no tools). ONE specialist and it is
@@ -71,7 +73,8 @@ flowchart TD
 6. **Gates** (below), at most `CEREBRO_MAX_REVISIONES` revisions.
 7. **Result.** `AgentResult` (the API's shape, unchanged) with `cerebro: InformeCerebro` (plan, route, reports'
    summaries with their figures, requests between specialists, the gate's verdict and attributions, the memory items
-   used, revisions, duration). The API hands the finished turn to the memory (`registrar_turno`) after answering.
+   used, revisions, duration). After answering, the API hands the turn to the memory (`registrar_turno`), which
+   sends only the user's message, after the privacy gates, to Hindsight.
 
 ## Understanding: rules first, the model when unsure
 
@@ -160,7 +163,10 @@ Paso directo is not re-gated (the advisor's own verifier already ruled); its fig
 
 Specialists of one plan run in parallel (`CEREBRO_MAX_PARALELO`), so a two-domain question costs about the slowest
 specialist plus the synthesis, not their sum. Every call is metered under its purpose and counts towards the
-question's budget (`LLM_MAX_CALLS_PER_QUESTION`); worker threads run in a copy of the caller's context.
+question's budget (`LLM_MAX_CALLS_PER_QUESTION`); worker threads run in a copy of the caller's context. One cost is
+outside the table: with the conversation memory on, Hindsight makes its own extraction calls
+(`HINDSIGHT_LLM_MODELO`) for each retained message, after the answer. They are not metered under any purpose and do
+not count towards the question's budget ([memoria.md](memoria.md)).
 
 ## Streaming and the UI
 

@@ -36,7 +36,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Su hipoteca es variable y se revisa cada marzo",
       "origen": {
         "conversacion_id": "conv_r1_0001",

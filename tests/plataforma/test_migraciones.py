@@ -21,7 +21,7 @@ from asistente.nucleo.memoria.almacen import DecisionStore
 from asistente.nucleo.modulos.acciones import AccionStore
 from asistente.nucleo.proactive.entrega import EntregaStore
 from asistente.nucleo.proactive.store import NotificationStore
-from asistente.nucleo.recuerdos.almacen import AlmacenRecuerdos
+from asistente.nucleo.recuerdos.pausa import AlmacenPausa
 from asistente.nucleo.repaso.almacen import RepasoStore
 from asistente.nucleo.tareas.almacen import TareaStore
 from asistente.plataforma import settings
@@ -70,7 +70,7 @@ def _con_todos_los_stores(path: str) -> None:
     PushStore(path).close()
     TareaStore(path)._get().close()
     RepasoStore(path).get("", "")  # the brain's passes (asistente/nucleo/repaso): a connection per call
-    AlmacenRecuerdos(path)._get().close()  # the conversation memory (asistente/nucleo/recuerdos)
+    AlmacenPausa(path).pausada("", "")  # the conversation memory's pause switch (asistente/nucleo/recuerdos)
     AlmacenConsejo(path).listar("")  # the household council (asistente/nucleo/consejo): a connection per call
 
 

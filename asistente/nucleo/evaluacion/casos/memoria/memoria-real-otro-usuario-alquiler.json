@@ -40,7 +40,7 @@
   "memoria": [
     {
       "id": "r1",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Vive de alquiler en Zaragoza",
       "origen": {
         "conversacion_id": "conv_r1_0001",
@@ -50,7 +50,7 @@
     },
     {
       "id": "r2",
-      "tipo": "dato",
+      "tipo": "hecho",
       "texto": "Tiene un piso alquilado a terceros en Valencia",
       "origen": {
         "conversacion_id": "conv_r2_0001",
