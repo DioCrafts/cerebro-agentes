@@ -50,6 +50,10 @@ dependencies = [
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.65",
     "hindsight-all==1.2.3",
+    # MCP in both directions: the connectors (asistente/capacidades/conectores) and the app's own server
+    # (asistente/plataforma/mcp). Already in the lock through hindsight-all; pinned here because the code
+    # uses the 2.x client and low-level server API directly.
+    "mcp==2.3.0",
 ]
 
 [dependency-groups]

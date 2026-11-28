@@ -19,7 +19,7 @@ import pytest
 
 from asistente.capacidades.navegador import persistencia, tareas
 from asistente.capacidades.navegador.persistencia import MENSAJE_HUERFANA
-from asistente.capacidades.navegador.tareas import GestorTareas, Servicios, Tarea, TareaError
+from asistente.capacidades.navegador.tareas import ACTIVOS, GestorTareas, Servicios, Tarea, TareaError
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.modulos import registro as registro_mod
 from asistente.nucleo.modulos.acciones import AccionStore
@@ -137,6 +137,10 @@ def test_the_service_wide_limits_hold_across_processes(dos: Dos, monkeypatch: py
     monkeypatch.setattr(settings, "NAVEGADOR_MAX_TAREAS_DIA", 1)
     dos.a.detener(primera)
     dos.a.esperar(primera, 15)
+    # ``esperar`` is a join with a deadline: it returns whether or not the thread ended, so under a loaded run
+    # the task could still be working here and the next start would be refused for being in progress (429 «en
+    # curso») instead of for the daily count. Wait for the state the rest of this test needs.
+    _esperar(lambda: (dos.b.get(primera.id) or primera).estado not in ACTIVOS, 30)
     with pytest.raises(TareaError) as exc:
         dos.iniciar(dos.b, dos.preparar(dos.b, "c1"))
     assert exc.value.codigo == 429 and "24 horas" in str(exc.value)

@@ -97,6 +97,8 @@ TABLA: tuple[Proposito, ...] = (
     Proposito("investigacion:planificar", "pequeno", "Divide una pregunta de investigación en subpreguntas."),
     Proposito("investigacion:web", "mediano", "Busca y lee páginas web con la herramienta del proveedor."),
     Proposito("investigacion:sintetizar", "mediano", "Redacta afirmaciones con citas literales de las fuentes."),
+    # A browser mission (capacidades/navegador/agente.py): one action per call, each behind a deterministic gate.
+    Proposito("navegador:agente", "mediano", "Elige la siguiente acción de una misión del navegador."),
 )
 NIVEL_POR_DEFECTO: Nivel = "grande"
 

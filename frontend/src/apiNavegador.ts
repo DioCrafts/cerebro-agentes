@@ -12,6 +12,8 @@ import type { Peticion, Respuesta } from "./api/tipos";
 type EstadoNavegadorEsquema = Respuesta<"/navegador/estado", "get">;
 export type GuionInfo = EstadoNavegadorEsquema["tareas"][number];
 export type ParametroTarea = GuionInfo["parametros"][number];
+// A site a mission may run on: the model chooses the steps, the site says where (navegador/sitio.py).
+export type SitioInfo = NonNullable<EstadoNavegadorEsquema["sitios"]>[number];
 export type TareaInfo = Respuesta<"/navegador/tareas/{tarea_id}", "get">;
 export type EventoTarea = TareaInfo["eventos"][number];
 // `sesion`: Playwright storage_state, only for mode "sesion".
@@ -55,6 +57,18 @@ export function crearTarea(
   inicio: InicioTarea,
 ): Promise<TareaInfo> {
   return request("/navegador/tareas", { case_id: caseId, guion, parametros, iniciar: true, ...inicio }, isTarea, { timeoutMs: 30_000 });
+}
+
+/** Prepare and start a mission: an objective in the user's words, and the data they give for it. */
+export function crearMision(
+  caseId: string,
+  sitio: string,
+  objetivo: string,
+  datos: Record<string, string>,
+  inicio: InicioTarea,
+): Promise<TareaInfo> {
+  const cuerpo = { case_id: caseId, sitio, objetivo, datos, iniciar: true, ...inicio };
+  return request("/navegador/misiones", cuerpo, isTarea, { timeoutMs: 30_000 });
 }
 
 export function iniciarTarea(id: string, inicio: InicioTarea): Promise<TareaInfo> {

@@ -5,6 +5,10 @@
 // what would be sent; nothing is ever submitted, signed or paid. «Detener» stops at once; «Cerrar»
 // discards the screenshot and the summary.
 //
+// A MISSION is the other way to use it (when the operator offers it): the user writes an objective and the data
+// for it, picks a declared site, and a model chooses the steps behind the same checks. It has its own consent
+// text (page content goes to the model provider) and may end with an answer read on the pages.
+//
 // Migrated to the design system (docs/ui/sistema-de-diseno.md). A running task looks like a GitHub Actions
 // run: its state, one row per step with its status icon, and the log as a Timeline. The shell shows it as a
 // page (registro.ts: presentacion "pagina"). The live updates come over SSE (useFlujoSse), closed on unmount.
@@ -13,10 +17,11 @@ import type { ReactNode } from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ApiError } from "../api";
-import type { EstadoNavegador, GuionInfo, ModoNavegador, TareaInfo } from "../apiNavegador";
+import type { EstadoNavegador, GuionInfo, ModoNavegador, SitioInfo, TareaInfo } from "../apiNavegador";
 import {
   ESTADOS_ACTIVOS,
   cerrarTarea,
+  crearMision,
   crearTarea,
   detenerTarea,
   getCaptura,
@@ -46,6 +51,7 @@ const ESTADO: Record<string, string> = {
   descargado: "Descargado",
   importado: "Importado",
   detenido_antes_de_enviar: "Preparado: detenido antes de enviar",
+  respondido: "Terminada: con respuesta",
   fallida: "No se ha completado",
   cancelada: "Detenida",
   login_no_completado: "Sin inicio de sesión",
@@ -58,7 +64,7 @@ type EstadoLabel = Parameters<typeof StateLabel>[0]["status"];
 function estadoVisual(estado: string): EstadoLabel {
   if (estado === "preparada") return "draft";
   if (ESTADOS_ACTIVOS.has(estado)) return "pullQueued";
-  if (estado === "descargado" || estado === "importado" || estado === "detenido_antes_de_enviar") return "pullMerged";
+  if (estado === "descargado" || estado === "importado" || estado === "detenido_antes_de_enviar" || estado === "respondido") return "pullMerged";
   if (estado === "fallida") return "pullClosed";
   return "issueClosedNotPlanned";
 }
@@ -119,6 +125,7 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
   const seguida = tareas.find((t) => t.id === actual) ?? null;
   const preparadas = tareas.filter((t) => t.estado === "preparada");
   const anteriores = tareas.filter((t) => t.estado !== "preparada" && t.id !== actual);
+  const sitios = estado?.misiones ? (estado.sitios ?? []) : [];
 
   return (
     <div className="flex flex-col gap-4">
@@ -168,6 +175,7 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
               <Inicio
                 key={t.id}
                 estado={estado}
+                mision={t.tipo === "mision"}
                 titulo={t.titulo}
                 detalle={Object.entries(t.parametros)
                   .map(([k, v]) => `${k}: ${v}`)
@@ -224,6 +232,17 @@ export function NavegadorPanel({ open, caseId, onChanged }: NavegadorPanelProps)
               }}
             />
           )}
+          {!seguida && sitios.length > 0 && (
+            <NuevaMision
+              estado={estado}
+              sitios={sitios}
+              onEmpezar={async (sitio, objetivo, datos, inicio) => {
+                const t = await crearMision(caseId, sitio, objetivo, datos, inicio);
+                setTareas((prev) => [t, ...prev]);
+                setActual(t.id);
+              }}
+            />
+          )}
           {anteriores.length > 0 && (
             <Caja as="section" aria-label="Tareas recientes" condensada>
               <Caja.Cabecera titulo="Tareas recientes" acciones={<CounterLabel>{anteriores.length}</CounterLabel>} />
@@ -260,7 +279,10 @@ interface InicioProps {
   onEmpezar: (inicio: { modo: ModoNavegador; acepto: boolean; texto_version: string; sesion?: Record<string, unknown> | null }) => Promise<void>;
 }
 
-function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: ReactNode }) {
+/** The consent box and the «Empezar» button. A mission has its own text; a site without a login asks for no mode. */
+function Acuse({ estado, onEmpezar, children, mision = false, sinLogin = false }: InicioProps & { children?: ReactNode; mision?: boolean; sinLogin?: boolean }) {
+  const textoConsentimiento = mision ? (estado.texto_consentimiento_mision ?? "") : estado.texto_consentimiento;
+  const textoVersion = mision ? (estado.texto_version_mision ?? "") : estado.texto_version;
   const [modo, setModo] = useState<ModoNavegador>(estado.modos[0] ?? "ventana");
   const [sesion, setSesion] = useState("");
   const [acepto, setAcepto] = useState(false);
@@ -269,7 +291,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
   const empezar = async () => {
     setError(null);
     let sesionJson: Record<string, unknown> | null = null;
-    if (modo === "sesion") {
+    if (modo === "sesion" && !sinLogin) {
       try {
         sesionJson = JSON.parse(sesion) as Record<string, unknown>;
       } catch {
@@ -279,7 +301,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
     }
     setBusy(true);
     try {
-      await onEmpezar({ modo, acepto, texto_version: estado.texto_version, sesion: sesionJson });
+      await onEmpezar({ modo: sinLogin ? "ventana" : modo, acepto, texto_version: textoVersion, sesion: sesionJson });
       setSesion("");
     } catch (err) {
       setError(mensaje(err));
@@ -290,7 +312,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
   return (
     <div className="flex flex-col gap-3">
       {children}
-      {estado.modos.length > 1 && (
+      {!sinLogin && estado.modos.length > 1 && (
         <RadioGroup name="modo">
           <RadioGroup.Label>Cómo inicias sesión</RadioGroup.Label>
           <FormControl>
@@ -303,7 +325,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
           </FormControl>
         </RadioGroup>
       )}
-      {modo === "sesion" && (
+      {!sinLogin && modo === "sesion" && (
         <FormControl>
           <FormControl.Label>Sesión («storage_state» de Playwright)</FormControl.Label>
           <Textarea block rows={4} className="font-mono" value={sesion} onChange={(e) => setSesion(e.target.value)} spellCheck={false} />
@@ -313,7 +335,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
         </FormControl>
       )}
       <div className="flex flex-col gap-2 rounded-medium border border-border-default bg-canvas-muted p-3">
-        <p className="m-0 text-xs">{estado.texto_consentimiento}</p>
+        <p className="m-0 text-xs">{textoConsentimiento}</p>
         <FormControl>
           <Checkbox checked={acepto} onChange={(e) => setAcepto(e.target.checked)} />
           <FormControl.Label>Lo he leído y quiero empezar</FormControl.Label>
@@ -333,7 +355,7 @@ function Acuse({ estado, onEmpezar, children }: InicioProps & { children?: React
   );
 }
 
-function Inicio({ estado, titulo, detalle, onEmpezar, onDescartar }: InicioProps & { titulo: string; detalle: string; onDescartar: () => Promise<void> }) {
+function Inicio({ estado, titulo, detalle, mision = false, onEmpezar, onDescartar }: InicioProps & { titulo: string; detalle: string; mision?: boolean; onDescartar: () => Promise<void> }) {
   return (
     <Caja as="section" aria-label={`Preparada en el chat: ${titulo}`} variante="acento">
       <Caja.Cabecera
@@ -346,7 +368,91 @@ function Inicio({ estado, titulo, detalle, onEmpezar, onDescartar }: InicioProps
       />
       <Caja.Cuerpo className="flex flex-col gap-3">
         {detalle && <p className="m-0 text-xs text-fg-muted">{detalle}</p>}
-        <Acuse estado={estado} onEmpezar={onEmpezar} />
+        <Acuse estado={estado} mision={mision} onEmpezar={onEmpezar} />
+      </Caja.Cuerpo>
+    </Caja>
+  );
+}
+
+interface Dato {
+  nombre: string;
+  valor: string;
+}
+
+const MAX_DATOS_MISION = 6;
+const DATO_VACIO: Dato = { nombre: "", valor: "" };
+
+/** A mission: the site, the objective in the user's words and the data the agent may type. */
+function NuevaMision({
+  estado,
+  sitios,
+  onEmpezar,
+}: {
+  estado: EstadoNavegador;
+  sitios: SitioInfo[];
+  onEmpezar: (sitio: string, objetivo: string, datos: Record<string, string>, inicio: Parameters<InicioProps["onEmpezar"]>[0]) => Promise<void>;
+}) {
+  const [clave, setClave] = useState(sitios[0]?.clave ?? "");
+  const [objetivo, setObjetivo] = useState("");
+  const [datos, setDatos] = useState<Dato[]>([]);
+  const sitio = sitios.find((s) => s.clave === clave) ?? sitios[0];
+  const poner = (i: number, campo: keyof Dato, valor: string) => setDatos((prev) => prev.map((d, j) => (j === i ? { ...d, [campo]: valor } : d)));
+  if (!sitio) return null;
+  const empezar = (inicio: Parameters<InicioProps["onEmpezar"]>[0]) => {
+    const dados: Record<string, string> = {};
+    for (const d of datos) {
+      if (d.nombre.trim() && d.valor.trim()) dados[d.nombre.trim()] = d.valor.trim();
+    }
+    return onEmpezar(sitio.clave, objetivo.trim(), dados, inicio);
+  };
+  return (
+    <Caja as="section" aria-label="Encargar una misión">
+      <Caja.Cabecera titulo="Encargar una misión" />
+      <Caja.Cuerpo className="flex flex-col gap-3">
+        <p className="m-0 text-xs text-fg-muted">
+          Escribe qué quieres consultar o descargar y el agente elegirá los pasos. Sigue sin poder enviar, firmar ni pagar, y en los
+          formularios solo escribe los datos que le des aquí.
+        </p>
+        <Acuse estado={estado} mision sinLogin={!sitio.requiere_login} onEmpezar={empezar}>
+          <FormControl>
+            <FormControl.Label>Sitio</FormControl.Label>
+            <Select block value={sitio.clave} onChange={(e) => setClave(e.target.value)}>
+              {sitios.map((s) => (
+                <Select.Option key={s.clave} value={s.clave}>
+                  {s.titulo}
+                </Select.Option>
+              ))}
+            </Select>
+            <FormControl.Caption>
+              {sitio.sitios.join(", ")} · {sitio.requiere_login ? "inicias sesión tú" : "sin inicio de sesión"}
+              {sitio.verificado_contra_sitio_real ? "" : " · sin probar en el sitio real"}
+            </FormControl.Caption>
+          </FormControl>
+          <FormControl required>
+            <FormControl.Label>Objetivo</FormControl.Label>
+            <Textarea block rows={3} value={objetivo} onChange={(e) => setObjetivo(e.target.value)} />
+            <FormControl.Caption>Por ejemplo: «Dime cuánto consumí en octubre». Nunca escribas aquí una contraseña.</FormControl.Caption>
+          </FormControl>
+          {datos.map((d, i) => (
+            <div key={i} className="grid gap-3 sm:grid-cols-2">
+              <FormControl>
+                <FormControl.Label>Dato {i + 1}: nombre</FormControl.Label>
+                <TextInput block autoComplete="off" value={d.nombre} onChange={(e) => poner(i, "nombre", e.target.value)} />
+              </FormControl>
+              <FormControl>
+                <FormControl.Label>Dato {i + 1}: valor</FormControl.Label>
+                <TextInput block autoComplete="off" value={d.valor} onChange={(e) => poner(i, "valor", e.target.value)} />
+              </FormControl>
+            </div>
+          ))}
+          {datos.length < MAX_DATOS_MISION && (
+            <div>
+              <Button size="small" onClick={() => setDatos((prev) => [...prev, DATO_VACIO])}>
+                Añadir un dato
+              </Button>
+            </div>
+          )}
+        </Acuse>
       </Caja.Cuerpo>
     </Caja>
   );
@@ -477,6 +583,15 @@ export function TareaEnVivo({ tarea, onActualizada, onCerrar }: { tarea: TareaIn
           </Flash>
         )}
         {tarea.mensaje && <p className="m-0">{tarea.mensaje}</p>}
+        {tarea.respuesta && (
+          <Flash>
+            <span className="flex flex-col gap-1">
+              <span className="font-semibold">Lo que ha leído el agente</span>
+              <span className="whitespace-pre-line">{tarea.respuesta}</span>
+              <span className="text-xs text-fg-muted">Sale de las páginas que visitó: compruébalo antes de darlo por bueno.</span>
+            </span>
+          </Flash>
+        )}
         {tarea.importacion && (
           <Flash variant={tarea.importacion_error ? "danger" : "success"}>
             <span className="whitespace-pre-line">{tarea.importacion}</span>

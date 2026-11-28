@@ -1,7 +1,8 @@
 """Discovery and validation of the capabilities (see ``contrato.py``).
 
 Every package ``asistente.capacidades.<clave>`` whose ``__init__`` exposes ``CAPACIDAD`` is imported and
-checked. A capability that fails to import or breaks a rule is logged and left out; the others keep working.
+checked. A package may instead provide several capabilities (``CAPACIDADES``, a callable: the MCP connectors, one
+capability per declared server), each under the package's reserved key prefix. A capability that fails to import or breaks a rule is logged and left out; the others keep working.
 
 Rules checked here (``pedir`` relies on them):
 
@@ -36,6 +37,9 @@ _EFECTOS = frozenset(get_args(Efecto))
 _CONSENTIMIENTOS = frozenset(get_args(Consentimiento))
 # The core's own files in the package and the core's own caller key.
 CLAVES_RESERVADAS = frozenset({"contrato", "registro", "peticion", "consentimiento", "nucleo"})
+# Packages that provide several capabilities, and the prefix every key of theirs must carry. No one-capability
+# package may use a key with one of these prefixes.
+PREFIJOS_DE_PROVEEDOR: dict[str, str] = {"conectores": "mcp_"}
 
 
 @dataclass
@@ -88,6 +92,9 @@ def problemas_de(capacidad: Any, *, paquete: str | None = None) -> list[str]:
     problemas: list[str] = []
     if clave in CLAVES_RESERVADAS:
         problemas.append(f"la clave {clave!r} está reservada por el núcleo")
+    for proveedor, prefijo in PREFIJOS_DE_PROVEEDOR.items():
+        if clave.startswith(prefijo) and paquete is not None and paquete != clave:
+            problemas.append(f"las claves que empiezan por {prefijo!r} son de las capacidades de «{proveedor}»")
     if paquete is not None and paquete != clave:
         problemas.append(f"la clave {clave!r} no coincide con el nombre del paquete {paquete!r}")
     for atributo in ("nombre", "descripcion"):
@@ -167,12 +174,45 @@ def descubrir(paquete: str = PAQUETE) -> tuple[list[tuple[str, Any]], dict[str, 
             logger.exception("Capability package %s failed to import", nombre)
             continue
         capacidad = getattr(paquete_capacidad, "CAPACIDAD", None)
-        if capacidad is None:
+        varias = getattr(paquete_capacidad, "CAPACIDADES", None)
+        if capacidad is None and varias is None:
             errores[info.name] = "el paquete no expone CAPACIDAD"
             logger.error("Capability package %s exposes no CAPACIDAD", nombre)
             continue
-        encontrados.append((info.name, capacidad))
+        if capacidad is not None:
+            encontrados.append((info.name, capacidad))
+        if varias is not None:
+            encontrados.extend(_de_proveedor(info.name, varias, errores))
     return encontrados, errores
+
+
+def _de_proveedor(paquete: str, proveedor: Any, errores: dict[str, str]) -> list[tuple[str, Any]]:
+    """The capabilities of a package that provides SEVERAL (``CAPACIDADES``: a callable or a sequence).
+
+    Their keys cannot equal the package name, so each must start with one of the package's declared prefixes
+    (:data:`PREFIJOS_DE_PROVEEDOR`): a provider can never take the key of another capability.
+    """
+    prefijo = PREFIJOS_DE_PROVEEDOR.get(paquete)
+    if prefijo is None:
+        errores[paquete] = "el paquete expone CAPACIDADES pero no tiene un prefijo de claves reservado"
+        logger.error("Capability package %s provides capabilities without a reserved key prefix", paquete)
+        return []
+    try:
+        capacidades = list(proveedor() if callable(proveedor) else proveedor)
+    except Exception as exc:  # a broken provider must never crash the app
+        errores[paquete] = f"no se pudieron obtener sus capacidades: {type(exc).__name__}: {exc}"
+        logger.exception("Capability provider %s failed", paquete)
+        return []
+    aceptadas: list[tuple[str, Any]] = []
+    for capacidad in capacidades:
+        clave = getattr(capacidad, "clave", None)
+        if not isinstance(clave, str) or not clave.startswith(prefijo) or clave == prefijo:
+            errores[f"{paquete}:{clave!r}"] = f"la clave debe empezar por {prefijo!r}"
+            logger.error("Capability %r of provider %s left out: its key must start with %r", clave, paquete, prefijo)
+            continue
+        # The origin is the key itself: ``problemas_de`` checks «key == package name» for one-capability packages.
+        aceptadas.append((clave, capacidad))
+    return aceptadas
 
 
 _lock = threading.Lock()
@@ -199,6 +239,7 @@ def reiniciar(nuevo: RegistroCapacidades | None = None) -> None:
 
 __all__ = [
     "CLAVES_RESERVADAS",
+    "PREFIJOS_DE_PROVEEDOR",
     "RegistroCapacidades",
     "construir_registro",
     "desactivadas_por_operador",

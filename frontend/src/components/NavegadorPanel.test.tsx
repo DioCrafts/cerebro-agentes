@@ -30,6 +30,8 @@ const tarea = (extra: Partial<TareaInfo> = {}): TareaInfo => ({
   importacion: null,
   mensaje: null,
   terminada: null,
+  tipo: "guion",
+  respuesta: null,
   ...extra,
 });
 
@@ -56,6 +58,11 @@ const estado = (extra: Partial<EstadoNavegador> = {}): EstadoNavegador => ({
   ],
   max_tareas_dia: 5,
   usadas_hoy: 1,
+  misiones: false,
+  sitios: [],
+  texto_consentimiento_mision: "",
+  texto_version_mision: "",
+  confinamiento: "ninguno",
   ...extra,
 });
 
@@ -84,6 +91,69 @@ describe("NavegadorPanel", () => {
     await user.click(empezar);
     expect(crear).toHaveBeenCalledWith("c1", "datadis", { cups: "ES0021" }, { modo: "ventana", acepto: true, texto_version: "v1", sesion: null });
     expect(await screen.findByRole("region", { name: "Tarea en curso" })).toBeInTheDocument();
+  });
+
+  it("starts a mission with the missions' own consent text, and shows what the agent read", async () => {
+    const user = userEvent.setup();
+    const sitio = {
+      clave: "boe",
+      version: 1,
+      titulo: "Boletín Oficial del Estado",
+      descripcion: "Páginas públicas del BOE",
+      sitios: ["www.boe.es"],
+      requiere_login: false,
+      admite_descarga: false,
+      verificado_contra_sitio_real: false,
+      nota_verificacion: "",
+      demostracion: false,
+    };
+    const conMisiones = estado({
+      misiones: true,
+      sitios: [sitio],
+      texto_consentimiento_mision: "El texto de las páginas se envía al modelo.",
+      texto_version_mision: "m1",
+    });
+    vi.spyOn(nav, "getEstadoNavegador").mockResolvedValue(conMisiones);
+    vi.spyOn(nav, "getTareas").mockResolvedValue([]);
+    const terminada = tarea({ estado: "respondido", tipo: "mision", respuesta: "El plazo acaba el 30 de junio." });
+    const crear = vi.spyOn(nav, "crearMision").mockResolvedValue(terminada);
+    render(<NavegadorPanel open caseId="c1" />);
+
+    const mision = await screen.findByRole("region", { name: "Encargar una misión" });
+    // A public site: nobody logs in, so no login mode is asked; the consent text is the missions' one.
+    expect(within(mision).queryByText("Cómo inicias sesión")).not.toBeInTheDocument();
+    expect(within(mision).getByText("El texto de las páginas se envía al modelo.")).toBeInTheDocument();
+    await user.type(within(mision).getByRole("textbox", { name: /Objetivo/ }), "Mira el plazo de la renta");
+    await user.click(within(mision).getByRole("button", { name: "Añadir un dato" }));
+    await user.type(within(mision).getByRole("textbox", { name: "Dato 1: nombre" }), "ejercicio");
+    await user.type(within(mision).getByRole("textbox", { name: "Dato 1: valor" }), "2025");
+    const empezar = within(mision).getByRole("button", { name: "Empezar" });
+    expect(empezar).toBeDisabled();
+    await user.click(within(mision).getByRole("checkbox", { name: "Lo he leído y quiero empezar" }));
+    await user.click(empezar);
+    const inicio = { modo: "ventana", acepto: true, texto_version: "m1", sesion: null };
+    expect(crear).toHaveBeenCalledWith("c1", "boe", "Mira el plazo de la renta", { ejercicio: "2025" }, inicio);
+
+    const enCurso = await screen.findByRole("region", { name: "Tarea en curso" });
+    expect(within(enCurso).getByRole("status")).toHaveTextContent("Terminada: con respuesta");
+    expect(within(enCurso).getByText("El plazo acaba el 30 de junio.")).toBeInTheDocument();
+    expect(within(enCurso).getByText(/compruébalo/)).toBeInTheDocument();
+  });
+
+  it("asks for the missions' consent when starting a mission the chat prepared", async () => {
+    const user = userEvent.setup();
+    const conMisiones = estado({ misiones: true, texto_consentimiento_mision: "Texto de misiones.", texto_version_mision: "m1" });
+    vi.spyOn(nav, "getEstadoNavegador").mockResolvedValue(conMisiones);
+    const preparada = tarea({ id: "m9", estado: "preparada", tipo: "mision", titulo: "Misión en BOE" });
+    vi.spyOn(nav, "getTareas").mockResolvedValue([preparada]);
+    const iniciar = vi.spyOn(nav, "iniciarTarea").mockResolvedValue(tarea({ id: "m9", tipo: "mision" }));
+    render(<NavegadorPanel open caseId="c1" />);
+
+    const caja = await screen.findByRole("region", { name: "Preparada en el chat: Misión en BOE" });
+    expect(within(caja).getByText("Texto de misiones.")).toBeInTheDocument();
+    await user.click(within(caja).getByRole("checkbox", { name: "Lo he leído y quiero empezar" }));
+    await user.click(within(caja).getByRole("button", { name: "Empezar" }));
+    expect(iniciar).toHaveBeenCalledWith("m9", { modo: "ventana", acepto: true, texto_version: "m1", sesion: null });
   });
 });
 

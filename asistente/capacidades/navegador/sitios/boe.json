@@ -1,0 +1,15 @@
+{
+  "fuente": "sitio_boe",
+  "version": 1,
+  "descripcion": "Boletín Oficial del Estado: sitio público, sin inicio de sesión.",
+  "origen": "incorporada",
+  "reglas": {
+    "titulo": "Boletín Oficial del Estado",
+    "descripcion": "Consulta páginas públicas del BOE (sumarios, disposiciones, legislación consolidada). No hay inicio de sesión ni se envía nada.",
+    "verificado_contra_sitio_real": false,
+    "nota_verificacion": "Declaración sin probar contra www.boe.es: en esta máquina no hay salida a la red en los tests.",
+    "origenes": {"boe": "https://www.boe.es"},
+    "inicio": {"origen": "boe", "ruta": "/"},
+    "pausa_ms": 800
+  }
+}

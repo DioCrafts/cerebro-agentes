@@ -1,13 +1,15 @@
 """Browser tasks: who may start one, how often, what is kept, and what happens with the result.
 
-A task is one run of one script for one case. Its life:
+A task is one run for one case: of one script (``guion.py``), or of one MISSION (``agente.py``: an objective
+in the user's words on a declared site, key ``mision_<sitio>``). Both share everything here. Its life:
 
 ``preparada`` (the chat tool or the UI validated the parameters; no browser yet) → ``en_curso`` (the user
 pressed «Empezar»: kill switch, consent, mode and rate limits checked, a thread starts) → ``esperando_login``
 (the user logs in, themselves) → ``trabajando`` (the agent's own steps) → one of ``importado`` (the CSV went
 to the luz module's importer through the module tool path), ``descargado`` (a file with no destination),
 ``detenido_antes_de_enviar`` (a procedure filled in and stopped before signing; a pending action records it),
-``fallida``, ``cancelada``, ``login_no_completado`` → ``cerrada`` (the user closed it, or
+``respondido`` (a mission that ended with an answer), ``fallida``, ``cancelada``, ``login_no_completado`` →
+``cerrada`` (the user closed it, or
 :data:`MINUTOS_TRAS_TERMINAR` passed): its screenshot, summary and parameters are dropped.
 
 What is kept, and where:
@@ -30,6 +32,7 @@ from __future__ import annotations
 
 from collections import deque
 from collections.abc import Callable
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 import logging
@@ -40,6 +43,7 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 from uuid import uuid4
 
+from asistente.capacidades.navegador.agente import PROPOSITO, EjecutorAgente, MisionError, validar_mision
 from asistente.capacidades.navegador.ejecutor import Ejecutor, Evento, Modo, ResultadoEjecucion
 from asistente.capacidades.navegador.guion import (
     GuionError,
@@ -62,6 +66,7 @@ from asistente.capacidades.navegador.seguridad import (
     sustitutos_validos,
     texto_de_fichero,
 )
+from asistente.capacidades.navegador.sitio import SpecSitio, sitios
 from asistente.capacidades.navegador.vigilancia import guardar_diagnostico, observar_ejecucion, proponer_reparacion
 from asistente.nucleo.modulos.acciones import AccionPendiente, AccionStore
 from asistente.nucleo.modulos.contrato import ContextoModulo, ResultadoHerramienta
@@ -86,6 +91,21 @@ TEXTO_CONSENTIMIENTO = (
     "sesión."
 )
 
+# A mission: the same switch as the browser, plus one more thing the user must know before starting.
+TEXTO_CONSENTIMIENTO_MISION_VERSION = "navegador-mision-2026-11"
+TEXTO_CONSENTIMIENTO_MISION = (
+    "Vas a dejar que el asistente maneje un navegador en tu nombre para cumplir el objetivo que has escrito. "
+    "En una misión los pasos no están fijados de antemano: los elige un modelo de IA viendo el contenido de "
+    "cada página, así que el texto de las páginas que visite (con los identificadores enmascarados) se envía "
+    "al proveedor del modelo. Tú inicias sesión: el asistente no ve ni guarda tu contraseña, tu PIN ni tu "
+    "certificado. El navegador solo puede visitar los sitios de la misión y, mientras trabaja el agente, solo "
+    "consulta: no envía formularios, no firma, no paga y no acepta nada; si llega al botón que lo haría, se "
+    "detiene y te enseña qué se enviaría. En los campos solo escribe los datos que tú le has dado. Lo que "
+    "responda lo ha leído en la página: compruébalo. Al terminar se cierra el navegador y se descarta la "
+    "sesión."
+)
+PREFIJO_MISION = "mision_"
+
 EstadoTarea = Literal[
     "preparada",
     "en_curso",
@@ -94,6 +114,7 @@ EstadoTarea = Literal[
     "descargado",
     "importado",
     "detenido_antes_de_enviar",
+    "respondido",
     "fallida",
     "cancelada",
     "login_no_completado",
@@ -101,7 +122,7 @@ EstadoTarea = Literal[
 ]
 ACTIVOS: frozenset[str] = frozenset({"en_curso", "esperando_login", "trabajando"})
 TERMINADOS: frozenset[str] = frozenset(
-    {"descargado", "importado", "detenido_antes_de_enviar", "fallida", "cancelada", "login_no_completado"}
+    {"descargado", "importado", "detenido_antes_de_enviar", "respondido", "fallida", "cancelada", "login_no_completado"}
 )
 
 
@@ -146,6 +167,8 @@ class Tarea:
     importacion_error: bool = False
     accion_id: str | None = None
     bloqueadas: list[str] = field(default_factory=list)
+    # A mission's answer: read from the pages by the model. In this process's memory only, like the screenshot.
+    respuesta: str | None = None
     cancelar: threading.Event = field(default_factory=threading.Event)
     cerrar: threading.Event = field(default_factory=threading.Event)
     hilo: threading.Thread | None = None
@@ -158,8 +181,15 @@ class Tarea:
             self.actualizada = datetime.now(UTC)
 
     def parametros_visibles(self) -> dict[str, str]:
-        """The parameters as the UI shows them: personal ones masked."""
+        """The parameters as the UI shows them: personal ones masked. A mission shows its objective in full
+        (the user must be able to review it before starting) and its data masked."""
         out: dict[str, str] = {}
+        if es_mision(self.clave):
+            if self.parametros.get("objetivo"):
+                out["objetivo"] = str(self.parametros["objetivo"])
+            for nombre, valor in dict(self.parametros.get("datos") or {}).items():
+                out[str(nombre)] = enmascarar_valor(valor)
+            return out
         for nombre, valor in self.parametros.items():
             if valor is None:
                 continue
@@ -176,6 +206,11 @@ class Servicios:
     acciones: AccionStore
     auth: Any | None = None  # AuthStore when AUTH_MODE=required
     reparador: Reparador | None = None
+    # The metered LLM provider of a mission's decisions (purpose ``navegador:agente``); None: no missions.
+    proveedor: Any | None = None
+    # ``atribuir(user_id, case_id)`` returns a context manager that charges the run's model calls to that
+    # user and case (the API passes the metering one); None: the calls are metered without attribution.
+    atribuir: Callable[[str | None, str], Any] | None = None
 
 
 # --------------------------------------------------------------------------- #
@@ -210,6 +245,47 @@ def disponibles() -> list[SpecGuion]:
             continue
         out.append(spec)
     return out
+
+
+def es_mision(clave: str) -> bool:
+    return clave.startswith(PREFIJO_MISION)
+
+
+def misiones_activas() -> bool:
+    """The operator switched missions on (and the browser itself)."""
+    return bool(settings.NAVEGADOR_ACTIVO) and bool(getattr(settings, "NAVEGADOR_AGENTE", False))
+
+
+def sitios_disponibles() -> dict[str, SpecSitio]:
+    """Sites a mission may run on. A demonstration site only when its origins are local mock sites."""
+    locales = sustitutos()
+    return {
+        clave: spec
+        for clave, spec in sitios(disponibles(), directorio=getattr(settings, "NAVEGADOR_SITIOS_DIR", "")).items()
+        if not spec.reglas.demostracion or all((origen_de(o) or o) in locales for o in spec.reglas.origenes.values())
+    }
+
+
+def plan_de(clave: str) -> SpecGuion | SpecSitio:
+    """What a task runs: the script in force, or the site of a mission. Raises :class:`GuionError`."""
+    if not es_mision(clave):
+        return guion_activo(clave)
+    spec = sitios_disponibles().get(clave.removeprefix(PREFIJO_MISION))
+    if spec is None:
+        raise GuionError("Ese sitio ya no está disponible en este servicio.")
+    return spec
+
+
+def parametros_validados(clave: str, crudos: dict[str, Any], *, hoy: date | None = None) -> dict[str, Any]:
+    """A task's stored parameters, validated again (a script's, or a mission's objective and data).
+
+    Raises :class:`GuionError` (Spanish)."""
+    if es_mision(clave):
+        try:
+            return validar_mision(crudos).a_parametros()
+        except MisionError as exc:
+            raise GuionError(str(exc)) from exc
+    return validar_parametros(guion_activo(clave).reglas, crudos, hoy=hoy)
 
 
 def consentimiento(user_id: str | None, auth: Any | None) -> bool:
@@ -446,6 +522,49 @@ class GestorTareas:
             self._tareas[tarea.id] = tarea
         return tarea
 
+    def preparar_mision(
+        self,
+        *,
+        case_id: str,
+        sitio: str,
+        objetivo: str,
+        datos: dict[str, Any] | None = None,
+        user_id: str | None = None,
+    ) -> Tarea:
+        """Validate a mission (no browser, no model call). Raises :class:`TareaError` (Spanish)."""
+        if not settings.NAVEGADOR_ACTIVO:
+            raise TareaError("El agente con navegador está desactivado en este servicio.", 503)
+        if not misiones_activas():
+            raise TareaError("Las misiones del agente con navegador están desactivadas en este servicio.", 503)
+        spec = sitios_disponibles().get(sitio)
+        if spec is None:
+            raise TareaError("Ese sitio no existe o no está disponible en este servicio.", 404)
+        try:
+            mision = validar_mision({"objetivo": objetivo, "datos": datos or {}})
+        except MisionError as exc:
+            raise TareaError(str(exc), 422) from exc
+        tarea = Tarea(
+            id=f"nav_{uuid4().hex}",
+            case_id=case_id,
+            clave=f"{PREFIJO_MISION}{sitio}",
+            version=spec.version,
+            titulo=f"Misión en {spec.reglas.titulo}",
+            parametros=mision.a_parametros(),
+            personales=frozenset(mision.datos),
+            user_id=user_id,
+        )
+        tarea.anotar(
+            "preparada",
+            "Misión preparada. Revisa el objetivo y los datos, y pulsa «Empezar» cuando quieras que el agente trabaje.",
+        )
+        db = self._db()
+        if db is not None:
+            db.insertar_preparada(tarea)
+            return tarea
+        with self._lock:
+            self._tareas[tarea.id] = tarea
+        return tarea
+
     def iniciar(
         self,
         tarea: Tarea,
@@ -458,15 +577,29 @@ class GestorTareas:
         """Start a prepared task in a thread, after the kill switch, consent, mode and rate checks."""
         if not settings.NAVEGADOR_ACTIVO:
             raise TareaError("El agente con navegador está desactivado en este servicio.", 503)
-        if modo not in modos_permitidos():
+        mision = es_mision(tarea.clave)
+        try:
+            spec = plan_de(tarea.clave)
+        except GuionError as exc:
+            raise TareaError(str(exc), 409) from exc
+        if mision:
+            if not misiones_activas():
+                raise TareaError("Las misiones del agente con navegador están desactivadas en este servicio.", 503)
+            if servicios.proveedor is None:
+                raise TareaError(
+                    "Las misiones necesitan un modelo de IA y este servicio no tiene uno configurado.", 503
+                )
+        if spec.reglas.login is None:
+            # A public site: nobody logs in, so there is no window and no session to hand over.
+            modo, sesion = "ventana", None
+        elif modo not in modos_permitidos():
             raise TareaError(f"Este servicio no admite el modo «{modo}».", 422)
-        if modo == "sesion" and not sesion:
+        elif modo == "sesion" and not sesion:
             raise TareaError("En el modo «sesión» tienes que entregar la sesión para esta tarea.", 422)
         if not consentimiento(user_id, servicios.auth):
             raise TareaError(
                 "Activa antes el «Agente con navegador» en Módulos: es tu consentimiento para que actúe por ti.", 403
             )
-        spec = guion_activo(tarea.clave)
         destino = spec.reglas.descarga.destino if spec.reglas.descarga else None
         if destino is not None and not _modulo_de_herramienta_activo(destino, tarea.case_id, servicios.auth):
             raise TareaError("Activa antes el módulo que recibe el fichero (Luz) para este expediente.", 409)
@@ -486,9 +619,17 @@ class GestorTareas:
                 "tarea_id": tarea.id,
                 "guion": tarea.clave,
                 "version": tarea.version,
+                "tipo": "mision" if mision else "guion",
                 "modo": modo,
-                "parametros_recibidos": sorted(k for k, v in tarea.parametros.items() if v is not None),
-                "texto_consentimiento": TEXTO_CONSENTIMIENTO_VERSION,
+                # Names only: never the objective's text nor a value.
+                "parametros_recibidos": (
+                    ["objetivo", *sorted(dict(tarea.parametros.get("datos") or {}))]
+                    if mision
+                    else sorted(k for k, v in tarea.parametros.items() if v is not None)
+                ),
+                "texto_consentimiento": (
+                    TEXTO_CONSENTIMIENTO_MISION_VERSION if mision else TEXTO_CONSENTIMIENTO_VERSION
+                ),
             },
         )
         hilo = threading.Thread(
@@ -503,7 +644,14 @@ class GestorTareas:
         return tarea
 
     def _reclamar(
-        self, db: AlmacenTareas, tarea: Tarea, spec: SpecGuion, *, modo: Modo, user_id: str | None, clave_usuario: str
+        self,
+        db: AlmacenTareas,
+        tarea: Tarea,
+        spec: SpecGuion | SpecSitio,
+        *,
+        modo: Modo,
+        user_id: str | None,
+        clave_usuario: str,
     ) -> None:
         """Claim the task in the shared store (every service-wide limit checked atomically) and run it here."""
         reclamacion = db.reclamar(
@@ -521,7 +669,7 @@ class GestorTareas:
         if reclamacion.error is not None:
             raise TareaError(reclamacion.error, reclamacion.codigo)
         try:
-            parametros = validar_parametros(spec.reglas, reclamacion.parametros or {})
+            parametros = parametros_validados(tarea.clave, reclamacion.parametros or {})
         except GuionError as exc:
             db.terminar_sin_propietario(tarea.id, estado="fallida", cerrar=False, mensaje=str(exc))
             raise TareaError(str(exc), 422) from exc
@@ -582,6 +730,7 @@ class GestorTareas:
             tarea.captura = None
             tarea.captura_momento = None
             tarea.resumen_envio = []
+            tarea.respuesta = None
             tarea.parametros = {}
             if tarea.estado not in ACTIVOS:
                 tarea.estado = "cerrada"
@@ -693,7 +842,7 @@ class GestorTareas:
             viejas = [t.id for t in self._tareas.values() if t.terminada is not None and t.terminada < limite]
             for tarea_id in viejas:
                 tarea = self._tareas.pop(tarea_id)
-                tarea.captura, tarea.resumen_envio, tarea.parametros = None, [], {}
+                tarea.captura, tarea.resumen_envio, tarea.parametros, tarea.respuesta = None, [], {}, None
             preparadas = [
                 t.id
                 for t in self._tareas.values()
@@ -709,26 +858,43 @@ class GestorTareas:
 
     # --- the run ----------------------------------------------------------
 
-    def _correr(self, tarea: Tarea, spec: SpecGuion, servicios: Servicios, sesion: dict[str, Any] | None) -> None:
+    def _ejecutor(
+        self, tarea: Tarea, spec: SpecGuion | SpecSitio, servicios: Servicios, sesion: dict[str, Any] | None
+    ) -> Ejecutor:
+        comunes: dict[str, Any] = {
+            "origenes": origenes_efectivos(spec.reglas, sustitutos()),
+            "modo": tarea.modo or "ventana",
+            "sesion": sesion,
+            "observador": _Observador(tarea),
+            "cancelar": tarea.cancelar,
+            "cerrar": tarea.cerrar,
+            # Checked between steps: the kill switch, and the user's consent (switching the module off
+            # stops a running task too).
+            "activo": lambda: bool(settings.NAVEGADOR_ACTIVO) and consentimiento(tarea.user_id, servicios.auth),
+            **self.opciones_ejecutor,
+        }
+        if isinstance(spec, SpecSitio):
+            return EjecutorAgente(
+                spec.reglas,
+                validar_mision(tarea.parametros),
+                proveedor=servicios.proveedor,
+                max_pasos=getattr(settings, "NAVEGADOR_AGENTE_MAX_PASOS", None),
+                max_instantanea=getattr(settings, "NAVEGADOR_AGENTE_MAX_INSTANTANEA", None),
+                # A mission stops as well when the operator switches missions off mid-run.
+                **{**comunes, "activo": lambda: misiones_activas() and consentimiento(tarea.user_id, servicios.auth)},
+            )
+        return Ejecutor(spec.reglas, tarea.parametros, reparador=servicios.reparador, **comunes)
+
+    def _correr(
+        self, tarea: Tarea, spec: SpecGuion | SpecSitio, servicios: Servicios, sesion: dict[str, Any] | None
+    ) -> None:
         resultado: ResultadoEjecucion | None = None
         try:
-            ejecutor = Ejecutor(
-                spec.reglas,
-                tarea.parametros,
-                origenes=origenes_efectivos(spec.reglas, sustitutos()),
-                modo=tarea.modo or "ventana",
-                sesion=sesion,
-                observador=_Observador(tarea),
-                cancelar=tarea.cancelar,
-                cerrar=tarea.cerrar,
-                reparador=servicios.reparador,
-                # Checked between steps: the kill switch, and the user's consent (switching the module off
-                # stops a running task too).
-                activo=lambda: bool(settings.NAVEGADOR_ACTIVO) and consentimiento(tarea.user_id, servicios.auth),
-                **self.opciones_ejecutor,
-            )
+            ejecutor = self._ejecutor(tarea, spec, servicios, sesion)
             sesion = None
-            resultado = ejecutor.ejecutar()
+            atribucion = servicios.atribuir(tarea.user_id, tarea.case_id) if servicios.atribuir else nullcontext()
+            with atribucion:
+                resultado = ejecutor.ejecutar()
             self._terminar(tarea, spec, servicios, resultado)
         except Exception as exc:  # the thread must always leave the task in a final state
             logger.exception("browser task %s crashed", tarea.id)
@@ -743,10 +909,11 @@ class GestorTareas:
                 tarea.parametros = {}
             self._auditar_fin(tarea, servicios, resultado)
 
-    def _terminar(self, tarea: Tarea, spec: SpecGuion, servicios: Servicios, r: ResultadoEjecucion) -> None:
+    def _terminar(self, tarea: Tarea, spec: SpecGuion | SpecSitio, servicios: Servicios, r: ResultadoEjecucion) -> None:
         estados: dict[str, EstadoTarea] = {
             "descargado": "descargado",
             "detenido_antes_de_enviar": "detenido_antes_de_enviar",
+            "respondido": "respondido",
             "fallido": "fallida",
             "cancelado": "cancelada",
             "login_no_completado": "login_no_completado",
@@ -756,35 +923,14 @@ class GestorTareas:
             tarea.mensaje = r.mensaje
             tarea.bloqueadas = r.bloqueadas
             tarea.resumen_envio = list(r.resumen_envio)
+            tarea.respuesta = r.respuesta
             if r.captura is not None:
                 tarea.captura, tarea.captura_momento = r.captura, datetime.now(UTC)
             hechos = {p.id: p.estado for p in r.pasos}
             for paso in tarea.pasos:
                 paso["estado"] = hechos.get(paso["id"], paso["estado"])
-        try:
-            observar_ejecucion(
-                tarea.clave, tarea.version, r, state_path=self.state_path, directorio=self.directorio_formatos
-            )
-            if r.reparaciones:
-                propuesta = proponer_reparacion(tarea.clave, spec, r.reparaciones, directorio=self.directorio_formatos)
-                if propuesta is not None:
-                    tarea.anotar("reparacion", f"Selector reparado: queda una propuesta por revisar ({propuesta.id}).")
-            if r.esqueleto_fallo is not None:
-                fallo = r.pasos[-1] if r.pasos else None
-                guardar_diagnostico(
-                    tarea.case_id,
-                    tarea.id,
-                    {
-                        "guion": tarea.clave,
-                        "version": tarea.version,
-                        "paso": fallo.id if fallo else None,
-                        "estado": fallo.estado if fallo else None,
-                        "detalle": fallo.detalle if fallo else None,
-                        "esqueleto_redactado": r.esqueleto_fallo,
-                    },
-                )
-        except Exception:
-            logger.exception("could not record the format observation of browser task %s", tarea.id)
+        if isinstance(spec, SpecGuion):
+            self._observar_formato(tarea, spec, r)
 
         if r.estado == "descargado" and r.descarga is not None:
             destino = spec.reglas.descarga.destino if spec.reglas.descarga else None
@@ -811,8 +957,35 @@ class GestorTareas:
             with tarea.lock:
                 tarea.accion_id = accion.id
 
+    def _observar_formato(self, tarea: Tarea, spec: SpecGuion, r: ResultadoEjecucion) -> None:
+        """Format watch of a SCRIPT run: its outcome, a repair proposal, the redacted diagnosis of a failed step."""
+        try:
+            observar_ejecucion(
+                tarea.clave, tarea.version, r, state_path=self.state_path, directorio=self.directorio_formatos
+            )
+            if r.reparaciones:
+                propuesta = proponer_reparacion(tarea.clave, spec, r.reparaciones, directorio=self.directorio_formatos)
+                if propuesta is not None:
+                    tarea.anotar("reparacion", f"Selector reparado: queda una propuesta por revisar ({propuesta.id}).")
+            if r.esqueleto_fallo is not None:
+                fallo = r.pasos[-1] if r.pasos else None
+                guardar_diagnostico(
+                    tarea.case_id,
+                    tarea.id,
+                    {
+                        "guion": tarea.clave,
+                        "version": tarea.version,
+                        "paso": fallo.id if fallo else None,
+                        "estado": fallo.estado if fallo else None,
+                        "detalle": fallo.detalle if fallo else None,
+                        "esqueleto_redactado": r.esqueleto_fallo,
+                    },
+                )
+        except Exception:
+            logger.exception("could not record the format observation of browser task %s", tarea.id)
+
     def _accion_pendiente(
-        self, tarea: Tarea, spec: SpecGuion, r: ResultadoEjecucion, acciones: AccionStore
+        self, tarea: Tarea, spec: SpecGuion | SpecSitio, r: ResultadoEjecucion, acciones: AccionStore
     ) -> AccionPendiente:
         """Record what WOULD be submitted as a pending action (labels only). Confirming it submits nothing."""
         etiquetas = [etiqueta for etiqueta, _valor in r.resumen_envio]
@@ -868,7 +1041,11 @@ def gestor() -> GestorTareas:
 __all__ = [
     "CLAVE_MODULO",
     "HERRAMIENTA_PRESENTAR",
+    "PREFIJO_MISION",
+    "PROPOSITO",
     "TEXTO_CONSENTIMIENTO",
+    "TEXTO_CONSENTIMIENTO_MISION",
+    "TEXTO_CONSENTIMIENTO_MISION_VERSION",
     "TEXTO_CONSENTIMIENTO_VERSION",
     "GestorTareas",
     "Servicios",
@@ -877,6 +1054,11 @@ __all__ = [
     "consentimiento",
     "disponibles",
     "ejecutar_herramienta_de_modulo",
+    "es_mision",
     "gestor",
+    "misiones_activas",
     "modos_permitidos",
+    "parametros_validados",
+    "plan_de",
+    "sitios_disponibles",
 ]
