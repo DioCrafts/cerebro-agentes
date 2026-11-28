@@ -89,11 +89,79 @@ SEARCH_TOOL = ToolSpec(
                     "La legislación consolidada (sin fecha de resolución) se mantiene siempre."
                 ),
             },
+            "vigente_en": {
+                "type": "string",
+                "description": (
+                    "AAAA-MM-DD (o AAAA: el 31 de diciembre de ese año). Devuelve la ley tal como estaba ese día, no "
+                    "la de hoy. Úsalo siempre que la pregunta sea sobre un ejercicio o un hecho pasado: el IRPF de "
+                    "2022 se rige por el texto vigente a 31 de diciembre de 2022."
+                ),
+            },
             "max_resultados": {"type": "integer", "description": f"Entre 1 y {MAX_SEARCH_RESULTS}. Por defecto 6."},
         },
         "required": ["consulta"],
     },
 )
+
+READ_ARTICLE_TOOL = ToolSpec(
+    name="leer_articulo",
+    description=(
+        "Lee entero un artículo o una disposición de una norma del corpus por su identificador, con su fragmento "
+        "citable [F#], sus fechas de vigencia y los artículos a los que remite. Úsala cuando ya sabes qué precepto "
+        "necesitas: porque un fragmento de buscar_fuentes lo nombra o se queda corto, porque otro artículo remite a "
+        "él, o porque el usuario lo cita («artículo 68 de la LIRPF»). Es exacta donde la búsqueda es aproximada. Con "
+        "`fecha` devuelve la redacción que regía ese día. Las normas disponibles y sus artículos se ven con "
+        "indice_norma."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "norma": {
+                "type": "string",
+                "description": "La sigla (LIRPF, LIVA, LGT…), el identificador del BOE o «Ley 35/2006».",
+            },
+            "articulo": {"type": "string", "description": "Número del artículo: «68», «7 bis»."},
+            "disposicion": {
+                "type": "string",
+                "description": "En vez de `articulo`: «Disposición adicional cuarta», «Disposición transitoria 18».",
+            },
+            "fecha": {
+                "type": "string",
+                "description": "AAAA-MM-DD o AAAA (31 de diciembre). La redacción vigente ese día; sin ella, la de hoy.",
+            },
+            "apartado": {
+                "type": "string",
+                "description": "Solo ese apartado numerado («2») de un artículo largo. Sin él, el artículo entero.",
+            },
+        },
+        "required": ["norma"],
+    },
+)
+
+LAW_INDEX_TOOL = ToolSpec(
+    name="indice_norma",
+    description=(
+        "Sin argumentos, lista las normas del corpus que se pueden leer por artículos. Con `norma`, devuelve su "
+        "índice: títulos, capítulos y el rótulo de cada artículo y disposición. Úsala para orientarte en una ley "
+        "(qué capítulo trata las deducciones, qué artículos tiene) antes de leer con leer_articulo. No es una "
+        "fuente citable: cita el artículo que leas."
+    ),
+    input_schema={
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "norma": {"type": "string", "description": "La sigla, el identificador del BOE o «Ley 35/2006»."},
+            "contiene": {
+                "type": "string",
+                "description": "Muestra solo los títulos, capítulos y artículos cuyo rótulo contiene este texto.",
+            },
+        },
+    },
+)
+
+#: An article read whole can be long (the IRPF's article 68 runs past 40,000 characters): what one call returns.
+MAX_CARACTERES_ARTICULO = 14_000
 
 READ_CASE_TOOL = ToolSpec(
     name="consultar_expediente",
@@ -183,6 +251,43 @@ _RELACION_VERBO = {
 }
 
 
+def fecha_de_vigencia(valor: str) -> str | None:
+    """«2022» → «2022-12-31» (a tax year is judged on its last day); «2022-06-30» as it is; None if malformed."""
+    valor = valor.strip()
+    if len(valor) == 4 and valor.isdigit():
+        return f"{valor}-12-31"
+    try:
+        return datetime.strptime(valor[:10], "%Y-%m-%d").date().isoformat()
+    except ValueError:
+        return None
+
+
+def _plano(texto: str) -> str:
+    import unicodedata
+
+    sin = "".join(c for c in unicodedata.normalize("NFKD", texto) if not unicodedata.combining(c))
+    return " ".join(sin.lower().split())
+
+
+def _apartado_de(texto: str, apartado: str) -> str | None:
+    """The paragraphs of the numbered apartado ``apartado`` («2»): from «2. » up to the next «N. » paragraph."""
+    numero = apartado.strip().rstrip(".")
+    if not numero.isdigit():
+        return None
+    dentro: list[str] = []
+    for parrafo in texto.split("\n"):
+        cabeza = parrafo.split(". ", 1)[0]
+        if cabeza.isdigit() and len(cabeza) <= 3 and parrafo.startswith(f"{cabeza}. "):
+            if dentro:
+                break
+            if cabeza == numero:
+                dentro.append(parrafo)
+            continue
+        if dentro:
+            dentro.append(parrafo)
+    return "\n".join(dentro) if dentro else None
+
+
 @dataclass(frozen=True)
 class ToolOutcome:
     content: str
@@ -268,7 +373,12 @@ class Toolbox:
         self._record_spec = registrar_hechos_spec(agente.ayuda_registrar_hechos for _modulo, agente in agentes)
 
     def specs(self) -> list[ToolSpec]:
-        specs = [SEARCH_TOOL, *(herramienta.spec for _modulo, herramienta in self._directas.values())]
+        specs = [SEARCH_TOOL]
+        # Reading by identifier needs a corpus indexed by articles (the BOE's blocks): offered when the searcher
+        # can do it, right after the search.
+        if self._lee_por_articulos():
+            specs.extend([READ_ARTICLE_TOOL, LAW_INDEX_TOOL])
+        specs.extend(herramienta.spec for _modulo, herramienta in self._directas.values())
         if self._graph is not None:
             specs.append(VALIDITY_TOOL)
         if self.case is not None:
@@ -286,6 +396,8 @@ class Toolbox:
             return _error(f"No se pudo interpretar la llamada: {call.arguments_error}. Reenvíala con JSON válido.")
         handlers: dict[str, Callable[[dict[str, Any]], ToolOutcome]] = {
             SEARCH_TOOL.name: self._search,
+            READ_ARTICLE_TOOL.name: self._read_article,
+            LAW_INDEX_TOOL.name: self._law_index,
             PLANIFICAR_TOOL.name: lambda a: ToolOutcome(*planificar_para_agente(a, case=self.case, ledger=self.ledger)),
             VALIDITY_TOOL.name: self._validity,
             READ_CASE_TOOL.name: self._read_case,
@@ -300,6 +412,9 @@ class Toolbox:
             (call.name in _CASE_ONLY_TOOLS and self.case is None)
             or (self._allowed is not None and call.name not in self._allowed)
         ) or (call.name == VALIDITY_TOOL.name and self._graph is None)
+        unavailable = unavailable or (
+            call.name in (READ_ARTICLE_TOOL.name, LAW_INDEX_TOOL.name) and not self._lee_por_articulos()
+        )
         if handler is None or unavailable:
             return _error(f"Herramienta no disponible: {call.name}.")
         try:
@@ -351,7 +466,13 @@ class Toolbox:
         date_from = _text("desde_fecha")
         if date_from is not None and normalize_date(date_from) is None:
             return _error("'desde_fecha' debe tener formato AAAA o AAAA-MM-DD.")
+        vigente_en = _text("vigente_en")
+        if vigente_en is not None:
+            vigente_en = fecha_de_vigencia(vigente_en)
+            if vigente_en is None:
+                return _error("'vigente_en' debe tener formato AAAA o AAAA-MM-DD.")
         filters = SearchFilters(
+            vigente_en=vigente_en,
             date_from=date_from,
             source_type=source_type,
             tributo=_text("tributo"),
@@ -378,6 +499,158 @@ class Toolbox:
         return ToolOutcome(
             content=body,
             summary=f"{len(unique)} fragmentos: {', '.join(f.fragment_id for f in unique)}",
+        )
+
+    # ------------------------------------------------------------------ #
+    # Reading the law by identifier
+    # ------------------------------------------------------------------ #
+
+    def _lee_por_articulos(self) -> bool:
+        return callable(getattr(self._searcher, "leer_precepto", None))
+
+    def _normas_disponibles(self) -> str:
+        buscador: Any = self._searcher  # guarded by _lee_por_articulos
+        normas = buscador.normas()
+        if not normas:
+            return "El corpus no tiene todavía ninguna norma indexada por artículos: usa buscar_fuentes."
+        lineas = [
+            f"- {n.sigla + ': ' if n.sigla else ''}{n.titulo or n.norma_id} ({n.norma_id}; {n.preceptos} preceptos)"
+            for n in normas
+        ]
+        return "Normas que se pueden leer por artículos:\n" + "\n".join(lineas)
+
+    def _read_article(self, arguments: dict[str, Any]) -> ToolOutcome:
+        def _text(key: str) -> str | None:
+            value = arguments.get(key)
+            if isinstance(value, int) and not isinstance(value, bool):
+                value = str(value)
+            return value.strip() if isinstance(value, str) and value.strip() else None
+
+        norma, articulo, disposicion = _text("norma"), _text("articulo"), _text("disposicion")
+        if norma is None:
+            return _error("Falta 'norma' (la sigla, el identificador del BOE o «Ley 35/2006»).")
+        if (articulo is None) == (disposicion is None):
+            return _error("Indica 'articulo' («68») o 'disposicion' («Disposición adicional cuarta»), uno de los dos.")
+        fecha = _text("fecha")
+        if fecha is not None:
+            fecha = fecha_de_vigencia(fecha)
+            if fecha is None:
+                return _error("'fecha' debe tener formato AAAA o AAAA-MM-DD.")
+        buscador: Any = self._searcher
+        if buscador.resolver_norma(norma) is None:
+            return _error(
+                f"No encuentro la norma «{norma}» entre las indexadas por artículos.\n{self._normas_disponibles()}"
+            )
+        if articulo is not None:
+            articulo = " ".join(articulo.lower().replace("artículo", "").replace("articulo", "").split())
+        precepto = buscador.leer_precepto(norma, articulo=articulo, disposicion=disposicion, fecha=fecha)
+        nombre = f"artículo {articulo}" if articulo is not None else str(disposicion)
+        if precepto is None:
+            versiones = buscador.versiones_de(norma, articulo=articulo, disposicion=disposicion)
+            if versiones and fecha is not None:
+                return ToolOutcome(
+                    content=(
+                        f"El {nombre} no existía el {fecha}: su primera redacción rige desde el "
+                        f"{versiones[0].vigente_desde}."
+                    ),
+                    summary=f"{nombre}: no existía el {fecha}",
+                )
+            return _error(f"La norma no tiene {nombre}. Mira su índice con indice_norma.")
+        if precepto.sin_contenido:
+            anterior = next(
+                (
+                    v
+                    for v in reversed(buscador.versiones_de(norma, articulo=articulo, disposicion=disposicion))
+                    if not v.sin_contenido and v.vigente_desde < precepto.vigente_desde
+                ),
+                None,
+            )
+            pista = (
+                f" Su última redacción con texto rigió del {anterior.vigente_desde} al {anterior.vigente_hasta}: "
+                "pídela con `fecha` si la pregunta es sobre ese periodo."
+                if anterior is not None
+                else ""
+            )
+            return ToolOutcome(
+                content=f"{precepto.rotulo} — sin contenido desde el {precepto.vigente_desde} ({precepto.texto.strip() or 'derogado'}).{pista}",
+                summary=f"{nombre}: sin contenido",
+            )
+        from asistente.conocimiento.indice.buscador import fragmento_de_precepto
+        from asistente.conocimiento.llm.security import sanitize_context_documents
+
+        apartado = _text("apartado")
+        if apartado is not None:
+            recorte = _apartado_de(precepto.texto, apartado)
+            if recorte is None:
+                return _error(f"El {nombre} no tiene un apartado «{apartado}» numerado. Léelo entero sin 'apartado'.")
+            from dataclasses import replace
+
+            precepto = replace(precepto, texto=recorte)
+        doc = fragmento_de_precepto(precepto, maximo=MAX_CARACTERES_ARTICULO)
+        if apartado is not None:
+            doc = doc.con(metadatos={**doc.metadatos, "chunk_id": f"{doc.metadatos['chunk_id']}:ap{apartado}"})
+        # The law's text is still retrieved content: the same sanitising as a search result.
+        doc = next(iter(sanitize_context_documents([doc])))
+        fragment = self.ledger.register(text=doc.texto or "", metadata=self._with_validity(dict(doc.metadatos)))
+        notas: list[str] = []
+        if doc.metadatos.get("recortado"):
+            notas.append(
+                f"El artículo sigue: se muestran sus primeros {MAX_CARACTERES_ARTICULO} caracteres. Pide el apartado "
+                "que necesites con `apartado`."
+            )
+        if precepto.vigente_hasta:
+            notas.append(
+                f"Esta redacción rigió del {precepto.vigente_desde} al {precepto.vigente_hasta}; NO es la vigente hoy."
+            )
+        else:
+            notas.append(f"Redacción vigente, en vigor desde el {precepto.vigente_desde}.")
+        if precepto.notas:
+            notas.append("Última modificación según el BOE: " + precepto.notas[0])
+        if precepto.remisiones:
+            propias = [a for a, otra in precepto.remisiones if otra is None][:20]
+            ajenas = [f"art. {a} de {otra}" for a, otra in precepto.remisiones if otra is not None][:10]
+            if propias:
+                notas.append("Remite a los artículos de esta norma: " + ", ".join(propias) + ".")
+            if ajenas:
+                notas.append("Remite a otras normas: " + "; ".join(ajenas) + ".")
+        return ToolOutcome(
+            content=fragment.render() + "\n\n" + "\n".join(notas),
+            summary=f"{nombre} de {norma}: {fragment.fragment_id}",
+        )
+
+    def _law_index(self, arguments: dict[str, Any]) -> ToolOutcome:
+        norma = arguments.get("norma")
+        if not isinstance(norma, str) or not norma.strip():
+            return ToolOutcome(content=self._normas_disponibles(), summary="normas disponibles")
+        buscador: Any = self._searcher
+        preceptos = buscador.indice_de_norma(norma.strip())
+        if not preceptos:
+            return _error(
+                f"No encuentro la norma «{norma}» entre las indexadas por artículos.\n{self._normas_disponibles()}"
+            )
+        contiene = arguments.get("contiene")
+        filtro = _plano(contiene) if isinstance(contiene, str) and contiene.strip() else None
+        lineas: list[str] = []
+        ruta_anterior: tuple[str, ...] = ()
+        mostrados = 0
+        for p in preceptos:
+            if filtro is not None and not any(filtro in _plano(t) for t in (*p.jerarquia, p.rotulo)):
+                continue
+            # Print each heading once, when the path changes.
+            for nivel, encabezado in enumerate(p.jerarquia):
+                if nivel >= len(ruta_anterior) or ruta_anterior[nivel] != encabezado:
+                    lineas.append(f"{'  ' * nivel}{encabezado}")
+            ruta_anterior = p.jerarquia
+            estado = " (sin contenido)" if p.sin_contenido else ""
+            lineas.append(f"{'  ' * len(p.jerarquia)}{p.rotulo}{estado}")
+            mostrados += 1
+        if not lineas:
+            return ToolOutcome(content=f"Ningún rótulo de la norma contiene «{contiene}».", summary="0 preceptos")
+        cabeza = preceptos[0]
+        titulo = cabeza.norma_titulo or cabeza.sigla or cabeza.norma_id
+        return ToolOutcome(
+            content=f"Índice de {titulo} ({cabeza.norma_id}). No es citable: lee el artículo.\n" + "\n".join(lineas),
+            summary=f"índice de {norma.strip()}: {mostrados} preceptos",
         )
 
     # ------------------------------------------------------------------ #

@@ -50,6 +50,8 @@ dependencies = [
     # with scrapy-playwright, but the agent must not depend on that crawler dependency staying.
     "playwright>=1.65",
     "hindsight-all==1.2.3",
+    # Spanish stemmer for the lexical side of the corpus index (FTS5 has none): «deducción» matches «deducciones».
+    "snowballstemmer==3.1.1",
 ]
 
 [dependency-groups]

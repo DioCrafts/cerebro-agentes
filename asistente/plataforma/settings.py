@@ -45,10 +45,18 @@ EMBEDDING_MAX_SEQ_LENGTH = int(os.environ.get("EMBEDDING_MAX_SEQ_LENGTH", "512")
 # devolución + ISD donaciones — concrete tax advice users actually need);
 # the regression is "abstain" rather than wrong advice. Net positive for a
 # fiscal advisor where correctness >> latency, so we enable by default.
-# Override with ``RERANKER_ENABLED=false`` to force the dense-only path
-# (e.g. for latency benchmarks against the old baseline).
-RERANKER_ENABLED = _env_bool("RERANKER_ENABLED", default=True)
+#
+# OFF by default since 2026-11-26. That A/B was one run of 15 questions. On the retrieval benchmark (77 queries
+# with a known article) the reranker never earned its 3 seconds: over the Docling chunks it gained 2 queries net
+# (the 24 November baseline), and over the law indexed by article it makes the result worse — the right article
+# is first in 56 % of the queries without it and in 38 % with it, among the first three in 73 % and 68 %
+# (docs/cerebro/benchmark-recuperacion.md). Not measured: its effect on doctrine and AEAT pages, which this
+# machine's benchmark corpus does not have. ``RERANKER_ENABLED=true`` turns it back on.
+RERANKER_ENABLED = _env_bool("RERANKER_ENABLED", default=False)
 RERANKER_MODEL = os.environ.get("RERANKER_MODEL", "data/models/qwen3-reranker-mlx-bf16")
+# The task the reranker is told it is judging (Qwen3-Reranker follows an instruction; its model card recommends
+# writing it in English). Empty: the model card's generic one, about web search.
+RERANKER_INSTRUCTION = os.environ.get("RERANKER_INSTRUCTION", "").strip()
 # After reranking, keep the top-K documents to send to the LLM.
 # ``RERANKER_FIRST_STAGE_K`` controls first-stage recall (how many docs reach
 # the reranker); this controls precision of what the LLM finally sees. Raised from 5 to 8
@@ -108,9 +116,14 @@ if os.environ.get("FAISS_INDEX_PATH") and not os.environ.get("INDICE_DIR"):
 # FTS5 rankings. See docs/cerebro/benchmark-recuperacion.md for the measurement behind the default.
 # On by default since 2026-11-24: on the 77 measurable benchmark queries RRF put 2 more citations in the top-3 and
 # lost none, at the price of 3 fewer first places; the agent reads 6 fragments per search, not one.
+# Weights 0.9 / 0.1 since 2026-11-26 (they were 0.6 / 0.4). With the law indexed by article, lexical weight costs
+# first places on the benchmark: the right article is first in 56 % of the 77 queries with dense search alone, in
+# 49 % at 0.9 / 0.1, 45 % at 0.8 / 0.2 and 42 % at 0.6 / 0.4. Among the 6 fragments the agent reads it is there in
+# 82 % with dense alone and down to 0.8 / 0.2, and in 78 % at 0.6 / 0.4. The lexical side stays on, light, for what
+# an embedding blurs and the benchmark does not ask about: form numbers and identifiers in AEAT pages and rulings.
 BM25_ENABLED = _env_bool("BM25_ENABLED", default=True)
-BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.6"))
-BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.4"))
+BM25_DENSE_WEIGHT = float(os.environ.get("BM25_DENSE_WEIGHT", "0.9"))
+BM25_BM25_WEIGHT = float(os.environ.get("BM25_BM25_WEIGHT", "0.1"))
 
 DECISION_DEBUG_MODE = _env_bool("DECISION_DEBUG_MODE", default=False)
 DECISION_STATE_DB_PATH = os.environ.get("DECISION_STATE_DB_PATH", "./data/decision_state.sqlite3")

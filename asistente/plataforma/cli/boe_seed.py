@@ -7,9 +7,11 @@ HAP/72/2013). Maintainers add new IDs to ``rules/boe_seed_catalog.json`` and
 re-run ``uv run python -m asistente.plataforma.cli.boe_seed`` to refresh the
 local snapshot.
 
-We deliberately go through ``https://www.boe.es/buscar/act.php?id=<ID>``
-rather than the original ``/diario_boe/txt.php`` so that consolidated text
-(post-amendments) is what gets indexed.
+Each norm is asked first by blocks, from the open-data API: one block per article, with every version and the
+date it came into force (``<ID>.boe.xml`` plus a sidecar; see ``asistente/conocimiento/boe/bloques.py``). That
+is what the processor cuts by article. What the BOE does not consolidate (a court ruling, a one-off order) has no
+blocks and is fetched as before, from ``https://www.boe.es/buscar/act.php?id=<ID>``. ``--solo-html`` keeps the
+old behaviour for everything.
 """
 
 from __future__ import annotations
@@ -49,9 +51,20 @@ def load_catalog(catalog_path: Path) -> list[dict[str, str]]:
                 "label": entry.get("label", boe_id),
                 "topic": entry.get("topic", ""),
                 "subdir": entry.get("subdir", _DEFAULT_SUBDIR),
+                "sigla": entry.get("sigla", ""),
             }
         )
     return entries
+
+
+def fetch_blocks(boe_id: str, carpeta: Path, sigla: str = "") -> Path | None:
+    """The norm by blocks (``<ID>.boe.xml`` and its sidecar) in ``carpeta``; None when the BOE has none for it
+    or the request fails (the caller then falls back to the rendered page)."""
+    try:
+        return boe.guardar_bloques(boe_id, carpeta, sigla=sigla)
+    except httpx.HTTPError as exc:
+        logger.warning("Blocks of %s failed (%s); falling back to the page.", boe_id, exc)
+        return None
 
 
 def fetch_document(boe_id: str, target_path: Path) -> int:
@@ -104,7 +117,15 @@ def fetch_document(boe_id: str, target_path: Path) -> int:
     type=click.FloatRange(min=0.0),
     help="Polite pause (seconds) between two BOE downloads.",
 )
-def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: bool, delay: float) -> None:
+@click.option(
+    "--solo-html",
+    is_flag=True,
+    default=False,
+    help="Do not ask for the norm by blocks: download only the rendered page, as before November 2026.",
+)
+def cli(
+    catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: bool, delay: float, solo_html: bool
+) -> None:
     """Fetch every BOE ID listed in CATALOG into OUTPUT_DIR."""
     snapshot = snapshot_date or datetime.now(UTC).strftime("%Y-%m-%d")
     entries = load_catalog(catalog)
@@ -123,6 +144,11 @@ def cli(catalog: Path, output_dir: Path, snapshot_date: str | None, dry_run: boo
         if index and delay:
             time.sleep(delay)
         click.echo(f"Fetching {entry['id']} ({entry['label']}) → {target}")
+        if not solo_html:
+            bloques = fetch_blocks(entry["id"], target.parent, entry["sigla"])
+            if bloques is not None:
+                summary.append({"id": entry["id"], "path": str(bloques), "bytes": bloques.stat().st_size})
+                continue
         # One bad or withdrawn ID must not throw away the rest of the run (and its manifest).
         try:
             size = fetch_document(entry["id"], target)

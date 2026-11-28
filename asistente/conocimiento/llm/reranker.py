@@ -34,6 +34,17 @@ _SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
 _DEFAULT_INSTRUCTION = "Given a web search query, retrieve relevant passages that answer the query"
 
 
+def desde_ajustes() -> MLXReranker:
+    """The reranker the settings describe (``RERANKER_MODEL``, ``RERANKER_TOP_K``, ``RERANKER_INSTRUCTION``)."""
+    from asistente.plataforma import settings
+
+    return MLXReranker(
+        model_path=settings.RERANKER_MODEL,
+        top_k=settings.RERANKER_TOP_K,
+        instruction=settings.RERANKER_INSTRUCTION or _DEFAULT_INSTRUCTION,
+    )
+
+
 # Process-level cache so multiple MLXReranker instances share a single loaded
 # model (1.1 GB) and tokenizer instead of paying the load cost per request.
 # Guarded by a lock so a burst of concurrent first-time requests (UI cold

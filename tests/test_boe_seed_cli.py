@@ -88,9 +88,65 @@ def test_boe_seed_real_run_writes_files_and_manifest(catalog_path: Path, tmp_pat
     for doc in manifest["documents"]:
         assert doc["bytes"] > 0
 
-    # We must call BOE's act.php (consolidated) endpoint, not the original
-    # diario_boe one — that contract is what guarantees the indexed text
-    # reflects current law.
+    # Each norm is asked first by blocks; these ids have none (the answer is a page), so the seed falls back to
+    # BOE's act.php (consolidated) endpoint, never the original diario_boe one — that contract is what
+    # guarantees the indexed text reflects current law.
+    urls = [str(r.url) for r in vistas]
+    assert all("buscar/act.php?id=" in u or "legislacion-consolidada/id/" in u for u in urls)
+    assert sum("buscar/act.php?id=" in u for u in urls) == 2
+    assert not list(out_dir.glob("*.boe.xml"))
+
+
+_BLOQUES = (
+    '<?xml version="1.0" encoding="utf-8"?><response><status><code>200</code></status><data><texto>'
+    '<bloque id="a1" tipo="precepto" titulo="Artículo 1">'
+    '<version id_norma="BOE-X-0001" fecha_publicacion="20200101" fecha_vigencia="20200102">'
+    '<p class="articulo">Artículo 1. Objeto.</p><p class="parrafo">Texto.</p></version></bloque>'
+    "</texto></data></response>"
+).encode()
+
+
+def test_boe_seed_guarda_la_norma_por_bloques_cuando_el_boe_la_tiene(catalog_path: Path, tmp_path: Path, red_falsa):
+    def responder(request: httpx.Request):
+        url = str(request.url)
+        if url.endswith("/BOE-X-0001/texto"):
+            return httpx.Response(200, content=_BLOQUES)
+        if url.endswith("/BOE-X-0001/metadatos"):
+            entrada = {
+                "identificador": "BOE-X-0001",
+                "titulo": "Ley de prueba.",
+                "fecha_actualizacion": "20260115T100000Z",
+            }
+            return httpx.Response(200, json={"status": {"code": "200", "text": "ok"}, "data": [entrada]})
+        if "/legislacion-consolidada/" in url:
+            return httpx.Response(404)
+        return httpx.Response(200, content=b"<html><title>pagina</title></html>")
+
+    red_falsa(responder)
+    result = CliRunner().invoke(
+        boe_seed.cli,
+        ["--catalog", str(catalog_path), "--output-dir", str(tmp_path / "out"), "--snapshot-date", "2026-01-15"],
+    )
+    assert result.exit_code == 0, result.output
+    out_dir = tmp_path / "out" / "2026-01-15" / "boe-test"
+    # The consolidated norm comes by blocks, with its sidecar and without the page; the other one, as a page.
+    assert (out_dir / "BOE-X-0001.boe.xml").read_bytes() == _BLOQUES
+    assert not (out_dir / "BOE-X-0001.html").exists()
+    sidecar = json.loads((out_dir / "BOE-X-0001.boe.json").read_text(encoding="utf-8"))
+    assert sidecar["titulo"] == "Ley de prueba" and sidecar["actualizada"] == "2026-01-15"
+    assert "fecha_actualizacion" not in sidecar
+    assert (out_dir / "BOE-X-0002.html").exists() and not (out_dir / "BOE-X-0002.boe.xml").exists()
+    manifest = json.loads((tmp_path / "out" / "2026-01-15" / "boe-seed-manifest.json").read_text())
+    assert [Path(d["path"]).name for d in manifest["documents"]] == ["BOE-X-0001.boe.xml", "BOE-X-0002.html"]
+
+
+def test_boe_seed_solo_html_no_pide_los_bloques(catalog_path: Path, tmp_path: Path, red_falsa):
+    vistas = red_falsa(lambda request: httpx.Response(200, content=b"<html><title>pagina</title></html>"))
+    result = CliRunner().invoke(
+        boe_seed.cli,
+        ["--catalog", str(catalog_path), "--output-dir", str(tmp_path / "out"), "--solo-html"],
+    )
+    assert result.exit_code == 0, result.output
     assert vistas and all("buscar/act.php?id=" in str(r.url) for r in vistas)
 
 
@@ -98,6 +154,8 @@ def test_boe_seed_retries_on_transient_failure(tmp_path: Path, red_falsa):
     attempts: list[int] = []
 
     def responder(request: httpx.Request):
+        if "legislacion-consolidada" in str(request.url):
+            return httpx.Response(404)  # no blocks for this id: the page is what gets retried
         attempts.append(1)
         if len(attempts) == 1:
             return httpx.ReadTimeout("simulated network blip")

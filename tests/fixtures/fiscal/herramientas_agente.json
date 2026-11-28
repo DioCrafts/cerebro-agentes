@@ -37,6 +37,10 @@
       "type": "string",
       "description": "AAAA o AAAA-MM-DD. Descarta consultas, resoluciones y sentencias anteriores a esa fecha; úsalo cuando una reforma o una sentencia posterior haya podido dejar superada la doctrina antigua. La legislación consolidada (sin fecha de resolución) se mantiene siempre."
      },
+     "vigente_en": {
+      "type": "string",
+      "description": "AAAA-MM-DD (o AAAA: el 31 de diciembre de ese año). Devuelve la ley tal como estaba ese día, no la de hoy. Úsalo siempre que la pregunta sea sobre un ejercicio o un hecho pasado: el IRPF de 2022 se rige por el texto vigente a 31 de diciembre de 2022."
+     },
      "max_resultados": {
       "type": "integer",
       "description": "Entre 1 y 10. Por defecto 6."
@@ -1415,6 +1419,10 @@
      "desde_fecha": {
       "type": "string",
       "description": "AAAA o AAAA-MM-DD. Descarta consultas, resoluciones y sentencias anteriores a esa fecha; úsalo cuando una reforma o una sentencia posterior haya podido dejar superada la doctrina antigua. La legislación consolidada (sin fecha de resolución) se mantiene siempre."
+     },
+     "vigente_en": {
+      "type": "string",
+      "description": "AAAA-MM-DD (o AAAA: el 31 de diciembre de ese año). Devuelve la ley tal como estaba ese día, no la de hoy. Úsalo siempre que la pregunta sea sobre un ejercicio o un hecho pasado: el IRPF de 2022 se rige por el texto vigente a 31 de diciembre de 2022."
      },
      "max_resultados": {
       "type": "integer",

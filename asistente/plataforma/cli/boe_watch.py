@@ -272,6 +272,9 @@ def cli(
                 body = _fetch_html(boe_id)
                 target.parent.mkdir(parents=True, exist_ok=True)
                 target.write_bytes(body)
+                # The same norm by blocks, next to the page: what the processor cuts by article. A norm without
+                # blocks keeps only its page.
+                boe.guardar_bloques(boe_id, target.parent, sigla=str(entry.get("sigla", "")), datos=meta)
             except httpx.HTTPError as exc:
                 stats["errors"] += 1
                 click.echo(f"  ✗ {boe_id}  HTML download failed: {exc}")

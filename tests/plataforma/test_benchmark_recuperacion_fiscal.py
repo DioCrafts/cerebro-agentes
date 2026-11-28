@@ -114,8 +114,12 @@ def test_la_variante_rrf_fusiona_el_ranking_lexico() -> None:
     _, indice, rrf = _buscador(hibrido=True)
     assert rrf.buscador.hibrido
     consulta = "residencia habitual 183 días"
-    lexico = [a.fragmento.chunk_id for a in indice.buscar_lexico(consulta, k=5)]
-    denso = [a.fragmento.chunk_id for a in indice.buscar_denso(bench.EmbeddingsHash().embed_query(consulta), k=5)]
+    from asistente.conocimiento.indice.buscador import PROFUNDIDAD_FUSION
+
+    # The fusion reads each ranking down to PROFUNDIDAD_FUSION, however few results are asked for.
+    hondo = PROFUNDIDAD_FUSION
+    lexico = [a.fragmento.chunk_id for a in indice.buscar_lexico(consulta, k=hondo)]
+    denso = [a.fragmento.chunk_id for a in indice.buscar_denso(bench.EmbeddingsHash().embed_query(consulta), k=hondo)]
     fusion = [d.id for d in rrf.primera_etapa(consulta, 5)]
     assert lexico and denso
     # RRF: the first of each ranking is among the fused candidates, and nothing outside both rankings is.
@@ -233,7 +237,7 @@ def test_cli_imprime_tabla_y_guarda_json(tmp_path) -> None:
     assert datos["modo"] == "simulado" and len(datos["variantes"]) == 3 and datos["reranker"] is False
     assert "Primera etapa de `rrf`" in res.output and "| casi |" in res.output
     assert datos["variantes"][0]["primera_etapa"]["profundidad"] == 50
-    assert datos["pesos_rrf"] == {"denso": 0.6, "lexico": 0.4}
+    assert datos["pesos_rrf"] == {"denso": 0.9, "lexico": 0.1}
 
 
 def test_recalcular_vectores_mide_otro_modelo_y_lo_compara() -> None:
