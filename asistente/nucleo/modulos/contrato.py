@@ -116,6 +116,12 @@ class HerramientaModulo:
     spec: ToolSpec
     ejecutar: Callable[[Mapping[str, Any], ContextoModulo], ResultadoHerramienta]
     efecto: Efecto = "lectura"
+    # True when calling it sends its arguments to a service outside this machine (an MCP connector). A
+    # ``lectura`` runs without asking, which is fine while the arguments come from the conversation; once the
+    # turn has read third-party text, a model steered by that text could put the case's data in them and the
+    # read would carry it out. So for these the dispatchers turn a tainted ``lectura`` into a pending action:
+    # the owner sees what would be sent and to whom. Reads that never leave the machine are unaffected.
+    sale_del_equipo: bool = False
 
 
 @dataclass(frozen=True)

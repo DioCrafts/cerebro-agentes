@@ -163,14 +163,14 @@ class AlmacenTareas:
     @staticmethod
     def a_tarea(fila: sqlite3.Row) -> Tarea:
         """A task as another process sees it: everything but the screenshot, the summary and the session."""
-        from asistente.capacidades.navegador.guion import GuionError, guion_activo, validar_parametros
-        from asistente.capacidades.navegador.tareas import EventoTarea, Tarea
+        from asistente.capacidades.navegador.guion import GuionError
+        from asistente.capacidades.navegador.tareas import EventoTarea, Tarea, parametros_validados
 
         datos = json.loads(fila["payload_json"])
         parametros: dict[str, Any] = {}
         if fila["parametros_json"]:
             try:
-                parametros = validar_parametros(guion_activo(fila["clave"]).reglas, json.loads(fila["parametros_json"]))
+                parametros = parametros_validados(fila["clave"], json.loads(fila["parametros_json"]))
             except GuionError, ValueError:
                 parametros = {}
         return Tarea(

@@ -4,6 +4,9 @@
   their sites, version and whether they were verified against the real site), the consent text, the user's
   consent and how many tasks they have left today. Never 503: the UI uses it to hide or explain the feature.
 * ``POST /navegador/tareas`` — prepare (and, with ``iniciar``, start) a task for a case.
+* ``POST /navegador/misiones`` — prepare (and, with ``iniciar``, start) a MISSION: an objective in the user's
+  words on a declared site, whose steps a model chooses behind the same gates (``navegador/agente.py``). Needs
+  ``NAVEGADOR_AGENTE`` and the acknowledgement of the missions' own consent text.
 * ``POST /navegador/tareas/{id}/iniciar`` — start a prepared task (e.g. one the chat prepared).
 * ``GET /navegador/tareas?case_id=…`` / ``GET /navegador/tareas/{id}`` — live state: events and steps (no
   values), the summary of what would be sent, the import result, the pending action.
@@ -32,11 +35,15 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, ConfigDict, Field
 from starlette.concurrency import run_in_threadpool
 
-from asistente.capacidades.navegador import vigilancia
+from asistente.capacidades.navegador import confinamiento, vigilancia
 from asistente.capacidades.navegador.reparacion import Reparador
+from asistente.capacidades.navegador.sitio import describir as describir_sitio
 from asistente.capacidades.navegador.tareas import (
     ACTIVOS,
+    PROPOSITO,
     TEXTO_CONSENTIMIENTO,
+    TEXTO_CONSENTIMIENTO_MISION,
+    TEXTO_CONSENTIMIENTO_MISION_VERSION,
     TEXTO_CONSENTIMIENTO_VERSION,
     GestorTareas,
     Servicios,
@@ -44,8 +51,11 @@ from asistente.capacidades.navegador.tareas import (
     TareaError,
     consentimiento,
     disponibles,
+    es_mision,
     gestor,
+    misiones_activas,
     modos_permitidos,
+    sitios_disponibles,
 )
 from asistente.nucleo.decision.state_store_sqlite import SQLiteCaseStateStore
 from asistente.nucleo.modulos.acciones import AccionStore
@@ -91,6 +101,21 @@ class GuionInfo(_M):
     modulo_destino: str | None = None
 
 
+class SitioInfo(_M):
+    """A site a mission may run on (``navegador/sitio.py``)."""
+
+    clave: str
+    version: int
+    titulo: str
+    descripcion: str
+    sitios: list[str]
+    requiere_login: bool
+    admite_descarga: bool
+    verificado_contra_sitio_real: bool
+    nota_verificacion: str
+    demostracion: bool
+
+
 class EstadoNavegador(_M):
     activo: bool
     modos: list[str]
@@ -100,6 +125,13 @@ class EstadoNavegador(_M):
     tareas: list[GuionInfo]
     max_tareas_dia: int
     usadas_hoy: int
+    # Missions: whether the operator offers them, the sites they may run on and their own consent text.
+    misiones: bool = False
+    sitios: list[SitioInfo] = Field(default_factory=list)
+    texto_consentimiento_mision: str = ""
+    texto_version_mision: str = ""
+    # How the browser process is confined on this machine: "sandbox-exec" or "ninguno".
+    confinamiento: str = "ninguno"
 
 
 class PasoInfo(_M):
@@ -141,6 +173,10 @@ class TareaInfo(_M):
     importacion_error: bool = False
     accion_id: str | None = None
     origenes_bloqueados: list[str] = Field(default_factory=list)
+    # "guion" (fixed steps) or "mision" (steps chosen by a model).
+    tipo: Literal["guion", "mision"] = "guion"
+    # A mission's answer: what the model read on the pages. Third-party content: shown as such.
+    respuesta: str | None = None
 
 
 class TareasResponse(_M):
@@ -161,6 +197,19 @@ class TareaRequest(_M):
     iniciar: bool = False
     modo: Modo = "ventana"
     # Playwright storage_state the user hands over for THIS run (modo "sesion"). Never stored or logged.
+    sesion: dict[str, Any] | None = None
+    acepto: bool = False
+    texto_version: str | None = None
+
+
+class MisionRequest(_M):
+    case_id: str = Field(min_length=1)
+    sitio: str = Field(min_length=1, max_length=60)
+    objetivo: str = Field(min_length=1, max_length=2000)
+    # What the user gives for the mission (label -> value). Never a credential.
+    datos: dict[str, str] = Field(default_factory=dict)
+    iniciar: bool = False
+    modo: Modo = "ventana"
     sesion: dict[str, Any] | None = None
     acepto: bool = False
     texto_version: str | None = None
@@ -196,6 +245,8 @@ def _info(tarea: Tarea) -> TareaInfo:
             importacion_error=tarea.importacion_error,
             accion_id=tarea.accion_id,
             origenes_bloqueados=sorted(set(tarea.bloqueadas)),
+            tipo="mision" if es_mision(tarea.clave) else "guion",
+            respuesta=tarea.respuesta,
         )
 
 
@@ -244,12 +295,38 @@ def _reparador_por_defecto() -> Reparador | None:
         return None
 
 
+def _proveedor_por_defecto() -> Any | None:
+    """The metered model provider of the missions' decisions, when the operator switched missions on."""
+    if not misiones_activas():
+        return None
+    try:
+        from asistente.nucleo.agent.providers import create_provider
+        from asistente.plataforma.ops.consumo import medir
+
+        return medir(create_provider(), PROPOSITO)
+    except Exception:
+        logger.warning("browser missions unavailable: no model provider", exc_info=True)
+        return None
+
+
+def _atribuir(user_id: str | None, case_id: str) -> Any:
+    """Charge the model calls of a browser run (a mission's decisions, a selector repair) to its user and case."""
+    from asistente.plataforma.ops import consumo
+
+    return consumo.contexto_consumo(user_id=user_id, case_id=case_id)
+
+
+def _sitio_info(clave: str, spec: Any) -> SitioInfo:
+    return SitioInfo(clave=clave, version=spec.version, **describir_sitio(spec))
+
+
 def build_router(
     *,
     get_case_store: Callable[[], SQLiteCaseStateStore],
     get_accion_store: Callable[..., AccionStore],
     get_gestor: Callable[[], GestorTareas] | None = None,
     get_reparador: Callable[[], Reparador | None] | None = None,
+    get_proveedor: Callable[[], Any | None] | None = None,
 ) -> APIRouter:
     router = APIRouter(tags=["navegador"])
     case_store_dep = Annotated[SQLiteCaseStateStore, Depends(get_case_store)]
@@ -257,6 +334,7 @@ def build_router(
     access_dep = Annotated[CaseAccess, Depends(get_case_access)]
     gestor_dep = Annotated[GestorTareas, Depends(get_gestor or gestor)]
     reparador_dep = Annotated[Reparador | None, Depends(get_reparador or _reparador_por_defecto)]
+    proveedor_dep = Annotated[Any, Depends(get_proveedor or _proveedor_por_defecto)]
 
     def _activo() -> None:
         if not settings.NAVEGADOR_ACTIVO:
@@ -292,8 +370,9 @@ def build_router(
     def _http(exc: TareaError) -> HTTPException:
         return HTTPException(status_code=exc.codigo, detail=str(exc))
 
-    def _comprobar_acuse(acepto: bool, texto_version: str | None) -> None:
-        if not acepto or texto_version != TEXTO_CONSENTIMIENTO_VERSION:
+    def _comprobar_acuse(acepto: bool, texto_version: str | None, *, mision: bool = False) -> None:
+        vigente = TEXTO_CONSENTIMIENTO_MISION_VERSION if mision else TEXTO_CONSENTIMIENTO_VERSION
+        if not acepto or texto_version != vigente:
             raise HTTPException(
                 status_code=422,
                 detail="Lee y acepta lo que va a hacer el agente con navegador antes de empezar (texto vigente).",
@@ -317,19 +396,40 @@ def build_router(
             tareas=[_guion_info(s) for s in disponibles()] if activo else [],
             max_tareas_dia=settings.NAVEGADOR_MAX_TAREAS_DIA,
             usadas_hoy=gestor_.usadas(clave_usuario) if clave_usuario else 0,
+            misiones=misiones_activas(),
+            sitios=(
+                [_sitio_info(clave, spec) for clave, spec in sorted(sitios_disponibles().items())]
+                if misiones_activas()
+                else []
+            ),
+            texto_consentimiento_mision=TEXTO_CONSENTIMIENTO_MISION,
+            texto_version_mision=TEXTO_CONSENTIMIENTO_MISION_VERSION,
+            confinamiento=(
+                "sandbox-exec"
+                if activo and confinamiento.disponible(getattr(settings, "NAVEGADOR_CONFINAMIENTO", "auto"))
+                else "ninguno"
+            ),
         )
 
     def _iniciar(
         tarea: Tarea,
-        payload: InicioRequest | TareaRequest,
+        payload: InicioRequest | TareaRequest | MisionRequest,
         access: CaseAccess,
         gestor_: GestorTareas,
         cases: SQLiteCaseStateStore,
         acciones: AccionStore,
         reparador: Reparador | None,
+        proveedor: Any | None = None,
     ) -> Tarea:
-        _comprobar_acuse(payload.acepto, payload.texto_version)
-        servicios = Servicios(cases=cases, acciones=acciones, auth=access.store, reparador=reparador)
+        _comprobar_acuse(payload.acepto, payload.texto_version, mision=es_mision(tarea.clave))
+        servicios = Servicios(
+            cases=cases,
+            acciones=acciones,
+            auth=access.store,
+            reparador=reparador,
+            proveedor=proveedor,
+            atribuir=_atribuir,
+        )
         try:
             return gestor_.iniciar(
                 tarea, modo=payload.modo, servicios=servicios, user_id=_user_id(access), sesion=payload.sesion
@@ -367,6 +467,37 @@ def build_router(
                 raise
         return _info(tarea)
 
+    @router.post("/navegador/misiones", response_model=TareaInfo, status_code=201, dependencies=activo_dep)
+    def post_mision(
+        payload: MisionRequest,
+        cases: case_store_dep,
+        acciones: accion_store_dep,
+        access: access_dep,
+        gestor_: gestor_dep,
+        proveedor: proveedor_dep,
+    ) -> TareaInfo:
+        """Prepare a mission (and start it when ``iniciar``): the user wrote the objective and the data."""
+        _caso(payload.case_id, access, cases)
+        if payload.iniciar:
+            _comprobar_acuse(payload.acepto, payload.texto_version, mision=True)
+        try:
+            tarea = gestor_.preparar_mision(
+                case_id=payload.case_id,
+                sitio=payload.sitio,
+                objetivo=payload.objetivo,
+                datos=dict(payload.datos),
+                user_id=_user_id(access),
+            )
+        except TareaError as exc:
+            raise _http(exc) from exc
+        if payload.iniciar:
+            try:
+                _iniciar(tarea, payload, access, gestor_, cases, acciones, None, proveedor)
+            except HTTPException:
+                gestor_.cerrar(tarea)
+                raise
+        return _info(tarea)
+
     @router.post("/navegador/tareas/{tarea_id}/iniciar", response_model=TareaInfo, dependencies=activo_dep)
     def post_iniciar(
         tarea_id: str,
@@ -376,10 +507,11 @@ def build_router(
         access: access_dep,
         gestor_: gestor_dep,
         reparador: reparador_dep,
+        proveedor: proveedor_dep,
     ) -> TareaInfo:
         tarea = _tarea(tarea_id, access, gestor_)
         _caso(tarea.case_id, access, cases)
-        return _info(_iniciar(tarea, payload, access, gestor_, cases, acciones, reparador))
+        return _info(_iniciar(tarea, payload, access, gestor_, cases, acciones, reparador, proveedor))
 
     @router.get("/navegador/tareas", response_model=TareasResponse, dependencies=activo_dep)
     def get_tareas(case_id: str, cases: case_store_dep, access: access_dep, gestor_: gestor_dep) -> TareasResponse:

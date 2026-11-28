@@ -40,6 +40,7 @@ import threading
 import time
 from typing import Any, Literal, Protocol
 
+from asistente.capacidades.navegador import confinamiento
 from asistente.capacidades.navegador.guion import (
     Guion,
     Paso,
@@ -64,12 +65,15 @@ from asistente.capacidades.navegador.seguridad import (
     problemas_pulsable,
     redactar_esqueleto,
 )
+from asistente.capacidades.navegador.sitio import Sitio
 from asistente.plataforma import settings
 
 logger = logging.getLogger(__name__)
 
 Modo = Literal["ventana", "sesion"]
-EstadoFinal = Literal["descargado", "detenido_antes_de_enviar", "fallido", "cancelado", "login_no_completado"]
+EstadoFinal = Literal[
+    "descargado", "detenido_antes_de_enviar", "respondido", "fallido", "cancelado", "login_no_completado"
+]
 EstadoPaso = Literal["ok", "reparado", "no_encontrado", "no_coincide", "rechazado", "error", "cancelado"]
 # Step outcomes that mean "the page is not the one the script describes": reported to the format watch.
 FALLOS_DE_FORMATO = frozenset({"no_encontrado", "no_coincide"})
@@ -109,6 +113,10 @@ class ResultadoEjecucion:
     # True once the user's login was detected and the agent started its own steps.
     llego_a_agente: bool = False
     url_final_origen: str | None = None
+    # A mission's answer (``agente.py``): what the model says it read on the pages. Untrusted, never stored.
+    respuesta: str | None = None
+    # How the browser process was confined for this run ("sandbox-exec" or "ninguno").
+    confinamiento: str = "ninguno"
 
 
 class Observador(Protocol):
@@ -168,7 +176,7 @@ def filtrar_sesion(sesion: Any, origenes: set[str]) -> tuple[dict[str, Any], int
 class Ejecutor:
     def __init__(
         self,
-        guion: Guion,
+        guion: Guion | Sitio,
         parametros: dict[str, Any],
         *,
         origenes: dict[str, str],
@@ -200,7 +208,10 @@ class Ejecutor:
         self.reparador = reparador
         self.headless = (modo != "ventana") if headless is None else headless
         self.ejecutable = ejecutable if ejecutable is not None else ejecutable_chromium()
-        self.espera_login_s = espera_login_s if espera_login_s is not None else guion.login.espera_max_s
+        login = guion.login
+        self.espera_login_s = (
+            espera_login_s if espera_login_s is not None else (login.espera_max_s if login is not None else 0)
+        )
         self.timeout_paso_ms = timeout_paso_ms
         self.pausa_ms = guion.pausa_ms if pausa_ms is None else pausa_ms
         self.entrega_max_s = entrega_max_s
@@ -257,7 +268,37 @@ class Ejecutor:
         try:
             with sync_playwright() as pw:
                 try:
-                    navegador = pw.chromium.launch(headless=self.headless, executable_path=self.ejecutable)
+                    # Below the browser's own policy: name resolution limited to the run's hosts, no
+                    # background traffic, and on macOS the process kept out of the user's home.
+                    modo_pedido = confinamiento.modo_de(getattr(settings, "NAVEGADOR_CONFINAMIENTO", "auto"))
+                    lanzamiento = confinamiento.preparar(
+                        tmp,
+                        origenes=self.politica.origenes,
+                        ejecutable=self.ejecutable,
+                        ejecutable_por_defecto=self._chromium_de_playwright(pw),
+                        modo=modo_pedido,
+                    )
+                except confinamiento.ConfinamientoError as exc:
+                    resultado.mensaje = str(exc)
+                    return resultado
+                resultado.confinamiento = lanzamiento.confinado
+                # ``auto`` asks for confinement and settles for none when the platform has no equivalent. That
+                # used to leave only a line in the service log, so the person watching a run could not tell a
+                # confined one from an unconfined one. Saying it when the operator chose ``ninguno`` would be
+                # noise: they already know.
+                if modo_pedido == "auto" and lanzamiento.confinado == "ninguno":
+                    self._evento(
+                        "confinamiento",
+                        "En este equipo el navegador va sin confinamiento de ficheros: solo lo limitan la "
+                        "política de red y el propio navegador.",
+                    )
+                try:
+                    navegador = pw.chromium.launch(
+                        headless=self.headless,
+                        executable_path=lanzamiento.ejecutable,
+                        args=list(lanzamiento.argumentos),
+                        downloads_path=lanzamiento.descargas,
+                    )
                 except PlaywrightError as exc:
                     resultado.mensaje = (
                         "No se ha podido abrir el navegador"
@@ -280,6 +321,22 @@ class Ejecutor:
             self._sesion = None
         resultado.bloqueadas = sorted(set(self.politica.bloqueadas))
         return resultado
+
+    @staticmethod
+    def _chromium_de_playwright(pw: Any) -> str | None:
+        """Path of Playwright's own Chromium when it is installed (needed only to wrap it); else None."""
+        try:
+            ruta = str(pw.chromium.executable_path)
+        except Exception:
+            return None
+        return ruta if ruta and Path(ruta).exists() else None
+
+    def _mensaje_de_inicio(self) -> str:
+        return "Sesión iniciada. A partir de aquí el agente solo consulta: no envía datos."
+
+    def _mascaras(self, pagina: Any) -> list[Any]:
+        """Locators hidden in every live or diagnostic screenshot."""
+        return [pagina.locator(s) for s in self.guion.enmascarar]
 
     def _ejecutar_en(self, navegador: Any, resultado: ResultadoEjecucion, tmp: Path) -> None:
         from playwright.sync_api import Error as PlaywrightError
@@ -334,7 +391,7 @@ class Ejecutor:
                     return
                 resultado.llego_a_agente = True
                 self.politica.fase = "agente"
-                self._evento("agente", "Sesión iniciada. A partir de aquí el agente solo consulta: no envía datos.")
+                self._evento("agente", self._mensaje_de_inicio())
                 self._pasos(pagina, resultado, tmp)
             except _CanceladoError as exc:
                 resultado.estado, resultado.mensaje = "cancelado", f"Tarea detenida: {exc}. No se ha enviado nada."
@@ -353,6 +410,8 @@ class Ejecutor:
 
     def _login(self, pagina: Any) -> bool:
         login = self.guion.login
+        if login is None:  # a site without a login is the mission executor's business (agente.py)
+            return False
         url = self.origenes[login.origen] + login.ruta
         if self.modo == "ventana":
             self._evento(
@@ -432,7 +491,7 @@ class Ejecutor:
 
     def _captura(self, pagina: Any, *, completa: bool = False, enmascarar: bool = True) -> bytes | None:
         try:
-            mascara = [pagina.locator(s) for s in self.guion.enmascarar] if enmascarar else []
+            mascara = self._mascaras(pagina) if enmascarar else []
             png: bytes = pagina.screenshot(full_page=completa, mask=mascara, timeout=10_000)
         except Exception:
             return None

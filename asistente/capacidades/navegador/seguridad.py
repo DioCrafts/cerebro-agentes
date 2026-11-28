@@ -32,6 +32,8 @@ from asistente.capacidades.navegador.guion import (
     normalizar_texto,
     parece_credencial,
 )
+from asistente.capacidades.navegador.personales import IDENTIFICADORES, MASCARA, SALUDO
+from asistente.capacidades.navegador.sitio import Sitio
 
 Fase = Literal["login", "agente", "usuario", "cerrada"]
 METODOS_LECTURA = frozenset({"GET", "HEAD", "OPTIONS"})
@@ -84,7 +86,7 @@ def sustitutos_validos(crudo: str | dict[str, str] | None) -> dict[str, str]:
     return out
 
 
-def origenes_efectivos(guion: Guion, sustitutos: dict[str, str]) -> dict[str, str]:
+def origenes_efectivos(guion: Guion | Sitio, sustitutos: dict[str, str]) -> dict[str, str]:
     """The script's origins after substitution (name -> origin actually visited)."""
     return {nombre: sustitutos.get(origen_de(o) or o, origen_de(o) or o) for nombre, o in guion.origenes.items()}
 
@@ -101,7 +103,7 @@ class PoliticaRed:
     bloqueadas: list[str] = field(default_factory=list)
 
     @classmethod
-    def para(cls, guion: Guion, origenes: dict[str, str]) -> PoliticaRed:
+    def para(cls, guion: Guion | Sitio, origenes: dict[str, str]) -> PoliticaRed:
         posts = tuple((origenes[p.origen], p.ruta_prefijo) for p in guion.peticiones_permitidas)
         return cls(origenes=frozenset(origenes.values()), posts_permitidos=posts)
 
@@ -282,22 +284,21 @@ JS_ESQUELETO = """
 }
 """
 
+# The identifiers come from ``personales`` so the skeleton and the snapshot mask them alike. The last pattern is
+# this side's own: a selector diagnosis never needs to read a figure, so any long run of digits goes too.
 _PATRONES_PERSONALES = (
-    re.compile(r"\bES\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?[A-Z]{2}(?:\s?\d[A-Z])?\b", re.IGNORECASE),  # CUPS
-    re.compile(r"\b[A-Z]{2}\d{2}(?:\s?\d{4}){5}\b"),  # IBAN
-    re.compile(r"\b[0-9XYZxyz]\d{7}[A-Za-z]\b"),  # NIF / NIE
-    re.compile(r"[^\s@]+@[^\s@]+\.[^\s@]+"),  # e-mail
+    *IDENTIFICADORES,
     re.compile(r"\+?\d[\d .-]{6,}\d"),  # phone numbers, long figures
 )
-_TRAS_SALUDO = re.compile(r"\b(hola|bienvenid[oa]s?|usuario|usuaria|titular|sesi[oó]n de)\b[,:]?\s+.*", re.IGNORECASE)
+_TRAS_SALUDO = re.compile(rf"\b({SALUDO})\b[,:]?\s+.*", re.IGNORECASE)
 
 
 def redactar_texto(texto: str) -> str:
     """Mask what could be personal data in a label or button text (identifiers, e-mails, numbers, names)."""
     out = texto
     for patron in _PATRONES_PERSONALES:
-        out = patron.sub("•••", out)
-    return _TRAS_SALUDO.sub(lambda m: m.group(1) + " •••", out)
+        out = patron.sub(MASCARA, out)
+    return _TRAS_SALUDO.sub(lambda m: f"{m.group(1)} {MASCARA}", out)
 
 
 def redactar_esqueleto(items: Any, *, enmascarar_ids: Iterable[str] = ()) -> list[dict[str, Any]]:

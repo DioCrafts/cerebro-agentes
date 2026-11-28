@@ -4,6 +4,10 @@
 * ``seguridad.py`` — network allow-list per run, element checks, redaction;
 * ``ejecutor.py`` — runs a script in Chromium (Playwright) after the USER logged in;
 * ``reparacion.py`` — optional LLM selector repair behind a deterministic gate;
+* ``sitio.py`` — sites a mission may run on: origins, login, masks; no steps;
+* ``instantanea.py`` — the page's ARIA snapshot as a model may see it: masked, cut, with its valid targets;
+* ``agente.py`` — missions: a model chooses each action over the snapshot, behind deterministic gates;
+* ``confinamiento.py`` — the Chromium process below the browser's own policy (name resolution, sandbox-exec);
 * ``vigilancia.py`` — format-watch sources, repair proposals, redacted diagnoses;
 * ``tareas.py`` — tasks: consent, kill switch, rate limits, results (luz import, pending actions);
 * ``modulo.py`` — the ``navegador`` household module (its tools in the chat);

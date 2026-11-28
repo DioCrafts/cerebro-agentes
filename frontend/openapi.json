@@ -4891,6 +4891,11 @@
             "title": "Activo",
             "type": "boolean"
           },
+          "confinamiento": {
+            "default": "ninguno",
+            "title": "Confinamiento",
+            "type": "string"
+          },
           "consentimiento": {
             "title": "Consentimiento",
             "type": "boolean"
@@ -4899,11 +4904,23 @@
             "title": "Max Tareas Dia",
             "type": "integer"
           },
+          "misiones": {
+            "default": false,
+            "title": "Misiones",
+            "type": "boolean"
+          },
           "modos": {
             "items": {
               "type": "string"
             },
             "title": "Modos",
+            "type": "array"
+          },
+          "sitios": {
+            "items": {
+              "$ref": "#/components/schemas/SitioInfo"
+            },
+            "title": "Sitios",
             "type": "array"
           },
           "tareas": {
@@ -4917,8 +4934,18 @@
             "title": "Texto Consentimiento",
             "type": "string"
           },
+          "texto_consentimiento_mision": {
+            "default": "",
+            "title": "Texto Consentimiento Mision",
+            "type": "string"
+          },
           "texto_version": {
             "title": "Texto Version",
+            "type": "string"
+          },
+          "texto_version_mision": {
+            "default": "",
+            "title": "Texto Version Mision",
             "type": "string"
           },
           "usadas_hoy": {
@@ -4934,7 +4961,12 @@
           "texto_version",
           "tareas",
           "max_tareas_dia",
-          "usadas_hoy"
+          "usadas_hoy",
+          "misiones",
+          "sitios",
+          "texto_consentimiento_mision",
+          "texto_version_mision",
+          "confinamiento"
         ],
         "title": "EstadoNavegador",
         "type": "object"
@@ -6919,6 +6951,84 @@
           "modelo"
         ],
         "title": "Miembro",
+        "type": "object"
+      },
+      "MisionRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "acepto": {
+            "default": false,
+            "title": "Acepto",
+            "type": "boolean"
+          },
+          "case_id": {
+            "minLength": 1,
+            "title": "Case Id",
+            "type": "string"
+          },
+          "datos": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Datos",
+            "type": "object"
+          },
+          "iniciar": {
+            "default": false,
+            "title": "Iniciar",
+            "type": "boolean"
+          },
+          "modo": {
+            "default": "ventana",
+            "enum": [
+              "ventana",
+              "sesion"
+            ],
+            "title": "Modo",
+            "type": "string"
+          },
+          "objetivo": {
+            "maxLength": 2000,
+            "minLength": 1,
+            "title": "Objetivo",
+            "type": "string"
+          },
+          "sesion": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Sesion"
+          },
+          "sitio": {
+            "maxLength": 60,
+            "minLength": 1,
+            "title": "Sitio",
+            "type": "string"
+          },
+          "texto_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Texto Version"
+          }
+        },
+        "required": [
+          "case_id",
+          "sitio",
+          "objetivo"
+        ],
+        "title": "MisionRequest",
         "type": "object"
       },
       "MissingFact": {
@@ -11927,6 +12037,69 @@
         "title": "SincronizacionResponse",
         "type": "object"
       },
+      "SitioInfo": {
+        "additionalProperties": false,
+        "description": "A site a mission may run on (``navegador/sitio.py``).",
+        "properties": {
+          "admite_descarga": {
+            "title": "Admite Descarga",
+            "type": "boolean"
+          },
+          "clave": {
+            "title": "Clave",
+            "type": "string"
+          },
+          "demostracion": {
+            "title": "Demostracion",
+            "type": "boolean"
+          },
+          "descripcion": {
+            "title": "Descripcion",
+            "type": "string"
+          },
+          "nota_verificacion": {
+            "title": "Nota Verificacion",
+            "type": "string"
+          },
+          "requiere_login": {
+            "title": "Requiere Login",
+            "type": "boolean"
+          },
+          "sitios": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Sitios",
+            "type": "array"
+          },
+          "titulo": {
+            "title": "Titulo",
+            "type": "string"
+          },
+          "verificado_contra_sitio_real": {
+            "title": "Verificado Contra Sitio Real",
+            "type": "boolean"
+          },
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "clave",
+          "version",
+          "titulo",
+          "descripcion",
+          "sitios",
+          "requiere_login",
+          "admite_descarga",
+          "verificado_contra_sitio_real",
+          "nota_verificacion",
+          "demostracion"
+        ],
+        "title": "SitioInfo",
+        "type": "object"
+      },
       "SubagentSummary": {
         "additionalProperties": false,
         "properties": {
@@ -12379,6 +12552,17 @@
             "title": "Pasos",
             "type": "array"
           },
+          "respuesta": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Respuesta"
+          },
           "resumen_envio": {
             "items": {
               "$ref": "#/components/schemas/FilaResumen"
@@ -12401,6 +12585,15 @@
           "tiene_captura": {
             "title": "Tiene Captura",
             "type": "boolean"
+          },
+          "tipo": {
+            "default": "guion",
+            "enum": [
+              "guion",
+              "mision"
+            ],
+            "title": "Tipo",
+            "type": "string"
           },
           "titulo": {
             "title": "Titulo",
@@ -12431,7 +12624,9 @@
           "importacion",
           "importacion_error",
           "accion_id",
-          "origenes_bloqueados"
+          "origenes_bloqueados",
+          "tipo",
+          "respuesta"
         ],
         "title": "TareaInfo",
         "type": "object"
@@ -21332,6 +21527,98 @@
           }
         },
         "summary": "Get Estado",
+        "tags": [
+          "navegador"
+        ]
+      }
+    },
+    "/navegador/misiones": {
+      "post": {
+        "description": "Prepare a mission (and start it when ``iniciar``): the user wrote the objective and the data.",
+        "operationId": "post_mision_navegador_misiones_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-API-Key",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Api-Key"
+            }
+          },
+          {
+            "in": "header",
+            "name": "authorization",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Authorization"
+            }
+          },
+          {
+            "in": "cookie",
+            "name": "__Host-sesion",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "  Host-Sesion"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MisionRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TareaInfo"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Post Mision",
         "tags": [
           "navegador"
         ]

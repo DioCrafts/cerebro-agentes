@@ -394,6 +394,20 @@ inventario de rutas.
   respuestas se pintan con un analizador Markdown propio que produce elementos React (texto
   escapado); los enlaces de las fuentes solo se pintan si empiezan por `http://` o `https://`; no se
   cargan recursos de terceros. El único *script* en línea es el del tema (`index.html`).
+- **Conectores MCP** (26 de noviembre de 2026, `tests/conectores/`). Una herramienta de un servidor externo
+  es de lectura solo si el operador la nombra; el resto queda como acción pendiente aunque el servidor la
+  anuncie como inocua. Se ofrece con la definición que el operador aprobó y se rechaza si el servidor la
+  cambia después. Su descripción y sus resultados llegan al modelo como datos no confiables. El cliente no
+  ofrece `sampling` ni `elicitation`. Un resultado que ordena enviar el expediente no consigue ninguna
+  llamada (`test_un_resultado_que_ordena_actuar_no_consigue_nada`).
+- **Servidor MCP propio.** Un cliente externo solo ejecuta lecturas; lo que prepara o actúa queda pendiente
+  de confirmación en la aplicación, con un tope de 10 acciones por sesión
+  (`tests/conectores/test_servidor_mcp.py`).
+- **Misiones del navegador** (`tests/navegador/test_agente.py`). Un modelo que obedece a una página hostil
+  ve rechazadas sus seis acciones y el sitio no recibe nada más que el inicio de sesión del usuario. Los
+  valores que escribe salen del objetivo o de los datos del usuario. Chromium arranca sin poder resolver
+  otros hosts y, en macOS, sin poder leer el directorio del usuario
+  (`test_el_navegador_confinado_no_lee_el_directorio_del_usuario`).
 - **Secretos.** Ninguno en el código ni en la documentación; el registro estructurado no anota cuerpos;
   la URL del *webhook* nunca se registra; la exportación de datos excluye las huellas de los tokens.
 
@@ -452,7 +466,13 @@ inventario de rutas.
     Esta revisión no ha podido consultar bases de vulnerabilidades (sin red); hay que pasar
     `uvx pip-audit` (o `osv-scanner --lockfile uv.lock`) y `npm audit --omit=dev` antes de abrir y
     repetirlo de forma periódica, y actualizar Chromium/Playwright con frecuencia si `NAVEGADOR_ACTIVO=true`.
-12. No hay *workflows* de GitHub desde noviembre de 2026 (S-13). Si se añaden, fijar las acciones por
+12. **Servidores MCP**: declarar solo los que se hayan revisado, con la lista `herramientas` cerrada y en
+    `lectura` lo imprescindible. Un servidor `stdio` corre con los permisos del servicio: conviene un usuario
+    del sistema sin acceso a nada más. Repetir `cli.mcp aprobar` tras cada actualización del servidor.
+13. **Misiones del navegador**: `NAVEGADOR_AGENTE=true` envía texto de páginas al proveedor del modelo.
+    Activarlo solo con `LLM_DAILY_BUDGET_USD` puesto y, en macOS, con `NAVEGADOR_CONFINAMIENTO=sandbox-exec`
+    para que una tarea no arranque sin confinamiento.
+14. No hay *workflows* de GitHub desde noviembre de 2026 (S-13). Si se añaden, fijar las acciones por
     SHA y restringir quién puede lanzar `workflow_dispatch`.
 
 ## Lo que no se ha podido comprobar
@@ -463,6 +483,13 @@ inventario de rutas.
   proveedores falsos, no con facturación real. La inyección de instrucciones se analizó por caminos
   de código, no con un modelo real.
 - **Agente con navegador contra sitios reales**: solo las pruebas existentes con páginas simuladas.
+- **Misiones y conectores con un modelo real**: los tests usan un modelo de pega que decide con reglas. No
+  se ha medido cuántos pasos necesita un modelo real ni cuántas acciones se le rechazan.
+- **Servidores MCP reales**: solo el servidor de prueba en proceso. Los transportes `stdio` y HTTP usan el
+  SDK oficial, pero no se han ejercitado contra un servidor de terceros.
+- **Confinamiento con un inicio de sesión real**: `sandbox-exec` se probó con las webs simuladas, sin
+  ventana en los tests y con ventana a mano. Un certificado del llavero o Cl@ve reales pueden necesitar
+  permisos que el perfil niega. En Linux no hay confinamiento propio.
 - **El despliegue**: TLS, proxy, permisos del sistema de ficheros y copias dependen del operador.
 - **Módulos en construcción** en el momento de la revisión (correo, propuestas en el chat): fuera de
   esta revisión.

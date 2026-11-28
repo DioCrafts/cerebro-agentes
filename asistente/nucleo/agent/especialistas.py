@@ -138,6 +138,10 @@ class ModuleToolbox:
             return _error(f"Herramienta no disponible: {call.name}.")
         if herramienta.efecto == "actua":
             return self._coordinador.proponer_accion(self._modulo, herramienta, call.arguments)
+        # A read whose arguments leave this machine waits for the owner once the turn has read third-party text
+        # (same gate as colaboracion/modulos.py).
+        if herramienta.sale_del_equipo and self._coordinador.leyo_no_confiable:
+            return self._coordinador.proponer_accion(self._modulo, herramienta, call.arguments)
         # After third-party data a draft's writes are captured and wait for the user (see colaboracion/modulos.py).
         retenidos: list[Mapping[str, Any]] = []
         contexto = self._coordinador.contexto(self._modulo)

@@ -1430,6 +1430,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/navegador/misiones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Post Mision
+         * @description Prepare a mission (and start it when ``iniciar``): the user wrote the objective and the data.
+         */
+        post: operations["post_mision_navegador_misiones_post"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/navegador/tareas": {
         parameters: {
             query?: never;
@@ -3751,18 +3771,40 @@ export interface components {
         EstadoNavegador: {
             /** Activo */
             activo: boolean;
+            /**
+             * Confinamiento
+             * @default ninguno
+             */
+            confinamiento: string;
             /** Consentimiento */
             consentimiento: boolean;
             /** Max Tareas Dia */
             max_tareas_dia: number;
+            /**
+             * Misiones
+             * @default false
+             */
+            misiones: boolean;
             /** Modos */
             modos: string[];
+            /** Sitios */
+            sitios: components["schemas"]["SitioInfo"][];
             /** Tareas */
             tareas: components["schemas"]["GuionInfo"][];
             /** Texto Consentimiento */
             texto_consentimiento: string;
+            /**
+             * Texto Consentimiento Mision
+             * @default
+             */
+            texto_consentimiento_mision: string;
             /** Texto Version */
             texto_version: string;
+            /**
+             * Texto Version Mision
+             * @default
+             */
+            texto_version_mision: string;
             /** Usadas Hoy */
             usadas_hoy: number;
         };
@@ -4457,6 +4499,41 @@ export interface components {
             /** Proveedor */
             proveedor: string;
             rol: components["schemas"]["Rol"];
+        };
+        /** MisionRequest */
+        MisionRequest: {
+            /**
+             * Acepto
+             * @default false
+             */
+            acepto?: boolean;
+            /** Case Id */
+            case_id: string;
+            /** Datos */
+            datos?: {
+                [key: string]: string;
+            };
+            /**
+             * Iniciar
+             * @default false
+             */
+            iniciar?: boolean;
+            /**
+             * Modo
+             * @default ventana
+             * @enum {string}
+             */
+            modo?: "ventana" | "sesion";
+            /** Objetivo */
+            objetivo: string;
+            /** Sesion */
+            sesion?: {
+                [key: string]: unknown;
+            } | null;
+            /** Sitio */
+            sitio: string;
+            /** Texto Version */
+            texto_version?: string | null;
         };
         /** MissingFact */
         MissingFact: {
@@ -6113,6 +6190,32 @@ export interface components {
             /** Purgados */
             purgados: number;
         };
+        /**
+         * SitioInfo
+         * @description A site a mission may run on (``navegador/sitio.py``).
+         */
+        SitioInfo: {
+            /** Admite Descarga */
+            admite_descarga: boolean;
+            /** Clave */
+            clave: string;
+            /** Demostracion */
+            demostracion: boolean;
+            /** Descripcion */
+            descripcion: string;
+            /** Nota Verificacion */
+            nota_verificacion: string;
+            /** Requiere Login */
+            requiere_login: boolean;
+            /** Sitios */
+            sitios: string[];
+            /** Titulo */
+            titulo: string;
+            /** Verificado Contra Sitio Real */
+            verificado_contra_sitio_real: boolean;
+            /** Version */
+            version: number;
+        };
         /** SubagentSummary */
         SubagentSummary: {
             /** Agent */
@@ -6259,12 +6362,20 @@ export interface components {
             };
             /** Pasos */
             pasos: components["schemas"]["PasoInfo"][];
+            /** Respuesta */
+            respuesta: string | null;
             /** Resumen Envio */
             resumen_envio: components["schemas"]["FilaResumen"][];
             /** Terminada */
             terminada: string | null;
             /** Tiene Captura */
             tiene_captura: boolean;
+            /**
+             * Tipo
+             * @default guion
+             * @enum {string}
+             */
+            tipo: "guion" | "mision";
             /** Titulo */
             titulo: string;
             /** Version */
@@ -9926,6 +10037,44 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EstadoNavegador"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    post_mision_navegador_misiones_post: {
+        parameters: {
+            query?: never;
+            header?: {
+                "X-API-Key"?: string | null;
+                authorization?: string | null;
+            };
+            path?: never;
+            cookie?: {
+                "__Host-sesion"?: string | null;
+            };
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MisionRequest"];
+            };
+        };
+        responses: {
+            /** @description Successful Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TareaInfo"];
                 };
             };
             /** @description Validation Error */

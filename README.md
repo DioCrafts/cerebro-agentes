@@ -91,5 +91,7 @@ marca con `@pytest.mark.en_vivo` y se lanza a mano.
 - [Referencia de operación](docs/referencia.md): corpus, índice, API, módulos, agente y calculadoras.
 - [Operación diaria](docs/operacion.md) y [despliegue](docs/despliegue.md).
 - [Seguridad](docs/seguridad.md) y [privacidad](docs/privacidad.md).
+- [Conectores MCP y servidor MCP](docs/capacidades/conectores.md) y
+  [agente con navegador](docs/capacidades/navegador.md).
 - [Decisiones de arquitectura](docs/adr/).
 - [Plan original para Claude Code](docs/historico/ROADMAP_CLAUDE_CODE.md), de la época de hacienda-gpt.

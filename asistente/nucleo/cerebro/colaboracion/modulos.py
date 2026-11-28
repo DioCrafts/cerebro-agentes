@@ -202,6 +202,10 @@ class _Caja:
             return _error(f"Herramienta no disponible: {call.name}.")
         if herramienta.efecto == "actua":
             return self._proponer_accion(herramienta, call.arguments)
+        # A read whose arguments leave this machine waits for the owner once the turn has read third-party
+        # text: otherwise an e-mail or a web page could steer the model into putting the case's data in them.
+        if herramienta.sale_del_equipo and self._turno.leyo_no_confiable:
+            return self._proponer_accion(herramienta, call.arguments)
         # After third-party data, a draft may still be computed but its writes are only captured here: they
         # become a pending action the user confirms (nothing an e-mail asks for reaches the case on its own).
         retenidos: list[Mapping[str, Any]] = []

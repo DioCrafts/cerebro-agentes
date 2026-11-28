@@ -42,6 +42,16 @@ API_RATE_LIMIT_PER_MIN=60
 MEMORIA_CONVERSACIONES=false
 HINDSIGHT_URL=
 
+# Conectores MCP (docs/capacidades/conectores.md). Los secretos de cada servidor van aquí, en variables que el
+# JSON nombra con env:NOMBRE; nunca en el JSON.
+MCP_SERVIDORES=
+MCP_DIR=./data/mcp
+
+# Agente con navegador: misiones (docs/capacidades/navegador.md). Con NAVEGADOR_AGENTE=true el texto de las
+# páginas visitadas sale hacia el proveedor del modelo.
+NAVEGADOR_AGENTE=false
+NAVEGADOR_CONFINAMIENTO=auto
+
 # Plataforma.
 MIGRACIONES_AUTOMATICAS=true
 PLATAFORMA_TRABAJOS=

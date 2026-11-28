@@ -392,6 +392,21 @@ NAVEGADOR_DIR = os.environ.get("NAVEGADOR_DIR", "./data/navegador")
 NAVEGADOR_REPARAR_SELECTORES = _env_bool("NAVEGADOR_REPARAR_SELECTORES", default=False)
 # Tests and demos only: JSON {real origin: LOCAL origin} pointing the scripts at local mock sites.
 NAVEGADOR_ORIGENES_SUSTITUTOS = os.environ.get("NAVEGADOR_ORIGENES_SUSTITUTOS", "")
+# Missions (navegador/agente.py): a model chooses each action over the page's ARIA snapshot, behind the same
+# gates as a script. Off by default: with it, page text (identifiers masked) goes to the model provider.
+NAVEGADOR_AGENTE = _env_bool("NAVEGADOR_AGENTE", default=False)
+# Bounds of one mission: model steps, and characters of the snapshot sent per step.
+NAVEGADOR_AGENTE_MAX_PASOS = int(os.environ.get("NAVEGADOR_AGENTE_MAX_PASOS", "25"))
+NAVEGADOR_AGENTE_MAX_INSTANTANEA = int(os.environ.get("NAVEGADOR_AGENTE_MAX_INSTANTANEA", "12000"))
+# Extra site declarations (``<clave>.json``, see navegador/sitio.py) next to the bundled ones; empty = none.
+NAVEGADOR_SITIOS_DIR = os.environ.get("NAVEGADOR_SITIOS_DIR", "")
+# OS confinement of the Chromium process (navegador/confinamiento.py): "auto" (sandbox-exec on macOS, nothing
+# elsewhere), "sandbox-exec" (required: the task fails without it) or "ninguno".
+NAVEGADOR_CONFINAMIENTO = os.environ.get("NAVEGADOR_CONFINAMIENTO", "auto").strip().lower()
+
+# --- MCP connectors and MCP server ---------------------------------------------------------------------
+# MCP_SERVIDORES, MCP_DIR, MCP_TIEMPO_CONEXION_S, MCP_TIEMPO_LLAMADA_S and MCP_MAX_RESULTADO are read by
+# asistente/capacidades/conectores/ajustes.py (the capabilities sit below this module in the layers contract).
 
 # --- Continuous evaluation (asistente/nucleo/evaluacion) ---------------------------
 # The ACTIVE prompt/model variant, written only by `python -m asistente.plataforma.cli.evaluacion promote`.

@@ -499,6 +499,25 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `NAVEGADOR_REPARAR_SELECTORES` | `false` | Reparación de selectores con LLM. |
 | `NAVEGADOR_ORIGENES_SUSTITUTOS` | vacío | Solo pruebas y demostraciones. |
 | `NAVEGADOR_EXIGIR_CHROMIUM` | vacío | Solo pruebas: fallar si no hay Chromium. |
+| `NAVEGADOR_AGENTE` | `false` | Misiones: un modelo elige los pasos. El texto de las páginas sale hacia el proveedor del modelo. |
+| `NAVEGADOR_AGENTE_MAX_PASOS` | `25` | Pasos (llamadas al modelo) de una misión. |
+| `NAVEGADOR_AGENTE_MAX_INSTANTANEA` | `12000` | Caracteres de página por paso. |
+| `NAVEGADOR_SITIOS_DIR` | vacío | Carpeta con sitios declarados por el operador. |
+| `NAVEGADOR_CONFINAMIENTO` | `auto` | `auto`, `sandbox-exec` (lo exige) o `ninguno`. Solo macOS. |
+
+Detalle en [capacidades/navegador.md](capacidades/navegador.md).
+
+### 3.11 bis Conectores MCP
+
+| Variable | Por defecto | Para qué |
+|---|---|---|
+| `MCP_SERVIDORES` | vacío | Ruta del JSON con los servidores MCP externos. |
+| `MCP_DIR` | `./data/mcp` | Aprobaciones del operador (`aprobadas.json`). |
+| `MCP_TIEMPO_CONEXION_S` | `20` | Segundos para conectar y listar herramientas. |
+| `MCP_TIEMPO_LLAMADA_S` | `60` | Segundos por llamada. |
+| `MCP_MAX_RESULTADO` | `20000` | Caracteres de un resultado que llegan al modelo. |
+
+Detalle en [capacidades/conectores.md](capacidades/conectores.md).
 
 ### 3.12 Recolección y mantenimiento del corpus
 
