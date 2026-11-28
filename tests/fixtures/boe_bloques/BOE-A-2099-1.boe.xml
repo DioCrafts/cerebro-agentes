@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<response>
+  <status><code>200</code><text>ok</text></status>
+  <data>
+    <texto>
+      <bloque id="preambulo" tipo="preambulo">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="parrafo">Exposición de motivos de una ley inventada para los tests.</p>
+        </version>
+      </bloque>
+      <bloque id="ti" tipo="encabezado" titulo="TÍTULO I">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="titulo_num">TÍTULO I</p>
+          <p class="titulo_tit">Deducciones</p>
+        </version>
+      </bloque>
+      <bloque id="ci" tipo="encabezado" titulo="CAPÍTULO I">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="capitulo_num">CAPÍTULO I</p>
+          <p class="capitulo_tit">Vivienda</p>
+        </version>
+      </bloque>
+      <bloque id="a1" tipo="precepto" titulo="Artículo 1">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="articulo">Artículo 1. Deducción por alquiler.</p>
+          <p class="parrafo">1. Los contribuyentes podrán deducir el 10 por ciento del alquiler de su vivienda habitual.</p>
+          <p class="parrafo">2. La base máxima será de 9.000 euros anuales, en los términos del artículo 3 bis de esta Ley.</p>
+        </version>
+        <version id_norma="BOE-A-2099-50" fecha_publicacion="20221220" fecha_vigencia="20230101">
+          <p class="articulo">Artículo 1. Deducción por alquiler.</p>
+          <p class="parrafo">1. Los contribuyentes podrán deducir el 15 por ciento del alquiler de su vivienda habitual.</p>
+          <p class="parrafo">2. La base máxima será de 12.000 euros anuales, en los términos del artículo 3 bis de esta Ley y del artículo 20 de la Ley 37/1992.</p>
+          <table>
+            <tr><th>Base</th><th>Tipo</th></tr>
+            <tr><td>Hasta 6.000</td><td>15</td></tr>
+          </table>
+          <blockquote>
+            <p class="nota_pie">Se modifican los apartados 1 y 2, con efectos desde el 1 de enero de 2023, por el art. 4 de la Ley 9/2022.</p>
+          </blockquote>
+        </version>
+      </bloque>
+      <bloque id="a2" tipo="precepto" titulo="Artículo 2">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="articulo">Artículo 2. Deducción por compra.</p>
+          <p class="parrafo">Los contribuyentes podrán deducir el 5 por ciento de las cantidades pagadas por la adquisición de su vivienda.</p>
+        </version>
+        <version id_norma="BOE-A-2099-50" fecha_publicacion="20221220" fecha_vigencia="20230101">
+          <p class="articulo">Artículo 2. Deducción por compra.</p>
+          <p class="parrafo">(Derogado)</p>
+        </version>
+      </bloque>
+      <bloque id="cii" tipo="encabezado" titulo="CAPÍTULO II">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="capitulo_num">CAPÍTULO II</p>
+          <p class="capitulo_tit">Límites</p>
+        </version>
+      </bloque>
+      <bloque id="a3bis" tipo="precepto" titulo="Artículo 3 bis">
+        <version id_norma="BOE-A-2099-60" fecha_publicacion="20240610" fecha_vigencia="20240701">
+          <p class="articulo">Artículo 3 bis. Límite conjunto.</p>
+          <p class="parrafo">Las deducciones de los artículos 1 y 2 no podrán superar conjuntamente los 2.000 euros.</p>
+        </version>
+      </bloque>
+      <bloque id="daprimera" tipo="precepto" titulo="Disposición adicional primera">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="articulo">Disposición adicional primera. Arrendamientos anteriores.</p>
+          <p class="parrafo">Los arrendamientos anteriores a esta Ley conservan su régimen.</p>
+        </version>
+      </bloque>
+      <bloque id="firma" tipo="firma">
+        <version id_norma="BOE-A-2099-1" fecha_publicacion="20200101" fecha_vigencia="20200102">
+          <p class="parrafo">Madrid, 1 de enero de 2020.</p>
+        </version>
+      </bloque>
+    </texto>
+  </data>
+</response>

@@ -275,7 +275,7 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `INDICE_DIR` | `data/indice` | Directorio del índice del corpus: `indice.sqlite` (sqlite-vec y FTS5) y el manifiesto de la ingesta. `FAISS_INDEX_PATH` ya no se lee; si sigue definido, la aplicación avisa al arrancar. |
 | `INDICE_SQLITE_PATH` | `<INDICE_DIR>/indice.sqlite` | El fichero del índice, si no está en `INDICE_DIR`. |
 | `BM25_ENABLED` | `true` | Búsqueda híbrida: fusión RRF del ranking denso y el de FTS5. Con `false`, solo densa (no hace falta reindexar). Medición en `docs/cerebro/benchmark-recuperacion.md`. |
-| `BM25_DENSE_WEIGHT` / `BM25_BM25_WEIGHT` | `0.6` / `0.4` | Pesos de cada ranking en la fusión RRF. |
+| `BM25_DENSE_WEIGHT` / `BM25_BM25_WEIGHT` | `0.9` / `0.1` | Pesos de cada ranking en la fusión RRF. |
 | `JOBS_STATE_PATH` | `./data/_jobs_state.json` | Estado de las tareas programadas (`ops doctor`). |
 | `FORMAT_STATE_PATH` | `./data/_formatos_state.json` | Estado de la vigilancia de formatos. |
 | `FORMAT_DIR` | `./data/formatos` | Muestras, especificaciones y propuestas de formatos. |
@@ -415,8 +415,9 @@ Las rutas relativas lo son al directorio de trabajo del proceso (`WorkingDirecto
 | `EMBEDDING_MODEL` | `data/models/qwen3-emb-mlx-bf16` | Modelo de *embeddings* (MLX). |
 | `EMBEDDING_BATCH_SIZE` | `32` | Lote del *embedder*. |
 | `EMBEDDING_MAX_SEQ_LENGTH` | `512` | Tokens máximos por fragmento. |
-| `RERANKER_ENABLED` | `true` | Reordenación con *cross-encoder*. |
+| `RERANKER_ENABLED` | `false` | Reordenación con *cross-encoder*. Apagada desde el 26 de noviembre de 2026: sobre la ley indexada por artículos empeora el resultado y cuesta unos 3 s por búsqueda (`docs/cerebro/benchmark-recuperacion.md`). |
 | `RERANKER_MODEL` | `data/models/qwen3-reranker-mlx-bf16` | Modelo de reordenación. |
+| `RERANKER_INSTRUCTION` | vacío | Tarea que se le dice al reranker que está juzgando, en inglés. Vacío: la genérica de la ficha del modelo. |
 | `RERANKER_TOP_K` | `8` | Documentos tras reordenar. |
 | `RERANKER_FIRST_STAGE_K` | `30` | Candidatos de la primera fase. |
 | `CONTEXTUAL_EMBEDDINGS_ENABLED` | `false` | Prefijo contextual al indexar (invalida el índice). |

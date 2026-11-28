@@ -345,8 +345,8 @@ def construir_buscador(
     hibrido: bool = False,
     primera_etapa: int = 30,
     reranker: Reordenador | None = None,
-    peso_denso: float = 0.6,
-    peso_lexico: float = 0.4,
+    peso_denso: float = 0.9,
+    peso_lexico: float = 0.1,
 ) -> RecuperadorAgente:
     from asistente.conocimiento.indice.buscador import SqliteCorpusSearcher
 
@@ -587,8 +587,8 @@ def ejecutar(
     primera_etapa: int = 30,
     reranker: Reordenador | None = None,
     profundidad: int = 50,
-    peso_denso: float = 0.6,
-    peso_lexico: float = 0.4,
+    peso_denso: float = 0.9,
+    peso_lexico: float = 0.1,
     recalcular_vectores: bool = False,
     modelo_embeddings: str | None = None,
 ) -> dict:
@@ -916,9 +916,9 @@ def cli(
         # With --modelo-embeddings each model brings its own embedder: do not load the default one too.
         embeddings = None if modelos_embeddings else create_embeddings()
         if settings.RERANKER_ENABLED:
-            from asistente.conocimiento.llm.reranker import MLXReranker
+            from asistente.conocimiento.llm.reranker import desde_ajustes
 
-            reranker = MLXReranker(model_path=settings.RERANKER_MODEL, top_k=settings.RERANKER_TOP_K)
+            reranker = desde_ajustes()
         if "pageindex" in lista:
             # Only the tree needs the LLM: the searchers run with the local models and no API key.
             selector = SelectorLLM(_ClaudeTexto() if proveedor == "anthropic" else _OpenAITexto())

@@ -92,6 +92,9 @@ class Fragment:
     doc_key: str | None = None
     # A Supreme Court cassation ruling whose doctrine passage was detected.
     fija_doctrina: bool = False
+    # For an article of a law indexed with its versions: since when this text applies and, if it no longer does,
+    # until when («2023-01-01» / «2015-01-01→2023-01-01»). None for everything else.
+    rige: str | None = None
 
     def header(self) -> str:
         parts = [f"[{self.fragment_id}]", self.title]
@@ -105,6 +108,9 @@ class Fragment:
             ("vinculante=sí" if self.binding else "vinculante=no") if self.binding is not None else None,
             f"ámbito={self.jurisdiction_scope}" if self.jurisdiction_scope else None,
             "fija_doctrina=sí" if self.fija_doctrina else None,
+            (f"TEXTO NO VIGENTE, rigió {self.rige}" if "→" in self.rige else f"rige_desde={self.rige}")
+            if self.rige
+            else None,
             f"VIGENCIA={self.vigencia.upper()}" if self.vigencia in ("superada", "discutida", "matizada") else None,
         ]
         rendered = " | ".join(d for d in details if d)
@@ -113,6 +119,13 @@ class Fragment:
 
     def render(self) -> str:
         return f"{self.header()}\nfuente: {self.locator}\n{self.text}"
+
+
+def _rige(metadata: dict[str, Any]) -> str | None:
+    desde, hasta = metadata.get("vigente_desde"), metadata.get("vigente_hasta")
+    if not isinstance(desde, str) or not desde:
+        return None
+    return f"{desde}→{hasta}" if isinstance(hasta, str) and hasta else desde
 
 
 def _first_str(metadata: dict[str, Any], keys: tuple[str, ...]) -> str | None:
@@ -163,6 +176,7 @@ class EvidenceLedger:
             vigencia_resumen=_first_str(metadata, ("_vigencia_resumen",)),
             doc_key=_first_str(metadata, ("_doc_key",)),
             fija_doctrina=metadata.get("fija_doctrina") is True,
+            rige=_rige(metadata),
         )
         self._fragments[fragment.fragment_id] = fragment
         self._by_key[key] = fragment.fragment_id

@@ -157,6 +157,26 @@ _RESERVED_METADATA_KEYS: frozenset[str] = frozenset(
 )
 
 
+def descubrir_ficheros(root: Path) -> list[str]:
+    """The corpus files under ``root``, sorted.
+
+    Besides the generic formats (:data:`SUPPORTED_SUFFIXES`), a consolidated law may be there twice: as the page
+    the BOE renders (``<ID>.html``) and as the API's text by blocks (``<ID>.boe.xml``). The blocks win: the page
+    of the same norm in the same folder is left out, so the law is indexed once, by article.
+    """
+    from asistente.conocimiento.processor.strategies.boe_bloques import SUFIJO, es_fichero_de_bloques
+
+    rutas = [p for p in sorted(root.rglob("*")) if p.is_file()]
+    por_bloques = {str(p)[: -len(SUFIJO)] for p in rutas if es_fichero_de_bloques(p)}
+    ficheros = []
+    for ruta in rutas:
+        if es_fichero_de_bloques(ruta):
+            ficheros.append(str(ruta))
+        elif ruta.suffix.lower() in SUPPORTED_SUFFIXES and str(ruta.with_suffix("")) not in por_bloques:
+            ficheros.append(str(ruta))
+    return ficheros
+
+
 def _load_sidecar(file_path: str) -> dict[str, Any]:
     """Load the crawler-written JSON metadata sidecar for a source file.
 
@@ -495,7 +515,7 @@ class DocumentProcessor:
         root = Path(self.content_dir)
         if not root.exists():
             return []
-        return [str(path) for path in sorted(root.rglob("*")) if path.suffix.lower() in SUPPORTED_SUFFIXES]
+        return descubrir_ficheros(root)
 
     def _build_chunker(self) -> Any:
         """Construct the HybridChunker. Isolated so tests can stub the seam."""

@@ -52,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 Emit = Callable[..., None]
 
-RESEARCH_TOOLS = frozenset({"buscar_fuentes", "consultar_vigencia"})
+RESEARCH_TOOLS = frozenset({"buscar_fuentes", "leer_articulo", "indice_norma", "consultar_vigencia"})
 NO_OBJECTIONS = "SIN OBJECIONES"
 
 # Taxes a question may involve, by the words people use for them.

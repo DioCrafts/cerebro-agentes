@@ -88,12 +88,15 @@ def install_default_strategies() -> None:
     # subset of strategy deps (lxml, mlx, ...) is missing — useful for
     # tooling that only needs the protocol/registry.
     from asistente.conocimiento.processor.strategies.boe import BoeConsolidadoTableStrategy
+    from asistente.conocimiento.processor.strategies.boe_bloques import BoeBloquesStrategy
     from asistente.conocimiento.processor.strategies.default import DefaultDoclingStrategy
 
     with _REGISTRY_LOCK:
         present = {s.strategy_id for s in _REGISTRY}
         # Order matters: specialised strategies first, default last so it
         # only catches what nobody else claimed.
+        if BoeBloquesStrategy.strategy_id not in present:
+            register(BoeBloquesStrategy())
         if BoeConsolidadoTableStrategy.strategy_id not in present:
             register(BoeConsolidadoTableStrategy())
         if DefaultDoclingStrategy.strategy_id not in present:

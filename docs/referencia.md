@@ -239,11 +239,23 @@ uv run python -m asistente.plataforma.cli.boe_seed
 uv run python -m asistente.plataforma.cli.boe_seed --dry-run
 ```
 
-El CLI escribe los HTML consolidados (`/buscar/act.php?id=...`) en
-`data/html/<snapshot_date>/<subdir>/<ID>.html` junto a un
-`boe-seed-manifest.json` con los tamaños descargados. El reindexado
-posterior (`asistente.plataforma.cli.processor`) los recoge igual que el resto
-del corpus HTML.
+Cada norma se pide primero por bloques a la API de datos abiertos del BOE
+(`/datosabiertos/api/legislacion-consolidada/id/<ID>/texto`): un bloque por
+artículo o disposición, con todas sus versiones y la fecha en que entró en vigor
+cada una. El CLI la guarda en `data/html/<snapshot_date>/<subdir>/<ID>.boe.xml`,
+con un `<ID>.boe.json` al lado (título, sigla y fecha de la última modificación).
+Lo que el BOE no consolida, como una sentencia del Tribunal Constitucional, no
+tiene bloques y se descarga como antes, en `<ID>.html`, desde
+`/buscar/act.php?id=...`. Con `--solo-html` se descarga todo como página. El
+`boe-seed-manifest.json` lista lo descargado con su tamaño.
+
+El procesador (`asistente.plataforma.cli.processor`) trocea los `.boe.xml` por
+artículo y guarda en el índice todas las versiones de cada uno; si en la misma
+carpeta están la página y los bloques de una norma, indexa solo los bloques. El
+detalle está en el [ADR 0009](adr/0009-recuperacion-por-articulo.md). Una
+entrada del catálogo puede llevar `"sigla": "LIRPF"`, que es como el agente y
+los fragmentos nombran la norma; las seis leyes principales ya tienen la suya en
+`asistente/conocimiento/boe/siglas.py`.
 
 ---
 

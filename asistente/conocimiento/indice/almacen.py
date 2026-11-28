@@ -6,10 +6,18 @@ Tablas:
   Su ``rowid`` es la clave que comparten las otras dos tablas.
 * ``vec_fragmentos`` (``vec0``): el vector del fragmento, ``float[dim]`` con métrica coseno. El embedder del
   proyecto devuelve vectores normalizados.
-* ``fts_fragmentos`` (FTS5 de contenido externo sobre ``fragmentos.texto``): tokenizador
-  ``unicode61 remove_diacritics 2``, que corta por la puntuación y quita tildes y mayúsculas, de modo que
-  «721.» casa con «721» y «régimen» con «REGIMEN».
+* ``fts_fragmentos`` (FTS5 de contenido externo sobre ``fragmentos.texto_lex``): el texto reducido a raíces
+  del español (``lexico.lematizar``), con el tokenizador ``unicode61 remove_diacritics 2``, que corta por la
+  puntuación y quita tildes y mayúsculas. «721.» casa con «721», «régimen» con «REGIMEN» y «deducción» con
+  «deducciones». La consulta pasa por la misma reducción.
+* ``preceptos``: los artículos y disposiciones de las normas que llegan por bloques del BOE, una fila por
+  versión, con sus fechas de vigencia. No se vectorizan: son lo que se lee por identificador («artículo 68 de
+  la LIRPF tal como estaba el 31 de diciembre de 2022») y de donde sale el índice de cada norma.
 * ``indice_meta``: dimensión, métrica y versión del esquema.
+
+Esquema 2 (noviembre de 2026): añade ``texto_lex`` y ``preceptos``. Un índice del esquema 1 se actualiza solo al
+abrirlo para escribir (se calculan las raíces y se rehace FTS5; los vectores no se tocan); abierto en solo
+lectura sigue funcionando con la búsqueda léxica por palabras, como antes.
 
 No hay pickle en ningún punto: abrir el índice no ejecuta código de nadie.
 
@@ -26,33 +34,18 @@ from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass, field
 import json
 from pathlib import Path
-import re
 import sqlite3
 import threading
 from typing import Any
-import unicodedata
 
-ESQUEMA_VERSION = "1"
+from asistente.conocimiento.indice.lexico import lematizar, terminos
+
+ESQUEMA_VERSION = "2"
 METRICA = "cosine"
 TOKENIZADOR_FTS = "unicode61 remove_diacritics 2"
 RRF_K = 60
 # vec0 no admite k mayor que este valor en una consulta KNN.
 VEC0_K_MAX = 4096
-
-_PALABRA = re.compile(r"\w+", re.UNICODE)
-
-# Palabras vacías del español (artículos, preposiciones, pronombres, interrogativos y auxiliares). En una consulta
-# con OR casan con casi todos los fragmentos y ensucian el ranking léxico; se quitan, salvo que no quede nada.
-PALABRAS_VACIAS = frozenset(
-    """
-    a al algo algun alguna algunas alguno algunos ante antes aquel aquella aquello aqui asi aun bajo bien cada como
-    con contra cual cuales cualquier cuando cuanta cuantas cuanto cuantos de del desde donde dos durante e el ella
-    ellas ello ellos en entre era eran es esa esas ese eso esos esta estan estas este esto estos fue fueron ha han
-    hasta hay la las le les lo los mas me mi mis mucho muy ni no nos nuestra nuestro o os otra otro para pero poco
-    por porque puede pueden puedo que quien quienes se sea segun ser si sin sobre son su sus tambien tanto te tengo
-    tiene tienen tu tus un una unas uno unos usted vosotros y ya yo
-    """.split()
-)
 
 
 @dataclass(frozen=True)
@@ -69,23 +62,60 @@ class Acierto:
     puntuacion: float  # distancia coseno (densa), bm25 de FTS5 (léxica, menor es mejor) o RRF (mayor es mejor)
 
 
-def consulta_fts(texto: str) -> str | None:
-    """Convierte texto libre en una consulta FTS5 segura: cada palabra entre comillas, unidas con OR, sin las
+@dataclass(frozen=True)
+class Precepto:
+    """Una versión de un artículo o disposición de una norma, tal como la guarda el índice."""
+
+    norma_id: str  # BOE-A-2006-20764
+    bloque_id: str  # a68
+    titulo: str  # «Artículo 68»
+    rotulo: str  # «Artículo 68. Deducciones.»
+    texto: str
+    vigente_desde: str
+    vigente_hasta: str | None = None
+    numero: str | None = None  # «68», «7 bis»
+    sigla: str = ""
+    norma_titulo: str = ""
+    jerarquia: tuple[str, ...] = ()
+    orden: int = 0
+    id_norma: str = ""  # la norma que escribió esta versión
+    notas: tuple[str, ...] = ()
+    remisiones: tuple[tuple[str, str | None], ...] = ()  # (artículo, otra norma o None)
+    sin_contenido: bool = False
+    fuente: str | None = None
+
+    @property
+    def vigente(self) -> bool:
+        return self.vigente_hasta is None
+
+
+@dataclass(frozen=True)
+class NormaIndexada:
+    norma_id: str
+    sigla: str
+    titulo: str
+    preceptos: int
+
+
+def consulta_fts(texto: str, *, lematizado: bool = False) -> str | None:
+    """Convierte texto libre en una consulta FTS5 segura: cada término entre comillas, unidos con OR, sin las
     palabras vacías del español (``PALABRAS_VACIAS``).
 
     Así ni los operadores de FTS5 (``AND``, ``NEAR``, ``*``, ``:``) ni las comillas del usuario rompen la
-    consulta. El tokenizador de la tabla vuelve a normalizar tildes y mayúsculas en cada término.
+    consulta. Con ``lematizado`` los términos son raíces (lo que guarda un índice del esquema 2); sin él, las
+    palabras tal cual, que el tokenizador de la tabla normaliza en tildes y mayúsculas.
     """
-    palabras = list(dict.fromkeys(p.lower() for p in _PALABRA.findall(texto)))
+    palabras = terminos(texto, lematizado=lematizado)
     if not palabras:
         return None
-    utiles = [p for p in palabras if _sin_tildes(p) not in PALABRAS_VACIAS]
-    palabras = utiles or palabras
     return " OR ".join(f'"{p}"' for p in palabras)
 
 
-def _sin_tildes(palabra: str) -> str:
-    return "".join(c for c in unicodedata.normalize("NFKD", palabra) if not unicodedata.combining(c))
+def _plano(texto: str) -> str:
+    """Minúsculas, sin tildes y con los espacios colapsados: para comparar títulos y siglas."""
+    from asistente.conocimiento.indice.lexico import sin_tildes
+
+    return " ".join(sin_tildes(str(texto or "")).lower().split())
 
 
 def fusion_rrf(
@@ -137,20 +167,46 @@ class IndiceHibrido:
         self._conn = abrir_conexion(self.ruta, solo_lectura=solo_lectura)
         self._cerrojo = threading.RLock()
         if not solo_lectura:
+            self._conn.execute("CREATE TABLE IF NOT EXISTS indice_meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL)")
+            if self._tiene_tabla("fragmentos") and "texto_lex" not in self._columnas("fragmentos"):
+                self._actualizar_a_esquema_2()
             self._conn.executescript(
                 f"""
-                CREATE TABLE IF NOT EXISTS indice_meta (clave TEXT PRIMARY KEY, valor TEXT NOT NULL);
                 CREATE TABLE IF NOT EXISTS fragmentos (
                     rowid INTEGER PRIMARY KEY,
                     chunk_id TEXT NOT NULL UNIQUE,
                     fuente TEXT,
                     texto TEXT NOT NULL,
-                    metadatos TEXT NOT NULL DEFAULT '{{}}'
+                    metadatos TEXT NOT NULL DEFAULT '{{}}',
+                    texto_lex TEXT NOT NULL DEFAULT ''
                 );
                 CREATE INDEX IF NOT EXISTS fragmentos_fuente ON fragmentos(fuente);
                 CREATE VIRTUAL TABLE IF NOT EXISTS fts_fragmentos USING fts5(
-                    texto, content='fragmentos', content_rowid='rowid', tokenize='{TOKENIZADOR_FTS}'
+                    texto_lex, content='fragmentos', content_rowid='rowid', tokenize='{TOKENIZADOR_FTS}'
                 );
+                CREATE TABLE IF NOT EXISTS preceptos (
+                    id INTEGER PRIMARY KEY,
+                    fuente TEXT NOT NULL,
+                    norma_id TEXT NOT NULL,
+                    sigla TEXT NOT NULL DEFAULT '',
+                    norma_titulo TEXT NOT NULL DEFAULT '',
+                    bloque_id TEXT NOT NULL,
+                    titulo TEXT NOT NULL DEFAULT '',
+                    numero TEXT,
+                    rotulo TEXT NOT NULL DEFAULT '',
+                    jerarquia TEXT NOT NULL DEFAULT '[]',
+                    orden INTEGER NOT NULL DEFAULT 0,
+                    vigente_desde TEXT NOT NULL,
+                    vigente_hasta TEXT,
+                    id_norma TEXT NOT NULL DEFAULT '',
+                    texto TEXT NOT NULL,
+                    notas TEXT NOT NULL DEFAULT '[]',
+                    remisiones TEXT NOT NULL DEFAULT '[]',
+                    sin_contenido INTEGER NOT NULL DEFAULT 0
+                );
+                CREATE INDEX IF NOT EXISTS preceptos_norma ON preceptos(norma_id, numero, vigente_desde);
+                CREATE INDEX IF NOT EXISTS preceptos_bloque ON preceptos(norma_id, bloque_id, vigente_desde);
+                CREATE INDEX IF NOT EXISTS preceptos_fuente ON preceptos(fuente);
                 """
             )
             self._conn.execute(
@@ -158,6 +214,36 @@ class IndiceHibrido:
                 (ESQUEMA_VERSION, METRICA),
             )
             self._conn.commit()
+        # Un índice del esquema 1 abierto en solo lectura guarda palabras, no raíces: se le pregunta igual.
+        self._lematizado = self._tiene_tabla("fragmentos") and "texto_lex" in self._columnas("fragmentos")
+        self._con_preceptos = self._tiene_tabla("preceptos")
+
+    def _tiene_tabla(self, nombre: str) -> bool:
+        fila = self._conn.execute("SELECT 1 FROM sqlite_master WHERE name = ?", (nombre,)).fetchone()
+        return fila is not None
+
+    def _columnas(self, tabla: str) -> set[str]:
+        return {str(f[1]) for f in self._conn.execute(f"PRAGMA table_info({tabla})").fetchall()}
+
+    def _actualizar_a_esquema_2(self) -> None:
+        """Esquema 1 → 2 en el sitio: raíces de cada fragmento y FTS5 rehecho sobre ellas. Los vectores no cambian."""
+        with self._conn:
+            self._conn.execute("ALTER TABLE fragmentos ADD COLUMN texto_lex TEXT NOT NULL DEFAULT ''")
+            filas = self._conn.execute("SELECT rowid, texto FROM fragmentos").fetchall()
+            self._conn.executemany(
+                "UPDATE fragmentos SET texto_lex = ? WHERE rowid = ?", [(lematizar(f[1]), f[0]) for f in filas]
+            )
+            self._conn.execute("DROP TABLE IF EXISTS fts_fragmentos")
+            self._conn.execute(
+                f"CREATE VIRTUAL TABLE fts_fragmentos USING fts5("
+                f"texto_lex, content='fragmentos', content_rowid='rowid', tokenize='{TOKENIZADOR_FTS}')"
+            )
+            self._conn.execute("INSERT INTO fts_fragmentos(fts_fragmentos) VALUES ('rebuild')")
+            self._conn.execute(
+                "INSERT INTO indice_meta(clave, valor) VALUES ('esquema', ?) "
+                "ON CONFLICT(clave) DO UPDATE SET valor = excluded.valor",
+                (ESQUEMA_VERSION,),
+            )
 
     # ------------------------------------------------------------------ estado
 
@@ -207,12 +293,13 @@ class IndiceHibrido:
         borrados = 0
         tiene_vec = self.dimension is not None
         for rowid in rowids:
-            fila = self._conn.execute("SELECT texto FROM fragmentos WHERE rowid = ?", (rowid,)).fetchone()
+            fila = self._conn.execute("SELECT texto_lex FROM fragmentos WHERE rowid = ?", (rowid,)).fetchone()
             if fila is None:
                 continue
             # FTS5 de contenido externo: el borrado exige el texto que se indexó.
             self._conn.execute(
-                "INSERT INTO fts_fragmentos(fts_fragmentos, rowid, texto) VALUES ('delete', ?, ?)", (rowid, fila[0])
+                "INSERT INTO fts_fragmentos(fts_fragmentos, rowid, texto_lex) VALUES ('delete', ?, ?)",
+                (rowid, fila[0]),
             )
             if tiene_vec:
                 self._conn.execute("DELETE FROM vec_fragmentos WHERE rowid = ?", (rowid,))
@@ -238,17 +325,19 @@ class IndiceHibrido:
         self._borrar_rowids(self._rowids_de(f.chunk_id for f in fragmentos))
         for fragmento, vector in zip(fragmentos, vectores, strict=True):
             fuente = fragmento.fuente or fragmento.metadatos.get("source_file") or fragmento.metadatos.get("source")
+            texto_lex = lematizar(fragmento.texto)
             cursor = self._conn.execute(
-                "INSERT INTO fragmentos(chunk_id, fuente, texto, metadatos) VALUES (?, ?, ?, ?)",
+                "INSERT INTO fragmentos(chunk_id, fuente, texto, metadatos, texto_lex) VALUES (?, ?, ?, ?, ?)",
                 (
                     fragmento.chunk_id,
                     None if fuente is None else str(fuente),
                     fragmento.texto,
                     json.dumps(fragmento.metadatos, ensure_ascii=False, default=str),
+                    texto_lex,
                 ),
             )
             rowid = cursor.lastrowid
-            self._conn.execute("INSERT INTO fts_fragmentos(rowid, texto) VALUES (?, ?)", (rowid, fragmento.texto))
+            self._conn.execute("INSERT INTO fts_fragmentos(rowid, texto_lex) VALUES (?, ?)", (rowid, texto_lex))
             self._conn.execute(
                 "INSERT INTO vec_fragmentos(rowid, embedding) VALUES (?, ?)", (rowid, _serializar(vector))
             )
@@ -289,6 +378,170 @@ class IndiceHibrido:
         with self._cerrojo, self._conn:
             self._borrar_rowids(self._rowids_de(borrar))
             self._insertar(fragmentos, vectores)
+
+    # ------------------------------------------------------------- preceptos
+
+    def guardar_preceptos(self, fuente: str, preceptos: Sequence[Precepto]) -> None:
+        """Sustituye todas las versiones de artículos que salieron de ``fuente`` (un fichero del corpus)."""
+        with self._cerrojo, self._conn:
+            self._conn.execute("DELETE FROM preceptos WHERE fuente = ?", (fuente,))
+            self._conn.executemany(
+                "INSERT INTO preceptos(fuente, norma_id, sigla, norma_titulo, bloque_id, titulo, numero, rotulo, "
+                "jerarquia, orden, vigente_desde, vigente_hasta, id_norma, texto, notas, remisiones, sin_contenido) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                [
+                    (
+                        fuente,
+                        p.norma_id,
+                        p.sigla,
+                        p.norma_titulo,
+                        p.bloque_id,
+                        p.titulo,
+                        p.numero,
+                        p.rotulo,
+                        json.dumps(list(p.jerarquia), ensure_ascii=False),
+                        p.orden,
+                        p.vigente_desde,
+                        p.vigente_hasta,
+                        p.id_norma,
+                        p.texto,
+                        json.dumps(list(p.notas), ensure_ascii=False),
+                        json.dumps([list(r) for r in p.remisiones], ensure_ascii=False),
+                        int(p.sin_contenido),
+                    )
+                    for p in preceptos
+                ],
+            )
+
+    def borrar_preceptos(self, fuente: str) -> int:
+        with self._cerrojo, self._conn:
+            return int(self._conn.execute("DELETE FROM preceptos WHERE fuente = ?", (fuente,)).rowcount)
+
+    def fuentes_de(self, chunk_ids: Iterable[str]) -> set[str]:
+        """Los ficheros de origen de unos fragmentos (para saber qué preceptos se quedan sin fragmentos)."""
+        fuentes: set[str] = set()
+        with self._cerrojo:
+            for chunk_id in chunk_ids:
+                fila = self._conn.execute("SELECT fuente FROM fragmentos WHERE chunk_id = ?", (chunk_id,)).fetchone()
+                if fila is not None and fila[0]:
+                    fuentes.add(str(fila[0]))
+        return fuentes
+
+    def fragmentos_de_fuente(self, fuente: str) -> int:
+        with self._cerrojo:
+            fila = self._conn.execute("SELECT count(*) FROM fragmentos WHERE fuente = ?", (fuente,)).fetchone()
+        return int(fila[0])
+
+    @staticmethod
+    def _precepto(f: sqlite3.Row) -> Precepto:
+        return Precepto(
+            norma_id=f["norma_id"],
+            bloque_id=f["bloque_id"],
+            titulo=f["titulo"],
+            rotulo=f["rotulo"],
+            texto=f["texto"],
+            vigente_desde=f["vigente_desde"],
+            vigente_hasta=f["vigente_hasta"],
+            numero=f["numero"],
+            sigla=f["sigla"],
+            norma_titulo=f["norma_titulo"],
+            jerarquia=tuple(json.loads(f["jerarquia"])),
+            orden=int(f["orden"]),
+            id_norma=f["id_norma"],
+            notas=tuple(json.loads(f["notas"])),
+            remisiones=tuple((str(r[0]), r[1]) for r in json.loads(f["remisiones"])),
+            sin_contenido=bool(f["sin_contenido"]),
+            fuente=f["fuente"],
+        )
+
+    def normas(self) -> list[NormaIndexada]:
+        """Las normas que el índice tiene por artículos, con cuántos preceptos vigentes guarda de cada una."""
+        if not self._con_preceptos:
+            return []
+        with self._cerrojo:
+            filas = self._conn.execute(
+                "SELECT norma_id, max(sigla), max(norma_titulo), count(*) FROM preceptos "
+                "WHERE vigente_hasta IS NULL GROUP BY norma_id ORDER BY norma_id"
+            ).fetchall()
+        return [NormaIndexada(str(f[0]), str(f[1] or ""), str(f[2] or ""), int(f[3])) for f in filas]
+
+    def versiones(
+        self, norma_id: str, *, numero: str | None = None, bloque_id: str | None = None, titulo: str | None = None
+    ) -> list[Precepto]:
+        """Todas las versiones de un precepto, de la más antigua a la vigente.
+
+        Se localiza por número de artículo («68», «7 bis»), por el identificador del bloque en el BOE («a68») o
+        por su título («Disposición adicional cuarta», sin distinguir tildes ni mayúsculas).
+        """
+        if not self._con_preceptos:
+            return []
+        if numero is not None:
+            condicion, valor = "numero = ?", " ".join(numero.lower().split())
+        elif bloque_id is not None:
+            condicion, valor = "bloque_id = ?", bloque_id
+        elif titulo is not None:
+            condicion, valor = "titulo_plano(titulo) = ?", _plano(titulo)
+        else:
+            raise ValueError("Hace falta numero, bloque_id o titulo.")
+        with self._cerrojo:
+            self._conn.create_function("titulo_plano", 1, _plano, deterministic=True)
+            filas = self._conn.execute(
+                f"SELECT * FROM preceptos WHERE norma_id = ? AND {condicion} ORDER BY vigente_desde", (norma_id, valor)
+            ).fetchall()
+        return [self._precepto(f) for f in filas]
+
+    def precepto(
+        self,
+        norma_id: str,
+        *,
+        numero: str | None = None,
+        bloque_id: str | None = None,
+        titulo: str | None = None,
+        fecha: str | None = None,
+    ) -> Precepto | None:
+        """La versión vigente de un precepto o, con ``fecha`` (ISO), la que estaba en vigor ese día.
+
+        ``None`` si la norma no tiene ese precepto o si aún no existía en esa fecha.
+        """
+        versiones = self.versiones(norma_id, numero=numero, bloque_id=bloque_id, titulo=titulo)
+        if not versiones:
+            return None
+        if fecha is None:
+            return versiones[-1]
+        return next(
+            (
+                v
+                for v in reversed(versiones)
+                if v.vigente_desde <= fecha and (v.vigente_hasta is None or fecha < v.vigente_hasta)
+            ),
+            None,
+        )
+
+    def indice_norma(self, norma_id: str) -> list[Precepto]:
+        """Los preceptos vigentes de una norma, en su orden, sin el texto (el índice de la norma)."""
+        if not self._con_preceptos:
+            return []
+        with self._cerrojo:
+            filas = self._conn.execute(
+                "SELECT fuente, norma_id, sigla, norma_titulo, bloque_id, titulo, numero, rotulo, jerarquia, orden, "
+                "vigente_desde, vigente_hasta, id_norma, '' AS texto, '[]' AS notas, '[]' AS remisiones, sin_contenido "
+                "FROM preceptos WHERE norma_id = ? AND vigente_hasta IS NULL ORDER BY orden",
+                (norma_id,),
+            ).fetchall()
+        return [self._precepto(f) for f in filas]
+
+    def resolver_norma(self, referencia: str) -> str | None:
+        """El identificador de la norma que nombra ``referencia``: su id del BOE, su sigla («LIRPF») o un trozo
+        inequívoco de su título («Ley 35/2006»). ``None`` si no hay ninguna o si casan varias."""
+        buscado = _plano(referencia)
+        if not buscado:
+            return None
+        normas = self.normas()
+        for n in normas:
+            if buscado in (_plano(n.norma_id), _plano(n.sigla)):
+                return n.norma_id
+        candidatas = [n.norma_id for n in normas if buscado in _plano(n.titulo)]
+        return candidatas[0] if len(candidatas) == 1 else None
 
     # --------------------------------------------------------------- lectura
 
@@ -343,7 +596,7 @@ class IndiceHibrido:
         return [Acierto(por_rowid[int(f[0])], float(f[1])) for f in filas if int(f[0]) in por_rowid]
 
     def buscar_lexico(self, texto: str, *, k: int) -> list[Acierto]:
-        consulta = consulta_fts(texto)
+        consulta = consulta_fts(texto, lematizado=self._lematizado)
         if consulta is None or k <= 0:
             return []
         with self._cerrojo:

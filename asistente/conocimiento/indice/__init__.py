@@ -4,6 +4,14 @@ Ver ``almacen.IndiceHibrido`` (el almacén), ``buscador.SqliteCorpusSearcher`` (
 ``ingesta`` (escritura y lectura completa).
 """
 
-from asistente.conocimiento.indice.almacen import Acierto, Fragmento, IndiceHibrido, consulta_fts, fusion_rrf
+from asistente.conocimiento.indice.almacen import (
+    Acierto,
+    Fragmento,
+    IndiceHibrido,
+    NormaIndexada,
+    Precepto,
+    consulta_fts,
+    fusion_rrf,
+)
 
-__all__ = ["Acierto", "Fragmento", "IndiceHibrido", "consulta_fts", "fusion_rrf"]
+__all__ = ["Acierto", "Fragmento", "IndiceHibrido", "NormaIndexada", "Precepto", "consulta_fts", "fusion_rrf"]

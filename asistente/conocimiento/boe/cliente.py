@@ -6,6 +6,8 @@ the subsidies review and the research capability ask the BOE the same way:
 
 * :func:`metadatos` — metadata of a consolidated law (``fecha_actualizacion``…);
 * :func:`texto_consolidado` — the consolidated HTML of a law (``act.php``);
+* :func:`texto_bloques` — the same law by blocks (articles, with every version and its dates), as XML;
+* :func:`guardar_bloques` — that XML and its sidecar written next to the corpus's other files;
 * :func:`sumario` — the daily summary (None when there was no issue that day);
 * :func:`xml` — the XML of one disposition;
 * :func:`descargar` — any other ``www.boe.es`` URL (a PDF, a search page).
@@ -18,6 +20,7 @@ from __future__ import annotations
 
 from datetime import date
 import json
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -29,6 +32,7 @@ from asistente.plataforma import http
 RAIZ = "https://www.boe.es/"
 METADATOS_URL = RAIZ + "datosabiertos/api/legislacion-consolidada/id/{id}/metadatos"
 CONSOLIDADA_URL = RAIZ + "buscar/act.php?id={id}"
+BLOQUES_URL = RAIZ + "datosabiertos/api/legislacion-consolidada/id/{id}/texto"
 SUMARIO_URL = RAIZ + "datosabiertos/api/boe/sumario/{dia}"
 XML_URL = RAIZ + "diario_boe/xml.php?id={id}"
 # Courtesy towards a public service: at most ~3 requests per second from this process.
@@ -40,9 +44,12 @@ __all__ = [
     "RAIZ",
     "SUMARIO_URL",
     "XML_URL",
+    "BLOQUES_URL",
     "descargar",
+    "guardar_bloques",
     "metadatos",
     "sumario",
+    "texto_bloques",
     "texto_consolidado",
     "xml",
 ]
@@ -79,6 +86,61 @@ def texto_consolidado(boe_id: str, *, timeout: float = 60, observar: str | None 
     )
     respuesta.raise_for_status()
     return respuesta.content
+
+
+def texto_bloques(boe_id: str, *, timeout: float = 120) -> bytes | None:
+    """The consolidated text of ``boe_id`` by blocks, as the open-data API serves it (XML bytes).
+
+    None when the BOE has no consolidated text for that id (a court ruling, an order it never consolidated) or
+    answers with something that is not that document.
+    """
+    from asistente.conocimiento.boe.bloques import es_xml_de_bloques
+
+    respuesta = http.cliente().get(
+        BLOQUES_URL.format(id=boe_id), accept="application/xml", timeout=timeout, pausa_host=PAUSA
+    )
+    if respuesta.status_code in (400, 404):
+        return None
+    respuesta.raise_for_status()
+    cuerpo = respuesta.content
+    return cuerpo if es_xml_de_bloques(cuerpo[:4096]) else None
+
+
+def guardar_bloques(
+    boe_id: str, carpeta: Path, *, sigla: str = "", datos: dict[str, Any] | None = None, timeout: float = 120
+) -> Path | None:
+    """Write ``<carpeta>/<ID>.boe.xml`` (the law by blocks) and its sidecar ``<ID>.boe.json`` (title, sigla,
+    date of the last consolidated amendment). Returns the XML's path, or None when the BOE has no blocks for it.
+
+    ``datos`` is the law's metadata entry when the caller already has it (``boe_watch``); otherwise it is asked
+    for, and a failure there only leaves the sidecar without a title.
+    """
+    from asistente.conocimiento.boe.siglas import sigla_de
+
+    cuerpo = texto_bloques(boe_id, timeout=timeout)
+    if cuerpo is None:
+        return None
+    if datos is None:
+        try:
+            datos = metadatos(boe_id)
+        except httpx.HTTPError, RuntimeError, ValueError:
+            datos = {}
+    actualizada = str(datos.get("fecha_actualizacion") or "")[:8]
+    rango = datos.get("rango")
+    sidecar = {
+        "id": boe_id,
+        "titulo": str(datos.get("titulo") or "").strip().rstrip("."),
+        "sigla": sigla or sigla_de(boe_id),
+        # Not ``fecha_actualizacion``: the loader merges sidecar keys into every fragment, and the search's
+        # ``desde_fecha`` drops dated documents older than its cut-off. Consolidated law must never be dropped.
+        "actualizada": f"{actualizada[:4]}-{actualizada[4:6]}-{actualizada[6:8]}" if len(actualizada) == 8 else "",
+        "rango": str(rango.get("texto") if isinstance(rango, dict) else rango or ""),
+    }
+    carpeta.mkdir(parents=True, exist_ok=True)
+    destino = carpeta / f"{boe_id}.boe.xml"
+    destino.write_bytes(cuerpo)
+    destino.with_suffix(".json").write_text(json.dumps(sidecar, ensure_ascii=False, indent=2), encoding="utf-8")
+    return destino
 
 
 def sumario(dia: date, *, timeout: float = 60) -> dict[str, Any] | None:

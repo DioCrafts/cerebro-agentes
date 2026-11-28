@@ -28,6 +28,9 @@ class SearchFilters:
     jurisdiction_scope: str | None = None  # "estatal" | "autonomico:<código o nombre>"
     binding_only: bool = False
     date_from: str | None = None  # ISO "YYYY" or "YYYY-MM-DD": drop dated documents older than this
+    # ISO "YYYY-MM-DD": return the law as it stood that day (articles indexed by blocks carry their versions).
+    # None: the law in force today. It is not a narrowing filter, so it does not count for ``is_empty``.
+    vigente_en: str | None = None
 
     def is_empty(self) -> bool:
         return not (self.source_type or self.tributo or self.jurisdiction_scope or self.binding_only or self.date_from)
@@ -141,6 +144,7 @@ def buscador_del_corpus() -> CorpusSearcher:
         str(settings.RERANKER_MODEL),
         int(settings.RERANKER_TOP_K),
         int(settings.RERANKER_FIRST_STAGE_K),
+        str(settings.RERANKER_INSTRUCTION),
     )
     with _BUSCADORES_LOCK:
         buscador = _BUSCADORES.get(clave)
